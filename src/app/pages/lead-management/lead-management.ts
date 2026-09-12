@@ -31,30 +31,30 @@ interface LeadSeed {
 }
 
 const LEAD_SEEDS: LeadSeed[] = [
-  { name: 'Ananya Sharma', phone: '+91 98765 43210', gender: 'F', source: 'Website', service_category: 'Hair', service_request: 'Hair Loss', branch: 'Anna Nagar', status: 'Qualified', created_at: '09-Sep-2026' },
-  { name: 'Rahul Kumar', phone: '+91 91234 56780', gender: 'M', source: 'Instagram', service_category: 'Skin', service_request: 'Acne Care', branch: 'Velachery', status: 'Contacted', created_at: '08-Apr-2026' },
+  { name: 'Ananya Sharma', phone: '+91 98765 43210', gender: 'F', source: 'Website', service_category: 'Hair', service_request: 'Hair Loss', branch: 'Anna Nagar', status: 'New', created_at: '09-Sep-2026' },
+  { name: 'Rahul Kumar', phone: '+91 91234 56780', gender: 'M', source: 'Instagram', service_category: 'Skin', service_request: 'Acne Care', branch: 'Velachery', status: 'New', created_at: '08-Apr-2026' },
   { name: 'Sneha Menon', phone: '+91 98867 66554', gender: 'F', source: 'Referral', service_category: 'Hair', service_request: 'PRP Therapy', branch: 'Indiranagar', status: 'New', created_at: '15-Apr-2026' },
-  { name: 'Vikram Patel', phone: '+91 90123 45678', gender: 'M', source: 'Google Ads', service_category: 'Hair', service_request: 'Hair Transplant', branch: 'Coimbatore', status: 'Lost', created_at: '22-Apr-2026' },
+  { name: 'Vikram Patel', phone: '+91 90123 45678', gender: 'M', source: 'Google Ads', service_category: 'Hair', service_request: 'Hair Transplant', branch: 'Coimbatore', status: 'New', created_at: '22-Apr-2026' },
   { name: 'Neha Prasad', phone: '+91 93450 78920', gender: 'F', source: 'Walk-in', service_category: 'Skin', service_request: 'Skin Rejuvenation', branch: 'Anna Nagar', status: 'New', created_at: '29-Apr-2026' },
-  { name: 'Kavin Raj', phone: '+91 99520 13840', gender: 'M', source: 'Meta Campaign', service_category: 'Skin', service_request: 'Laser Toning', branch: 'T Nagar', status: 'Qualified', created_at: '03-May-2026' },
-  { name: 'Aarthi Nair', phone: '+91 98401 55082', gender: 'F', source: 'Website', service_category: 'Skin', service_request: 'Botox', branch: 'Velachery', status: 'Contacted', created_at: '10-May-2026' },
-  { name: 'Siddharth Rao', phone: '+91 95009 44671', gender: 'M', source: 'Call Center', service_category: 'Hair', service_request: 'GFC Treatment', branch: 'Bengaluru', status: 'Qualified', created_at: '17-May-2026' },
+  { name: 'Kavin Raj', phone: '+91 99520 13840', gender: 'M', source: 'Meta Campaign', service_category: 'Skin', service_request: 'Laser Toning', branch: 'T Nagar', status: 'New', created_at: '03-May-2026' },
+  { name: 'Aarthi Nair', phone: '+91 98401 55082', gender: 'F', source: 'Website', service_category: 'Skin', service_request: 'Botox', branch: 'Velachery', status: 'New', created_at: '10-May-2026' },
+  { name: 'Siddharth Rao', phone: '+91 95009 44671', gender: 'M', source: 'Call Center', service_category: 'Hair', service_request: 'GFC Treatment', branch: 'Bengaluru', status: 'New', created_at: '17-May-2026' },
   { name: 'Divya Iyer', phone: '+91 97890 24231', gender: 'F', source: 'Referral', service_category: 'Hair', service_request: 'Dandruff Care', branch: 'Anna Nagar', status: 'New', created_at: '24-May-2026' },
-  { name: 'Mohit Saini', phone: '+91 90947 11136', gender: 'M', source: 'Google Ads', service_category: 'Hair', service_request: 'Beard Transplant', branch: 'Coimbatore', status: 'Contacted', created_at: '31-May-2026' },
-  { name: 'Nikita Shah', phone: '+91 96001 67002', gender: 'F', source: 'Website', service_category: 'Skin', service_request: 'Hydra Facial', branch: 'Indiranagar', status: 'Qualified', created_at: '04-Jun-2026' },
+  { name: 'Mohit Saini', phone: '+91 90947 11136', gender: 'M', source: 'Google Ads', service_category: 'Hair', service_request: 'Beard Transplant', branch: 'Coimbatore', status: 'New', created_at: '31-May-2026' },
+  { name: 'Nikita Shah', phone: '+91 96001 67002', gender: 'F', source: 'Website', service_category: 'Skin', service_request: 'Hydra Facial', branch: 'Indiranagar', status: 'New', created_at: '04-Jun-2026' },
   { name: 'Gokul Balan', phone: '+91 94447 80602', gender: 'M', source: 'Walk-in', service_category: 'Skin', service_request: 'Pigmentation', branch: 'T Nagar', status: 'New', created_at: '11-Jun-2026' },
-  { name: 'Farah Ali', phone: '+91 98411 22390', gender: 'F', source: 'Instagram', service_category: 'Skin', service_request: 'Scar Reduction', branch: 'Anna Nagar', status: 'Contacted', created_at: '18-Jun-2026' },
-  { name: 'Ritesh Verma', phone: '+91 99628 73201', gender: 'M', source: 'Campaign', service_category: 'Hair', service_request: 'Hair Fall Control', branch: 'Velachery', status: 'Qualified', created_at: '25-Jun-2026' },
-  { name: 'Pooja Bhat', phone: '+91 87544 61902', gender: 'F', source: 'Referral', service_category: 'Skin', service_request: 'Anti Ageing', branch: 'Bengaluru', status: 'Qualified', created_at: '02-Jul-2026' },
-  { name: 'Kishore Das', phone: '+91 93812 55870', gender: 'M', source: 'Website', service_category: 'Hair', service_request: 'MNRF', branch: 'Coimbatore', status: 'Lost', created_at: '09-Jul-2026' },
-  { name: 'Harsha V.', phone: '+91 97908 80944', gender: 'M', source: 'Meta Campaign', service_category: 'Hair', service_request: 'Hair Regrowth', branch: 'Anna Nagar', status: 'Contacted', created_at: '16-Jul-2026' },
+  { name: 'Farah Ali', phone: '+91 98411 22390', gender: 'F', source: 'Instagram', service_category: 'Skin', service_request: 'Scar Reduction', branch: 'Anna Nagar', status: 'New', created_at: '18-Jun-2026' },
+  { name: 'Ritesh Verma', phone: '+91 99628 73201', gender: 'M', source: 'Campaign', service_category: 'Hair', service_request: 'Hair Fall Control', branch: 'Velachery', status: 'New', created_at: '25-Jun-2026' },
+  { name: 'Pooja Bhat', phone: '+91 87544 61902', gender: 'F', source: 'Referral', service_category: 'Skin', service_request: 'Anti Ageing', branch: 'Bengaluru', status: 'New', created_at: '02-Jul-2026' },
+  { name: 'Kishore Das', phone: '+91 93812 55870', gender: 'M', source: 'Website', service_category: 'Hair', service_request: 'MNRF', branch: 'Coimbatore', status: 'New', created_at: '09-Jul-2026' },
+  { name: 'Harsha V.', phone: '+91 97908 80944', gender: 'M', source: 'Meta Campaign', service_category: 'Hair', service_request: 'Hair Regrowth', branch: 'Anna Nagar', status: 'New', created_at: '16-Jul-2026' },
   { name: 'Lavanya S.', phone: '+91 90430 12788', gender: 'F', source: 'Walk-in', service_category: 'Hair', service_request: 'Medi Facial', branch: 'Velachery', status: 'New', created_at: '23-Jul-2026' },
-  { name: 'Ashwin George', phone: '+91 88921 41770', gender: 'M', source: 'Call Center', service_category: 'Skin', service_request: 'Tattoo Removal', branch: 'Indiranagar', status: 'Qualified', created_at: '30-Jul-2026' },
-  { name: 'Madhumitha R.', phone: '+91 89397 62014', gender: 'F', source: 'Google Ads', service_category: 'Hair', service_request: 'Skin Brightening', branch: 'T Nagar', status: 'Contacted', created_at: '04-Aug-2026' },
-  { name: 'Pranav Joshi', phone: '+91 93428 11590', gender: 'M', source: 'Website', service_category: 'Hair', service_request: 'Hair PRP', branch: 'Bengaluru', status: 'Qualified', created_at: '11-Aug-2026' },
+  { name: 'Ashwin George', phone: '+91 88921 41770', gender: 'M', source: 'Call Center', service_category: 'Skin', service_request: 'Tattoo Removal', branch: 'Indiranagar', status: 'New', created_at: '30-Jul-2026' },
+  { name: 'Madhumitha R.', phone: '+91 89397 62014', gender: 'F', source: 'Google Ads', service_category: 'Hair', service_request: 'Skin Brightening', branch: 'T Nagar', status: 'New', created_at: '04-Aug-2026' },
+  { name: 'Pranav Joshi', phone: '+91 93428 11590', gender: 'M', source: 'Website', service_category: 'Hair', service_request: 'Hair PRP', branch: 'Bengaluru', status: 'New', created_at: '11-Aug-2026' },
   { name: 'Heena Kapoor', phone: '+91 98845 75060', gender: 'F', source: 'Instagram', service_category: 'Skin', service_request: 'Chemical Peel', branch: 'Anna Nagar', status: 'New', created_at: '18-Aug-2026' },
-  { name: 'Rohit Narang', phone: '+91 97910 33044', gender: 'M', source: 'Referral', service_category: 'Hair', service_request: 'FUE Consultation', branch: 'Coimbatore', status: 'Contacted', created_at: '25-Aug-2026' },
-  { name: 'Megha Sen', phone: '+91 91503 22018', gender: 'F', source: 'Campaign', service_category: 'Hair', service_request: 'Bridal Skin Plan', branch: 'Velachery', status: 'Qualified', created_at: '02-Sep-2026' },
+  { name: 'Rohit Narang', phone: '+91 97910 33044', gender: 'M', source: 'Referral', service_category: 'Hair', service_request: 'FUE Consultation', branch: 'Coimbatore', status: 'New', created_at: '25-Aug-2026' },
+  { name: 'Megha Sen', phone: '+91 91503 22018', gender: 'F', source: 'Campaign', service_category: 'Hair', service_request: 'Bridal Skin Plan', branch: 'Velachery', status: 'New', created_at: '02-Sep-2026' },
 ];
 
 @Component({
@@ -88,7 +88,7 @@ export class LeadManagement implements OnInit {
     { key: 'gender', header: 'Gender', type: 'text' },
     { key: 'source', header: 'Source', type: 'text' },
     { key: 'service_category', header: 'Service Category', type: 'text' },
-    { key: 'service_request', header: 'service_request', type: 'text'},
+    { key: 'service_request', header: 'Service Request', type: 'text'},
     { key: 'branch', header: 'Branch', type: 'branch' },
     { key: 'status', header: 'Status', type: 'badge' },
     { key: 'created_at', header: 'Lead Date', type: 'text' },
@@ -126,6 +126,10 @@ export class LeadManagement implements OnInit {
   followUpColumns: TableColumn[] = [
     { key: 'lead', header: 'Name', type: 'lead' },
     { key: 'contact', header: 'Contact', type: 'text' },
+    { key: 'gender', header: 'Gender', type: 'text' },
+    { key: 'source', header: 'Source', type: 'text' },
+    { key: 'service_category', header: 'Service Category', type: 'text' },
+    { key: 'service_request', header: 'service_request', type: 'text'},
     { key: 'branch', header: 'Branch', type: 'branch' },
     { key: 'assigned_by', header: 'Assigned By', type: 'avatarGroup', width: '155px', sortable: false },
     { key: 'status', header: 'Status', type: 'badge' },
@@ -190,28 +194,64 @@ export class LeadManagement implements OnInit {
   onRowTransfer(event: TableTransferEvent): void {
     const fromAllLeads = event.previousContainerId === this.ALL_LEADS_DROP_LIST_ID;
     const sourceList = fromAllLeads ? this.rows : this.followUpRows;
-    const destinationList = fromAllLeads ? this.followUpRows : this.rows;
+    const movedRow = sourceList[event.previousIndex];
 
-    const [movedRow] = sourceList.splice(event.previousIndex, 1);
     if (!movedRow) {
       return;
     }
 
     if (fromAllLeads) {
-      movedRow['status'] = 'Contacted';
-      movedRow['assigned_by'] = [
-        {
-          name: 'Priya Sharma',
-          empNo: 'EMP-1042',
-          image: 'assets/avatars/priya-sharma.svg',
-        },
-      ];
+      this.moveLeadToFollowUp(movedRow, event.currentIndex);
     } else {
-      // Clear the follow-up assignment when the lead is moved back to All Leads.
-      delete movedRow['assigned_by'];
+      this.moveLeadToAllLeads(movedRow, event.currentIndex);
+    }
+  }
+
+  openFollowUp(row: TableRow): void {
+    this.moveLeadToFollowUp(row);
+  }
+
+  private moveLeadToFollowUp(row: TableRow, targetIndex: number = this.followUpRows.length): void {
+    const sourceIndex = this.rows.indexOf(row);
+    if (sourceIndex === -1) {
+      return;
     }
 
-    destinationList.splice(event.currentIndex, 0, movedRow);
+    this.rows.splice(sourceIndex, 1);
+
+    row['originalStatus'] = row['status'];
+
+    row['status'] = 'Contacted';
+    row['assigned_by'] = [
+      {
+        name: 'Priya Sharma',
+        empNo: 'EMP-1042',
+        image: 'assets/avatars/user-avatar.svg',
+      },
+    ];
+
+    this.followUpRows.splice(targetIndex, 0, row);
+
+    this.rows = [...this.rows];
+    this.followUpRows = [...this.followUpRows];
+  }
+
+  private moveLeadToAllLeads(row: TableRow, targetIndex: number = this.rows.length): void {
+    const sourceIndex = this.followUpRows.indexOf(row);
+    if (sourceIndex === -1) {
+      return;
+    }
+
+    this.followUpRows.splice(sourceIndex, 1);
+
+    if (row['originalStatus'] !== undefined) {
+      row['status'] = row['originalStatus'];
+      delete row['originalStatus'];
+    }
+
+    delete row['assigned_by'];
+
+    this.rows.splice(targetIndex, 0, row);
 
     this.rows = [...this.rows];
     this.followUpRows = [...this.followUpRows];
@@ -312,12 +352,6 @@ export class LeadManagement implements OnInit {
 
   openAppointment(row: TableRow): void {
     console.log('Appointment:', row);
-  }
-
-  openFollowUp(row: TableRow): void {
-     console.log('Follow-up:', row);
-
-     this.router.navigate(['/app/follow-ups']);
   }
 
   sendToBranch(row: TableRow): void {

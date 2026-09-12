@@ -18,7 +18,7 @@ interface NavLink {
 })
 export class LeftSideNavbar {
 
-  readonly leadChildrenExpanded = signal(true);;
+  readonly leadChildrenExpanded = signal(true);
 
   readonly openHorizontalSubmenu = signal<string | null>(null);
 

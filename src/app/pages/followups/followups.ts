@@ -20,6 +20,10 @@ import { CallLogHistoryDialog } from './call-log-history-dialog/call-log-history
 interface FollowUpSeed {
   name: string;
   phone: string;
+  gender: string;
+  source: string;
+  service_category: string;
+  service_request: string;
   branch: string;
   status: string;
   callers: CallerAvatar[];
@@ -32,6 +36,10 @@ const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
     phone: '+91 98765 43210',
     branch: 'Anna Nagar',
     status: 'Contacted',
+    gender: 'F',
+    source: 'Website', 
+    service_category: 'Hair', 
+    service_request: 'Hair Loss',
     callers: [{ name: 'Priya', empNo: 'EMP-1042' }, { name: 'Karthik Iyer', empNo: 'EMP-1108' }],
     callLog: [
       { telecallerName: 'Priya', empNo: 'EMP-1042', dateTime: '08-Sep-2026, 04:05 PM', notes: 'Call not answered, left voicemail' },
@@ -44,6 +52,10 @@ const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
     phone: '+91 91234 56780',
     branch: 'Velachery',
     status: 'Qualified',
+    gender: 'M',
+    source: 'Referral',
+    service_category: 'Dermatology',
+    service_request: 'Acne Care',
     callers: [{ name: 'Karthik Iyer', empNo: 'EMP-1108' }],
     callLog: [
       { telecallerName: 'Karthik Iyer', empNo: 'EMP-1108', dateTime: '09-Sep-2026, 10:00 AM', notes: 'Confirmed appointment for Acne Care consultation' },
@@ -54,6 +66,10 @@ const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
     phone: '+91 98867 66554',
     branch: 'Indiranagar',
     status: 'Pending',
+    gender: 'F',
+    source: 'Website',
+    service_category: 'Skin Care',
+    service_request: 'Anti-Aging Treatment',
     callers: [{ name: 'Meera Nair', empNo: 'EMP-1075', }, { name: 'Priya', empNo: 'EMP-1042' }, { name: 'Karthik Iyer', empNo: 'EMP-1108' }],
     callLog: [
       { telecallerName: 'Meera Nair', empNo: 'EMP-1075', dateTime: '05-Sep-2026, 09:40 AM', notes: 'Not reachable, switched off' },
@@ -67,6 +83,10 @@ const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
     phone: '+91 90123 45678',
     branch: 'Coimbatore',
     status: 'Lost',
+    gender: 'M',
+    source: 'Referral',
+    service_category: 'Dermatology',
+    service_request: 'Acne Care',
     callers: [{ name: 'Meera Nair', empNo: 'EMP-1075' }],
     callLog: [
       { telecallerName: 'Meera Nair', empNo: 'EMP-1075', dateTime: '02-Sep-2026, 06:10 PM', notes: 'Went with a competitor clinic' },
@@ -77,6 +97,10 @@ const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
     phone: '+91 93450 78920',
     branch: 'Anna Nagar',
     status: 'Contacted',
+    gender: 'F',
+    source: 'Website',
+    service_category: 'Skin Care',
+    service_request: 'Anti-Aging Treatment',
     callers: [{ name: 'Priya', empNo: 'EMP-1042' }, { name: 'Meera Nair', empNo: 'EMP-1075' }],
     callLog: [
       { telecallerName: 'Priya', empNo: 'EMP-1042', dateTime: '06-Sep-2026, 10:50 AM', notes: 'Interested in Skin Rejuvenation package' },
@@ -88,6 +112,10 @@ const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
     phone: '+91 99520 13840',
     branch: 'T Nagar',
     status: 'Qualified',
+    gender: 'M',
+    source: 'Referral',
+    service_category: 'Dermatology',
+    service_request: 'Acne Care',
     callers: [{ name: 'Karthik Iyer', empNo: 'EMP-1108' }],
     callLog: [
       { telecallerName: 'Karthik Iyer', empNo: 'EMP-1108', dateTime: '11-Sep-2026, 05:45 PM', notes: 'Confirmed, booked Laser Toning session' },
@@ -125,6 +153,10 @@ export class Followups implements OnInit {
   columns: TableColumn[] = [
     { key: 'lead', header: 'Name', type: 'lead' },
     { key: 'contact', header: 'Contact', type: 'text' },
+    { key: 'gender', header: 'Gender', type: 'text' },
+    { key: 'source', header: 'Source', type: 'text' },
+    { key: 'service_category', header: 'Service Category', type: 'text' },
+    { key: 'service_request', header: 'Service Request', type: 'text'},
     { key: 'branch', header: 'Branch', type: 'branch' },
     { key: 'telecaller', header: 'Telecaller Assigned', type: 'avatarGroup', sortable: false, width: '140px' },
     { key: 'status', header: 'Status', type: 'badge' },
@@ -139,6 +171,10 @@ export class Followups implements OnInit {
       subtitle: `LD-${String(284 - index).padStart(5, '0')}`,
     },
     contact: seed.phone,
+    gender: seed.gender,
+    source: seed.source,
+    service_category: seed.service_category,
+    service_request: seed.service_request,
     branch: seed.branch,
     telecaller: seed.callers,
     status: seed.status,
