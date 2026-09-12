@@ -13,6 +13,17 @@ export interface DetailCardData {
 export interface FilterOption {
   key: string;
   label: string;
+  options?: string[];
+  multiSelect?: boolean;
+}
+
+export interface CommonFilterState {
+  status: string | null;
+  source: string | null;
+  branch: string[];
+  telecaller: string | null;
+  dateFrom: string | null;
+  dateTo: string | null;
 }
 
 /** Supported cell renderers for app-common-table-card columns. */

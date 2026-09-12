@@ -69,7 +69,7 @@
       </div>
       <div class="sidebar-control">
         <div class="control-copy"><strong>{{ navLayout.sidebarExpanded() ? 'Expanded sidebar' : 'Compact sidebar' }}</strong><small>{{ navLayout.sidebarExpanded() ? 'Labels and shortcuts are visible.' : 'Show icons only for more content space.' }}</small></div>
-        <button type="button" class="switch" [class.on]="navLayout.sidebarExpanded()" (click)="navLayout.toggleSidebar()" [attr.aria-label]="'Toggle ' + (navLayout.sidebarExpanded() ? 'expanded' : 'compact') + ' sidebar'"><span></span></button>
+        <button type="button" class="switch" [class.on]="navLayout.sidebarExpanded()" (click)="navLayout.setSidebarExpanded(!navLayout.sidebarExpanded())" [attr.aria-label]="'Toggle ' + (navLayout.sidebarExpanded() ? 'expanded' : 'compact') + ' sidebar'"><span></span></button>
       </div>
     </section>
   </div>

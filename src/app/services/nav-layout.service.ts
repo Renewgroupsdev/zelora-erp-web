@@ -1,5 +1,7 @@
 import { DOCUMENT } from '@angular/common';
-import { Injectable, signal, inject } from '@angular/core';
+import { Injectable, signal, inject, computed } from '@angular/core';
+
+const MOBILE_BREAKPOINT = '(max-width: 768px)';
 
 export type NavLayoutMode = 'vertical' | 'horizontal';
 export type ThemeMode = 'light' | 'dark';
@@ -28,12 +30,34 @@ export class NavLayoutService {
   readonly notificationsOpen = signal<boolean>(false);
   readonly unreadNotificationCount = signal<number>(3);
 
+  /**
+   * `sidebarExpanded` is a persisted DESKTOP preference (full labels vs icon-only).
+   * It must never double as the mobile drawer's open/closed state, otherwise the
+   * drawer's visibility on phones ends up driven by whatever was last saved on
+   * desktop (defaults to `true`, i.e. already "open") instead of starting closed
+   * and responding to the hamburger button. Mobile gets its own transient state.
+   */
+  readonly mobileSidebarOpen = signal<boolean>(false);
+  readonly isMobileViewport = signal<boolean>(this.readMobileViewport());
+
+  /** What the 3-bar icon / off-canvas nav should actually key off, per viewport. */
+  readonly sidebarVisible = computed(() =>
+    this.isMobileViewport() ? this.mobileSidebarOpen() : this.sidebarExpanded()
+  );
+
   constructor() {
     this.applyTheme(this.theme());
     this.applyPrimaryColor(this.primaryColor(), this.primaryHex());
+    this.watchViewport();
   }
 
+  /** Called by the top-navbar's 3-bar icon. Routes to the correct state for the current viewport. */
   toggleSidebar(): void {
+    if (this.isMobileViewport()) {
+      this.mobileSidebarOpen.update(open => !open);
+      return;
+    }
+
     this.sidebarExpanded.update(expanded => !expanded);
     localStorage.setItem('renew-plus-sidebar-expanded', String(this.sidebarExpanded()));
   }
@@ -41,6 +65,10 @@ export class NavLayoutService {
   setSidebarExpanded(expanded: boolean): void {
     this.sidebarExpanded.set(expanded);
     localStorage.setItem('renew-plus-sidebar-expanded', String(expanded));
+  }
+
+  closeMobileSidebar(): void {
+    this.mobileSidebarOpen.set(false);
   }
 
   toggleSettingsMenu(): void {
@@ -120,6 +148,31 @@ export class NavLayoutService {
     }
 
     return PRIMARY_PRESETS[color];
+  }
+
+  private readMobileViewport(): boolean {
+    if (typeof window === 'undefined' || !window.matchMedia) {
+      return false;
+    }
+    return window.matchMedia(MOBILE_BREAKPOINT).matches;
+  }
+
+  private watchViewport(): void {
+    if (typeof window === 'undefined' || !window.matchMedia) {
+      return;
+    }
+
+    const mql = window.matchMedia(MOBILE_BREAKPOINT);
+    const handleChange = (event: MediaQueryList | MediaQueryListEvent): void => {
+      this.isMobileViewport.set(event.matches);
+      // Leaving mobile (e.g. rotating / resizing to desktop) should close the drawer
+      // so it doesn't reappear as a full-screen overlay next time the viewport shrinks.
+      if (!event.matches) {
+        this.mobileSidebarOpen.set(false);
+      }
+    };
+
+    mql.addEventListener('change', handleChange);
   }
 
   private readBoolean(key: string, fallback: boolean): boolean {

@@ -5,6 +5,6 @@ export const environment = {
   envName: 'local',
 
   apiBaseUrl: 'http://localhost:3000/api',
-  disableDevTools: true,
+  disableDevTools: false,
   rememberMeKey: 'remember_me',
 };

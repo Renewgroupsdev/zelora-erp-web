@@ -1,34 +1,64 @@
-<div class="filter-card d-flex flex-wrap align-items-center">
+<div class="filter-card d-flex flex-wrap align-items-center" (click)="$event.stopPropagation()">
 
   <div class="search-box">
     <i class="bi bi-search"></i>
-    <input
-      type="text"
-      [placeholder]="searchPlaceholder"
-      [(ngModel)]="searchValue"
-      (ngModelChange)="onSearchInput()"
-    >
+    <input type="text" [placeholder]="searchPlaceholder" [(ngModel)]="searchValue" (ngModelChange)="onSearchInput()">
   </div>
 
   @for (filter of filters; track filter.key) {
-    <button
-      type="button"
-      class="filter-btn"
-      [class.active]="openFilterKey === filter.key"
-      (click)="toggleFilter(filter.key)"
-    >
-      {{ filter.label }}
-      <i class="bi bi-chevron-down"></i>
+    <div class="filter-wrapper">
+      <button type="button" class="filter-btn" [class.active]="isOpen(filter.key) || hasValue(filter.key)" (click)="toggleFilter(filter.key)">
+        <i class="bi" [ngClass]="filter.key === 'date' ? 'bi-calendar3' : filter.key === 'branch' ? 'bi-diagram-3' : filter.key === 'telecaller' ? 'bi-person-badge' : filter.key === 'source' ? 'bi-megaphone' : 'bi-funnel'"></i>
+        <span>{{ getSelectedText(filter) }}</span>
+        <i class="bi bi-chevron-down"></i>
+      </button>
+
+      @if (isOpen(filter.key)) {
+        <div class="filter-menu" (click)="$event.stopPropagation()">
+          @if (filter.key === 'date') {
+            <div class="filter-menu-title">Date Range</div>
+            <div class="date-grid">
+              <label>From Date<input type="date" [ngModel]="draftValues.dateFrom || ''" (ngModelChange)="setDate('from', $event)"></label>
+              <label>To Date<input type="date" [ngModel]="draftValues.dateTo || ''" (ngModelChange)="setDate('to', $event)"></label>
+            </div>
+          } @else if (filter.key === 'branch') {
+            <div class="filter-menu-title">Select Branch</div>
+            <div class="option-list">
+              @for (option of filter.options ?? []; track option) {
+                <label class="check-option">
+                  <input type="checkbox" [checked]="isMultiSelected(option)" (change)="toggleBranch(option)">
+                  <span>{{ option }}</span>
+                </label>
+              }
+            </div>
+          } @else {
+            <div class="filter-menu-title">Select {{ filter.label }}</div>
+            <div class="option-list">
+              <button type="button" class="option-btn" [class.selected]="getSelectedText(filter) === 'All ' + filter.label" (click)="selectSingle(filter.key, '')">All {{ filter.label }}</button>
+              @for (option of filter.options ?? []; track option) {
+                <button type="button" class="option-btn" [class.selected]="getSelectedText(filter) === option" (click)="selectSingle(filter.key, option)">{{ option }}</button>
+              }
+            </div>
+          }
+
+          <div class="filter-actions">
+            <button type="button" class="clear-btn" (click)="clearFilter()">Clear</button>
+            <button type="button" class="apply-btn" (click)="applyFilter()">Apply</button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (hasValue('status') || hasValue('source') || hasValue('branch') || hasValue('telecaller') || hasValue('date') || searchValue) {
+    <button type="button" class="clear-all-btn" (click)="clearAll()">
+      <i class="bi bi-x-circle"></i> Clear all
     </button>
   }
 
   <div class="filter-spacer"></div>
 
   @if (showExport) {
-    <button type="button" class="export-btn" (click)="exportClick.emit()">
-      Export
-      <i class="bi bi-box-arrow-down"></i>
-    </button>
+    <button type="button" class="export-btn" (click)="exportClick.emit()">Export <i class="bi bi-box-arrow-down"></i></button>
   }
-
 </div>

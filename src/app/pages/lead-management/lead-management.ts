@@ -6,6 +6,7 @@ import { CommonDetailCard } from '../../shared/components/common-detail-card/com
 import { CommonFilterCard } from '../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../shared/components/common-table-card/common-table-card';
 import {
+  CommonFilterState,
   DetailCardData,
   FilterOption,
   LeadCell,
@@ -17,6 +18,7 @@ import {
 } from '../../shared/models/common-components.model';
 import { AddLeadForm } from './add-lead-form/add-lead-form';
 import { Router } from '@angular/router';
+import { FOLLOW_UP_SEEDS } from '../followups/followups';
 
 interface LeadSeed {
   name: string;
@@ -70,17 +72,30 @@ export class LeadManagement implements OnInit {
 
   stats: DetailCardData[] = [
     { label: 'Total Leads', value: '1,284', trendText: '8.4% this month', trendDirection: 'up' },
-    { label: 'New Leads', value: '246', trendText: '14.2% this week', trendDirection: 'up' },
-    { label: 'Qualified', value: '624', trendText: '48.6% of total', trendDirection: 'neutral' },
+    { label: 'Total Follow-Ups', value: FOLLOW_UP_SEEDS.length, trendText: 'Across all telecallers', trendDirection: 'neutral' },
+    // { label: 'Due Today', value: 2, trendText: 'Needs attention', trendDirection: 'up' },
+    { label: 'Completed', value: 3, trendText: 'Follow-up closed', trendDirection: 'up' },
+    { label: 'Schedule', value: 18, trendText: 'Visits planned this week', trendDirection: 'neutral' },
+    { label: 'Appointment', value: 12, trendText: 'Confirmed appointments', trendDirection: 'up' },
     { label: 'Conversion Rate', value: '30.2%', trendText: '3.1% vs last month', trendDirection: 'up' },
   ];
 
   filters: FilterOption[] = [
-    { key: 'status', label: 'Status' },
-    { key: 'source', label: 'Source' },
-    { key: 'branch', label: 'Branch' },
+    { key: 'status', label: 'Status', options: ['New', 'Contacted', 'Qualified', 'Lost'] },
+    { key: 'source', label: 'Source', options: ['Website', 'Instagram', 'Facebook', 'Google Ads', 'Referral', 'Walk-in', 'Call Center', 'Campaign', 'Meta Campaign'] },
+    { key: 'branch', label: 'Branch', multiSelect: true, options: ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'] },
+    { key: 'telecaller', label: 'Telecaller', options: ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S'] },
     { key: 'date', label: 'Date' },
   ];
+
+  filterState: CommonFilterState = {
+    status: null,
+    source: null,
+    branch: [],
+    telecaller: null,
+    dateFrom: null,
+    dateTo: null,
+  };
 
   columns: TableColumn[] = [
     { key: 'lead', header: 'Name', type: 'lead' },
@@ -109,6 +124,7 @@ export class LeadManagement implements OnInit {
     status: lead.status,
     created_at: lead.created_at,
     gender: lead.gender,
+    telecaller: ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S'][index % 4],
     action: 'menu',
   }));
 
@@ -147,8 +163,15 @@ export class LeadManagement implements OnInit {
     this.refreshRows();
   }
 
-  onFilterClick(key: string) {
-    // Open the corresponding filter dropdown/panel as needed.
+  onFilterClick(key: string): void {
+    // The common filter card owns the dropdown UI. Keep this hook for future analytics.
+    console.debug('Filter opened:', key);
+  }
+
+  onFiltersChange(filters: CommonFilterState): void {
+    this.filterState = { ...filters, branch: [...filters.branch] };
+    this.currentPage = 1;
+    this.refreshRows();
   }
 
   onExport() {
@@ -295,22 +318,37 @@ export class LeadManagement implements OnInit {
   }
 
   private getFilteredRows(): TableRow[] {
-    if (!this.searchTerm) {
-      return [...this.allRows];
-    }
-
     return this.allRows.filter((row) => {
       const lead = row['lead'] as LeadCell;
-      const haystack = [
-        lead.name,
-        lead.subtitle ?? '',
-        row['contact'],
-      ]
-        .join(' ')
-        .toLowerCase();
+      const haystack = [lead.name, lead.subtitle ?? '', row['contact']].join(' ').toLowerCase();
 
-      return haystack.includes(this.searchTerm);
+      if (this.searchTerm && !haystack.includes(this.searchTerm)) return false;
+      if (this.filterState.status && row['status'] !== this.filterState.status) return false;
+      if (this.filterState.source && row['source'] !== this.filterState.source) return false;
+      if (this.filterState.branch.length > 0 && !this.filterState.branch.includes(String(row['branch']))) return false;
+      if (this.filterState.telecaller && row['telecaller'] !== this.filterState.telecaller) return false;
+
+      const leadDate = this.parseLeadDate(String(row['created_at']));
+      if (this.filterState.dateFrom && leadDate < this.filterState.dateFrom) return false;
+      if (this.filterState.dateTo && leadDate > this.filterState.dateTo) return false;
+
+      return true;
     });
+  }
+
+  private parseLeadDate(value: string): string {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
+
+    const match = value.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+    if (!match) return '';
+
+    const months: Record<string, string> = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
+    const month = months[match[2].toLowerCase()];
+    if (!month) return '';
+    return `${match[3]}-${month}-${match[1].padStart(2, '0')}`;
   }
 
   private getSortedRows(rows: TableRow[]): TableRow[] {

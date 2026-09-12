@@ -68,7 +68,6 @@ export class DevToolsGuardService {
       this.pollHandle = null;
     }
 
-    this.hideWarningBanner();
     this.initialized = false;
   }
 
@@ -76,46 +75,6 @@ export class DevToolsGuardService {
     const widthGap = window.outerWidth - window.innerWidth;
     const heightGap = window.outerHeight - window.innerHeight;
     const looksOpen = widthGap > this.openThresholdPx || heightGap > this.openThresholdPx;
-
-    if (looksOpen) {
-      this.showWarningBanner();
-    } else {
-      this.hideWarningBanner();
-    }
   }
 
-  private showWarningBanner(): void {
-    if (this.warningBanner) {
-      return;
-    }
-
-    const banner = document.createElement('div');
-    banner.textContent =
-      'Developer tools appear to be open. Please close them to continue using this application securely.';
-    banner.setAttribute('role', 'alert');
-    Object.assign(banner.style, {
-      position: 'fixed',
-      insetInline: '0',
-      top: '0',
-      zIndex: '2147483647',
-      padding: '10px 16px',
-      textAlign: 'center',
-      fontFamily: 'sans-serif',
-      fontSize: '13px',
-      fontWeight: '600',
-      color: '#7a1f1f',
-      background: '#fdecea',
-      borderBottom: '1px solid #f3b8b8',
-    } as CSSStyleDeclaration);
-
-    document.body.appendChild(banner);
-    this.warningBanner = banner;
-  }
-
-  private hideWarningBanner(): void {
-    if (this.warningBanner) {
-      this.warningBanner.remove();
-      this.warningBanner = null;
-    }
-  }
 }

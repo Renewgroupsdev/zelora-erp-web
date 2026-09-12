@@ -33,8 +33,8 @@ export class LeftSideNavbar {
         { label: 'Schedule', icon: 'bi-calendar3', path: '/app/schedule' },
       ],
     },
-    // { label: 'Appointment', icon: 'bi-calendar-check-fill', path: '/app/lead-management' },
-    // { label: 'Customer Relationship Management (CRM)', icon: 'bi-person-vcard-fill', path: '/app/lead-management' },
+    { label: 'Appointment', icon: 'bi-calendar-check-fill', path: '/app/appointments' },
+    { label: 'CRM', icon: 'bi-person-vcard-fill', path: '/app/customers' },
     { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings' },
   ];
 

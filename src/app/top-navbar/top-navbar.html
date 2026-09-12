@@ -4,7 +4,7 @@
       type="button"
       class="icon-btn menu-btn"
       (click)="onToggleSidebar()"
-      [attr.aria-label]="navLayout.sidebarExpanded() ? 'Collapse navigation' : 'Expand navigation'"
+      [attr.aria-label]="navLayout.sidebarVisible() ? 'Collapse navigation' : 'Expand navigation'"
     >
       <i class="bi bi-list"></i>
     </button>

@@ -14,6 +14,7 @@ import {
   TableColumn,
   TablePageChangeEvent,
   TableRow,
+  CommonFilterState,
 } from '../../shared/models/common-components.model';
 import { CallLogHistoryDialog } from './call-log-history-dialog/call-log-history-dialog';
 
@@ -30,7 +31,7 @@ interface FollowUpSeed {
   callLog: CallerLogEntry[];
 }
 
-const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
+export const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
   {
     name: 'Ananya Sharma',
     phone: '+91 98765 43210',
@@ -144,11 +145,21 @@ export class Followups implements OnInit {
   ];
 
   filters: FilterOption[] = [
-    { key: 'status', label: 'Status' },
-    { key: 'telecaller', label: 'Telecaller' },
-    { key: 'branch', label: 'Branch' },
+    { key: 'status', label: 'Status', options: ['Contacted', 'Qualified', 'Pending', 'Lost', 'Completed'] },
+    { key: 'source', label: 'Source', options: ['Website', 'Instagram', 'Facebook', 'Google Ads', 'Referral', 'Walk-in', 'Call Center', 'Campaign'] },
+    { key: 'branch', label: 'Branch', multiSelect: true, options: ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'] },
+    { key: 'telecaller', label: 'Telecaller', options: ['Priya', 'Karthik Iyer', 'Meera Nair'] },
     { key: 'date', label: 'Date' },
   ];
+
+  filterState: CommonFilterState = {
+    status: null,
+    source: null,
+    branch: [],
+    telecaller: null,
+    dateFrom: null,
+    dateTo: null,
+  };
 
   columns: TableColumn[] = [
     { key: 'lead', header: 'Name', type: 'lead' },
@@ -157,6 +168,7 @@ export class Followups implements OnInit {
     { key: 'source', header: 'Source', type: 'text' },
     { key: 'service_category', header: 'Service Category', type: 'text' },
     { key: 'service_request', header: 'Service Request', type: 'text'},
+    { key: 'follow_up_date', header: 'Follow-Up Date', type: 'text' },
     { key: 'branch', header: 'Branch', type: 'branch' },
     { key: 'telecaller', header: 'Telecaller Assigned', type: 'avatarGroup', sortable: false, width: '140px' },
     { key: 'status', header: 'Status', type: 'badge' },
@@ -175,6 +187,7 @@ export class Followups implements OnInit {
     source: seed.source,
     service_category: seed.service_category,
     service_request: seed.service_request,
+    follow_up_date: seed.callLog.length ? seed.callLog[seed.callLog.length - 1].dateTime : '',
     branch: seed.branch,
     telecaller: seed.callers,
     status: seed.status,
@@ -200,7 +213,13 @@ export class Followups implements OnInit {
   }
 
   onFilterClick(key: string): void {
-    // Open the corresponding filter dropdown/panel as needed.
+    console.debug('Filter opened:', key);
+  }
+
+  onFiltersChange(filters: CommonFilterState): void {
+    this.filterState = { ...filters, branch: [...filters.branch] };
+    this.currentPage = 1;
+    this.refreshRows();
   }
 
   onExport(): void {
@@ -282,26 +301,47 @@ export class Followups implements OnInit {
   }
 
   private getFilteredRows(): TableRow[] {
-    if (!this.searchTerm) {
-      return [...this.allRows];
-    }
-
     return this.allRows.filter((row) => {
       const lead = row['lead'] as LeadCell;
       const callers = (row['telecaller'] as CallerAvatar[]) ?? [];
-      const haystack = [
-        lead.name,
-        lead.subtitle ?? '',
-        row['contact'],
-        row['branch'],
-        row['status'],
-        ...callers.map(c => c.name),
-      ]
-        .join(' ')
-        .toLowerCase();
+      const followUpDate = this.toIsoDate(String(row['follow_up_date'] ?? ''));
 
-      return haystack.includes(this.searchTerm);
+      if (this.searchTerm) {
+        const haystack = [
+          lead.name,
+          lead.subtitle ?? '',
+          row['contact'],
+          row['branch'],
+          row['status'],
+          row['source'],
+          ...callers.map(c => c.name),
+        ].join(' ').toLowerCase();
+
+        if (!haystack.includes(this.searchTerm)) return false;
+      }
+
+      if (this.filterState.status && row['status'] !== this.filterState.status) return false;
+      if (this.filterState.source && row['source'] !== this.filterState.source) return false;
+      if (this.filterState.branch.length > 0 && !this.filterState.branch.includes(String(row['branch']))) return false;
+      if (this.filterState.telecaller && !callers.some(c => c.name === this.filterState.telecaller)) return false;
+      if (this.filterState.dateFrom && (!followUpDate || followUpDate < this.filterState.dateFrom)) return false;
+      if (this.filterState.dateTo && (!followUpDate || followUpDate > this.filterState.dateTo)) return false;
+
+      return true;
     });
+  }
+
+  private toIsoDate(value: string): string {
+    const match = value.match(/(\d{2})-(\w{3})-(\d{4})/);
+    if (!match) return '';
+
+    const months: Record<string, string> = {
+      Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',
+      Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12',
+    };
+
+    const month = months[match[2]];
+    return month ? `${match[3]}-${month}-${match[1]}` : '';
   }
 
   private getSortedRows(rows: TableRow[]): TableRow[] {

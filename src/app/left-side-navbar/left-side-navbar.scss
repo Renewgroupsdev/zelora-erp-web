@@ -10,6 +10,7 @@
               var(--nav-grad-bottom) 100%);
   color: var(--nav-text);
   min-height: calc(100vh - var(--topnavbar-height, 48px));
+  min-height: calc(100dvh - var(--topnavbar-height, 48px));
   width: 48px;
   flex-shrink: 0;
   overflow: visible;
@@ -907,6 +908,7 @@
     right: 12px;
     width: auto;
     max-height: calc(100vh - 112px);
+    max-height: calc(100dvh - 112px);
     overflow-y: auto;
   }
 
@@ -926,5 +928,6 @@
 
   .side-navbar {
     min-height: calc(100vh - 56px);
+    min-height: calc(100dvh - 56px);
   }
 }

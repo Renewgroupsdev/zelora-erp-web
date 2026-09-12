@@ -13,7 +13,7 @@
 
   <div class="row g-2 g-md-3 stat-row">
     @for (stat of stats; track stat.label) {
-      <div class="col-6 col-md-3">
+      <div class="col-6 col-md-2">
         <app-common-detail-card
           [label]="stat.label"
           [value]="stat.value"
@@ -30,13 +30,13 @@
     [filters]="filters"
     (searchChange)="onSearch($event)"
     (filterClick)="onFilterClick($event)"
+    (filtersChange)="onFiltersChange($event)"
     (exportClick)="onExport()"
   ></app-common-filter-card>
 
   <div class="tables-row d-flex flex-column">
     <div class="table-col">
       <app-common-table-card
-        title="All Leads"
         [recordCountText]="recordCountText"
         bulkActionsLabel="Bulk actions"
         [columns]="columns"
@@ -64,7 +64,6 @@
 
     <div class="table-col">
       <app-common-table-card
-        title="Follow-Up Leads"
         recordCountText="Drag a lead here to flag it for follow-up"
         [columns]="followUpColumns"
         [rows]="followUpRows"
