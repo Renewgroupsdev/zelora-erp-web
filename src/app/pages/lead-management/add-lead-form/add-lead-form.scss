@@ -234,11 +234,21 @@
 
 .modal-footer-custom {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
   padding: 8px;
   border-top: 1px solid var(--primary-border);
   background: var(--app-surface-bg);
+}
+
+.save-btn .bi-arrow-repeat {
+  animation: add-lead-spin 0.8s linear infinite;
+}
+
+@keyframes add-lead-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .cancel-btn,

@@ -180,8 +180,12 @@
     </div>
 
     <div class="modal-footer-custom">
-      <button type="submit" class="save-btn" [title]="isEdit ? 'Update Lead' : 'Save Lead'">
-        <i class="bi" [class.bi-floppy]="!isEdit" [class.bi-pencil-square]="isEdit"></i>
+      <button
+        type="submit"
+        class="save-btn"
+        [disabled]="isSaving"
+        [title]="isEdit ? 'Update Lead' : 'Save Lead'">
+        <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-floppy]="!isSaving && !isEdit" [class.bi-pencil-square]="!isSaving && isEdit"></i>
       </button>
     </div>
 

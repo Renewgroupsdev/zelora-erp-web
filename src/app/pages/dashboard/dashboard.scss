@@ -125,8 +125,8 @@
 
 .stat-icon.purple,
 .activity-icon.purple {
-  background: #f0e9fd;
-  color: #7c3aed;
+  background: var(--status-purple-bg);
+  color: var(--status-purple-text);
 }
 
 .trend {

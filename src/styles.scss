@@ -55,6 +55,8 @@
   --status-gray-text: #66817a;
   --status-blue-bg: #e5f0fb;
   --status-blue-text: #1868b0;
+  --status-purple-bg: #f0e9fd;
+  --status-purple-text: #7c3aed;
 
   /* Avatar palette (rotates across table rows) */
   --avatar-color-1-bg: #e3f0fb;
@@ -72,7 +74,7 @@
      font-family 
   ---------------------------------------------------------- */
   --font-family-base: "Segoe UI", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
-  --font-family-display: 'Fraunces', Georgia, serif;
+  --font-family-display: "Segoe UI", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
 
   /* Premium accent — used sparingly (export actions, hero highlights) */
   --gold: #b4863a;
@@ -175,6 +177,8 @@
   --status-gray-text: #c0d5cf;
   --status-blue-bg: #214d66;
   --status-blue-text: #9bd7f4;
+  --status-purple-bg: #3e2f66;
+  --status-purple-text: #c9aeff;
   --shadow-card: 0 5px 16px rgba(0, 0, 0, 0.2);
   --shadow-card-hover: 0 8px 20px rgba(0, 0, 0, 0.28);
   --shadow-elevated: 0 7px 22px rgba(0, 0, 0, 0.24);

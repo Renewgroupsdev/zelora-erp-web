@@ -11,6 +11,9 @@ import {
   MatDialogModule,
   MatDialogRef,
 } from '@angular/material/dialog';
+import { ApiDataService } from '../../../shared/common-services/api-data.service';
+import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
+import { ToastService } from '../../../shared/common-services/toast.service';
 
 @Component({
   selector: 'app-add-lead-form',
@@ -21,6 +24,7 @@ import {
 })
 export class AddLeadForm {
   leadForm: FormGroup;
+  isSaving = false;
 
   readonly sourceOptions = [
     'Website',
@@ -63,6 +67,8 @@ export class AddLeadForm {
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<AddLeadForm>,
+    private apiDataService: ApiDataService,
+    private toast: ToastService,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.leadForm = this.fb.group({
@@ -91,7 +97,43 @@ export class AddLeadForm {
       return;
     }
 
-    this.dialogRef.close(this.leadForm.getRawValue());
+    const formValue = this.leadForm.getRawValue();
+
+    // Map this form's field names to the ones the API expects. Note: the form's
+    // "location" input is labelled Pin Code, so it maps to `pincode`, while the
+    // form's "address" textarea maps to the API's `location` field.
+    const payload = {
+      name: formValue.name,
+      mobile_no: formValue.phone,
+      pincode: formValue.location,
+      location: formValue.address,
+      source: formValue.source,
+      gender: formValue.gender,
+      category: formValue.type,
+      status: formValue.status,
+      reason: formValue.reason,
+    };
+
+    this.isSaving = true;
+
+    const path = ApiRoutesConstants.LEAD_ADD;
+    this.apiDataService.POST(path, payload).subscribe({
+      next: (response: any) => {
+        this.isSaving = false;
+
+        if (response && response.success !== false) {
+          this.toast.success(this.isEdit ? 'Lead updated successfully' : 'Lead saved successfully');
+          this.dialogRef.close(response.data ?? formValue);
+        } else {
+          this.toast.error(response || 'Failed to save lead. Please try again.');
+        }
+      },
+      error: (err: any) => {
+        this.isSaving = false;
+        this.toast.error(err?.error?.message || 'Failed to save lead. Please try again.');
+        console.error('Failed to save lead:', err);
+      },
+    });
   }
 
   close(): void {

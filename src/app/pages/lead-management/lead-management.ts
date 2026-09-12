@@ -19,45 +19,9 @@ import {
 import { AddLeadForm } from './add-lead-form/add-lead-form';
 import { Router } from '@angular/router';
 import { FOLLOW_UP_SEEDS } from '../followups/followups';
-
-interface LeadSeed {
-  name: string;
-  phone: string;
-  gender: string;
-  source: string;
-  service_category: string;
-  service_request: string;
-  branch: string;
-  created_at: string;
-  status: string;
-}
-
-const LEAD_SEEDS: LeadSeed[] = [
-  { name: 'Ananya Sharma', phone: '+91 98765 43210', gender: 'F', source: 'Website', service_category: 'Hair', service_request: 'Hair Loss', branch: 'Anna Nagar', status: 'New', created_at: '09-Sep-2026' },
-  { name: 'Rahul Kumar', phone: '+91 91234 56780', gender: 'M', source: 'Instagram', service_category: 'Skin', service_request: 'Acne Care', branch: 'Velachery', status: 'New', created_at: '08-Apr-2026' },
-  { name: 'Sneha Menon', phone: '+91 98867 66554', gender: 'F', source: 'Referral', service_category: 'Hair', service_request: 'PRP Therapy', branch: 'Indiranagar', status: 'New', created_at: '15-Apr-2026' },
-  { name: 'Vikram Patel', phone: '+91 90123 45678', gender: 'M', source: 'Google Ads', service_category: 'Hair', service_request: 'Hair Transplant', branch: 'Coimbatore', status: 'New', created_at: '22-Apr-2026' },
-  { name: 'Neha Prasad', phone: '+91 93450 78920', gender: 'F', source: 'Walk-in', service_category: 'Skin', service_request: 'Skin Rejuvenation', branch: 'Anna Nagar', status: 'New', created_at: '29-Apr-2026' },
-  { name: 'Kavin Raj', phone: '+91 99520 13840', gender: 'M', source: 'Meta Campaign', service_category: 'Skin', service_request: 'Laser Toning', branch: 'T Nagar', status: 'New', created_at: '03-May-2026' },
-  { name: 'Aarthi Nair', phone: '+91 98401 55082', gender: 'F', source: 'Website', service_category: 'Skin', service_request: 'Botox', branch: 'Velachery', status: 'New', created_at: '10-May-2026' },
-  { name: 'Siddharth Rao', phone: '+91 95009 44671', gender: 'M', source: 'Call Center', service_category: 'Hair', service_request: 'GFC Treatment', branch: 'Bengaluru', status: 'New', created_at: '17-May-2026' },
-  { name: 'Divya Iyer', phone: '+91 97890 24231', gender: 'F', source: 'Referral', service_category: 'Hair', service_request: 'Dandruff Care', branch: 'Anna Nagar', status: 'New', created_at: '24-May-2026' },
-  { name: 'Mohit Saini', phone: '+91 90947 11136', gender: 'M', source: 'Google Ads', service_category: 'Hair', service_request: 'Beard Transplant', branch: 'Coimbatore', status: 'New', created_at: '31-May-2026' },
-  { name: 'Nikita Shah', phone: '+91 96001 67002', gender: 'F', source: 'Website', service_category: 'Skin', service_request: 'Hydra Facial', branch: 'Indiranagar', status: 'New', created_at: '04-Jun-2026' },
-  { name: 'Gokul Balan', phone: '+91 94447 80602', gender: 'M', source: 'Walk-in', service_category: 'Skin', service_request: 'Pigmentation', branch: 'T Nagar', status: 'New', created_at: '11-Jun-2026' },
-  { name: 'Farah Ali', phone: '+91 98411 22390', gender: 'F', source: 'Instagram', service_category: 'Skin', service_request: 'Scar Reduction', branch: 'Anna Nagar', status: 'New', created_at: '18-Jun-2026' },
-  { name: 'Ritesh Verma', phone: '+91 99628 73201', gender: 'M', source: 'Campaign', service_category: 'Hair', service_request: 'Hair Fall Control', branch: 'Velachery', status: 'New', created_at: '25-Jun-2026' },
-  { name: 'Pooja Bhat', phone: '+91 87544 61902', gender: 'F', source: 'Referral', service_category: 'Skin', service_request: 'Anti Ageing', branch: 'Bengaluru', status: 'New', created_at: '02-Jul-2026' },
-  { name: 'Kishore Das', phone: '+91 93812 55870', gender: 'M', source: 'Website', service_category: 'Hair', service_request: 'MNRF', branch: 'Coimbatore', status: 'New', created_at: '09-Jul-2026' },
-  { name: 'Harsha V.', phone: '+91 97908 80944', gender: 'M', source: 'Meta Campaign', service_category: 'Hair', service_request: 'Hair Regrowth', branch: 'Anna Nagar', status: 'New', created_at: '16-Jul-2026' },
-  { name: 'Lavanya S.', phone: '+91 90430 12788', gender: 'F', source: 'Walk-in', service_category: 'Hair', service_request: 'Medi Facial', branch: 'Velachery', status: 'New', created_at: '23-Jul-2026' },
-  { name: 'Ashwin George', phone: '+91 88921 41770', gender: 'M', source: 'Call Center', service_category: 'Skin', service_request: 'Tattoo Removal', branch: 'Indiranagar', status: 'New', created_at: '30-Jul-2026' },
-  { name: 'Madhumitha R.', phone: '+91 89397 62014', gender: 'F', source: 'Google Ads', service_category: 'Hair', service_request: 'Skin Brightening', branch: 'T Nagar', status: 'New', created_at: '04-Aug-2026' },
-  { name: 'Pranav Joshi', phone: '+91 93428 11590', gender: 'M', source: 'Website', service_category: 'Hair', service_request: 'Hair PRP', branch: 'Bengaluru', status: 'New', created_at: '11-Aug-2026' },
-  { name: 'Heena Kapoor', phone: '+91 98845 75060', gender: 'F', source: 'Instagram', service_category: 'Skin', service_request: 'Chemical Peel', branch: 'Anna Nagar', status: 'New', created_at: '18-Aug-2026' },
-  { name: 'Rohit Narang', phone: '+91 97910 33044', gender: 'M', source: 'Referral', service_category: 'Hair', service_request: 'FUE Consultation', branch: 'Coimbatore', status: 'New', created_at: '25-Aug-2026' },
-  { name: 'Megha Sen', phone: '+91 91503 22018', gender: 'F', source: 'Campaign', service_category: 'Hair', service_request: 'Bridal Skin Plan', branch: 'Velachery', status: 'New', created_at: '02-Sep-2026' },
-];
+import { ApiDataService } from '../../shared/common-services/api-data.service';
+import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
+import { ToastService } from '../../shared/common-services/toast.service';
 
 @Component({
   selector: 'app-lead-management',
@@ -68,7 +32,7 @@ const LEAD_SEEDS: LeadSeed[] = [
 })
 export class LeadManagement implements OnInit {
 
-  constructor(private dialog: MatDialog, private router: Router) { }
+  constructor(private dialog: MatDialog, private router: Router, private ApiDataService: ApiDataService, private toast: ToastService) { }
 
   stats: DetailCardData[] = [
     { label: 'Total Leads', value: '1,284', trendText: '8.4% this month', trendDirection: 'up' },
@@ -111,22 +75,8 @@ export class LeadManagement implements OnInit {
   ];
 
   readonly pageSizeOptions = [10, 30, 50, 100];
-  readonly allRows: TableRow[] = LEAD_SEEDS.map((lead, index) => ({
-    lead: {
-      name: lead.name,
-      subtitle: `LD-${String(284 - index).padStart(5, '0')}`,
-    },
-    contact: lead.phone,
-    source: lead.source,
-    service_category: lead.service_category,
-    service_request: lead.service_request,
-    branch: lead.branch,
-    status: lead.status,
-    created_at: lead.created_at,
-    gender: lead.gender,
-    telecaller: ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S'][index % 4],
-    action: 'menu',
-  }));
+  isLoading = false;
+  allRows: TableRow[] = [];
 
   rows: TableRow[] = [];
   currentPage = 1;
@@ -155,6 +105,91 @@ export class LeadManagement implements OnInit {
 
   ngOnInit(): void {
     this.refreshRows();
+    this.loadLeadData();
+  }
+
+  loadLeadData(): void {
+    const path = ApiRoutesConstants.LEAD_GET_List;
+    this.isLoading = true;
+
+    this.ApiDataService.GET(path).subscribe({
+      next: (response: any) => {
+        this.isLoading = false;
+
+        // API shape: { success, data: { data: [...leads], current_page, total, per_page, ... } }
+        const leads = response?.data?.data ?? [];
+
+        if (response?.success && Array.isArray(leads)) {
+          this.allRows = leads.map((lead: any) => this.mapLeadToRow(lead));
+          this.currentPage = 1;
+          this.refreshRows();
+        }
+      },
+      error: (err: any) => {
+        this.isLoading = false;
+        this.toast.error('Failed to load leads. Please try again.');
+        console.error('Failed to load leads:', err);
+      },
+    });
+  }
+
+  /** Maps one lead record from the API's paginated payload into the row shape the table expects. */
+  private mapLeadToRow(lead: any): TableRow {
+    return {
+      lead: {
+        name: lead.name ?? '',
+        subtitle: `LD-${String(lead.id ?? '').padStart(5, '0')}`,
+      },
+      contact: lead.mobile_no ?? '',
+      source: this.formatSource(lead.source),
+      service_category: lead.category ?? '',
+      service_request: lead.reason ?? '',
+      branch: lead.location ?? lead.organization_unit ?? '',
+      status: this.formatStatus(lead.status),
+      created_at: this.formatDate(lead.created_at),
+      gender: lead.gender ?? '',
+      telecaller: lead.creator ?? '',
+      action: 'menu',
+      id: lead.id,
+    };
+  }
+
+  /** The API returns `source` as a numeric code. Adjust this map to match your backend's
+   *  actual source enum once confirmed. */
+  private readonly sourceLabels: Record<number, string> = {
+    0: 'Website',
+    1: 'Instagram',
+    2: 'Facebook',
+    3: 'Google Ads',
+    4: 'Referral',
+    5: 'Walk-in',
+    6: 'Call Center',
+    7: 'Campaign',
+  };
+
+  private formatSource(source: unknown): string {
+    if (typeof source === 'number') {
+      return this.sourceLabels[source] ?? String(source);
+    }
+    return (source as string) ?? '';
+  }
+
+  /** "active" -> "Active" so it matches the badge styling used for status text. */
+  private formatStatus(status: unknown): string {
+    const value = String(status ?? '').trim();
+    if (!value) return 'New';
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  /** ISO timestamp from the API -> "DD-Mon-YYYY" to match the rest of the UI. */
+  private formatDate(value: unknown): string {
+    if (!value) return '';
+    const date = new Date(String(value));
+    if (Number.isNaN(date.getTime())) return String(value);
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    return `${day}-${month}-${date.getFullYear()}`;
   }
 
   onSearch(term: string) {
@@ -294,8 +329,8 @@ export class LeadManagement implements OnInit {
 
     dialogRef.afterClosed().subscribe((leadData) => {
       if (leadData) {
-        console.log('Lead saved:', leadData);
-
+        // The dialog already saved the lead via its own POST call - just refresh the list.
+        this.loadLeadData();
       }
     });
   }
