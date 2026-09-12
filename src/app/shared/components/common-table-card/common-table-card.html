@@ -1,0 +1,252 @@
+<div class="table-card">
+
+  <div class="table-card-header d-flex flex-wrap align-items-start align-items-sm-center justify-content-between">
+    <div class="table-card-heading">
+      <div class="heading-line">
+        <h3>{{ title }}</h3>
+        @if (recordCountText) {
+          <span class="record-count">{{ recordCountText }}</span>
+        }
+      </div>
+    </div>
+
+    @if (bulkActionsLabel) {
+      <button type="button" class="bulk-actions-btn" (click)="bulkActionsClick.emit()">
+        {{ bulkActionsLabel }}
+        <i class="bi bi-chevron-down"></i>
+      </button>
+    }
+  </div>
+
+  <div class="table-scroll table-responsive">
+    <table
+      mat-table
+      [dataSource]="rows"
+      matSort
+      [matSortActive]="sortActive"
+      [matSortDirection]="sortDirection"
+      [matSortDisableClear]="true"
+      (matSortChange)="sortChange.emit($event)"
+      class="data-table"
+      [class.drag-drop-enabled]="dragDropEnabled"
+      cdkDropList
+      [id]="dropListId"
+      [cdkDropListConnectedTo]="connectedTo"
+      cdkDropListOrientation="vertical"
+      [cdkDropListDisabled]="!dragDropEnabled"
+      (cdkDropListDropped)="drop($event)"
+      aria-label="Leads table">
+
+      @if (dragDropEnabled) {
+        <ng-container matColumnDef="dragHandle">
+          <th mat-header-cell *matHeaderCellDef style="width: 30px; min-width: 30px;"></th>
+          <td mat-cell *matCellDef="let row" style="width: 30px; min-width: 30px;">
+            <span
+              class="drag-handle"
+              cdkDragHandle
+              (mousedown)="onHandleMouseDown()"
+              (keydown.enter)="onHandleMouseDown()"
+              tabindex="0"
+              role="button"
+              aria-label="Reorder row"
+              title="Drag to reorder">
+              <i class="bi bi-grip-vertical"></i>
+            </span>
+          </td>
+        </ng-container>
+      }
+
+      @for (col of columns; track col.key) {
+        <ng-container [matColumnDef]="col.key">
+
+          @if (isSortable(col)) {
+            <th
+              mat-header-cell
+              *matHeaderCellDef
+              mat-sort-header
+              [style.width]="col.width"
+              [style.min-width]="col.width">
+              {{ col.header }}
+              <i
+                class="bi sort-indicator"
+                [class.bi-arrow-up]="sortActive === col.key && sortDirection === 'asc'"
+                [class.bi-arrow-down]="sortActive === col.key && sortDirection === 'desc'"
+                aria-hidden="true"></i>
+            </th>
+          } @else {
+            <th
+              mat-header-cell
+              *matHeaderCellDef
+              [style.width]="col.width"
+              [style.min-width]="col.width">
+              {{ col.header }}
+            </th>
+          }
+
+          <td
+            mat-cell
+            *matCellDef="let row; let rowIndex = index"
+            [style.width]="col.width"
+            [style.min-width]="col.width"
+            [attr.data-label]="col.header">
+
+            @if (col.type === 'lead') {
+              <div class="lead-cell">
+                <span class="avatar" [ngClass]="avatarClass(rowIndex)">
+                  {{ initials(asLeadCell(row[col.key]).name) }}
+                </span>
+                <span class="lead-text">
+                  <span class="lead-name">{{ asLeadCell(row[col.key]).name }}</span>
+                  @if (asLeadCell(row[col.key]).subtitle) {
+                    <span class="lead-subtitle">{{ asLeadCell(row[col.key]).subtitle }}</span>
+                  }
+                </span>
+              </div>
+            }
+
+            @else if (col.type === 'branch') {
+              <div class="location-cell">
+                <i class="bi bi-geo-alt-fill location-icon" aria-hidden="true"></i>
+                <span class="location-text">
+                  {{ row[col.key] }}
+                </span>
+              </div>
+            }
+
+            @else if (col.type === 'badge') {
+              <span class="status-badge" [ngClass]="badgeClass(row[col.key] + '')">
+                {{ row[col.key] }}
+              </span>
+            }
+
+            @else if (col.type === 'avatarGroup') {
+              <div class="avatar-group assigned-avatar-group">
+                @for (caller of asCallerAvatars(row[col.key]); track caller.empNo) {
+                  <span
+                    class="avatar avatar-sm avatar-stacked assigned-avatar"
+                    [ngClass]="avatarColorForName(caller.name)"
+                    tabindex="0"
+                    role="img"
+                    [attr.aria-label]="caller.name + ' - ' + caller.empNo"
+                    (mouseenter)="showAvatarTooltip($event, caller)"
+                    (mouseleave)="hideAvatarTooltip()"
+                    (focus)="showAvatarTooltip($event, caller)"
+                    (blur)="hideAvatarTooltip()">
+                    @if (caller.image) {
+                      <img
+                        [src]="caller.image"
+                        [alt]="caller.name"
+                        class="assigned-avatar-img"
+                        (error)="$any($event.target).style.display='none'">
+                    } @else {
+                      <span class="avatar-initials">{{ initials(caller.name) }}</span>
+                    }
+                  </span>
+                }
+                @if (!asCallerAvatars(row[col.key]).length) {
+                  <span class="unassigned-cell">
+                    <i class="bi bi-person-plus"></i>
+                    Unassigned
+                  </span>
+                }
+              </div>
+            }
+
+            @else if (col.type === 'callLog') {
+              <div class="call-log-cell">
+                <button
+                  type="button"
+                  class="row-action-btn call-log-btn"
+                  (click)="viewCallLogClick.emit(row)"
+                  aria-label="View call log history"
+                  title="View call log history">
+                  <i class="bi bi-clock-history"></i>
+                </button>
+              </div>
+            }
+
+            @else if (col.type === 'action') {
+              <div class="action-cell">
+                  <!-- Appointment -->
+                  <button
+                    type="button"
+                    class="row-action-btn"
+                    (click)="appointmentClick.emit(row)"
+                    aria-label="Appointment"
+                    title="Appointment">
+                    <i class="bi bi-calendar-check"></i>
+                  </button>
+
+                  <!-- Follow-up -->
+                  <button
+                    type="button"
+                    class="row-action-btn"
+                    (click)="followUpClick.emit(row)"
+                    aria-label="Follow-up"
+                    title="Follow-up">
+                    <i class="bi bi-arrow-repeat"></i>
+                  </button>
+
+                  <!-- Send to Branch -->
+                  <button
+                    type="button"
+                    class="row-action-btn"
+                    (click)="sendToBranchClick.emit(row)"
+                    aria-label="Send to branch"
+                    title="Send to branch">
+                    <i class="bi bi-building-add"></i>
+                  </button>
+                </div>
+            }
+
+            @else {
+              <span class="text-cell">{{ row[col.key] }}</span>
+            }
+
+          </td>
+        </ng-container>
+      }
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+      <tr
+        mat-row
+        *matRowDef="let row; columns: displayedColumns; let rowIndex = index"
+        cdkDrag
+        [cdkDragData]="row"
+        [cdkDragDisabled]="dragDisabled || !dragDropEnabled"
+        [cdkDragBoundary]="dragBoundary"
+        [cdkDragLockAxis]="dragLockAxis"></tr>
+
+      <tr class="mat-row empty-material-row" *matNoDataRow>
+        <td class="mat-cell empty-state" [attr.colspan]="displayedColumns.length">
+          No records found
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="table-card-footer d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <span class="page-info">{{ pageInfoText }}</span>
+
+    @if (totalRecords > 0) {
+      <mat-paginator
+        class="compact-paginator w-100 w-md-auto d-flex justify-content-end"
+        [length]="totalRecords"
+        [pageIndex]="currentPage - 1"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="pageSizeOptions"
+        [hidePageSize]="false"
+        [showFirstLastButtons]="false"
+        (page)="onPaginatorChange($event)"
+        aria-label="Lead records pagination">
+      </mat-paginator>
+    }
+  </div>
+
+</div>
+
+@if (avatarTooltip) {
+  <div class="avatar-tooltip-fixed" [style.top.px]="avatarTooltip.top" [style.left.px]="avatarTooltip.left">
+    {{ avatarTooltip.name }}
+  </div>
+}

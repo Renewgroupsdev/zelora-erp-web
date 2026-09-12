@@ -1,0 +1,172 @@
+<nav class="side-navbar"
+  [class.expanded]="navLayout.layoutMode() === 'vertical' && navLayout.sidebarExpanded()"
+  [class.horizontal]="navLayout.layoutMode() === 'horizontal'">
+
+  @if (navLayout.layoutMode() === 'vertical') {
+    @if (navLayout.sidebarExpanded()) {
+      <div class="org-box">
+        <div class="org-mark"><i class="bi bi-buildings"></i></div>
+        <div class="org-copy">
+          <span class="org-label">Organisation Workspace</span>
+          <span class="org-name">Renew Plus ERP</span>
+        </div>
+        <span class="org-status" title="Systems online"></span>
+      </div>
+    }
+
+    <div class="nav-caption">
+      <span>MAIN MODULES</span>
+      <i class="bi bi-three-dots"></i>
+    </div>
+
+    <ul class="nav-list">
+      @for (link of navLinks; track link.path) {
+        <li class="nav-item" [class.has-children]="link.children?.length">
+          <a class="nav-link" [routerLink]="link.path" routerLinkActive="active" (click)="link.children?.length && toggleLeadChildren()">
+            <span class="nav-active-bar"></span>
+
+            <span class="nav-icon">
+              <i [class]="'bi ' + link.icon"></i>
+            </span>
+
+            @if (navLayout.sidebarExpanded()) {
+              <span class="nav-label">{{ link.label }}</span>
+
+              @if (link.children?.length) {
+                <span class="nav-chevron-toggle"
+                  role="button"
+                  tabindex="0"
+                  [attr.aria-label]="leadChildrenExpanded() ? 'Collapse Lead Management' : 'Expand Lead Management'"
+                  (click)="$event.preventDefault(); $event.stopPropagation(); toggleLeadChildren()"
+                  (keydown.enter)="$event.preventDefault(); $event.stopPropagation(); toggleLeadChildren()">
+                  <i class="bi"
+                    [class.bi-chevron-down]="leadChildrenExpanded()"
+                    [class.bi-chevron-right]="!leadChildrenExpanded()"></i>
+                </span>
+              } @else {
+                <i class="bi bi-arrow-up-right nav-end-arrow"></i>
+              }
+            }
+
+            @if (!navLayout.sidebarExpanded()) {
+              <span class="nav-tooltip">
+                <span class="tooltip-icon"><i [class]="'bi ' + link.icon"></i></span>
+                <span class="tooltip-content">
+                  <span class="tooltip-title">{{ link.label }}</span>
+                  @if (link.children?.length) {
+                    <span class="tooltip-subtitle">{{ link.children?.length }} submodules</span>
+                  }
+                </span>
+                <span class="tooltip-arrow"></span>
+              </span>
+            }
+          </a>
+
+          @if (link.children?.length && (!navLayout.sidebarExpanded() || leadChildrenExpanded())) {
+            <div class="subnav-shell">
+
+              <ul class="subnav-list" [class.subnav-flyout]="!navLayout.sidebarExpanded()">
+                @for (child of link.children; track child.path) {
+                  <li class="subnav-item">
+                    <a class="subnav-link" [routerLink]="child.path" routerLinkActive="active">
+                      <span class="subnav-node"></span>
+                      <span class="subnav-icon"><i [class]="'bi ' + child.icon"></i></span>
+                      <span class="subnav-copy">
+                        <span class="subnav-title">{{ child.label }}</span>
+                        <span class="subnav-desc">
+                          @if (child.label === 'Follow-Ups') { Track patient &amp; lead follow-ups }
+                          @else { Plan visits &amp; appointments }
+                        </span>
+                      </span>
+                      <i class="bi bi-arrow-right-short subnav-arrow"></i>
+                    </a>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </li>
+      }
+    </ul>
+
+    @if (navLayout.sidebarExpanded()) {
+      <div class="side-navbar-footer">
+        <div class="help-card">
+          <span class="help-icon"><i class="bi bi-headset"></i></span>
+          <div>
+            <span class="help-title">Need help?</span>
+            <span class="help-subtext">View help center &amp; support</span>
+          </div>
+          <i class="bi bi-arrow-up-right help-arrow"></i>
+        </div>
+        <!-- <div class="status-strip">
+          <span class="status-dot"></span>
+          <span>All systems operational</span>
+        </div> -->
+      </div>
+    }
+  } @else {
+    <div class="horizontal-nav-content">
+      <div class="horizontal-brand">
+        <span class="horizontal-brand-icon"><i class="bi bi-buildings"></i></span>
+        <span>Renew Plus</span>
+      </div>
+
+      <span class="horizontal-divider"></span>
+
+      <ul class="nav-list">
+        @for (link of navLinks; track link.path) {
+          <li class="nav-item" [class.subnav-open]="openHorizontalSubmenu() === link.path">
+            <a class="nav-link" [routerLink]="link.path" routerLinkActive="active"
+              (click)="toggleHorizontalSubmenu(link, $event)">
+              <span class="nav-icon"><i [class]="'bi ' + link.icon"></i></span>
+              <span class="nav-label">{{ link.label }}</span>
+
+              @if (link.children?.length) {
+                <i class="bi bi-chevron-down horizontal-nav-chevron"></i>
+              } @else {
+                <i class="bi bi-arrow-up-right horizontal-end-arrow"></i>
+              }
+            </a>
+
+            @if (link.children?.length) {
+              <div class="horizontal-subnav" [class.open]="openHorizontalSubmenu() === link.path"
+                (click)="$event.stopPropagation()">
+                <div class="horizontal-subnav-head">
+                  <span class="horizontal-subnav-icon"><i [class]="'bi ' + link.icon"></i></span>
+                  <div>
+                    <strong>{{ link.label }}</strong>
+                    <small>Workspace submodules</small>
+                  </div>
+                </div>
+
+                @for (child of link.children; track child.path) {
+                  <a class="horizontal-subnav-link"
+                    [routerLink]="child.path"
+                    routerLinkActive="active"
+                    (click)="closeHorizontalSubmenu()">
+                    <span class="horizontal-child-icon">
+                      <i [class]="'bi ' + child.icon"></i>
+                    </span>
+                    <span class="horizontal-child-copy">
+                      <strong>{{ child.label }}</strong>
+                      <small>
+                        @if (child.label === 'Follow-Ups') { Follow-up activities }
+                        @else { Calendar &amp; planning }
+                      </small>
+                    </span>
+                    <i class="bi bi-arrow-right-short"></i>
+                  </a>
+                }
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</nav>
+
+@if (navLayout.layoutMode() === 'vertical' && navLayout.sidebarExpanded()) {
+  <div class="side-navbar-backdrop" (click)="navLayout.toggleSidebar()"></div>
+}

@@ -1,0 +1,38 @@
+#preloader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0 14px;
+}
+
+.spinner {
+  display: flex;
+  gap: 6px;
+}
+
+.spinner div {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand-green);
+  animation: spinner-bounce 1s infinite ease-in-out both;
+}
+
+.spinner div:nth-child(1) {
+  background: var(--brand-blue);
+  animation-delay: -.32s;
+}
+
+.spinner div:nth-child(2) {
+  background: var(--brand-green);
+  animation-delay: -.16s;
+}
+
+.spinner div:nth-child(3) {
+  background: var(--brand-blue);
+}
+
+@keyframes spinner-bounce {
+  0%, 80%, 100% { transform: scale(.4); opacity: .5; }
+  40% { transform: scale(1); opacity: 1; }
+}

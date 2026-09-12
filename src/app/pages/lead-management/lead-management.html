@@ -1,0 +1,84 @@
+<div class="leads-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div class="page-header-text">
+      <h6 class="page-title">Lead Managements</h6>
+    </div>
+
+    <button type="button" class="add-lead-btn" (click)="openAddPopup()">
+      <i class="bi bi-plus-lg"></i>
+      Add Lead
+    </button>
+  </div>
+
+  <div class="row g-2 g-md-3 stat-row">
+    @for (stat of stats; track stat.label) {
+      <div class="col-6 col-md-3">
+        <app-common-detail-card
+          [label]="stat.label"
+          [value]="stat.value"
+          [trendText]="stat.trendText"
+          [trendDirection]="stat.trendDirection ?? 'neutral'"
+          [hero]="stat.label === 'Conversion Rate'"
+        ></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by name, phone or lead ID"
+    [filters]="filters"
+    (searchChange)="onSearch($event)"
+    (filterClick)="onFilterClick($event)"
+    (exportClick)="onExport()"
+  ></app-common-filter-card>
+
+  <div class="tables-row d-flex flex-column">
+    <div class="table-col">
+      <app-common-table-card
+        title="All Leads"
+        [recordCountText]="recordCountText"
+        bulkActionsLabel="Bulk actions"
+        [columns]="columns"
+        [rows]="rows"
+        [totalRecords]="totalRecords"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="pageSizeOptions"
+        [currentPage]="currentPage"
+        [pageInfoText]="pageInfoText"
+        [sortActive]="sortActive"
+        [sortDirection]="sortDirection"
+        [dragDropEnabled]="true"
+        [dropListId]="ALL_LEADS_DROP_LIST_ID"
+        [connectedTo]="FOLLOW_UP_DROP_LIST_ID"
+        (rowReorder)="onRowReorder($event)"
+        (rowTransfer)="onRowTransfer($event)"
+        (pageChange)="onPageChange($event)"
+        (sortChange)="onSortChange($event)"
+        (rowActionClick)="onRowAction($event)"
+        (appointmentClick)="openAppointment($event)"
+        (followUpClick)="openFollowUp($event)"
+        (sendToBranchClick)="sendToBranch($event)"
+      ></app-common-table-card>
+    </div>
+
+    <div class="table-col">
+      <app-common-table-card
+        title="Follow-Up Leads"
+        recordCountText="Drag a lead here to flag it for follow-up"
+        [columns]="followUpColumns"
+        [rows]="followUpRows"
+        [totalRecords]="followUpRows.length"
+        [dragDropEnabled]="true"
+        [dropListId]="FOLLOW_UP_DROP_LIST_ID"
+        [connectedTo]="ALL_LEADS_DROP_LIST_ID"
+        (rowReorder)="onRowReorder($event)"
+        (rowTransfer)="onRowTransfer($event)"
+        (appointmentClick)="openAppointment($event)"
+        (followUpClick)="openFollowUp($event)"
+        (sendToBranchClick)="sendToBranch($event)"
+      ></app-common-table-card>
+    </div>
+  </div>
+
+</div>

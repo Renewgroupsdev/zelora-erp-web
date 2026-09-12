@@ -1,0 +1,95 @@
+<header class="top-navbar">
+  <div class="top-navbar-left">
+    <button
+      type="button"
+      class="icon-btn menu-btn"
+      (click)="onToggleSidebar()"
+      [attr.aria-label]="navLayout.sidebarExpanded() ? 'Collapse navigation' : 'Expand navigation'"
+    >
+      <i class="bi bi-list"></i>
+    </button>
+
+    <button type="button" class="brand-button" (click)="goToDashboard()" aria-label="Renew Plus dashboard">
+      <img src="assets/Renew-plus-logo.jpg" alt="Renew Plus" class="brand-logo">
+      <span class="brand-copy">
+        <strong>Renew Plus</strong>
+        <small>ERP Management</small>
+      </span>
+    </button>
+  </div>
+
+  <div class="top-navbar-right">
+
+    <div class="notification-menu-wrapper">
+      <button
+        type="button"
+        class="icon-btn bell-btn"
+        (click)="onToggleNotifications()"
+        [class.active]="navLayout.notificationsOpen()"
+        [attr.aria-expanded]="navLayout.notificationsOpen()"
+        aria-label="Notifications">
+        <i class="bi bi-bell"></i>
+        @if (navLayout.unreadNotificationCount() > 0) {
+          <span class="notification-count-badge">{{ navLayout.unreadNotificationCount() }}</span>
+        }
+      </button>
+
+      @if (navLayout.notificationsOpen()) {
+        <div class="notification-backdrop" (click)="navLayout.closeNotifications()"></div>
+        <div class="notification-dropdown" role="dialog" aria-label="Notifications">
+          <div class="notification-header">
+            <div>
+              <strong>Notifications</strong>
+              <small>You have {{ navLayout.unreadNotificationCount() }} new updates</small>
+            </div>
+            <span class="notification-count">{{ navLayout.unreadNotificationCount() }} new</span>
+          </div>
+
+          <div class="notification-list">
+            <button type="button" class="notification-item">
+              <span class="notification-icon notification-icon-green"><i class="bi bi-person-plus"></i></span>
+              <span class="notification-copy"><strong>New lead added</strong><small>A new lead was added to your pipeline.</small><em>Just now</em></span>
+            </button>
+            <button type="button" class="notification-item">
+              <span class="notification-icon notification-icon-blue"><i class="bi bi-calendar-check"></i></span>
+              <span class="notification-copy"><strong>Appointment reminder</strong><small>You have an appointment scheduled today.</small><em>10 minutes ago</em></span>
+            </button>
+            <button type="button" class="notification-item">
+              <span class="notification-icon notification-icon-orange"><i class="bi bi-box-seam"></i></span>
+              <span class="notification-copy"><strong>Low stock alert</strong><small>Review items that need replenishing.</small><em>1 hour ago</em></span>
+            </button>
+          </div>
+          <button type="button" class="notification-footer">View all notifications <i class="bi bi-arrow-right"></i></button>
+        </div>
+      }
+    </div>
+
+    <div class="profile-block">
+      <div class="profile-avatar"><i class="bi bi-person-fill"></i></div>
+      <div class="profile-text d-none d-sm-flex">
+        <span class="profile-name">Admin</span>
+        <span class="profile-role">Administrator</span>
+      </div>
+      <i class="bi bi-chevron-down profile-chevron d-none d-sm-block"></i>
+    </div>
+
+    <div class="settings-menu-wrapper">
+      <button
+        type="button"
+        class="icon-btn settings-btn"
+        (click)="onToggleSettingsMenu()"
+        aria-label="More options"
+        [class.active]="navLayout.settingsMenuOpen()">
+        <i class="bi bi-three-dots-vertical"></i>
+      </button>
+
+      @if (navLayout.settingsMenuOpen()) {
+        <div class="settings-backdrop" (click)="navLayout.closeSettingsMenu()"></div>
+        <div class="settings-dropdown">
+          <button type="button" class="dropdown-item" (click)="goToSettings()"><i class="bi bi-gear"></i> Settings</button>
+          <button type="button" class="dropdown-item danger" (click)="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+        </div>
+      }
+    </div>
+  </div>
+</header>

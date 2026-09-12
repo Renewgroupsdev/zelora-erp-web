@@ -1,0 +1,34 @@
+<div class="filter-card d-flex flex-wrap align-items-center">
+
+  <div class="search-box">
+    <i class="bi bi-search"></i>
+    <input
+      type="text"
+      [placeholder]="searchPlaceholder"
+      [(ngModel)]="searchValue"
+      (ngModelChange)="onSearchInput()"
+    >
+  </div>
+
+  @for (filter of filters; track filter.key) {
+    <button
+      type="button"
+      class="filter-btn"
+      [class.active]="openFilterKey === filter.key"
+      (click)="toggleFilter(filter.key)"
+    >
+      {{ filter.label }}
+      <i class="bi bi-chevron-down"></i>
+    </button>
+  }
+
+  <div class="filter-spacer"></div>
+
+  @if (showExport) {
+    <button type="button" class="export-btn" (click)="exportClick.emit()">
+      Export
+      <i class="bi bi-box-arrow-down"></i>
+    </button>
+  }
+
+</div>

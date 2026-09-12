@@ -1,0 +1,701 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.table-card {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: var(--app-surface-solid);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+}
+
+.table-card-header {
+  flex: 0 0 auto;
+  min-height: 25px;
+  gap: var(--space-3);
+}
+
+.table-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.heading-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  flex-wrap: wrap;
+
+  h3 {
+    margin: 0;
+    font-family: var(--font-family-display);
+    font-size: 15.5px;
+    line-height: var(--lh-tight);
+    font-weight: 600;
+    color: var(--text-dark);
+    white-space: nowrap;
+  }
+
+  .record-count {
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+}
+
+.bulk-actions-btn {
+  height: 25px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 0 8px;
+  font-family: var(--font-family-base);
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  color: var(--text-dark);
+  cursor: pointer;
+  white-space: nowrap;
+
+  i {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  &:hover {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+  }
+}
+
+.table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  // border: 1px solid var(--table-border);
+  border-radius: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--table-scrollbar-thumb) var(--table-scrollbar-track);
+  background:
+    linear-gradient(180deg, rgba(244, 250, 247, 0.88) 0%, rgba(255, 255, 255, 0) 56px),
+    var(--app-surface-solid);
+  // height: calc(100vh - 210px);
+  z-index: 0;
+}
+
+.table-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb {
+  background: var(--table-scrollbar-thumb);
+  border-radius: var(--radius-md);
+}
+
+.table-scroll::-webkit-scrollbar-track {
+  background: var(--table-scrollbar-track);
+  border-radius: var(--radius-md);
+}
+
+.data-table {
+  width: 100%;
+  min-width: 920px;
+  table-layout: auto;
+  border-spacing: 0;
+  background: transparent;
+  font-family: var(--font-family-base);
+
+  .mat-mdc-header-row {
+    height: 32px;
+    background: transparent;
+  }
+
+  .mat-mdc-header-cell {
+    position: relative;
+    box-sizing: border-box;
+    padding: 0 8px;
+    border-bottom: 1.5px solid var(--primary);
+    background: transparent;
+    color: var(--text-dark);
+    font-size: 11.5px;
+    line-height: 1;
+    font-weight: var(--fw-semibold);
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    z-index: 3;
+  }
+
+  .mat-mdc-row {
+    min-height: 35px;
+    height: 35px;
+    transition: background 0.18s ease;
+  }
+
+  .mat-mdc-cell {
+    box-sizing: border-box;
+    height: 35px;
+    padding: 5px;
+    border-bottom: 1px solid var(--table-border);
+    color: var(--text-dark);
+    font-size: 12px;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  .mat-mdc-row:nth-child(odd) {
+    background: var(--app-surface-solid);
+  }
+
+  .mat-mdc-row:nth-child(even) {
+    background: var(--table-row-alt-bg);
+  }
+
+  .mat-mdc-row:hover {
+    background: var(--table-row-hover-bg);
+  }
+
+  .mat-mdc-row:last-child .mat-mdc-cell {
+    border-bottom: 0;
+  }
+}
+
+.table-scroll .mat-mdc-table-sticky {
+  background: var(--app-surface-solid) !important;
+}
+
+.text-cell {
+  color: var(--text-dark);
+  opacity: 0.84;
+}
+
+.lead-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  position: relative;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 0 0 1.5px color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.avatar-color-1 { background: var(--avatar-color-1-bg); color: var(--avatar-color-1-text); }
+.avatar-color-2 { background: var(--avatar-color-2-bg); color: var(--avatar-color-2-text); }
+.avatar-color-3 { background: var(--avatar-color-3-bg); color: var(--avatar-color-3-text); }
+.avatar-color-4 { background: var(--avatar-color-4-bg); color: var(--avatar-color-4-text); }
+.avatar-color-5 { background: var(--avatar-color-5-bg); color: var(--avatar-color-5-text); }
+
+.lead-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lead-name {
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.lead-subtitle {
+  font-size: 10px;
+  line-height: var(--lh-tight);
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+/* Assigned By - follow-up telecaller avatar */
+.assigned-avatar-group {
+  display: inline-flex;
+  align-items: center;
+  min-width: 120px;
+}
+
+.assigned-avatar {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  overflow: hidden;
+  border: 2px solid var(--app-surface-solid);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.assigned-avatar-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.avatar-initials {
+  width: 100%;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+}
+
+.unassigned-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Telecaller Assigned - avatar group callers */
+.avatar-group {
+  display: inline-flex;
+  align-items: center;
+}
+
+.avatar-sm {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+  cursor: default;
+}
+
+.avatar-stacked {
+  position: relative;
+  margin-left: -8px;
+  border: 2px solid var(--app-surface-solid);
+
+  &:first-child {
+    margin-left: 0;
+  }
+
+  &:hover,
+  &:focus-visible {
+    z-index: 2;
+    transform: translateY(-2px);
+    outline: none;
+  }
+}
+
+.avatar-tooltip-fixed {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 10px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  background: var(--text-dark);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 5px 9px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 2000;
+}
+
+.avatar-tooltip-fixed::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--text-dark);
+}
+
+.call-log-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.call-log-btn {
+  color: var(--primary);
+}
+
+.call-log-count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 9.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+
+.status-badge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 5px;
+}
+
+.location-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.location-icon {
+  font-size: 13px;
+  color: var(--primary);
+}
+
+.location-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.badge-green { background: var(--status-green-bg); color: var(--status-green-text); }
+.badge-orange { background: var(--status-orange-bg); color: var(--status-orange-text); }
+.badge-red { background: var(--status-red-bg); color: var(--status-red-text); }
+.badge-gray { background: var(--status-gray-bg); color: var(--status-gray-text); }
+.badge-blue { background: var(--status-blue-bg); color: var(--status-blue-text); }
+
+.action-cell {
+  width: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.row-action-btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: transparent;
+    color: var(--primary);
+  }
+
+  i {
+    font-size: 13px;
+  }
+}
+
+.empty-material-row {
+  height: 120px !important;
+  background: var(--app-surface-solid) !important;
+}
+
+.empty-state {
+  height: 120px !important;
+  text-align: center;
+  color: var(--text-muted) !important;
+  font-size: var(--fs-sm);
+}
+
+.table-card-footer {
+  flex: 0 0 auto;
+  min-height: 25px;
+  gap: var(--space-3);
+  padding: 0px;
+}
+
+.page-info {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.compact-paginator {
+  min-height: 25px;
+  background: transparent;
+  color: var(--text-dark);
+  font-family: var(--font-family-base);
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-container {
+  min-height: 30px;
+  padding: 0;
+  gap: 14px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-range-actions {
+  gap: 2px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-previous,
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-next {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-previous svg,
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-next svg {
+  width: 16px;
+  height: 16px;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-previous:hover:not(:disabled),
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-next:hover:not(:disabled) {
+  background: transparent;
+  color: var(--primary);
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-previous:disabled,
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-next:disabled {
+  opacity: 0.38;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-page-size {
+  align-items: center;
+  gap: 6px;
+  margin-right: 0;
+  flex-shrink: 0;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-page-size-label,
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-range-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-page-size-select {
+  width: 52px;
+  margin: 0;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-select {
+  min-width: 0;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-select-value,
+:host ::ng-deep .compact-paginator .mat-mdc-select-arrow {
+  color: var(--text-dark);
+  font-size: 11px;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-text-field-wrapper {
+  height: 24px;
+  border-radius: 6px;
+  background: var(--app-surface-solid);
+  box-shadow: none;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-form-field-flex {
+  height: 24px;
+  align-items: center;
+  padding: 0 6px;
+  border: 1px solid rgba(17, 95, 78, 0.22);
+  border-radius: 6px;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-form-field-infix {
+  padding: 0;
+  min-height: 0;
+  border: 0;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-form-field-subscript-wrapper,
+:host ::ng-deep .compact-paginator .mdc-line-ripple,
+:host ::ng-deep .compact-paginator .mdc-notched-outline {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  :host ::ng-deep .compact-paginator .mat-mdc-paginator-container {
+    gap: 8px;
+  }
+
+  :host ::ng-deep .compact-paginator .mat-mdc-paginator-page-size-label {
+    display: none;
+  }
+
+  :host ::ng-deep .compact-paginator .mat-mdc-paginator-page-size {
+    gap: 0;
+  }
+
+  :host ::ng-deep .compact-paginator .mat-mdc-paginator-range-label {
+    font-size: 10px;
+  }
+}
+
+:host ::ng-deep .data-table .mat-sort-header-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+:host ::ng-deep .data-table .mat-sort-header-content {
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+:host ::ng-deep .data-table .mat-sort-header-arrow {
+  display: none;
+}
+
+.sort-indicator {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.sort-indicator.bi-arrow-up,
+.sort-indicator.bi-arrow-down {
+  color: var(--primary);
+}
+
+.action-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.row-action-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.row-action-btn:hover {
+  background: var(--primary-soft);
+}
+
+.row-action-btn:active {
+  transform: scale(0.94);
+}
+
+@media (max-width: 480px) {
+  .page-info{
+    display: none;
+  }
+}
+
+/* Drag-and-drop row reordering */
+.drag-handle {
+  width: 22px;
+  height: 28px;
+  display: inline;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: grab;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  i {
+    font-size: 14px;
+  }
+
+  &:hover {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.data-table.drag-drop-enabled .mat-mdc-row.cdk-drag {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1), background 0.18s ease;
+}
+
+:host ::ng-deep .cdk-drag-preview {
+  display: table;
+  box-sizing: border-box;
+  background: var(--app-surface-solid) !important;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--border-soft-strong);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+:host ::ng-deep .cdk-drag-placeholder {
+  opacity: 0.35;
+}
+
+:host ::ng-deep .cdk-drag-animating {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.data-table.drag-drop-enabled.cdk-drop-list-dragging .mat-mdc-row:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}

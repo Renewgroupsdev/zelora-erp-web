@@ -1,0 +1,189 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-person-plus-fill"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>{{ isEdit ? 'Edit Lead' : 'Add Lead' }}</h2>
+        <p>{{ isEdit ? 'Update lead information' : 'Create a new lead with the required details' }}</p>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="modal-close-btn"
+      aria-label="Close"
+      (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="leadForm" (ngSubmit)="saveLead()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-person-vcard"></i>
+        Lead Information
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field">
+          <label for="lead-name">Name <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-person"></i>
+            <input
+              id="lead-name"
+              type="text"
+              formControlName="name"
+              placeholder="Enter lead name"
+              autocomplete="name"
+              [class.is-invalid]="isInvalid('name')" />
+          </div>
+          @if (isInvalid('name')) {
+            <small class="error-text">Name is required.</small>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="lead-phone">Phone No <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-telephone"></i>
+            <input
+              id="lead-phone"
+              type="tel"
+              formControlName="phone"
+              placeholder="Enter phone number"
+              autocomplete="tel"
+              [class.is-invalid]="isInvalid('phone')"  maxlength="10"/>
+          </div>
+          @if (isInvalid('phone')) {
+            <small class="error-text">Enter a valid phone number.</small>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="lead-location">Pin Code</label>
+          <div class="input-wrap">
+            <i class="bi bi-geo-alt"></i>
+            <input
+              id="lead-location"
+              type="text"
+              formControlName="location"
+              placeholder="Enter pincode" />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="lead-source">Source <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-megaphone"></i>
+            <select
+              id="lead-source"
+              formControlName="source"
+              [class.is-invalid]="isInvalid('source')">
+              <option value="">Select source</option>
+              @for (source of sourceOptions; track source) {
+                <option [value]="source">{{ source }}</option>
+              }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label>
+            Gender <span>*</span>
+          </label>
+          <div
+            class="gender-options"
+            [class.is-invalid]="isInvalid('gender')">
+            @for (gender of genderOptions; track gender.value) {
+              <label
+                class="gender-option"
+                [class.selected]="leadForm.get('gender')?.value === gender.value">
+                <input
+                  type="radio"
+                  formControlName="gender"
+                  [value]="gender.value" />
+                <span class="gender-option-content">
+                  <i class="bi" [class]="gender.icon"></i>
+                  <span class="gender-option-label">{{ gender.label }}</span>
+                </span>
+              </label>
+            }
+          </div>
+          @if (isInvalid('gender')) {
+            <small class="error-text">Please select gender.</small>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="lead-type">Type <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-tags"></i>
+            <select
+              id="lead-type"
+              formControlName="type"
+              [class.is-invalid]="isInvalid('type')">
+              <option value="">Select type</option>
+              @for (type of typeOptions; track type) {
+                <option [value]="type">{{ type }}</option>
+              }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="lead-status">Status <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-circle-half"></i>
+            <select id="lead-status" formControlName="status">
+              @for (status of statusOptions; track status) {
+                <option [value]="status">{{ status }}</option>
+              }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="lead-address">Address</label>
+          <div class="textarea-wrap">
+            <i class="bi bi-house"></i>
+            <textarea
+              id="lead-address"
+              formControlName="address"
+              rows="2"
+              placeholder="Enter complete address"></textarea>
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="lead-reason">Reason</label>
+          <div class="textarea-wrap">
+            <i class="bi bi-chat-left-text"></i>
+            <textarea
+              id="lead-reason"
+              formControlName="reason"
+              rows="2"
+              placeholder="Enter reason or additional notes"></textarea>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="submit" class="save-btn" [title]="isEdit ? 'Update Lead' : 'Save Lead'">
+        <i class="bi" [class.bi-floppy]="!isEdit" [class.bi-pencil-square]="isEdit"></i>
+      </button>
+    </div>
+
+  </form>
+</div>

@@ -1,0 +1,20 @@
+<div class="detail-card" [class.hero]="hero">
+  <span class="detail-label">{{ label }}</span>
+  <span class="detail-value">{{ value }}</span>
+
+  @if (trendText) {
+    <span class="detail-trend" [ngClass]="'trend-' + trendDirection">
+      @if (trendDirection === 'up') {
+        <i class="bi bi-arrow-up-short"></i>
+      }
+      @if (trendDirection === 'down') {
+        <i class="bi bi-arrow-down-short"></i>
+      }
+      {{ trendText }}
+    </span>
+  }
+
+  @if (hero) {
+    <i class="bi bi-bullseye hero-mark" aria-hidden="true"></i>
+  }
+</div>

@@ -1,0 +1,92 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.detail-card {
+  position: relative;
+  min-height: 30px;
+  background: var(--app-surface);
+  border: 1px solid var(--border-soft);
+  border-top: 2px solid var(--primary);
+  border-radius: 4px;
+  padding: 7px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  overflow: hidden;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.detail-card:hover {
+  background: var(--primary-soft);
+}
+
+/* Featured entry — the standout metric gets the ledger's gold ink, not a dark card */
+.detail-card.hero {
+  border-top-color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.hero-mark {
+  position: absolute;
+  right: 8px;
+  bottom: 2px;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--gold);
+  opacity: .14;
+  pointer-events: none;
+}
+
+.detail-card.hero .detail-label {
+  color: var(--gold-dark);
+  opacity: .75;
+}
+
+.detail-card.hero .detail-value {
+  color: var(--gold-dark);
+}
+
+.detail-card.hero .detail-trend {
+  color: var(--gold-dark);
+  opacity: .8;
+}
+
+.detail-card.hero .detail-trend.trend-up {
+  color: var(--gold-dark);
+}
+
+.detail-label {
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  line-height: var(--lh-tight);
+}
+
+.detail-value {
+  font-family: var(--font-family-display);
+  font-size: 21px;
+  line-height: var(--lh-tight);
+  font-weight: 600;
+  color: var(--text-dark);
+  letter-spacing: -.3px;
+}
+
+.detail-trend {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 1px;
+  font-size: 11px;
+  line-height: var(--lh-tight);
+  color: var(--text-muted);
+  font-weight: var(--fw-medium);
+
+  i { font-size: 12px; }
+  &.trend-up { color: var(--status-green-text); }
+  &.trend-down { color: var(--status-red-text); }
+}

@@ -1,0 +1,19 @@
+<div class="app-layout" [class.horizontal-layout]="navLayout.layoutMode() === 'horizontal'">
+  <app-top-navbar></app-top-navbar>
+
+  @if (navLayout.layoutMode() === 'vertical') {
+    <div class="layout-body vertical-body">
+      <app-left-side-navbar></app-left-side-navbar>
+      <main class="layout-content">
+        <router-outlet></router-outlet>
+      </main>
+    </div>
+  } @else {
+    <div class="horizontal-nav-wrap">
+      <app-left-side-navbar></app-left-side-navbar>
+    </div>
+    <main class="layout-content horizontal-content">
+      <router-outlet></router-outlet>
+    </main>
+  }
+</div>

@@ -1,0 +1,94 @@
+<div class="auth-wrapper">
+
+  <div class="auth-bg" aria-hidden="true">
+    <span class="bg-blob"></span>
+
+    <svg class="auth-waves" viewBox="0 0 400 300" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path class="wave wave-1" d="M0,55 C60,110 90,175 130,165 C180,150 200,90 250,55 C300,25 350,10 400,20 L400,300 L0,300 Z"></path>
+      <path class="wave wave-2" d="M0,278 C60,270 110,230 170,190 C230,150 260,90 320,45 C355,22 380,8 400,0 L400,300 L0,300 Z"></path>
+    </svg>
+  </div>
+
+  <!-- Login panel (only card, no side content) -->
+  <div class="form-panel">
+    <div class="auth-card">
+
+      <div class="auth-logo-block">
+        <img src="assets/Renew-plus-logo.jpg" alt="Renew Plus logo" class="auth-logo">
+      </div>
+
+      <h2 class="welcome-text">Welcome back</h2>
+      <p class="welcome-subtext">Sign in to manage your hair and skin care clinic</p>
+
+      <!-- Inline error message -->
+      <div class="alert-error" *ngIf="error" role="alert">
+        <span class="alert-icon">!</span>
+        <span class="alert-message">{{ error }}</span>
+        <button type="button" class="alert-close" (click)="clearError()" aria-label="Dismiss">&times;</button>
+      </div>
+
+      <form name="login-form" class="login-form" [formGroup]="loginForm">
+
+        @if(loading){
+           <app-preloader [display]="loading"></app-preloader>
+        }
+
+        <div class="form-group">
+          <label for="user_name" class="form-label">User Name</label>
+          <div class="input-group">
+            <span class="input-icon"><i class="bi bi-person"></i></span>
+            <input
+              class="form-control"
+              type="text"
+              id="user_name"
+              autocomplete="off"
+              placeholder="Enter your user name"
+              formControlName="user_name"
+              [ngClass]="{ 'is-invalid': formSubmitted && formValues['user_name'].invalid }"
+            >
+          </div>
+          <div *ngIf="formSubmitted && formValues['user_name'].invalid" class="invalid-feedback">
+            <div *ngIf="formValues['user_name'].errors?.['required']">User Name is required.</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <div class="input-group">
+            <span class="input-icon"><i class="bi bi-lock"></i></span>
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              id="password"
+              class="form-control"
+              placeholder="Enter your password"
+              formControlName="password"
+              [ngClass]="{ 'is-invalid': formSubmitted && formValues['password'].invalid }"
+            >
+            <button type="button" class="input-group-append" (click)="showPassword = !showPassword" aria-label="Toggle password visibility">
+              <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
+            </button>
+          </div>
+          <div *ngIf="formSubmitted && formValues['password'].invalid" class="invalid-feedback">
+            <div *ngIf="formValues['password'].errors?.['required']">Password is required.</div>
+          </div>
+        </div>
+
+        <div class="form-check">
+          <input type="checkbox" class="form-check-input" id="checkbox-signin">
+          <label class="form-check-label" for="checkbox-signin">Remember Me</label>
+        </div>
+
+        <div class="submit-row">
+          <button class="btn btn-primary" type="button" (click)="Onsubmit()" [disabled]="loading">
+            <span *ngIf="!loading">Log In</span>
+            <span *ngIf="loading">Signing in...</span>
+          </button>
+        </div>
+
+      </form>
+
+      <div class="auth-footer"> &copy; 2026 Renew Plus Hair and Skin Care pvt ltd</div>
+    </div>
+  </div>
+
+</div>

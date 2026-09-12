@@ -1,0 +1,26 @@
+<main class="splash-wrapper" (click)="goToLogin()">
+
+  <div class="splash-bg" aria-hidden="true">
+    <span class="bg-blob"></span>
+
+    <svg class="splash-waves" viewBox="0 0 400 300" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path class="wave wave-1" d="M0,55 C60,110 90,175 130,165 C180,150 200,90 250,55 C300,25 350,10 400,20 L400,300 L0,300 Z"></path>
+      <path class="wave wave-2" d="M0,278 C60,270 110,230 170,190 C230,150 260,90 320,45 C355,22 380,8 400,0 L400,300 L0,300 Z"></path>
+    </svg>
+  </div>
+
+  <section class="splash-content" aria-label="Renew Plus welcome">
+
+    <div class="logo-shell">
+      <img src="assets/Renew-plus-logo.jpg" alt="Renew Plus Hair and Skin Care" class="splash-logo">
+    </div>
+
+    <a routerLink="/login" class="splash-tap-btn" (click)="$event.stopPropagation()">
+      <span class="splash-text">Tap below to Login</span>
+      <i class="bi bi-arrow-right"></i>
+    </a>
+
+    <p class="splash-hint"><i class="bi bi-hand-index-thumb"></i> Tap anywhere to continue</p>
+  </section>
+
+</main>

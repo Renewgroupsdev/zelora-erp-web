@@ -1,0 +1,76 @@
+<div class="settings-page">
+  <div class="page-heading">
+    <div>
+      <div class="eyebrow"><i class="bi bi-sliders2"></i> Appearance</div>
+      <h1>Settings</h1>
+      <p>Personalize your workspace, navigation and visual theme.</p>
+    </div>
+    <div class="heading-status"><span></span> Preferences saved automatically</div>
+  </div>
+
+  <div class="settings-grid">
+    <section class="settings-card preview-card">
+      <div class="card-heading">
+        <div class="heading-icon"><i class="bi bi-window-sidebar"></i></div>
+        <div><h2>Navigation layout</h2><p>Choose how your main navigation is displayed.</p></div>
+      </div>
+
+      <div class="layout-options">
+        <button type="button" class="layout-option" [class.selected]="navLayout.layoutMode() === 'vertical'" (click)="navLayout.setLayoutMode('vertical')">
+          <span class="layout-preview vertical-preview"><span class="preview-sidebar"></span><span class="preview-main"><i></i><i></i><i></i></span></span>
+          <span class="option-copy"><strong>Vertical</strong><small>Sidebar navigation</small></span>
+          <span class="radio"><i class="bi bi-check"></i></span>
+        </button>
+        <button type="button" class="layout-option" [class.selected]="navLayout.layoutMode() === 'horizontal'" (click)="navLayout.setLayoutMode('horizontal')">
+          <span class="layout-preview horizontal-preview"><span class="preview-top"></span><span class="preview-main"><i></i><i></i><i></i></span></span>
+          <span class="option-copy"><strong>Horizontal</strong><small>Top navigation</small></span>
+          <span class="radio"><i class="bi bi-check"></i></span>
+        </button>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-heading">
+        <div class="heading-icon"><i class="bi bi-palette"></i></div>
+        <div><h2>Theme</h2><p>Select the interface appearance.</p></div>
+      </div>
+      <div class="theme-options">
+        <button type="button" class="theme-option" [class.selected]="navLayout.theme() === 'light'" (click)="navLayout.setTheme('light')">
+          <span class="theme-swatch light-swatch"><i class="bi bi-sun"></i></span><span><strong>Light</strong><small>Clean and bright</small></span><i class="bi bi-check-circle-fill selected-check"></i>
+        </button>
+        <button type="button" class="theme-option" [class.selected]="navLayout.theme() === 'dark'" (click)="navLayout.setTheme('dark')">
+          <span class="theme-swatch dark-swatch"><i class="bi bi-moon-stars"></i></span><span><strong>Dark</strong><small>Easy on the eyes</small></span><i class="bi bi-check-circle-fill selected-check"></i>
+        </button>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-heading">
+        <div class="heading-icon"><i class="bi bi-droplet-half"></i></div>
+        <div><h2>Primary color</h2><p>Change the accent color across the application.</p></div>
+      </div>
+      <div class="color-options">
+        <button type="button" class="color-option green" [class.selected]="navLayout.primaryColor() === 'green'" (click)="navLayout.setPrimaryColor('green')"><span class="color-swatch"></span>Green<i class="bi bi-check"></i></button>
+        <button type="button" class="color-option blue" [class.selected]="navLayout.primaryColor() === 'blue'" (click)="navLayout.setPrimaryColor('blue')"><span class="color-swatch"></span>Blue<i class="bi bi-check"></i></button>
+        <button type="button" class="color-option purple" [class.selected]="navLayout.primaryColor() === 'purple'" (click)="navLayout.setPrimaryColor('purple')"><span class="color-swatch"></span>Purple<i class="bi bi-check"></i></button>
+        <button type="button" class="color-option teal" [class.selected]="navLayout.primaryColor() === 'teal'" (click)="navLayout.setPrimaryColor('teal')"><span class="color-swatch"></span>Teal<i class="bi bi-check"></i></button>
+        <label class="color-option custom-color" [class.selected]="navLayout.primaryColor() === 'custom'">
+          <input class="custom-color-input" type="color" [value]="navLayout.primaryHex()" (input)="navLayout.setCustomPrimaryColor($any($event.target).value)" aria-label="Choose a custom primary color">
+          <span class="custom-color-label">Custom color - {{ navLayout.primaryHex() }}</span>
+          <i class="bi bi-check"></i>
+        </label>
+      </div>
+    </section>
+
+    <section class="settings-card sidebar-settings">
+      <div class="card-heading">
+        <div class="heading-icon"><i class="bi bi-layout-sidebar"></i></div>
+        <div><h2>Sidebar</h2><p>Control the width of the vertical navigation.</p></div>
+      </div>
+      <div class="sidebar-control">
+        <div class="control-copy"><strong>{{ navLayout.sidebarExpanded() ? 'Expanded sidebar' : 'Compact sidebar' }}</strong><small>{{ navLayout.sidebarExpanded() ? 'Labels and shortcuts are visible.' : 'Show icons only for more content space.' }}</small></div>
+        <button type="button" class="switch" [class.on]="navLayout.sidebarExpanded()" (click)="navLayout.toggleSidebar()" [attr.aria-label]="'Toggle ' + (navLayout.sidebarExpanded() ? 'expanded' : 'compact') + ' sidebar'"><span></span></button>
+      </div>
+    </section>
+  </div>
+</div>

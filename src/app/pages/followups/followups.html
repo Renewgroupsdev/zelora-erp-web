@@ -1,0 +1,52 @@
+<div class="followups-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div class="page-header-text">
+      <h6 class="page-title">Follow-Ups</h6>
+    </div>
+  </div>
+
+  <div class="row g-2 g-md-3 stat-row">
+    @for (stat of stats; track stat.label) {
+      <div class="col-6 col-md-2">
+        <app-common-detail-card
+          [label]="stat.label"
+          [value]="stat.value"
+          [trendText]="stat.trendText"
+          [trendDirection]="stat.trendDirection ?? 'neutral'"
+        ></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by name, phone, branch or telecaller"
+    [filters]="filters"
+    (searchChange)="onSearch($event)"
+    (filterClick)="onFilterClick($event)"
+    (exportClick)="onExport()"
+  ></app-common-filter-card>
+
+  <div class="table-col">
+    <app-common-table-card
+      title="Follow-Ups"
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+      (rowActionClick)="onRowAction($event)"
+      (appointmentClick)="openAppointment($event)"
+      (sendToBranchClick)="sendToBranch($event)"
+      (viewCallLogClick)="viewCallLog($event)"
+    ></app-common-table-card>
+  </div>
+
+</div>

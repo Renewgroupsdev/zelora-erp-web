@@ -1,0 +1,43 @@
+<div class="call-log-dialog">
+
+  <div class="call-log-header">
+    <div class="call-log-header-text">
+      <h3>Call Log History</h3>
+      <p class="call-log-subtitle">
+        {{ data.leadName }}
+        @if (data.subtitle) {
+          <span class="call-log-subtitle-id">· {{ data.subtitle }}</span>
+        }
+      </p>
+    </div>
+    <button type="button" class="close-btn" (click)="close()" aria-label="Close">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <div class="call-log-body">
+    @if (data.entries.length) {
+      @for (entry of data.entries; track entry.dateTime + entry.empNo; let i = $index) {
+        <div class="call-log-entry">
+
+          <div class="call-log-entry-content">
+            <div class="call-log-entry-row">
+              <span class="call-log-caller">{{ entry.telecallerName }}</span>
+              <span class="call-log-empno">Emp No: {{ entry.empNo }}</span>
+            </div>
+
+            <div class="call-log-datetime">
+              <i class="bi bi-calendar-event"></i>
+              {{ entry.dateTime }}
+            </div>
+
+            <p class="call-log-notes">{{ entry.notes }}</p>
+          </div>
+        </div>
+      }
+    } @else {
+      <p class="call-log-empty">No follow-up calls logged yet.</p>
+    }
+  </div>
+
+</div>
