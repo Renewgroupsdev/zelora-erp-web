@@ -9,7 +9,7 @@
     </svg>
   </div>
 
-  <!-- Login panel (only card, no side content) -->
+  <!-- Login panel -->
   <div class="form-panel">
     <div class="auth-card">
 
@@ -73,9 +73,13 @@
           </div>
         </div>
 
-        <div class="form-check">
-          <input type="checkbox" class="form-check-input" id="checkbox-signin">
-          <label class="form-check-label" for="checkbox-signin">Remember Me</label>
+        <div class="form-check-row">
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="checkbox-signin" formControlName="rememberMe">
+            <label class="form-check-label" for="checkbox-signin">Remember Me</label>
+          </div>
+
+          <a href="javascript:void(0)" class="forgot-password-link" (click)="goToForgotPassword()">Forgot password?</a>
         </div>
 
         <div class="submit-row">
