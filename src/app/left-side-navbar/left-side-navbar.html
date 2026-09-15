@@ -1,9 +1,9 @@
 <nav class="side-navbar"
-  [class.expanded]="navLayout.layoutMode() === 'vertical' && navLayout.sidebarExpanded()"
+  [class.expanded]="navLayout.layoutMode() === 'vertical' && navLayout.sidebarVisible()"
   [class.horizontal]="navLayout.layoutMode() === 'horizontal'">
 
   @if (navLayout.layoutMode() === 'vertical') {
-    @if (navLayout.sidebarExpanded()) {
+    @if (navLayout.sidebarVisible()) {
       <div class="org-box">
         <div class="org-mark"><i class="bi bi-buildings"></i></div>
         <div class="org-copy">
@@ -22,14 +22,14 @@
     <ul class="nav-list">
       @for (link of navLinks; track link.path) {
         <li class="nav-item" [class.has-children]="link.children?.length">
-          <a class="nav-link" [routerLink]="link.path" routerLinkActive="active" (click)="link.children?.length && toggleLeadChildren()">
+          <a class="nav-link" [routerLink]="link.path" routerLinkActive="active" (click)="onNavLinkClick(link)">
             <span class="nav-active-bar"></span>
 
             <span class="nav-icon">
               <i [class]="'bi ' + link.icon"></i>
             </span>
 
-            @if (navLayout.sidebarExpanded()) {
+            @if (navLayout.sidebarVisible()) {
               <span class="nav-label">{{ link.label }}</span>
 
               @if (link.children?.length) {
@@ -48,7 +48,7 @@
               }
             }
 
-            @if (!navLayout.sidebarExpanded()) {
+            @if (!navLayout.sidebarVisible()) {
               <span class="nav-tooltip">
                 <span class="tooltip-icon"><i [class]="'bi ' + link.icon"></i></span>
                 <span class="tooltip-content">
@@ -62,10 +62,10 @@
             }
           </a>
 
-          @if (link.children?.length && (!navLayout.sidebarExpanded() || leadChildrenExpanded())) {
+          @if (link.children?.length && (!navLayout.sidebarVisible() || leadChildrenExpanded())) {
             <div class="subnav-shell">
 
-              <ul class="subnav-list" [class.subnav-flyout]="!navLayout.sidebarExpanded()">
+              <ul class="subnav-list" [class.subnav-flyout]="!navLayout.sidebarVisible()">
                 @for (child of link.children; track child.path) {
                   <li class="subnav-item">
                     <a class="subnav-link" [routerLink]="child.path" routerLinkActive="active">
@@ -89,7 +89,7 @@
       }
     </ul>
 
-    @if (navLayout.sidebarExpanded()) {
+    @if (navLayout.sidebarVisible()) {
       <div class="side-navbar-footer">
         <div class="help-card">
           <span class="help-icon"><i class="bi bi-headset"></i></span>
@@ -167,6 +167,6 @@
   }
 </nav>
 
-@if (navLayout.layoutMode() === 'vertical' && navLayout.sidebarExpanded()) {
-  <div class="side-navbar-backdrop" (click)="navLayout.toggleSidebar()"></div>
+@if (navLayout.layoutMode() === 'vertical' && navLayout.sidebarVisible()) {
+  <div class="side-navbar-backdrop" (click)="navLayout.closeMobileSidebar()"></div>
 }

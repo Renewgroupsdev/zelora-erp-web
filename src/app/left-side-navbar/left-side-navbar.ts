@@ -44,6 +44,16 @@ export class LeftSideNavbar {
     this.leadChildrenExpanded.update(expanded => !expanded);
   }
 
+  onNavLinkClick(link: NavLink): void {
+    if (link.children?.length) {
+      this.toggleLeadChildren();
+      return;
+    }
+
+    // On phones the sidebar is an overlay drawer; picking a page should close it.
+    this.navLayout.closeMobileSidebar();
+  }
+
   toggleHorizontalSubmenu(link: NavLink, event: Event): void {
     if (!link.children?.length) {
       return;
