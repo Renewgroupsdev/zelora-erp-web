@@ -20,7 +20,7 @@
   gap: 6px;
   margin-bottom: 7px;
   color: var(--primary);
-  font-size: 9px;
+  font-size: 11.5px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -30,7 +30,7 @@
   margin: 0;
   font-family: var(--font-family-display);
   color: var(--text-dark);
-  font-size: 22px;
+  font-size: 23px;
   line-height: 1.1;
   font-weight: 600;
   letter-spacing: -.5px;
@@ -39,7 +39,7 @@
 .page-heading p {
   margin: 7px 0 0;
   color: var(--text-muted);
-  font-size: 11.5px;
+  font-size: 13.5px;
 }
 
 .date-chip {
@@ -51,7 +51,7 @@
   border-radius: 9px;
   background: var(--app-surface-solid);
   color: var(--text-muted);
-  font-size: 9.5px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -102,7 +102,7 @@
 .stat-icon {
   width: 35px;
   height: 35px;
-  font-size: 15px;
+  font-size: 16.5px;
 }
 
 .stat-icon.green,
@@ -132,7 +132,7 @@
 .trend {
   padding: 4px 6px;
   border-radius: 6px;
-  font-size: 8px;
+  font-size: 10.5px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -150,7 +150,7 @@
 .stat-label {
   display: block;
   color: var(--text-muted);
-  font-size: 9.5px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -159,14 +159,14 @@
   margin: 0;
   font-family: var(--font-family-display);
   color: var(--text-dark);
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 600;
   letter-spacing: -.4px;
 }
 
 .stat-card small {
   color: var(--text-muted);
-  font-size: 8.5px;
+  font-size: 11px;
 }
 
 /* Premium hero variant — one card per grid promoted to a dark gradient surface */
@@ -240,21 +240,21 @@
   margin: 0 0 4px;
   font-family: var(--font-family-display);
   color: var(--text-dark);
-  font-size: 14px;
+  font-size: 15.5px;
   font-weight: 600;
 }
 
 .card-header p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 11.5px;
 }
 
 .card-header button {
   border: 0;
   background: transparent;
   color: var(--primary);
-  font-size: 9px;
+  font-size: 11.5px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -275,7 +275,7 @@
   width: 31px;
   height: 31px;
   flex: 0 0 31px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .activity-row>div {
@@ -288,12 +288,12 @@
 
 .activity-row strong {
   color: var(--text-dark);
-  font-size: 10.5px;
+  font-size: 12.5px;
 }
 
 .activity-row small {
   color: var(--text-muted);
-  font-size: 8.5px;
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -301,7 +301,7 @@
 
 .activity-row time {
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: 10.5px;
   white-space: nowrap;
 }
 
@@ -337,7 +337,7 @@
   border-radius: 9px;
   background: var(--primary-soft);
   color: var(--primary);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .quick-actions button span:nth-child(2) {
@@ -348,17 +348,17 @@
 }
 
 .quick-actions strong {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .quick-actions small {
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: 10.5px;
 }
 
 .quick-actions>button>i {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 11.5px;
 }
 
 @media (max-width: 1050px) {

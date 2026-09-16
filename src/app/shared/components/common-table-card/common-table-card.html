@@ -165,6 +165,22 @@
               </div>
             }
 
+            @else if (col.type === 'quickActions') {
+              <div class="quick-actions-cell">
+                @for (act of asQuickActions(row[col.key]); track act.key) {
+                  <button
+                    type="button"
+                    class="row-action-btn"
+                    [ngClass]="'qa-' + (act.variant || 'default')"
+                    (click)="quickActionClick.emit({ row, action: act.key })"
+                    [attr.aria-label]="act.label"
+                    [title]="act.label">
+                    <i class="bi" [ngClass]="act.icon"></i>
+                  </button>
+                }
+              </div>
+            }
+
             @else if (col.type === 'action') {
               <div class="action-cell">
                   <!-- Appointment -->

@@ -73,23 +73,23 @@
   /* ---------------------------------------------------------
      font-family 
   ---------------------------------------------------------- */
-  --font-family-base: "Segoe UI", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
-  --font-family-display: "Segoe UI", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
+  --font-family-base: Helvetica, Arial, sans-serif;
+  --font-family-display: Helvetica, Arial, sans-serif;
 
   /* Premium accent — used sparingly (export actions, hero highlights) */
   --gold: #b4863a;
   --gold-dark: #96702f;
   --gold-soft: #f8edd8;
 
-  --fs-2xs: 10px; 
-  --fs-xs: 11px; 
-  --fs-sm: 12px; 
-  --fs-base: 13px; 
-  --fs-md: 14px;  
-  --fs-lg: 16px;  
-  --fs-xl: 19px;
-  --fs-2xl: 23px;  
-  --fs-3xl: 28px;
+  --fs-2xs: 12px;
+  --fs-xs: 13px;
+  --fs-sm: 14px;
+  --fs-base: 15px;
+  --fs-md: 16px;
+  --fs-lg: 18px;
+  --fs-xl: 21px;
+  --fs-2xl: 25px;
+  --fs-3xl: 30px;
 
   --fw-regular: 400;
   --fw-medium: 600;
@@ -250,7 +250,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 :root {
-  --font-family-base: 'Inter', 'Segoe UI', Arial, sans-serif;
+  --font-family-base: Helvetica, Arial, sans-serif;
   --header-bg: rgba(255,255,255,.94);
   --sidebar-bg: rgba(255,255,255,.96);
   --primary: #18b875;
@@ -291,8 +291,38 @@ h1, h2, h3, h4, h5, h6 {
 
 body {
   font-family: var(--font-family-base);
-  font-size: 13px;
+  font-size: var(--fs-base);
   letter-spacing: -.01em;
+}
+
+/* Responsive type scale: text keeps growing a little on bigger screens instead
+   of staying pinned at the same pixel size regardless of available space. */
+@media (min-width: 1440px) {
+  :root {
+    --fs-2xs: 12.5px;
+    --fs-xs: 13.5px;
+    --fs-sm: 14.5px;
+    --fs-base: 15.5px;
+    --fs-md: 16.5px;
+    --fs-lg: 19px;
+    --fs-xl: 22px;
+    --fs-2xl: 26px;
+    --fs-3xl: 32px;
+  }
+}
+
+@media (min-width: 1920px) {
+  :root {
+    --fs-2xs: 13px;
+    --fs-xs: 14px;
+    --fs-sm: 15px;
+    --fs-base: 16px;
+    --fs-md: 17px;
+    --fs-lg: 20px;
+    --fs-xl: 23px;
+    --fs-2xl: 27px;
+    --fs-3xl: 34px;
+  }
 }
 
 
@@ -347,6 +377,78 @@ button, a, input, select, textarea {
 
 @media (max-width: 480px) {
   .add-lead-dialog .mat-mdc-dialog-surface {
+    border-radius: 10px !important;
+  }
+}
+
+/* ==========================================================
+   Booking Form Material Dialog (Schedule / Appointment)
+   ========================================================== */
+.booking-form-dialog .mat-mdc-dialog-surface {
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 14px !important;
+  background: var(--app-surface-solid) !important;
+  color: var(--text-dark) !important;
+  box-shadow: var(--shadow-pop) !important;
+}
+
+.booking-form-dialog .mat-mdc-dialog-container {
+  padding: 0 !important;
+}
+
+@media (max-width: 700px) {
+  .booking-form-dialog .mat-mdc-dialog-surface {
+    border-radius: 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .booking-form-dialog .mat-mdc-dialog-surface {
+    border-radius: 10px !important;
+  }
+}
+
+/* ==========================================================
+   Add Customer Material Dialog (CRM)
+   ========================================================== */
+.add-customer-dialog .mat-mdc-dialog-surface {
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 14px !important;
+  background: var(--app-surface-solid) !important;
+  color: var(--text-dark) !important;
+  box-shadow: var(--shadow-pop) !important;
+}
+
+.add-customer-dialog .mat-mdc-dialog-container {
+  padding: 0 !important;
+}
+
+@media (max-width: 480px) {
+  .add-customer-dialog .mat-mdc-dialog-surface {
+    border-radius: 10px !important;
+  }
+}
+
+/* ==========================================================
+   Customer Profile Material Dialog (CRM)
+   ========================================================== */
+.customer-profile-dialog .mat-mdc-dialog-surface {
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 14px !important;
+  background: var(--app-surface-solid) !important;
+  color: var(--text-dark) !important;
+  box-shadow: var(--shadow-pop) !important;
+}
+
+.customer-profile-dialog .mat-mdc-dialog-container {
+  padding: 0 !important;
+}
+
+@media (max-width: 480px) {
+  .customer-profile-dialog .mat-mdc-dialog-surface {
     border-radius: 10px !important;
   }
 }

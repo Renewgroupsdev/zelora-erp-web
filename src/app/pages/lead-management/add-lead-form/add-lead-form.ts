@@ -14,6 +14,7 @@ import {
 import { ApiDataService } from '../../../shared/common-services/api-data.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
+import { NotificationService } from '../../../shared/common-services/notification.service';
 
 @Component({
   selector: 'app-add-lead-form',
@@ -69,6 +70,7 @@ export class AddLeadForm {
     private dialogRef: MatDialogRef<AddLeadForm>,
     private apiDataService: ApiDataService,
     private toast: ToastService,
+    private notifications: NotificationService,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.leadForm = this.fb.group({
@@ -123,6 +125,16 @@ export class AddLeadForm {
 
         if (response && response.success !== false) {
           this.toast.success(this.isEdit ? 'Lead updated successfully' : 'Lead saved successfully');
+
+          if (!this.isEdit) {
+            this.notifications.add({
+              type: 'lead',
+              title: 'New lead added',
+              message: `${formValue.name} was added to the pipeline from ${formValue.source || 'an unspecified source'}.`,
+              link: '/app/lead-management',
+            });
+          }
+
           this.dialogRef.close(response.data ?? formValue);
         } else {
           this.toast.error(response || 'Failed to save lead. Please try again.');

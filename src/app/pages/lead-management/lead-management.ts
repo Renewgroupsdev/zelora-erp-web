@@ -76,7 +76,32 @@ export class LeadManagement implements OnInit {
 
   readonly pageSizeOptions = [10, 30, 50, 100];
   isLoading = false;
-  allRows: TableRow[] = [];
+  allRows: TableRow[] = [
+  { name: 'Ananya Sharma', mobile_no: '+91 98765 43210', gender: 'F', source: 'Website', service_category: 'Hair', service_request: 'Hair Loss', branch: 'Anna Nagar', status: 'New', created_at: '09-Sep-2026' },
+  { name: 'Rahul Kumar', mobile_no: '+91 91234 56780', gender: 'M', source: 'Instagram', service_category: 'Skin', service_request: 'Acne Care', branch: 'Velachery', status: 'New', created_at: '08-Apr-2026' },
+  { name: 'Sneha Menon', mobile_no: '+91 98867 66554', gender: 'F', source: 'Referral', service_category: 'Hair', service_request: 'PRP Therapy', branch: 'Indiranagar', status: 'New', created_at: '15-Apr-2026' },
+  { name: 'Vikram Patel', mobile_no: '+91 90123 45678', gender: 'M', source: 'Google Ads', service_category: 'Hair', service_request: 'Hair Transplant', branch: 'Coimbatore', status: 'New', created_at: '22-Apr-2026' },
+  { name: 'Neha Prasad', mobile_no: '+91 93450 78920', gender: 'F', source: 'Walk-in', service_category: 'Skin', service_request: 'Skin Rejuvenation', branch: 'Anna Nagar', status: 'New', created_at: '29-Apr-2026' },
+  { name: 'Kavin Raj', mobile_no: '+91 99520 13840', gender: 'M', source: 'Meta Campaign', service_category: 'Skin', service_request: 'Laser Toning', branch: 'T Nagar', status: 'New', created_at: '03-May-2026' },
+  { name: 'Aarthi Nair', mobile_no: '+91 98401 55082', gender: 'F', source: 'Website', service_category: 'Skin', service_request: 'Botox', branch: 'Velachery', status: 'New', created_at: '10-May-2026' },
+  { name: 'Siddharth Rao', mobile_no: '+91 95009 44671', gender: 'M', source: 'Call Center', service_category: 'Hair', service_request: 'GFC Treatment', branch: 'Bengaluru', status: 'New', created_at: '17-May-2026' },
+  { name: 'Divya Iyer', mobile_no: '+91 97890 24231', gender: 'F', source: 'Referral', service_category: 'Hair', service_request: 'Dandruff Care', branch: 'Anna Nagar', status: 'New', created_at: '24-May-2026' },
+  { name: 'Mohit Saini', mobile_no: '+91 90947 11136', gender: 'M', source: 'Google Ads', service_category: 'Hair', service_request: 'Beard Transplant', branch: 'Coimbatore', status: 'New', created_at: '31-May-2026' },
+  { name: 'Nikita Shah', mobile_no: '+91 96001 67002', gender: 'F', source: 'Website', service_category: 'Skin', service_request: 'Hydra Facial', branch: 'Indiranagar', status: 'New', created_at: '04-Jun-2026' },
+  { name: 'Gokul Balan', mobile_no: '+91 94447 80602', gender: 'M', source: 'Walk-in', service_category: 'Skin', service_request: 'Pigmentation', branch: 'T Nagar', status: 'New', created_at: '11-Jun-2026' },
+  { name: 'Farah Ali', mobile_no: '+91 98411 22390', gender: 'F', source: 'Instagram', service_category: 'Skin', service_request: 'Scar Reduction', branch: 'Anna Nagar', status: 'New', created_at: '18-Jun-2026' },
+  { name: 'Ritesh Verma', mobile_no: '+91 99628 73201', gender: 'M', source: 'Campaign', service_category: 'Hair', service_request: 'Hair Fall Control', branch: 'Velachery', status: 'New', created_at: '25-Jun-2026' },
+  { name: 'Pooja Bhat', mobile_no: '+91 87544 61902', gender: 'F', source: 'Referral', service_category: 'Skin', service_request: 'Anti Ageing', branch: 'Bengaluru', status: 'New', created_at: '02-Jul-2026' },
+  { name: 'Kishore Das', mobile_no: '+91 93812 55870', gender: 'M', source: 'Website', service_category: 'Hair', service_request: 'MNRF', branch: 'Coimbatore', status: 'New', created_at: '09-Jul-2026' },
+  { name: 'Harsha V.', mobile_no: '+91 97908 80944', gender: 'M', source: 'Meta Campaign', service_category: 'Hair', service_request: 'Hair Regrowth', branch: 'Anna Nagar', status: 'New', created_at: '16-Jul-2026' },
+  { name: 'Lavanya S.', mobile_no: '+91 90430 12788', gender: 'F', source: 'Walk-in', service_category: 'Hair', service_request: 'Medi Facial', branch: 'Velachery', status: 'New', created_at: '23-Jul-2026' },
+  { name: 'Ashwin George', mobile_no: '+91 88921 41770', gender: 'M', source: 'Call Center', service_category: 'Skin', service_request: 'Tattoo Removal', branch: 'Indiranagar', status: 'New', created_at: '30-Jul-2026' },
+  { name: 'Madhumitha R.', mobile_no: '+91 89397 62014', gender: 'F', source: 'Google Ads', service_category: 'Hair', service_request: 'Skin Brightening', branch: 'T Nagar', status: 'New', created_at: '04-Aug-2026' },
+  { name: 'Pranav Joshi', mobile_no: '+91 93428 11590', gender: 'M', source: 'Website', service_category: 'Hair', service_request: 'Hair PRP', branch: 'Bengaluru', status: 'New', created_at: '11-Aug-2026' },
+  { name: 'Heena Kapoor', mobile_no: '+91 98845 75060', gender: 'F', source: 'Instagram', service_category: 'Skin', service_request: 'Chemical Peel', branch: 'Anna Nagar', status: 'New', created_at: '18-Aug-2026' },
+  { name: 'Rohit Narang', mobile_no: '+91 97910 33044', gender: 'M', source: 'Referral', service_category: 'Hair', service_request: 'FUE Consultation', branch: 'Coimbatore', status: 'New', created_at: '25-Aug-2026' },
+  { name: 'Megha Sen', mobile_no: '+91 91503 22018', gender: 'F', source: 'Campaign', service_category: 'Hair', service_request: 'Bridal Skin Plan', branch: 'Velachery', status: 'New', created_at: '02-Sep-2026' },
+];
 
   rows: TableRow[] = [];
   currentPage = 1;
@@ -104,8 +129,11 @@ export class LeadManagement implements OnInit {
   followUpRows: TableRow[] = [];
 
   ngOnInit(): void {
-    this.refreshRows();
-    this.loadLeadData();
+    // this.refreshRows();
+    // this.loadLeadData();
+     this.allRows = this.allRows.map((lead: any) => this.mapLeadToRow(lead));
+     this.currentPage = 1;
+     this.refreshRows();
   }
 
   loadLeadData(): void {
@@ -142,8 +170,8 @@ export class LeadManagement implements OnInit {
       },
       contact: lead.mobile_no ?? '',
       source: this.formatSource(lead.source),
-      service_category: lead.category ?? '',
-      service_request: lead.reason ?? '',
+      service_category: lead.service_category ?? '',
+      service_request: lead.service_request ?? '',
       branch: lead.location ?? lead.organization_unit ?? '',
       status: this.formatStatus(lead.status),
       created_at: this.formatDate(lead.created_at),

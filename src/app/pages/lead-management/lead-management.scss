@@ -71,7 +71,7 @@ app-common-table-card {
 
 .page-subtitle {
   margin: 0;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.4;
   color: var(--text-muted);
   max-width: 60ch;
@@ -90,7 +90,7 @@ app-common-table-card {
   border: 0;
   border-radius: 10px;
   font-family: var(--font-family-base);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: var(--fw-medium);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -98,7 +98,7 @@ app-common-table-card {
   z-index: 1;
 
   i {
-    font-size: 11px;
+    font-size: 13px;
   }
 
   &:hover {

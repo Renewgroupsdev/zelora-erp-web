@@ -4,14 +4,15 @@ import { Component, EventEmitter, Input, Output, ViewChild } from '@angular/core
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSortModule, Sort, SortDirection } from '@angular/material/sort';
 import { MatTable, MatTableModule } from '@angular/material/table';
-import { CallerAvatar, CallerLogEntry, LeadCell, TableColumn, TablePageChangeEvent, TableReorderEvent, TableRow, TableTransferEvent } from '../../models/common-components.model';
+import { CallerAvatar, CallerLogEntry, LeadCell, QuickAction, TableColumn, TablePageChangeEvent, TableReorderEvent, TableRow, TableTransferEvent } from '../../models/common-components.model';
 
-const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue'> = {
-  qualified: 'green', active: 'green', completed: 'green', converted: 'green', paid: 'green',
-  contacted: 'orange', pending: 'orange', 'in progress': 'orange', due: 'orange',
+const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue' | 'purple'> = {
+  qualified: 'green', active: 'green', completed: 'green', converted: 'green', paid: 'green', regular: 'green',
+  contacted: 'orange', pending: 'orange', 'in progress': 'orange', due: 'orange', partial: 'orange',
   lost: 'red', cancelled: 'red', failed: 'red', overdue: 'red',
   new: 'gray', draft: 'gray', inactive: 'gray',
-  scheduled: 'blue', follow: 'blue',
+  scheduled: 'blue', follow: 'blue', confirmed: 'blue',
+  vip: 'purple',
 };
 
 const AVATAR_PALETTE_SIZE = 5;
@@ -48,6 +49,7 @@ export class CommonTableCard {
   @Output() followUpClick = new EventEmitter<TableRow>();
   @Output() sendToBranchClick = new EventEmitter<TableRow>();
   @Output() viewCallLogClick = new EventEmitter<TableRow>();
+  @Output() quickActionClick = new EventEmitter<{ row: TableRow; action: string }>();
   @Output() rowReorder = new EventEmitter<TableReorderEvent>();
 
   @Output() rowTransfer = new EventEmitter<TableTransferEvent>();
@@ -73,6 +75,10 @@ export class CommonTableCard {
 
   asCallerLog(value: TableRow[string]): CallerLogEntry[] {
     return Array.isArray(value) ? (value as CallerLogEntry[]) : [];
+  }
+
+  asQuickActions(value: TableRow[string]): QuickAction[] {
+    return Array.isArray(value) ? (value as QuickAction[]) : [];
   }
 
   showAvatarTooltip(event: Event, caller: CallerAvatar): void {
@@ -118,7 +124,7 @@ export class CommonTableCard {
   }
 
   isSortable(column: TableColumn): boolean {
-    return column.type !== 'action' && column.sortable !== false;
+    return column.type !== 'action' && column.type !== 'quickActions' && column.sortable !== false;
   }
 
   get hasConnections(): boolean {

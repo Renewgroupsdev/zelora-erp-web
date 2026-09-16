@@ -1,1 +1,99 @@
-<p>appointment-page works!</p>
+<div class="appointment-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div class="page-header-text">
+      <div class="eyebrow"><i class="bi bi-calendar-check-fill"></i> Appointments</div>
+      <h6 class="page-title">Appointments</h6>
+      <p class="page-subtitle">Track today's bookings and manage the full appointment pipeline.</p>
+    </div>
+
+    <button type="button" class="add-appointment-btn" (click)="openAddAppointment()">
+      <i class="bi bi-plus-lg"></i> New Appointment
+    </button>
+  </div>
+
+  <div class="row g-2 g-md-3 stat-row">
+    @for (stat of stats; track stat.label) {
+      <div class="col-6 col-md-3">
+        <app-common-detail-card
+          [label]="stat.label"
+          [value]="stat.value"
+          [trendText]="stat.trendText"
+          [trendDirection]="stat.trendDirection ?? 'neutral'"
+        ></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <div class="timeline-card">
+    <div class="timeline-header">
+      <h3><i class="bi bi-clock-history"></i> Today's Timeline</h3>
+      <span class="timeline-count">{{ todaysAppointments.length }} booked</span>
+    </div>
+
+    @if (!todaysAppointments.length) {
+      <div class="timeline-empty">
+        <i class="bi bi-calendar2-check"></i>
+        <p>No appointments booked for today yet.</p>
+      </div>
+    } @else {
+      <div class="timeline-scroll">
+        @for (appt of todaysAppointments; track appt.id) {
+          <div class="timeline-item">
+            <div class="timeline-time">{{ formatTime(appt.startTime) }}</div>
+
+            <div class="timeline-body">
+              <span class="timeline-avatar" [ngClass]="avatarColorForName(appt.customerName)">{{ initials(appt.customerName) }}</span>
+              <div class="timeline-info">
+                <span class="timeline-name">{{ appt.customerName }}</span>
+                <span class="timeline-service"><i class="bi bi-magic"></i> {{ appt.service }}</span>
+                <span class="timeline-branch"><i class="bi bi-geo-alt-fill"></i> {{ appt.branch }}</span>
+              </div>
+            </div>
+
+            <div class="timeline-payment">
+              <span class="payment-amount"><i class="bi bi-cash-stack"></i> {{ formatCurrency(appt.total) }}</span>
+              <span class="status-pill sm" [ngClass]="paymentStatusClass(appt.paymentStatus)">{{ appt.paymentStatus }}</span>
+            </div>
+
+            <div class="timeline-footer">
+              <span class="status-pill" [ngClass]="statusClass(appt.status)">{{ appt.status }}</span>
+              <a class="timeline-call-btn" [href]="'tel:' + appt.phone" [attr.aria-label]="'Call ' + appt.customerName" title="Call">
+                <i class="bi bi-telephone-fill"></i>
+              </a>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by customer, phone or service"
+    [filters]="filters"
+    (searchChange)="onSearch($event)"
+    (filterClick)="onFilterClick($event)"
+    (filtersChange)="onFiltersChange($event)"
+    (exportClick)="onExport()"
+  ></app-common-filter-card>
+
+  <div class="table-col">
+    <app-common-table-card
+      title="All Appointments"
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+      (quickActionClick)="onQuickAction($event)"
+    ></app-common-table-card>
+  </div>
+
+</div>

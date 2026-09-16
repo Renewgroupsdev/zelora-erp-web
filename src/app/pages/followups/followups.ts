@@ -11,12 +11,25 @@ import {
   DetailCardData,
   FilterOption,
   LeadCell,
+  QuickAction,
   TableColumn,
   TablePageChangeEvent,
   TableRow,
   CommonFilterState,
 } from '../../shared/models/common-components.model';
 import { CallLogHistoryDialog } from './call-log-history-dialog/call-log-history-dialog';
+import {
+  BookingFormDialog,
+  BookingFormResult,
+} from '../../shared/components/booking-form-dialog/booking-form-dialog';
+import { TREATMENTS } from '../../shared/data/treatment-catalog';
+import { ScheduleService } from '../../shared/common-services/schedule.service';
+import { ToastService } from '../../shared/common-services/toast.service';
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { key: 'schedule', icon: 'bi-calendar-plus', label: 'Add Schedule', variant: 'primary' },
+  { key: 'call-log', icon: 'bi-clock-history', label: 'View Call Log', variant: 'default' },
+];
 
 interface FollowUpSeed {
   name: string;
@@ -133,7 +146,15 @@ export const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
 })
 export class Followups implements OnInit {
 
-  constructor(private dialog: MatDialog) { }
+  constructor(
+    private dialog: MatDialog,
+    private scheduleService: ScheduleService,
+    private toast: ToastService,
+  ) { }
+
+  readonly branches = ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'];
+  readonly staffOptions = ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S', 'Meera Nair'];
+  readonly treatments = TREATMENTS;
 
   stats: DetailCardData[] = [
     { label: 'Total Leads', value: '1,284', trendText: '8.4% this month', trendDirection: 'up' },
@@ -172,7 +193,7 @@ export class Followups implements OnInit {
     { key: 'branch', header: 'Branch', type: 'branch' },
     { key: 'telecaller', header: 'Telecaller Assigned', type: 'avatarGroup', sortable: false, width: '140px' },
     { key: 'status', header: 'Status', type: 'badge' },
-    { key: 'action', header: 'Action', type: 'callLog', sortable: false, width: '90px' },
+    { key: 'action', header: 'Action', type: 'quickActions', sortable: false, width: '90px' },
   ];
 
   readonly pageSizeOptions = [10, 30, 50, 100];
@@ -191,7 +212,8 @@ export class Followups implements OnInit {
     branch: seed.branch,
     telecaller: seed.callers,
     status: seed.status,
-    action: seed.callLog,
+    action: QUICK_ACTIONS,
+    callLogEntries: seed.callLog,
   }));
 
   rows: TableRow[] = [];
@@ -257,17 +279,14 @@ export class Followups implements OnInit {
     // Open a row action menu as needed.
   }
 
-  openAppointment(row: TableRow): void {
-    console.log('Appointment:', row);
-  }
-
-  sendToBranch(row: TableRow): void {
-    console.log('Send to branch:', row);
+  onQuickAction({ row, action }: { row: TableRow; action: string }): void {
+    if (action === 'schedule') this.openAddScheduleFor(row);
+    else if (action === 'call-log') this.viewCallLog(row);
   }
 
   viewCallLog(row: TableRow): void {
     const lead = row['lead'] as LeadCell;
-    const entries = (row['action'] as CallerLogEntry[]) ?? [];
+    const entries = (row['callLogEntries'] as CallerLogEntry[]) ?? [];
 
     this.dialog.open(CallLogHistoryDialog, {
       width: '440px',
@@ -281,6 +300,49 @@ export class Followups implements OnInit {
         subtitle: lead.subtitle,
         entries,
       },
+    });
+  }
+
+  openAddScheduleFor(row: TableRow): void {
+    const lead = row['lead'] as LeadCell;
+
+    const dialogRef = this.dialog.open(BookingFormDialog, {
+      width: '640px',
+      maxWidth: 'calc(100vw - 32px)',
+      maxHeight: '92vh',
+      autoFocus: false,
+      restoreFocus: true,
+      disableClose: true,
+      panelClass: 'booking-form-dialog',
+      data: {
+        mode: 'schedule',
+        branches: this.branches,
+        staffOptions: this.staffOptions,
+        treatments: this.treatments,
+        initial: {
+          customerName: lead.name,
+          phone: String(row['contact'] ?? ''),
+          branch: String(row['branch'] ?? ''),
+        },
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((result: BookingFormResult | undefined) => {
+      if (!result) return;
+
+      const newEvent = this.scheduleService.add({
+        customerName: result.customerName,
+        phone: result.phone,
+        service: result.service,
+        branch: result.branch,
+        staff: result.staff,
+        date: result.date,
+        startTime: result.startTime,
+        duration: result.duration,
+        status: 'Pending',
+      });
+
+      this.toast.success('Schedule created', `${newEvent.customerName} added for ${newEvent.date}`);
     });
   }
 

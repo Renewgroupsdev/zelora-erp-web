@@ -27,7 +27,18 @@ export interface CommonFilterState {
 }
 
 /** Supported cell renderers for app-common-table-card columns. */
-export type TableColumnType = 'text' | 'lead' | 'branch' | 'badge' | 'action' | 'avatarGroup' | 'callLog';
+export type TableColumnType = 'text' | 'lead' | 'branch' | 'badge' | 'action' | 'avatarGroup' | 'callLog' | 'quickActions';
+
+/**
+ * One icon button rendered by the 'quickActions' column type (e.g. Confirm / Reschedule /
+ * Cancel on an appointment row). `variant` picks the button's accent color.
+ */
+export interface QuickAction {
+  key: string;
+  icon: string;
+  label: string;
+  variant?: 'primary' | 'danger' | 'default';
+}
 
 export interface TableColumn {
   key: string;
@@ -68,7 +79,7 @@ export interface CallerLogEntry {
 }
 
 /** Generic row: plain values for 'text'/'badge' columns, richer shapes for the cell types above. */
-export type TableRow = Record<string, string | number | LeadCell | CallerAvatar[] | CallerLogEntry[]>;
+export type TableRow = Record<string, string | number | LeadCell | CallerAvatar[] | CallerLogEntry[] | QuickAction[]>;
 
 export interface TablePageChangeEvent {
   page: number;

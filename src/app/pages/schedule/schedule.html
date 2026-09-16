@@ -1,1 +1,156 @@
-<p>schedule works!</p>
+<div class="schedule-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div class="page-header-text">
+      <div class="eyebrow"><i class="bi bi-calendar3"></i> Scheduling</div>
+      <h6 class="page-title">Schedule</h6>
+      <p class="page-subtitle">Plan visits, manage staff availability and track this week at a glance.</p>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" class="today-btn" (click)="goToday()">
+        <i class="bi bi-calendar-event"></i> Today
+      </button>
+      <button type="button" class="add-schedule-btn" (click)="openAddSchedule()">
+        <i class="bi bi-plus-lg"></i> New Schedule
+      </button>
+    </div>
+  </div>
+
+  <div class="row g-2 g-md-3 stat-row">
+    @for (stat of stats; track stat.label) {
+      <div class="col-6 col-md-3">
+        <app-common-detail-card
+          [label]="stat.label"
+          [value]="stat.value"
+          [trendText]="stat.trendText"
+          [trendDirection]="stat.trendDirection ?? 'neutral'"
+        ></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by customer, phone or service"
+    [filters]="filters"
+    (searchChange)="onSearch($event)"
+    (filterClick)="onFilterClick($event)"
+    (filtersChange)="onFiltersChange($event)"
+    (exportClick)="onExport()"
+  ></app-common-filter-card>
+
+  <div class="schedule-body d-flex flex-column flex-lg-row">
+
+    <div class="calendar-card">
+      <div class="calendar-toolbar d-flex align-items-center justify-content-between flex-wrap">
+        <div class="week-nav">
+          <button type="button" class="nav-btn" (click)="prevWeek()" aria-label="Previous week"><i class="bi bi-chevron-left"></i></button>
+          <span class="week-range">{{ weekRangeLabel }}</span>
+          <button type="button" class="nav-btn" (click)="nextWeek()" aria-label="Next week"><i class="bi bi-chevron-right"></i></button>
+        </div>
+
+        <div class="calendar-legend">
+          <span class="legend-item"><i class="legend-dot status-green"></i> Confirmed</span>
+          <span class="legend-item"><i class="legend-dot status-orange"></i> Pending</span>
+          <span class="legend-item"><i class="legend-dot status-blue"></i> Completed</span>
+          <span class="legend-item"><i class="legend-dot status-red"></i> Cancelled</span>
+        </div>
+      </div>
+
+      <div class="calendar-scroll">
+        <div class="calendar-grid">
+
+          <div class="time-col">
+            <div class="day-header-spacer"></div>
+            @for (hour of hours; track hour) {
+              <div class="time-slot" [style.height.px]="rowHeight">{{ hourLabel(hour) }}</div>
+            }
+          </div>
+
+          @for (day of weekDays; track day) {
+            <div class="day-col" [class.selected-col]="isSelectedDay(day)">
+              <button type="button" class="day-header" (click)="selectDay(day)">
+                <span class="day-name">{{ dayName(day) }}</span>
+                <span class="day-num" [class.today-num]="isToday(day)">{{ day.getDate() }}</span>
+              </button>
+
+              <div class="day-body" [style.height.px]="calendarHeight">
+                @for (hour of hours; track hour) {
+                  <div class="hour-line" [style.height.px]="rowHeight"></div>
+                }
+
+                @for (item of layoutForDay(dateIso(day)); track item.event.id) {
+                  <button
+                    type="button"
+                    class="event-chip"
+                    [ngClass]="statusClass(item.event.status)"
+                    [class.selected]="selectedEventId === item.event.id"
+                    [class.compact]="item.event.duration <= 30"
+                    [style.top]="item.style.top"
+                    [style.height]="item.style.height"
+                    [style.left]="item.style.left"
+                    [style.width]="item.style.width"
+                    [style.z-index]="item.zIndex"
+                    (click)="onEventClick(item.event, day)">
+                    <span class="event-time">{{ item.event.startTime }}</span>
+                    <span class="event-name">{{ item.event.customerName }}</span>
+                    <span class="event-service">{{ item.event.service }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+        </div>
+      </div>
+    </div>
+
+    <div class="agenda-card">
+      <div class="agenda-header">
+        <h3>{{ agendaLabel }}</h3>
+        <span class="agenda-count">{{ agendaEvents.length }} visit{{ agendaEvents.length === 1 ? '' : 's' }}</span>
+      </div>
+
+      <div class="agenda-list">
+        @if (!agendaEvents.length) {
+          <div class="agenda-empty">
+            <i class="bi bi-calendar-x"></i>
+            <p>No visits scheduled for this day.</p>
+          </div>
+        }
+
+        @for (event of agendaEvents; track event.id) {
+          <div class="agenda-item" [class.active]="selectedEventId === event.id">
+            <div class="agenda-time">
+              <span>{{ event.startTime }}</span>
+              <small>{{ event.duration }}m</small>
+            </div>
+
+            <div class="agenda-info">
+              <div class="agenda-info-top">
+                <span class="agenda-name">{{ event.customerName }}</span>
+                <span class="status-pill" [ngClass]="statusClass(event.status)">{{ event.status }}</span>
+              </div>
+              <span class="agenda-service"><i class="bi bi-magic"></i> {{ event.service }}</span>
+              <span class="agenda-meta"><i class="bi bi-geo-alt-fill"></i> {{ event.branch }} &middot; <i class="bi bi-person-badge"></i> {{ event.staff }}</span>
+            </div>
+
+            <div class="agenda-actions">
+              <button type="button" class="agenda-action-btn confirm" title="Confirm" (click)="confirmVisit(event)" [disabled]="event.status === 'Confirmed'">
+                <i class="bi bi-check-lg"></i>
+              </button>
+              <button type="button" class="agenda-action-btn reschedule" title="Reschedule" (click)="rescheduleVisit(event)">
+                <i class="bi bi-arrow-repeat"></i>
+              </button>
+              <button type="button" class="agenda-action-btn cancel" title="Cancel" (click)="cancelVisit(event)" [disabled]="event.status === 'Cancelled'">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+  </div>
+
+</div>

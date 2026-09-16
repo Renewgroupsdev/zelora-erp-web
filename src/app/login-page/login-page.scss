@@ -136,7 +136,7 @@
 .welcome-text {
   text-align: center;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 27px;
+  font-size: 28px;
   line-height: 1.2;
   font-weight: 650;
   color: #123f36;
@@ -145,7 +145,7 @@
 
 .welcome-subtext {
   text-align: center;
-  font-size: 13px;
+  font-size: 14.5px;
   color: var(--text-muted);
   margin: 0 0 4px;
   line-height: 1.5;
@@ -162,7 +162,7 @@
   padding: 5px;
   border-radius: 12px;
   margin-bottom: 5px;
-  font-size: 13px;
+  font-size: 14.5px;
   animation: alert-in .2s ease-out;
 }
 
@@ -188,7 +188,7 @@
   background: #e05757;
   color: #fff;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 14px;
   flex-shrink: 0;
   margin-top: 1px;
 }
@@ -202,7 +202,7 @@
   background: none;
   border: none;
   color: #9c2b2b;
-  font-size: 16px;
+  font-size: 17px;
   cursor: pointer;
   line-height: 1;
   padding: 0;
@@ -221,7 +221,7 @@
 .form-label {
   display: block;
   font-weight: 650;
-  font-size: 13px;
+  font-size: 14.5px;
   margin-bottom: 7px;
   color: #173f37;
 }
@@ -235,7 +235,7 @@
 .input-icon {
   position: absolute;
   left: 14px;
-  font-size: 15px;
+  font-size: 16.5px;
   color: #729088;
   pointer-events: none;
   display: flex;
@@ -249,7 +249,7 @@
   padding: 5px 5px 5px 35px;
   border: 1.5px solid #d7e9e1;
   border-radius: 12px;
-  font-size: 14px;
+  font-size: 15.5px;
   box-sizing: border-box;
   color: #183c35;
   background: #f8fcfa;
@@ -281,7 +281,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 17px;
   color: #78938b;
   border-radius: 8px;
   display: flex;
@@ -296,7 +296,7 @@
 
 .invalid-feedback {
   color: #e05757;
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 5px;
 }
 
@@ -310,7 +310,7 @@
 }
 
 .forgot-password-link {
-  font-size: 13px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--brand-green-dark, #146c43);
   text-decoration: none;
@@ -325,7 +325,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 13px;
+  font-size: 14.5px;
   color: #50665f;
 }
 
@@ -372,7 +372,7 @@
   border: none;
   border-radius: 13px;
   padding: 5px;
-  font-size: 15px;
+  font-size: 16.5px;
   font-weight: 700;
   cursor: pointer;
   letter-spacing: .2px;
@@ -396,7 +396,7 @@
 
 .auth-footer {
   margin-top: 10px;
-  font-size: 10.5px;
+  font-size: 12.5px;
   color: #00000082;
   text-align: center;
 }
