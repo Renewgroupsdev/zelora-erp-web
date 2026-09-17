@@ -1,3 +1,5 @@
+import { FollowUpEntry } from '../common-services/crm-flow.service';
+
 /** Trend direction for a common-detail-card's small trend line. */
 export type DetailTrendDirection = 'up' | 'down' | 'neutral';
 
@@ -79,7 +81,7 @@ export interface CallerLogEntry {
 }
 
 /** Generic row: plain values for 'text'/'badge' columns, richer shapes for the cell types above. */
-export type TableRow = Record<string, string | number | LeadCell | CallerAvatar[] | CallerLogEntry[] | QuickAction[]>;
+export type TableRow = Record<string, string | number | LeadCell | CallerAvatar[] | CallerLogEntry[] | FollowUpEntry[] | QuickAction[]>;
 
 export interface TablePageChangeEvent {
   page: number;

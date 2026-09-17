@@ -17,17 +17,14 @@ import {
   TableRow,
   CommonFilterState,
 } from '../../shared/models/common-components.model';
-import { CallLogHistoryDialog } from './call-log-history-dialog/call-log-history-dialog';
-import {
-  BookingFormDialog,
-  BookingFormResult,
-} from '../../shared/components/booking-form-dialog/booking-form-dialog';
-import { TREATMENTS } from '../../shared/data/treatment-catalog';
-import { ScheduleService } from '../../shared/common-services/schedule.service';
+import { CallLogHistoryDialog } from '../../shared/components/call-log-history-dialog/call-log-history-dialog';
 import { ToastService } from '../../shared/common-services/toast.service';
+import { Router } from '@angular/router';
+import { CrmFlowService, FlowAppointment, FlowLead, FollowUpEntry } from '../../shared/common-services/crm-flow.service';
+import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { key: 'schedule', icon: 'bi-calendar-plus', label: 'Add Schedule', variant: 'primary' },
+  { key: 'appointment', icon: 'bi-calendar2-check', label: 'Book Appointment', variant: 'primary' },
   { key: 'call-log', icon: 'bi-clock-history', label: 'View Call Log', variant: 'default' },
 ];
 
@@ -148,20 +145,18 @@ export class Followups implements OnInit {
 
   constructor(
     private dialog: MatDialog,
-    private scheduleService: ScheduleService,
     private toast: ToastService,
+    private router: Router,
+    private crmFlow: CrmFlowService,
   ) { }
 
-  readonly branches = ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'];
   readonly staffOptions = ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S', 'Meera Nair'];
-  readonly treatments = TREATMENTS;
 
   stats: DetailCardData[] = [
     { label: 'Total Leads', value: '1,284', trendText: '8.4% this month', trendDirection: 'up' },
     { label: 'Total Follow-Ups', value: FOLLOW_UP_SEEDS.length, trendText: 'Across all telecallers', trendDirection: 'neutral' },
     { label: 'Due Today', value: 2, trendText: 'Needs attention', trendDirection: 'up' },
     { label: 'Completed', value: 3, trendText: 'Follow-up closed', trendDirection: 'up' },
-    { label: 'Schedule', value: 18, trendText: 'Visits planned this week', trendDirection: 'neutral' },
     { label: 'Appointment', value: 12, trendText: 'Confirmed appointments', trendDirection: 'up' },
   ];
 
@@ -198,7 +193,7 @@ export class Followups implements OnInit {
 
   readonly pageSizeOptions = [10, 30, 50, 100];
 
-  readonly allRows: TableRow[] = FOLLOW_UP_SEEDS.map((seed, index) => ({
+  allRows: TableRow[] = FOLLOW_UP_SEEDS.map((seed, index) => ({
     lead: {
       name: seed.name,
       subtitle: `LD-${String(284 - index).padStart(5, '0')}`,
@@ -225,6 +220,8 @@ export class Followups implements OnInit {
   private searchTerm = '';
 
   ngOnInit(): void {
+    const imported = this.crmFlow.getFollowUps().map((lead, index) => this.flowLeadToRow(lead, index));
+    this.allRows = [...imported, ...this.allRows.filter(row => !imported.some(item => item['id'] === row['id']))];
     this.refreshRows();
   }
 
@@ -280,7 +277,7 @@ export class Followups implements OnInit {
   }
 
   onQuickAction({ row, action }: { row: TableRow; action: string }): void {
-    if (action === 'schedule') this.openAddScheduleFor(row);
+    if (action === 'appointment') this.openFollowUpProfile(row);
     else if (action === 'call-log') this.viewCallLog(row);
   }
 
@@ -303,47 +300,65 @@ export class Followups implements OnInit {
     });
   }
 
-  openAddScheduleFor(row: TableRow): void {
-    const lead = row['lead'] as LeadCell;
-
-    const dialogRef = this.dialog.open(BookingFormDialog, {
-      width: '640px',
-      maxWidth: 'calc(100vw - 32px)',
-      maxHeight: '92vh',
-      autoFocus: false,
-      restoreFocus: true,
-      disableClose: true,
-      panelClass: 'booking-form-dialog',
-      data: {
-        mode: 'schedule',
-        branches: this.branches,
-        staffOptions: this.staffOptions,
-        treatments: this.treatments,
-        initial: {
-          customerName: lead.name,
-          phone: String(row['contact'] ?? ''),
-          branch: String(row['branch'] ?? ''),
-        },
-      },
+  openFollowUpProfile(row: TableRow): void {
+    const dialogRef = this.dialog.open(LeadProfileDialog, {
+      width: '600px', maxWidth: 'calc(100vw - 24px)', maxHeight: '92vh', autoFocus: false,
+      panelClass: 'lead-profile-dialog',
+      data: { lead: this.toFlowLead(row), stage: 'followup', telecallers: this.staffOptions, callLogEntries: (row['callLogEntries'] as CallerLogEntry[]) ?? [] },
     });
+    dialogRef.afterClosed().subscribe((result: LeadProfileDialogResult | undefined) => {
+      if (!result || result.action === 'close') return;
 
-    dialogRef.afterClosed().subscribe((result: BookingFormResult | undefined) => {
-      if (!result) return;
+      if (result.action === 'appointment') {
+        this.moveToAppointments(result.lead, result.scheduledDate, result.scheduledTime);
+        return;
+      }
 
-      const newEvent = this.scheduleService.add({
-        customerName: result.customerName,
-        phone: result.phone,
-        service: result.service,
-        branch: result.branch,
-        staff: result.staff,
-        date: result.date,
-        startTime: result.startTime,
-        duration: result.duration,
-        status: 'Pending',
+      // Just logging a follow-up note - update the row's history in place without moving it out of the table.
+      this.crmFlow.addFollowUp(result.lead);
+      this.allRows = this.allRows.map(existing => {
+        if (this.rowId(existing) !== result.lead.id) return existing;
+        return {
+          ...existing,
+          branch: result.lead.branch,
+          follow_up_date: result.lead.followUpDate || existing['follow_up_date'],
+          followUpHistory: result.lead.history ?? [],
+        };
       });
-
-      this.toast.success('Schedule created', `${newEvent.customerName} added for ${newEvent.date}`);
+      this.refreshRows();
     });
+  }
+
+  /** "Book Appointment" from the follow-up's Schedule mode moves the record straight to the
+   *  Appointment page with just the date/time set - no separate booking popup. Treatment, payment
+   *  and other details get filled in from there via the appointment profile's "Confirm as Client" step. */
+  private moveToAppointments(leadData: FlowLead, scheduledDate?: string, scheduledTime?: string): void {
+    const appointment: FlowAppointment = {
+      ...leadData,
+      service: '', date: scheduledDate ?? '', startTime: scheduledTime ?? '', staff: leadData.telecaller,
+      total: 0, paymentMethod: '', paymentStatus: 'Pending', status: 'Appointment',
+    };
+
+    this.crmFlow.addAppointment(appointment);
+    this.allRows = this.allRows.filter(row => this.rowId(row) !== leadData.id);
+    this.refreshRows();
+    this.toast.success('Appointment booked', `${appointment.name} has been moved to Appointments.`);
+    this.router.navigate(['/app/appointments']);
+  }
+
+  private rowId(row: TableRow): string {
+    const lead = row['lead'] as LeadCell;
+    return String(row['id'] ?? lead.subtitle ?? lead.name);
+  }
+
+  private toFlowLead(row: TableRow): FlowLead {
+    const lead = row['lead'] as LeadCell;
+    const caller = ((row['telecaller'] as CallerAvatar[]) ?? [])[0]?.name ?? '';
+    return { id: this.rowId(row), name: lead.name, phone: String(row['contact'] ?? ''), gender: String(row['gender'] ?? ''), source: String(row['source'] ?? ''), category: String(row['service_category'] ?? ''), request: String(row['service_request'] ?? ''), branch: String(row['branch'] ?? ''), telecaller: caller, notes: String(row['notes'] ?? ''), followUpDate: String(row['follow_up_date'] ?? ''), status: 'Follow-Up', history: (row['followUpHistory'] as FollowUpEntry[]) ?? [] };
+  }
+
+  private flowLeadToRow(lead: FlowLead, index: number): TableRow {
+    return { id: lead.id, lead: { name: lead.name, subtitle: `FU-${String(index + 1).padStart(4, '0')}` }, contact: lead.phone, gender: lead.gender, source: lead.source, service_category: lead.category, service_request: lead.request, follow_up_date: lead.followUpDate || 'Not scheduled', branch: lead.branch, telecaller: lead.telecaller ? [{ name: lead.telecaller, empNo: lead.telecaller }] : [], status: 'Contacted', action: QUICK_ACTIONS, callLogEntries: lead.notes ? [{ telecallerName: lead.telecaller, empNo: lead.telecaller, dateTime: 'Today', notes: lead.notes }] : [], followUpHistory: lead.history ?? [] };
   }
 
   private refreshRows(): void {

@@ -66,21 +66,21 @@ export class LoginPage implements OnInit {
     this.formSubmitted = true;
     this.error = '';
 
-    if (this.loginForm.invalid) {
-      this.error = 'Please enter your user name and password.';
-      return;
-    }
+    // if (this.loginForm.invalid) {
+    //   this.error = 'Please enter your user name and password.';
+    //   return;
+    // }
 
-    const username = this.loginForm.get('user_name')?.value;
-    const password = this.loginForm.get('password')?.value;
-    const rememberMe = this.loginForm.get('rememberMe')?.value;
+    // const username = this.loginForm.get('user_name')?.value;
+    // const password = this.loginForm.get('password')?.value;
+    // const rememberMe = this.loginForm.get('rememberMe')?.value;
 
-    if (username != 'admin' || password != 'password123') {
-      this.error = 'Invalid user name and password.';
-      return;
-    }
+    // if (username != 'admin' || password != 'password123') {
+    //   this.error = 'Invalid user name and password.';
+    //   return;
+    // }
 
-    this.processRememberMe(username, password, rememberMe);
+    // this.processRememberMe(username, password, rememberMe);
 
     this.loading = true;
 

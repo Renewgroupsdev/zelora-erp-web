@@ -404,7 +404,7 @@
 .badge-purple { background: var(--status-purple-bg); color: var(--status-purple-text); }
 
 .action-cell {
-  width: 42px;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -413,14 +413,16 @@
 .row-action-btn {
   padding: 0;
   border: 0;
-  background: transparent;
+  border-radius: 7px;
+  background: var(--table-row-alt-bg);
   color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 
   &:hover {
-    background: transparent;
-    color: var(--primary);
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 4px 10px -4px var(--primary-shadow);
   }
 
   i {
@@ -620,12 +622,13 @@
 }
 
 .row-action-btn {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 8px;
-  background: transparent;
+  border-radius: 30%;
+  background: var(--table-row-alt-bg);
+  color: var(--text-muted);
 
   display: inline-flex;
   align-items: center;
@@ -637,11 +640,47 @@
 }
 
 .row-action-btn:hover {
-  background: var(--primary-soft);
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 4px 10px -4px var(--primary-shadow);
 }
 
 .row-action-btn:active {
   transform: scale(0.94);
+}
+
+/* Lead Management's 3 fixed actions (Appointment / Follow-up / Send to
+   Branch) — colored circular buttons, matched by position since the
+   template always renders them in this order. No template change
+   needed. */
+.action-cell .row-action-btn:nth-child(1) {
+  background: var(--status-blue-bg);
+  color: var(--status-blue-text);
+}
+.action-cell .row-action-btn:nth-child(1):hover {
+  background: var(--status-blue-text);
+  color: #fff;
+  box-shadow: 0 4px 10px -4px color-mix(in srgb, var(--status-blue-text) 45%, transparent);
+}
+
+.action-cell .row-action-btn:nth-child(2) {
+  background: var(--status-orange-bg);
+  color: var(--status-orange-text);
+}
+.action-cell .row-action-btn:nth-child(2):hover {
+  background: var(--status-orange-text);
+  color: #fff;
+  box-shadow: 0 4px 10px -4px color-mix(in srgb, var(--status-orange-text) 45%, transparent);
+}
+
+.action-cell .row-action-btn:nth-child(3) {
+  background: var(--status-green-bg);
+  color: var(--status-green-text);
+}
+.action-cell .row-action-btn:nth-child(3):hover {
+  background: var(--status-green-text);
+  color: #fff;
+  box-shadow: 0 4px 10px -4px color-mix(in srgb, var(--status-green-text) 45%, transparent);
 }
 
 .quick-actions-cell {
@@ -652,14 +691,14 @@
   white-space: nowrap;
 }
 
-.row-action-btn.qa-primary { color: var(--primary); }
-.row-action-btn.qa-primary:hover { background: var(--primary-soft); }
+.row-action-btn.qa-primary { background: var(--primary-soft); color: var(--primary-dark); }
+.row-action-btn.qa-primary:hover { background: var(--primary); color: #fff; box-shadow: 0 4px 10px -4px var(--primary-shadow); }
 
-.row-action-btn.qa-danger { color: var(--status-red-text); }
-.row-action-btn.qa-danger:hover { background: var(--status-red-bg); }
+.row-action-btn.qa-danger { background: var(--status-red-bg); color: var(--status-red-text); }
+.row-action-btn.qa-danger:hover { background: var(--status-red-text); color: #fff; box-shadow: 0 4px 10px -4px rgba(208, 57, 44, .4); }
 
-.row-action-btn.qa-default { color: var(--text-muted); }
-.row-action-btn.qa-default:hover { background: var(--table-row-hover-bg); }
+.row-action-btn.qa-default { background: var(--table-row-alt-bg); color: var(--text-muted); }
+.row-action-btn.qa-default:hover { background: var(--text-muted); color: #fff; }
 
 @media (max-width: 480px) {
   .page-info{
@@ -716,4 +755,19 @@
 
 .data-table.drag-drop-enabled.cdk-drop-list-dragging .mat-mdc-row:not(.cdk-drag-placeholder) {
   transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.lead-profile-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lead-profile-link:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }

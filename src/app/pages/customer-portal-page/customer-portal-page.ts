@@ -20,6 +20,7 @@ import {
   TableRow,
 } from '../../shared/models/common-components.model';
 import { ToastService } from '../../shared/common-services/toast.service';
+import { CrmFlowService, FlowAppointment } from '../../shared/common-services/crm-flow.service';
 import { Customer, CustomerSegment } from './customer.model';
 import {
   CustomerProfileDialog,
@@ -41,7 +42,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   styleUrl: './customer-portal-page.scss',
 })
 export class CustomerPortalPage implements OnInit {
-  constructor(private dialog: MatDialog, private toast: ToastService) { }
+  constructor(private dialog: MatDialog, private toast: ToastService, private crmFlow: CrmFlowService) { }
 
   readonly branches = ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'];
   readonly segments: CustomerSegment[] = ['VIP', 'Regular', 'New'];
@@ -95,7 +96,28 @@ export class CustomerPortalPage implements OnInit {
 
   ngOnInit(): void {
     this.customers = this.buildSeedCustomers();
+    const imported = this.crmFlow.getClients().map((client, index) => this.flowClientToCustomer(client, index));
+    this.customers = [...imported, ...this.customers.filter(customer => !imported.some(client => client.phone === customer.phone))];
     this.refreshRows();
+  }
+
+  private flowClientToCustomer(client: FlowAppointment, index: number): Customer {
+    return {
+      id: `CUS-FLOW-${client.id}-${index}`,
+      name: client.name,
+      phone: client.phone,
+      email: '-',
+      gender: client.gender,
+      branch: client.branch,
+      segment: 'New',
+      status: 'Active',
+      memberSince: client.date,
+      totalVisits: 1,
+      lastVisit: client.date,
+      lifetimeValue: client.total,
+      preferredService: client.service,
+      visitHistory: [{ date: client.date, service: client.service, branch: client.branch, amount: client.total, discount: 0, amountPaid: client.paymentStatus === 'Paid' ? client.total : 0, paymentMethod: client.paymentMethod, paymentStatus: client.paymentStatus }],
+    };
   }
 
   setViewMode(mode: 'grid' | 'table'): void {
@@ -324,6 +346,12 @@ export class CustomerPortalPage implements OnInit {
 
     if (action === 'view') this.openProfile(customer);
     else if (action === 'call') window.location.href = `tel:${customer.phone.replace(/\s+/g, '')}`;
+  }
+
+  openProfileFromRow(row: TableRow): void {
+    const id = String(row['id'] ?? '');
+    const customer = this.customers.find(item => item.id === id);
+    if (customer) this.openProfile(customer);
   }
 
   openProfile(customer: Customer): void {

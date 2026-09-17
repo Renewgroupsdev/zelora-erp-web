@@ -8,38 +8,30 @@
 
 .page-heading {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 12px;
-}
-
-.eyebrow {
-  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 7px;
-  color: var(--primary);
-  font-size: 11.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .page-heading h1 {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   font-family: var(--font-family-display);
   color: var(--text-dark);
-  font-size: 23px;
+  font-size: clamp(17px, 1.4vw, 20px);
   line-height: 1.1;
-  font-weight: 600;
-  letter-spacing: -.5px;
-}
+  font-weight: 700;
+  letter-spacing: -.3px;
 
-.page-heading p {
-  margin: 7px 0 0;
-  color: var(--text-muted);
-  font-size: 13.5px;
+  i {
+    flex: 0 0 auto;
+    font-size: 0.85em;
+    color: var(--primary);
+  }
 }
 
 .heading-status {

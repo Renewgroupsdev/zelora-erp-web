@@ -17,46 +17,45 @@
   padding: 0;
 }
 
+/* This was missing here (present on the Lead Management page already):
+   without it, the table's host element sizes to its full content height
+   instead of filling the remaining space, so the whole page scrolls
+   instead of just the table body scrolling inside its own box. */
+app-common-filter-card,
+app-common-table-card {
+  display: block;
+  min-width: 0;
+}
+
+app-common-table-card {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 /* ---------- Header ---------- */
 .page-header {
   gap: 8px;
-  padding: 7px;
-}
-
-.page-header-text {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--primary);
-  font-size: 11.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  padding: 4px 2px;
 }
 
 .page-title {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   font-family: var(--font-family-display);
-  font-size: clamp(19px, 1.5vw, 22px);
+  font-size: clamp(17px, 1.4vw, 20px);
   line-height: var(--lh-tight);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-dark);
   letter-spacing: -0.3px;
-}
 
-.page-subtitle {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--text-muted);
-  max-width: 60ch;
+  i {
+    flex: 0 0 auto;
+    font-size: 0.85em;
+    color: var(--primary);
+  }
 }
 
 .header-actions {
@@ -443,15 +442,14 @@
   white-space: nowrap;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 575.98px) {
   .page-header {
-    flex-direction: column;
-    align-items: flex-start;
+    padding: 2px 0;
   }
 
-  .header-actions {
-    width: 100%;
-    justify-content: space-between;
+  .page-title {
+    font-size: 16px;
+    gap: 6px;
   }
 
   .customer-grid {

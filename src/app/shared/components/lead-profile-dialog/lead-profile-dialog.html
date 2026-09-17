@@ -1,0 +1,272 @@
+<div class="profile-modal">
+
+  <div class="profile-header">
+    <button type="button" class="modal-close-btn" (click)="close()" aria-label="Close">
+      <i class="bi bi-x-lg"></i>
+    </button>
+
+    <span class="profile-avatar">{{ initials(data.lead.name) }}</span>
+    <h2>{{ data.lead.name }}</h2>
+    <span class="profile-id">{{ data.lead.phone }} &middot; {{ data.lead.gender || 'Not specified' }}</span>
+
+    <div class="profile-chips">
+      <span class="chip status-blue">{{ stageLabel }}</span>
+      @if (data.lead.branch) { <span class="chip status-gray">{{ data.lead.branch }}</span> }
+    </div>
+  </div>
+
+  <form [formGroup]="form" class="profile-body">
+
+    <div class="profile-section">
+      <div class="section-title"><i class="bi bi-person-lines-fill"></i> Lead Details</div>
+      <div class="detail-grid">
+        <div class="detail-row"><i class="bi bi-megaphone"></i> <span>{{ data.lead.source || 'Direct lead' }}</span></div>
+        <div class="detail-row"><i class="bi bi-tags"></i> <span>{{ data.lead.category || 'Service not selected' }}</span></div>
+        <div class="detail-row"><i class="bi bi-heart-pulse"></i> <span>{{ data.lead.request || 'Consultation' }}</span></div>
+        <div class="detail-row"><i class="bi bi-telephone"></i> <span>{{ data.lead.phone }}</span></div>
+      </div>
+    </div>
+
+    @if (phoneWarning) {
+      <div class="outstanding-banner"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ phoneWarning }}</span></div>
+    }
+
+    @if (isLead) {
+      <div class="profile-section">
+        <div class="section-title"><i class="bi bi-person-check"></i> Assign &amp; Next Step</div>
+        <div class="field-grid">
+          <label>Assigned telecaller<select formControlName="telecaller" [class.is-invalid]="isInvalid('telecaller')"><option value="">Select telecaller</option>@for (caller of data.telecallers; track caller) { <option [value]="caller">{{ caller }}</option> }</select></label>
+          <label>Branch<select formControlName="branch" [class.is-invalid]="isInvalid('branch')"><option value="">Select branch</option>@for (branch of branches; track branch) { <option [value]="branch">{{ branch }}</option> }</select></label>
+          <label class="full">Reason / Notes<textarea rows="4" formControlName="notes" [class.is-invalid]="isInvalid('notes')" placeholder="Why this lead was contacted, requirements, and next action"></textarea></label>
+        </div>
+      </div>
+    }
+
+    @if (isFollowUp) {
+      <div class="profile-section">
+        <div class="section-title-row">
+          <div class="section-title"><i class="bi bi-person-check"></i> Follow-Up</div>
+          @if (canViewCallHistory) {
+            <button type="button" class="call-history-btn" (click)="openCallHistory()" title="View call history">
+              <i class="bi bi-clock-history"></i> Call History
+            </button>
+          }
+        </div>
+
+        <div class="field-grid">
+          <label>Assigned telecaller<select formControlName="telecaller" [class.is-invalid]="isInvalid('telecaller')"><option value="">Select telecaller</option>@for (caller of data.telecallers; track caller) { <option [value]="caller">{{ caller }}</option> }</select></label>
+          <label>Branch<select formControlName="branch" [class.is-invalid]="isInvalid('branch')"><option value="">Select branch</option>@for (branch of branches; track branch) { <option [value]="branch">{{ branch }}</option> }</select></label>
+        </div>
+
+        <div class="followup-mode-toggle">
+          <button type="button" [class.selected]="followupMode === 'schedule'" (click)="setFollowupMode('schedule')">
+            <i class="bi bi-calendar2-check"></i> Schedule Appointment
+          </button>
+          <button type="button" [class.selected]="followupMode === 'notes'" (click)="setFollowupMode('notes')">
+            <i class="bi bi-chat-left-text"></i> Follow-up Notes
+          </button>
+        </div>
+
+        @if (followupMode === 'schedule') {
+          <div class="field-grid">
+            <label>Appointment date<input type="date" formControlName="scheduleDate" [class.is-invalid]="isInvalid('scheduleDate')"></label>
+            <label>Appointment time<input type="time" formControlName="scheduleTime" [class.is-invalid]="isInvalid('scheduleTime')"></label>
+          </div>
+        } @else {
+          @if (history.length) {
+            <div class="followup-history">
+              @for (entry of history; track $index) {
+                <div class="followup-entry">
+                  <div class="followup-entry-meta"><strong>{{ entry.telecaller }}</strong><span>{{ entry.date }}</span></div>
+                  <p>{{ entry.notes }}</p>
+                  @if (entry.nextFollowUpDate) {
+                    <span class="next-followup-chip">
+                      <i class="bi bi-calendar2-week"></i> Next follow-up: {{ formatDateDisplay(entry.nextFollowUpDate) }}{{ entry.nextFollowUpTime ? ', ' + formatTime(entry.nextFollowUpTime) : '' }}
+                    </span>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <div class="field-grid">
+            <label>Follow-up date<input type="date" formControlName="entryDate"></label>
+            <label>Follow-up time<input type="time" formControlName="entryTime"></label>
+            <label>Next follow-up date<input type="date" formControlName="nextFollowUpDate"></label>
+            <label>Next follow-up time<input type="time" formControlName="nextFollowUpTime"></label>
+            <label class="full">Follow-up note<textarea rows="3" formControlName="notes" [class.is-invalid]="isInvalid('notes')" placeholder="Record the call outcome, needs, and next action"></textarea></label>
+            <div class="full add-followup-row">
+              <button type="button" class="secondary" (click)="addFollowUpEntry()"><i class="bi bi-plus-lg"></i> Add follow-up note</button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (isAppointment) {
+      <div class="profile-section">
+        <div class="section-title"><i class="bi bi-calendar2-check"></i> Appointment Details</div>
+        @if (isNewBooking) {
+          <div class="field-grid">
+            <label>Branch<select formControlName="apptBranch" [class.is-invalid]="isInvalid('apptBranch')"><option value="">Select branch</option>@for (branch of branches; track branch) { <option [value]="branch">{{ branch }}</option> }</select></label>
+            <label>Assigned staff<select formControlName="apptStaff" [class.is-invalid]="isInvalid('apptStaff')"><option value="">Select staff</option>@for (caller of data.telecallers; track caller) { <option [value]="caller">{{ caller }}</option> }</select></label>
+            <label>Appointment date<input type="date" formControlName="apptDate" [class.is-invalid]="isInvalid('apptDate')"></label>
+            <label>Appointment time<input type="time" formControlName="apptTime" [class.is-invalid]="isInvalid('apptTime')"></label>
+          </div>
+        } @else {
+          <div class="detail-grid">
+            <div class="detail-row"><i class="bi bi-calendar3"></i> <span>{{ data.appointment?.date }} {{ data.appointment?.startTime }}</span></div>
+            <div class="detail-row"><i class="bi bi-person-badge"></i> <span>{{ data.appointment?.staff }}</span></div>
+          </div>
+        }
+      </div>
+
+      <div class="profile-section">
+        <div class="section-title"><i class="bi bi-clipboard2-pulse"></i> Complete Appointment Details</div>
+
+        <div class="booking-type-toggle">
+          <button type="button" [class.selected]="bookingType === 'single'" (click)="setBookingType('single')">
+            <i class="bi bi-check2-square"></i> Single Treatment
+          </button>
+          <button type="button" [class.selected]="bookingType === 'combo'" (click)="setBookingType('combo')">
+            <i class="bi bi-box2-heart"></i> Combo Package
+          </button>
+          <button type="button" [class.selected]="bookingType === 'package'" (click)="setBookingType('package')">
+            <i class="bi bi-bag-heart"></i> Treatment/Product Package
+          </button>
+        </div>
+
+        @if (bookingType === 'combo') {
+          <div class="combo-row">
+            @for (combo of availableCombos; track combo.key) {
+              <button type="button" class="combo-chip" [class.selected]="selectedComboKey === combo.key" (click)="selectCombo(combo.key)">
+                <span class="combo-name">{{ combo.name }}</span>
+                <span class="combo-price">{{ formatCurrency(combo.price) }}</span>
+              </button>
+            }
+          </div>
+        } @else {
+          <div class="category-tabs">
+            @for (category of categories; track category) {
+              <button type="button" [class.selected]="activeCategory === category" (click)="setCategory(category)">{{ category }}</button>
+            }
+          </div>
+
+          @if (bookingType === 'package') {
+            <div class="combo-row">
+              @for (pkg of availablePackages; track pkg.key) {
+                <button type="button" class="combo-chip" [class.selected]="isPackageSelected(pkg.key)" (click)="selectPackage(pkg.key)">
+                  <span class="combo-name">{{ pkg.name }} <em>({{ pkg.type }})</em></span>
+                  <span class="combo-price">{{ formatCurrency(pkg.price) }}</span>
+                </button>
+              } @empty {
+                <p class="empty-hint">No packages configured for {{ activeCategory }} yet.</p>
+              }
+            </div>
+          } @else {
+            @if (showBaldnessTypes) {
+              <div class="baldness-type-block">
+                <label>Baldness Type</label>
+                <div class="baldness-type-options">
+                  @for (type of baldnessTypeOptions; track type.key) {
+                    <label class="baldness-chip" [class.selected]="form.get('baldnessType')?.value === type.key">
+                      <input type="radio" formControlName="baldnessType" [value]="type.key" />
+                      <span>{{ type.label }}</span>
+                    </label>
+                  }
+                </div>
+              </div>
+            }
+
+            <div class="treatment-list">
+              @for (treatment of treatmentsInCategory(activeCategory); track treatment.key) {
+                <label class="treatment-option" [class.selected]="isTreatmentSelected(treatment.key)">
+                  <input type="checkbox" [checked]="isTreatmentSelected(treatment.key)" (change)="toggleTreatment(treatment.key)" />
+                  <span class="treatment-name">{{ treatment.name }}</span>
+                  <span class="treatment-price">{{ formatCurrency(treatment.price) }}</span>
+                </label>
+              }
+            </div>
+          }
+        }
+
+        @if (showTreatmentError) {
+          <small class="error-text">Select at least one treatment, a combo, or a package.</small>
+        }
+
+        <div class="price-summary">
+          <div class="price-row">
+            <span>Subtotal</span>
+            <span>{{ formatCurrency(priceAfterCombo) }}</span>
+          </div>
+          @if (comboSavings > 0) {
+            <div class="price-row savings">
+              <span><i class="bi bi-tags"></i> Combo savings</span>
+              <span>-{{ formatCurrency(comboSavings) }}</span>
+            </div>
+          }
+          <div class="price-row discount-row">
+            <label for="lp-discount">Extra discount</label>
+            <div class="discount-input">
+              <input id="lp-discount" type="number" min="0" max="50" formControlName="discountPercent" />
+              <span>%</span>
+              @if (extraDiscountAmount > 0) {
+                <span class="discount-amount">-{{ formatCurrency(extraDiscountAmount) }}</span>
+              }
+            </div>
+          </div>
+          <div class="price-row total">
+            <span>Total Payable</span>
+            <span>{{ formatCurrency(appointmentTotal) }}</span>
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <label class="full">Doctor Suggestions<textarea rows="3" formControlName="doctorNotes" placeholder="Doctor's recommendations for this appointment"></textarea></label>
+        </div>
+
+        <div class="field-grid">
+          <label>Amount Paid<input type="number" min="0" formControlName="amountPaid"></label>
+          <label>Payment Status<span class="status-pill" [ngClass]="paymentStatusClass">{{ paymentStatus }}</span></label>
+        </div>
+
+        <label class="full payment-methods-label">Payment Method</label>
+        <div class="payment-methods">
+          @for (method of paymentMethods; track method) {
+            <label class="payment-chip" [class.selected]="form.get('paymentMethod')?.value === method">
+              <input type="radio" formControlName="paymentMethod" [value]="method" />
+              <i class="bi" [ngClass]="paymentIcon(method)"></i>
+              <span>{{ method }}</span>
+            </label>
+          }
+        </div>
+
+        <div class="pay-full-row">
+          <button type="button" class="pay-full-btn" (click)="markPaidInFull()">Pay in full</button>
+        </div>
+      </div>
+    }
+
+  </form>
+
+  <div class="profile-footer">
+    <!-- <a class="footer-btn call-btn" [href]="'tel:' + data.lead.phone">
+      <i class="bi bi-telephone-fill"></i> Call
+    </a> -->
+
+    @if (isLead) {
+      <button type="button" class="footer-btn book-btn" (click)="save('followup')">Move to Follow-Ups <i class="bi bi-arrow-right"></i></button>
+    } @else if (isFollowUp) {
+      @if (followupMode === 'schedule') {
+        <button type="button" class="footer-btn book-btn" (click)="save('appointment')">Book Appointment <i class="bi bi-calendar2-check"></i></button>
+      } @else {
+        <button type="button" class="footer-btn book-btn" (click)="save('followup')">Save Follow-up <i class="bi bi-check2"></i></button>
+      }
+    } @else if (isNewBooking) {
+      <button type="button" class="footer-btn book-btn" (click)="bookNewAppointment()">Book Appointment <i class="bi bi-calendar2-check"></i></button>
+    } @else {
+      <button type="button" class="footer-btn book-btn" (click)="confirmAsClient()">Confirm as Client <i class="bi bi-person-check-fill"></i></button>
+    }
+  </div>
+
+</div>

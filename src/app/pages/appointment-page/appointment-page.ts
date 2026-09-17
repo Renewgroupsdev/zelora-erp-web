@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { Router } from '@angular/router';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { CommonDetailCard } from '../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../shared/components/common-filter-card/common-filter-card';
@@ -20,6 +21,8 @@ import {
   TableRow,
 } from '../../shared/models/common-components.model';
 import { ToastService } from '../../shared/common-services/toast.service';
+import { CrmFlowService, FlowAppointment } from '../../shared/common-services/crm-flow.service';
+import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
 import { COMBO_OFFERS, PAYMENT_METHODS, PaymentStatus, TREATMENTS, formatCurrency, treatmentByName } from '../../shared/data/treatment-catalog';
 
 export type AppointmentStatus = 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled';
@@ -44,6 +47,9 @@ export interface Appointment {
   paymentMethod: string;
   amountPaid: number;
   paymentStatus: PaymentStatus;
+  baldnessType?: string;
+  packageKey?: string;
+  doctorNotes?: string;
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
@@ -60,7 +66,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   styleUrl: './appointment-page.scss',
 })
 export class AppointmentPage implements OnInit {
-  constructor(private dialog: MatDialog, private toast: ToastService) { }
+  constructor(private dialog: MatDialog, private toast: ToastService, private crmFlow: CrmFlowService, private router: Router) { }
 
   readonly branches = ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'];
   readonly staffOptions = ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S', 'Meera Nair'];
@@ -111,10 +117,19 @@ export class AppointmentPage implements OnInit {
 
   today = new Date();
 
+  // Today's Timeline starts collapsed on mobile (< 576px) and expanded on larger screens.
+  timelineExpanded = typeof window === 'undefined' || window.matchMedia('(min-width: 576px)').matches;
+
   ngOnInit(): void {
     this.today = new Date();
     this.appointments = this.buildSeedAppointments();
+    const imported = this.crmFlow.getAppointments().map((appointment, index) => this.flowAppointmentToAppointment(appointment, index));
+    this.appointments = [...imported, ...this.appointments.filter(item => !imported.some(importedItem => importedItem.phone === item.phone && importedItem.date === item.date))];
     this.refreshRows();
+  }
+
+  toggleTimeline(): void {
+    this.timelineExpanded = !this.timelineExpanded;
   }
 
   // ---------------------------------------------------------------------
@@ -272,6 +287,50 @@ export class AppointmentPage implements OnInit {
     else if (action === 'reschedule') this.rescheduleAppointment(appt);
   }
 
+  openAppointmentProfile(row: TableRow): void {
+    const id = String(row['id']);
+    const appointment = this.appointments.find(item => item.id === id);
+    if (!appointment) return;
+
+    const flowAppointment = this.appointmentToFlowAppointment(appointment);
+    const dialogRef = this.dialog.open(LeadProfileDialog, {
+      width: '640px', maxWidth: 'calc(100vw - 24px)', maxHeight: '92vh', autoFocus: false,
+      panelClass: 'lead-profile-dialog',
+      data: {
+        lead: flowAppointment,
+        stage: 'appointment',
+        telecallers: this.staffOptions,
+        appointment: flowAppointment,
+        treatments: this.treatments,
+        combos: this.combos,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((result: LeadProfileDialogResult | undefined) => {
+      if (!result || result.action !== 'confirm-client' || !result.appointment) return;
+
+      const updated = result.appointment;
+      appointment.status = 'Completed';
+      appointment.service = updated.service;
+      appointment.treatmentKeys = updated.treatmentKeys ?? [];
+      appointment.comboKey = updated.comboKey ?? null;
+      appointment.subtotal = updated.subtotal ?? appointment.subtotal;
+      appointment.discountAmount = updated.discountAmount ?? appointment.discountAmount;
+      appointment.total = updated.total;
+      appointment.paymentMethod = updated.paymentMethod;
+      appointment.amountPaid = result.amountPaid ?? appointment.amountPaid;
+      appointment.paymentStatus = updated.paymentStatus;
+      appointment.doctorNotes = updated.doctorNotes;
+      appointment.baldnessType = updated.baldnessType;
+      appointment.packageKey = updated.packageKey;
+
+      this.crmFlow.addClient(updated);
+      this.toast.success('Confirmed as client', `${appointment.customerName} has been moved to Clients.`);
+      this.refreshRows();
+      this.router.navigate(['/app/customers']);
+    });
+  }
+
   private confirmAppointment(appt: Appointment): void {
     if (appt.status === 'Confirmed') {
       this.toast.info('Already confirmed', `${appt.customerName}'s appointment is already confirmed.`);
@@ -301,7 +360,6 @@ export class AppointmentPage implements OnInit {
       disableClose: true,
       panelClass: 'booking-form-dialog',
       data: {
-        mode: 'appointment',
         branches: this.branches,
         staffOptions: this.staffOptions,
         treatments: this.treatments,
@@ -318,6 +376,9 @@ export class AppointmentPage implements OnInit {
           duration: appt.duration,
           treatmentKeys: appt.treatmentKeys,
           comboKey: appt.comboKey,
+          packageKey: appt.packageKey,
+          baldnessType: appt.baldnessType,
+          doctorNotes: appt.doctorNotes,
           paymentMethod: appt.paymentMethod,
           amountPaid: appt.amountPaid,
         },
@@ -343,7 +404,6 @@ export class AppointmentPage implements OnInit {
       disableClose: true,
       panelClass: 'booking-form-dialog',
       data: {
-        mode: 'appointment',
         branches: this.branches,
         staffOptions: this.staffOptions,
         treatments: this.treatments,
@@ -358,7 +418,7 @@ export class AppointmentPage implements OnInit {
         id: `APT-${Date.now()}`,
         customerName: result.customerName,
         phone: result.phone,
-        gender: '',
+        gender: result.gender,
         service: result.service,
         branch: result.branch,
         staff: result.staff,
@@ -374,9 +434,43 @@ export class AppointmentPage implements OnInit {
         paymentMethod: result.paymentMethod,
         amountPaid: result.amountPaid,
         paymentStatus: result.paymentStatus,
+        baldnessType: result.baldnessType ?? undefined,
+        packageKey: result.packageKey ?? undefined,
+        doctorNotes: result.doctorNotes,
       };
 
       this.appointments = [newAppointment, ...this.appointments];
+      const flowAppointment: FlowAppointment = {
+        id: newAppointment.id,
+        name: newAppointment.customerName,
+        phone: newAppointment.phone,
+        gender: newAppointment.gender,
+        source: 'Direct appointment',
+        category: '',
+        request: newAppointment.service,
+        branch: newAppointment.branch,
+        telecaller: newAppointment.staff,
+        notes: result.notes,
+        followUpDate: newAppointment.date,
+        status: 'Appointment',
+        service: newAppointment.service,
+        date: newAppointment.date,
+        startTime: newAppointment.startTime,
+        staff: newAppointment.staff,
+        total: newAppointment.total,
+        paymentMethod: newAppointment.paymentMethod,
+        paymentStatus: newAppointment.paymentStatus,
+        baldnessType: newAppointment.baldnessType,
+        packageKey: newAppointment.packageKey,
+        doctorNotes: newAppointment.doctorNotes,
+        treatmentKeys: newAppointment.treatmentKeys,
+        comboKey: newAppointment.comboKey,
+        subtotal: newAppointment.subtotal,
+        discountAmount: newAppointment.discountAmount,
+      };
+      // Booking here only creates the Appointment record - it still needs "Confirm as Client"
+      // (via the profile popup) to complete missing details and move to the Client page.
+      this.crmFlow.addAppointment(flowAppointment);
       this.currentPage = 1;
       this.toast.success('Appointment booked', `${newAppointment.customerName} - ${this.formatDisplayDate(newAppointment.date)}`);
       this.refreshRows();
@@ -400,6 +494,22 @@ export class AppointmentPage implements OnInit {
       paymentStatus: appt.paymentStatus,
       actions: QUICK_ACTIONS,
     };
+  }
+
+  private appointmentToFlowAppointment(appt: Appointment): FlowAppointment {
+    return {
+      id: appt.id, name: appt.customerName, phone: appt.phone, gender: appt.gender,
+      source: 'Follow-Up', category: '', request: appt.service, branch: appt.branch,
+      telecaller: appt.staff, notes: appt.doctorNotes ?? '', followUpDate: appt.date, status: 'Appointment',
+      service: appt.service, date: appt.date, startTime: appt.startTime, staff: appt.staff,
+      total: appt.total, paymentMethod: appt.paymentMethod, paymentStatus: appt.paymentStatus,
+      baldnessType: appt.baldnessType, packageKey: appt.packageKey, doctorNotes: appt.doctorNotes,
+      treatmentKeys: appt.treatmentKeys, comboKey: appt.comboKey, subtotal: appt.subtotal, discountAmount: appt.discountAmount,
+    };
+  }
+
+  private flowAppointmentToAppointment(flow: FlowAppointment, index: number): Appointment {
+    return { id: `APT-FLOW-${flow.id}-${index}`, customerName: flow.name, phone: flow.phone, gender: flow.gender, service: flow.service, branch: flow.branch, staff: flow.staff, date: flow.date, startTime: flow.startTime, duration: 30, status: 'Pending', treatmentKeys: [], comboKey: null, subtotal: flow.total, discountAmount: 0, total: flow.total, paymentMethod: flow.paymentMethod, amountPaid: flow.paymentStatus === 'Paid' ? flow.total : 0, paymentStatus: flow.paymentStatus, baldnessType: flow.baldnessType, packageKey: flow.packageKey, doctorNotes: flow.doctorNotes };
   }
 
   private refreshRows(): void {

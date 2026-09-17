@@ -1,11 +1,7 @@
 <div class="crm-page container-fluid px-0 d-flex flex-column">
 
-  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
-    <div class="page-header-text">
-      <div class="eyebrow"><i class="bi bi-person-vcard-fill"></i> Customer Relationship</div>
-      <h6 class="page-title">CRM</h6>
-      <p class="page-subtitle">Browse your customer base, review visit history and manage relationships.</p>
-    </div>
+  <div class="page-header d-flex align-items-center justify-content-between">
+    <h6 class="page-title"><i class="bi bi-person-vcard-fill"></i> Client</h6>
 
     <div class="header-actions">
       <div class="view-toggle" role="group" aria-label="View mode">
@@ -25,7 +21,7 @@
 
   <div class="row g-2 g-md-3 stat-row">
     @for (stat of stats; track stat.label) {
-      <div class="col-6 col-md-3">
+      <div class="col-6 col-md">
         <app-common-detail-card
           [label]="stat.label"
           [value]="stat.value"
@@ -62,6 +58,7 @@
         (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
         (quickActionClick)="onQuickAction($event)"
+        (profileClick)="openProfileFromRow($event)"
       ></app-common-table-card>
     </div>
   } @else {

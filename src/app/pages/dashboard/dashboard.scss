@@ -8,38 +8,30 @@
 
 .page-heading {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 6px;
-}
-
-.eyebrow {
-  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 7px;
-  color: var(--primary);
-  font-size: 11.5px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
 }
 
 .page-heading h5 {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   font-family: var(--font-family-display);
   color: var(--text-dark);
-  font-size: 23px;
+  font-size: clamp(17px, 1.4vw, 20px);
   line-height: 1.1;
-  font-weight: 600;
-  letter-spacing: -.5px;
-}
+  font-weight: 700;
+  letter-spacing: -.3px;
 
-.page-heading p {
-  margin: 7px 0 0;
-  color: var(--text-muted);
-  font-size: 13.5px;
+  i {
+    flex: 0 0 auto;
+    font-size: 0.85em;
+    color: var(--primary);
+  }
 }
 
 .date-chip {
@@ -49,16 +41,20 @@
   padding: 9px 12px;
   border: 1px solid var(--border-soft);
   border-radius: 9px;
-  background: var(--app-surface-solid);
+  background: linear-gradient(180deg, var(--app-surface-solid), color-mix(in srgb, var(--primary) 3%, var(--app-surface-solid)));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .5) inset, 0 2px 8px rgba(16, 40, 36, .05);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  transition: border-color .15s ease, color .15s ease, box-shadow .15s ease, transform .15s ease;
 }
 
 .date-chip:hover {
   border-color: var(--primary-border);
   color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .5) inset, 0 8px 16px -8px var(--primary-shadow);
 }
 
 .stat-grid {
@@ -69,18 +65,49 @@
 }
 
 .stat-card {
+  position: relative;
   min-width: 0;
-  padding: 10px;
-  border: 1px solid var(--card-border);
-  border-radius: 14px;
-  background: var(--app-surface-solid);
-  box-shadow: var(--shadow-card);
-  transition: .18s ease;
+  padding: 14px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  overflow: hidden;
+  color: #fff;
+  background: var(--stat-grad-primary);
+  box-shadow: var(--shadow-card-hover), 0 18px 38px -18px color-mix(in srgb, var(--primary) 35%, transparent);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+/* Each card picks its gradient from the color of its own icon —
+   no template changes needed, the existing icon class drives it */
+.stat-card:has(.stat-icon.green) { background: var(--stat-grad-green); }
+.stat-card:has(.stat-icon.blue) { background: var(--stat-grad-blue); }
+.stat-card:has(.stat-icon.orange) { background: var(--stat-grad-orange); }
+.stat-card:has(.stat-icon.purple) { background: var(--stat-grad-purple); }
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, 0) 55%);
+  opacity: .9;
+  pointer-events: none;
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  right: -30px;
+  bottom: -34px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, .16), transparent 70%);
+  pointer-events: none;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card-hover), 0 24px 46px -16px color-mix(in srgb, var(--primary) 42%, transparent);
 }
 
 .stat-top {
@@ -103,27 +130,35 @@
   width: 35px;
   height: 35px;
   font-size: 16.5px;
+  position: relative;
+  background: rgba(255, 255, 255, .18);
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .35) inset, 0 4px 10px -4px rgba(0, 0, 0, .25);
 }
 
 .stat-icon.green,
+.stat-icon.blue,
+.stat-icon.orange,
+.stat-icon.purple {
+  background: rgba(255, 255, 255, .18);
+  color: #fff;
+}
+
 .activity-icon.green {
   background: var(--status-green-bg);
   color: var(--status-green-text);
 }
 
-.stat-icon.blue,
 .activity-icon.blue {
   background: var(--status-blue-bg);
   color: var(--status-blue-text);
 }
 
-.stat-icon.orange,
 .activity-icon.orange {
   background: var(--status-orange-bg);
   color: var(--status-orange-text);
 }
 
-.stat-icon.purple,
 .activity-icon.purple {
   background: var(--status-purple-bg);
   color: var(--status-purple-text);
@@ -138,18 +173,18 @@
 }
 
 .trend.positive {
-  background: var(--status-green-bg);
-  color: var(--status-green-text);
+  background: rgba(255, 255, 255, .18);
+  color: #d9f7e6;
 }
 
 .trend.warning {
-  background: var(--status-orange-bg);
-  color: var(--status-orange-text);
+  background: rgba(255, 255, 255, .18);
+  color: #ffe4b8;
 }
 
 .stat-label {
   display: block;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, .78);
   font-size: 12px;
   font-weight: 600;
 }
@@ -158,60 +193,25 @@
   display: block;
   margin: 0;
   font-family: var(--font-family-display);
-  color: var(--text-dark);
+  color: #fff;
   font-size: 20px;
   font-weight: 600;
   letter-spacing: -.4px;
 }
 
 .stat-card small {
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, .65);
   font-size: 11px;
 }
 
-/* Premium hero variant — one card per grid promoted to a dark gradient surface */
+/* Featured tile — same premium gradient family, with a touch more lift
+   so it still reads as the "hero" metric in the row */
 .stat-card.hero {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid transparent;
-  background:
-    radial-gradient(circle at 90% -20%, var(--primary-shadow), transparent 55%),
-    linear-gradient(155deg, var(--primary-dark), #0a2c28 85%);
-  box-shadow: var(--shadow-card-hover);
+  box-shadow: var(--shadow-card-hover), 0 26px 50px -16px color-mix(in srgb, var(--primary) 48%, transparent);
 }
 
-.stat-card.hero::after {
-  content: '';
-  position: absolute;
-  right: -30px;
-  bottom: -34px;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, .14), transparent 70%);
-  pointer-events: none;
-}
-
-.stat-card.hero .stat-icon {
-  background: rgba(255, 255, 255, .16);
-  color: #fff;
-}
-
-.stat-card.hero .trend.positive {
-  background: rgba(255, 255, 255, .16);
-  color: #bfe0c9;
-}
-
-.stat-card.hero .stat-label {
-  color: #afcbc0;
-}
-
-.stat-card.hero .stat-value {
-  color: #fff;
-}
-
-.stat-card.hero small {
-  color: #9fc4b8;
+.stat-card.hero:hover {
+  transform: translateY(-3px);
 }
 
 .dashboard-grid {
@@ -225,6 +225,12 @@
   border-radius: 14px;
   background: var(--app-surface-solid);
   box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: box-shadow .2s ease;
+}
+
+.dashboard-card:hover {
+  box-shadow: var(--shadow-card-hover);
 }
 
 .card-header {
@@ -233,6 +239,7 @@
   justify-content: space-between;
   gap: 15px;
   padding: 16px 17px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, var(--app-surface-solid)), var(--app-surface-solid));
   border-bottom: 1px solid var(--border-soft);
 }
 
@@ -265,6 +272,11 @@
   gap: 11px;
   padding: 12px 17px;
   border-bottom: 1px solid var(--border-soft);
+  transition: background .15s ease;
+}
+
+.activity-row:hover {
+  background: color-mix(in srgb, var(--primary) 3.5%, transparent);
 }
 
 .activity-row:last-child {
@@ -315,16 +327,19 @@
   align-items: center;
   gap: 10px;
   padding: 10px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
   text-align: left;
   color: var(--text-dark);
   cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, transform .16s ease;
 }
 
 .quick-actions button:hover {
   background: var(--primary-soft);
+  border-color: var(--primary-border);
+  transform: translateX(2px);
 }
 
 .quick-icon {
@@ -335,9 +350,17 @@
   align-items: center;
   justify-content: center;
   border-radius: 9px;
-  background: var(--primary-soft);
+  background: linear-gradient(140deg, var(--primary-soft-strong), var(--primary-soft));
   color: var(--primary);
   font-size: 14px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .5) inset;
+  transition: background .16s ease, color .16s ease, transform .16s ease;
+}
+
+.quick-actions button:hover .quick-icon {
+  background: linear-gradient(140deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  transform: scale(1.05);
 }
 
 .quick-actions button span:nth-child(2) {

@@ -13,10 +13,23 @@
   gap: 8px;
   padding: 0 8px;
   background: var(--header-bg);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
   border-bottom: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-header);
+  box-shadow: var(--shadow-header), 0 1px 0 color-mix(in srgb, var(--primary) 10%, transparent);
   position: relative;
   z-index: 50;
+}
+
+.top-navbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 35%, transparent) 50%, transparent);
+  pointer-events: none;
 }
 
 .top-navbar-left,
@@ -79,7 +92,7 @@
   height: 36px;
   border-radius: 10px;
   object-fit: cover;
-  box-shadow: 0 0 0 1px var(--border-soft), 0 6px 14px rgba(0, 54, 43, 0.12);
+  // box-shadow: 0 0 0 1px var(--border-soft), 0 0 0 4px color-mix(in srgb, var(--primary) 10%, transparent), 0 6px 14px rgba(0, 54, 43, 0.12);
 }
 
 .brand-copy {

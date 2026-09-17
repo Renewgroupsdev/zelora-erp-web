@@ -3,7 +3,7 @@
   <div class="modal-header-custom">
     <div class="modal-title-wrap">
       <div class="title-icon">
-        <i class="bi" [class.bi-calendar-plus]="isSchedule" [class.bi-calendar2-check]="!isSchedule"></i>
+        <i class="bi bi-calendar2-check"></i>
       </div>
 
       <div class="title-content">
@@ -64,6 +64,17 @@
         </div>
 
         <div class="form-field">
+          <label for="bk-gender">Gender</label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-gender-ambiguous"></i>
+            <select id="bk-gender" formControlName="gender">
+              <option value="">Select gender</option><option value="M">Male</option><option value="F">Female</option>
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field">
           <label for="bk-branch">Branch <span>*</span></label>
           <div class="input-wrap select-wrap">
             <i class="bi bi-geo-alt"></i>
@@ -91,68 +102,72 @@
           </div>
         </div>
 
-        @if (isSchedule) {
-          <div class="form-field">
-            <label for="bk-category">Service Category <span>*</span></label>
-            <div class="input-wrap select-wrap">
-              <i class="bi bi-tags"></i>
-              <select id="bk-category" [value]="scheduleCategory ?? ''" (change)="setScheduleCategory($any($event.target).value)">
-                <option value="">Select category</option>
-                @for (category of categories; track category) {
-                  <option [value]="category">{{ category }}</option>
-                }
-              </select>
-              <i class="bi bi-chevron-down select-arrow"></i>
-            </div>
+        <div class="form-field full-width">
+          <label>Treatments <span>*</span></label>
+
+          <div class="booking-type-toggle">
+            <button type="button" [class.selected]="bookingType === 'single'" (click)="setBookingType('single')">
+              <i class="bi bi-check2-square"></i> Single Treatment
+            </button>
+            <button type="button" [class.selected]="bookingType === 'combo'" (click)="setBookingType('combo')">
+              <i class="bi bi-box2-heart"></i> Combo Package
+            </button>
+            <button type="button" [class.selected]="bookingType === 'package'" (click)="setBookingType('package')">
+              <i class="bi bi-bag-heart"></i> Treatment/Product Package
+            </button>
           </div>
 
-          <div class="form-field">
-            <label for="bk-service">Service <span>*</span></label>
-            <div class="input-wrap select-wrap">
-              <i class="bi bi-magic"></i>
-              <select id="bk-service" formControlName="service" [class.is-invalid]="isInvalid('service')" [class.locked]="!scheduleCategory">
-                <option value="">{{ scheduleCategory ? 'Select service' : 'Select category first' }}</option>
-                @for (treatment of treatmentsInCategory(scheduleCategory); track treatment.key) {
-                  <option [value]="treatment.name">{{ treatment.name }}</option>
-                }
-              </select>
-              <i class="bi bi-chevron-down select-arrow"></i>
+          @if (bookingType === 'combo') {
+            <div class="combo-row">
+              @for (combo of availableCombos; track combo.key) {
+                <button
+                  type="button"
+                  class="combo-chip"
+                  [class.selected]="selectedComboKey === combo.key"
+                  (click)="selectCombo(combo.key)">
+                  <span class="combo-name">{{ combo.name }}</span>
+                  <span class="combo-price">{{ formatCurrency(combo.price) }}</span>
+                </button>
+              }
             </div>
-          </div>
-        } @else {
-          <div class="form-field full-width">
-            <label>Treatments <span>*</span></label>
-
-            <div class="booking-type-toggle">
-              <button type="button" [class.selected]="bookingType === 'single'" (click)="setBookingType('single')">
-                <i class="bi bi-check2-square"></i> Single Treatment
-              </button>
-              <button type="button" [class.selected]="bookingType === 'combo'" (click)="setBookingType('combo')">
-                <i class="bi bi-box2-heart"></i> Combo Package
-              </button>
+          } @else {
+            <div class="category-tabs">
+              @for (category of categories; track category) {
+                <button type="button" [class.selected]="activeCategory === category" (click)="setCategory(category)">
+                  {{ category }}
+                </button>
+              }
             </div>
 
-            @if (bookingType === 'combo') {
+            @if (bookingType === 'package') {
               <div class="combo-row">
-                @for (combo of availableCombos; track combo.key) {
+                @for (pkg of availablePackages; track pkg.key) {
                   <button
                     type="button"
                     class="combo-chip"
-                    [class.selected]="selectedComboKey === combo.key"
-                    (click)="selectCombo(combo.key)">
-                    <span class="combo-name">{{ combo.name }}</span>
-                    <span class="combo-price">{{ formatCurrency(combo.price) }}</span>
+                    [class.selected]="isPackageSelected(pkg.key)"
+                    (click)="selectPackage(pkg.key)">
+                    <span class="combo-name">{{ pkg.name }} <em>({{ pkg.type }})</em></span>
+                    <span class="combo-price">{{ formatCurrency(pkg.price) }}</span>
                   </button>
+                } @empty {
+                  <p class="empty-hint">No packages configured for {{ activeCategory }} yet.</p>
                 }
               </div>
             } @else {
-              <div class="category-tabs">
-                @for (category of categories; track category) {
-                  <button type="button" [class.selected]="activeCategory === category" (click)="setCategory(category)">
-                    {{ category }}
-                  </button>
-                }
-              </div>
+              @if (showBaldnessTypes) {
+                <div class="baldness-type-block">
+                  <label>Baldness Type</label>
+                  <div class="baldness-type-options">
+                    @for (type of baldnessTypeOptions; track type.key) {
+                      <label class="baldness-chip" [class.selected]="form.get('baldnessType')?.value === type.key">
+                        <input type="radio" formControlName="baldnessType" [value]="type.key" />
+                        <span>{{ type.label }}</span>
+                      </label>
+                    }
+                  </div>
+                </div>
+              }
 
               <div class="treatment-list">
                 @for (treatment of treatmentsInCategory(activeCategory); track treatment.key) {
@@ -164,72 +179,80 @@
                 }
               </div>
             }
+          }
 
-            @if (isInvalid('service')) {
-              <small class="error-text">Select at least one treatment or a combo offer.</small>
+          @if (isInvalid('service')) {
+            <small class="error-text">Select at least one treatment, a combo offer, or a package.</small>
+          }
+        </div>
+
+        <div class="form-field full-width">
+          <div class="price-summary">
+            <div class="price-row">
+              <span>Subtotal</span>
+              <span>{{ formatCurrency(priceAfterCombo) }}</span>
+            </div>
+            @if (comboSavings > 0) {
+              <div class="price-row savings">
+                <span><i class="bi bi-tags"></i> Combo savings</span>
+                <span>-{{ formatCurrency(comboSavings) }}</span>
+              </div>
+            }
+
+            <div class="price-row discount-row">
+              <label for="bk-discount">Extra discount</label>
+              <div class="discount-input">
+                <input id="bk-discount" type="number" min="0" max="50" formControlName="discountPercent" />
+                <span>%</span>
+                @if (extraDiscountAmount > 0) {
+                  <span class="discount-amount">-{{ formatCurrency(extraDiscountAmount) }}</span>
+                }
+              </div>
+            </div>
+
+            <div class="price-row total">
+              <span>Total Payable</span>
+              <span>{{ formatCurrency(total) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="bk-doctor-notes">Doctor Suggestions</label>
+          <div class="textarea-wrap">
+            <i class="bi bi-clipboard2-pulse"></i>
+            <textarea id="bk-doctor-notes" formControlName="doctorNotes" rows="2" placeholder="Doctor's recommendations for this treatment/package"></textarea>
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label>Payment Method</label>
+          <div class="payment-methods">
+            @for (method of paymentMethods; track method) {
+              <label class="payment-chip" [class.selected]="form.get('paymentMethod')?.value === method">
+                <input type="radio" formControlName="paymentMethod" [value]="method" />
+                <i class="bi" [ngClass]="paymentIcon(method)"></i>
+                <span>{{ method }}</span>
+              </label>
             }
           </div>
+        </div>
 
-          <div class="form-field full-width">
-            <div class="price-summary">
-              <div class="price-row">
-                <span>Subtotal</span>
-                <span>{{ formatCurrency(priceAfterCombo) }}</span>
-              </div>
-              @if (comboSavings > 0) {
-                <div class="price-row savings">
-                  <span><i class="bi bi-tags"></i> Combo savings</span>
-                  <span>-{{ formatCurrency(comboSavings) }}</span>
-                </div>
-              }
-
-              <div class="price-row discount-row">
-                <label for="bk-discount">Extra discount</label>
-                <div class="discount-input">
-                  <input id="bk-discount" type="number" min="0" max="50" formControlName="discountPercent" />
-                  <span>%</span>
-                  @if (extraDiscountAmount > 0) {
-                    <span class="discount-amount">-{{ formatCurrency(extraDiscountAmount) }}</span>
-                  }
-                </div>
-              </div>
-
-              <div class="price-row total">
-                <span>Total Payable</span>
-                <span>{{ formatCurrency(total) }}</span>
-              </div>
-            </div>
+        <div class="form-field">
+          <label for="bk-amount-paid">Amount Paying Now</label>
+          <div class="input-wrap">
+            <i class="bi bi-cash-stack"></i>
+            <input id="bk-amount-paid" type="number" min="0" [attr.max]="total" formControlName="amountPaid" />
           </div>
+        </div>
 
-          <div class="form-field full-width">
-            <label>Payment Method</label>
-            <div class="payment-methods">
-              @for (method of paymentMethods; track method) {
-                <label class="payment-chip" [class.selected]="form.get('paymentMethod')?.value === method">
-                  <input type="radio" formControlName="paymentMethod" [value]="method" />
-                  <i class="bi" [ngClass]="paymentIcon(method)"></i>
-                  <span>{{ method }}</span>
-                </label>
-              }
-            </div>
+        <div class="form-field">
+          <label>Payment Status</label>
+          <div class="payment-status-row">
+            <span class="status-pill" [ngClass]="paymentStatusClass">{{ paymentStatus }}</span>
+            <button type="button" class="pay-full-btn" (click)="markPaidInFull()">Pay in full</button>
           </div>
-
-          <div class="form-field">
-            <label for="bk-amount-paid">Amount Paying Now</label>
-            <div class="input-wrap">
-              <i class="bi bi-cash-stack"></i>
-              <input id="bk-amount-paid" type="number" min="0" [attr.max]="total" formControlName="amountPaid" />
-            </div>
-          </div>
-
-          <div class="form-field">
-            <label>Payment Status</label>
-            <div class="payment-status-row">
-              <span class="status-pill" [ngClass]="paymentStatusClass">{{ paymentStatus }}</span>
-              <button type="button" class="pay-full-btn" (click)="markPaidInFull()">Pay in full</button>
-            </div>
-          </div>
-        }
+        </div>
 
         <div class="form-field">
           <label for="bk-date">Date <span>*</span></label>

@@ -50,6 +50,7 @@ export class CommonTableCard {
   @Output() sendToBranchClick = new EventEmitter<TableRow>();
   @Output() viewCallLogClick = new EventEmitter<TableRow>();
   @Output() quickActionClick = new EventEmitter<{ row: TableRow; action: string }>();
+  @Output() profileClick = new EventEmitter<TableRow>();
   @Output() rowReorder = new EventEmitter<TableReorderEvent>();
 
   @Output() rowTransfer = new EventEmitter<TableTransferEvent>();

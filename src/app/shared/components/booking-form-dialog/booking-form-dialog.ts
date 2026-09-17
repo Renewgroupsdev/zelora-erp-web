@@ -2,19 +2,15 @@ import { CommonModule } from '@angular/common';
 import { Component, Inject } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { ComboOffer, PAYMENT_METHODS, PaymentStatus, TREATMENT_CATEGORIES, Treatment, TreatmentCategory, formatCurrency } from '../../data/treatment-catalog';
+import { BaldnessType, ComboOffer, PAYMENT_METHODS, PaymentStatus, TREATMENT_CATEGORIES, Treatment, TreatmentCategory, TreatmentPackage, baldnessTypesFor, formatCurrency, packagesByCategory } from '../../data/treatment-catalog';
 import { NotificationService } from '../../common-services/notification.service';
 
-export type BookingType = 'single' | 'combo';
-
-export type BookingMode = 'schedule' | 'appointment';
+export type BookingType = 'single' | 'combo' | 'package';
 
 export interface BookingFormData {
-  mode: BookingMode;
   branches: string[];
   staffOptions: string[];
   treatments: Treatment[];
-  /** Combo packages to offer - only shown/used in 'appointment' mode. */
   combos?: ComboOffer[];
   /** Pre-fills the form (e.g. customer name/phone/branch from a lead) without treating it as editing an existing record. */
   initial?: Partial<BookingFormResult>;
@@ -25,9 +21,10 @@ export interface BookingFormData {
 export interface BookingFormResult {
   customerName: string;
   phone: string;
+  gender: string;
   branch: string;
   staff: string;
-  /** Human-readable summary: selected treatment names joined, the combo name, or (schedule mode) the plain service picked. */
+  /** Human-readable summary: selected treatment names joined, the combo name, or the package name. */
   service: string;
   date: string;
   startTime: string;
@@ -35,6 +32,11 @@ export interface BookingFormResult {
   notes: string;
   treatmentKeys: string[];
   comboKey: string | null;
+  packageKey: string | null;
+  /** Set only when the Hair category is booked - the Norwood/Ludwig classification picked for this customer. */
+  baldnessType: string | null;
+  /** Doctor's suggestions for this booking, kept separate from the general notes field. */
+  doctorNotes: string;
   subtotal: number;
   discountAmount: number;
   total: number;
@@ -60,10 +62,9 @@ export class BookingFormDialog {
 
   selectedTreatmentKeys = new Set<string>();
   selectedComboKey: string | null = null;
+  selectedPackageKey: string | null = null;
   bookingType: BookingType = 'single';
   activeCategory: TreatmentCategory = TREATMENT_CATEGORIES[0];
-  /** Schedule mode's "Service Category" -> "Service" cascade - null until a category is picked. */
-  scheduleCategory: TreatmentCategory | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -76,6 +77,7 @@ export class BookingFormDialog {
     this.form = this.fb.group({
       customerName: [initial?.customerName ?? '', [Validators.required, Validators.maxLength(100)]],
       phone: [initial?.phone ?? '', [Validators.required, Validators.pattern(/^[0-9+\-\s()]{8,20}$/)]],
+      gender: [initial?.gender ?? ''],
       branch: [initial?.branch ?? '', Validators.required],
       staff: [initial?.staff ?? '', Validators.required],
       service: [initial?.service ?? '', Validators.required],
@@ -83,6 +85,8 @@ export class BookingFormDialog {
       startTime: [initial?.startTime ?? '', Validators.required],
       duration: [initial?.duration ?? 30, Validators.required],
       notes: [initial?.notes ?? ''],
+      doctorNotes: [initial?.doctorNotes ?? ''],
+      baldnessType: [initial?.baldnessType ?? ''],
       discountPercent: [0, [Validators.min(0), Validators.max(50)]],
       paymentMethod: [initial?.paymentMethod ?? PAYMENT_METHODS[0]],
       amountPaid: [initial?.amountPaid ?? 0, [Validators.min(0)]],
@@ -90,30 +94,20 @@ export class BookingFormDialog {
 
     (initial?.treatmentKeys ?? []).forEach((key) => this.selectedTreatmentKeys.add(key));
     this.selectedComboKey = initial?.comboKey ?? null;
+    this.selectedPackageKey = initial?.packageKey ?? null;
 
     if (this.selectedComboKey) {
       this.bookingType = 'combo';
+    } else if (this.selectedPackageKey) {
+      this.bookingType = 'package';
     } else {
       const firstKey = [...this.selectedTreatmentKeys][0];
       const firstTreatment = firstKey ? data.treatments.find((t) => t.key === firstKey) : undefined;
       this.activeCategory = firstTreatment?.category ?? TREATMENT_CATEGORIES[0];
     }
 
-    if (this.isSchedule && initial?.service) {
-      // Rescheduling an existing visit - start the "Service" dropdown on the
-      // category its current service actually belongs to, instead of blank.
-      this.scheduleCategory = data.treatments.find((t) => t.name === initial.service)?.category ?? null;
-    }
-
     this.form.get('discountPercent')?.valueChanges.subscribe(() => this.syncAmountPaid());
-  }
-
-  get isSchedule(): boolean {
-    return this.data.mode === 'schedule';
-  }
-
-  get isAppointment(): boolean {
-    return this.data.mode === 'appointment';
+    this.form.get('gender')?.valueChanges.subscribe(() => this.form.get('baldnessType')?.setValue(''));
   }
 
   get isEdit(): boolean {
@@ -121,23 +115,27 @@ export class BookingFormDialog {
   }
 
   get title(): string {
-    if (this.isEdit) {
-      return this.isSchedule ? 'Reschedule Visit' : 'Edit Appointment';
-    }
-    return this.isSchedule ? 'New Schedule' : 'New Appointment';
+    if (this.isEdit) return 'Edit Appointment';
+    return 'New Appointment';
   }
 
   get subtitle(): string {
-    if (this.isEdit) {
-      return this.isSchedule ? 'Update the visit date, time or staff' : 'Update this appointment\'s details';
-    }
-    return this.isSchedule ? 'Plan a visit for a lead or customer' : 'Book a confirmed customer appointment';
+    if (this.isEdit) return 'Update this appointment\'s details';
+    return 'Book a confirmed customer appointment';
   }
 
   get saveLabel(): string {
     if (this.isSaving) return 'Saving...';
     if (this.isEdit) return 'Save Changes';
-    return this.isSchedule ? 'Save Schedule' : 'Book Appointment';
+    return 'Book Appointment';
+  }
+
+  get showBaldnessTypes(): boolean {
+    return this.bookingType === 'single' && this.activeCategory === 'Hair' && this.baldnessTypeOptions.length > 0;
+  }
+
+  get baldnessTypeOptions(): BaldnessType[] {
+    return baldnessTypesFor(this.form.get('gender')?.value);
   }
 
   isInvalid(controlName: string): boolean {
@@ -159,6 +157,10 @@ export class BookingFormDialog {
 
   get availableCombos(): ComboOffer[] {
     return this.data.combos ?? [];
+  }
+
+  get availablePackages(): TreatmentPackage[] {
+    return packagesByCategory(this.activeCategory);
   }
 
   treatmentName(key: string): string {
@@ -196,12 +198,23 @@ export class BookingFormDialog {
     this.syncAmountPaid();
   }
 
+  isPackageSelected(key: string): boolean {
+    return this.selectedPackageKey === key;
+  }
+
+  selectPackage(packageKey: string): void {
+    this.selectedPackageKey = this.selectedPackageKey === packageKey ? null : packageKey;
+    this.syncServiceControl();
+    this.syncAmountPaid();
+  }
+
   setBookingType(type: BookingType): void {
     if (this.bookingType === type) return;
 
     this.bookingType = type;
     this.selectedTreatmentKeys.clear();
     this.selectedComboKey = null;
+    this.selectedPackageKey = null;
 
     this.syncServiceControl();
     this.syncAmountPaid();
@@ -209,29 +222,32 @@ export class BookingFormDialog {
 
   setCategory(category: TreatmentCategory): void {
     this.activeCategory = category;
+    this.selectedPackageKey = null;
+    this.syncServiceControl();
+    this.syncAmountPaid();
+  }
+
+  selectBaldnessType(key: string): void {
+    this.form.get('baldnessType')?.setValue(key);
   }
 
   treatmentsInCategory(category: TreatmentCategory | null): Treatment[] {
     if (!category) return [];
-    return this.availableTreatments.filter((t) => t.category === category);
-  }
-
-  /** Schedule mode: picking a category loads that category's services into the
-   *  "Service" dropdown and clears any previously chosen service (it belonged to
-   *  the old category and may not exist in the new one). */
-  setScheduleCategory(value: string): void {
-    this.scheduleCategory = (value as TreatmentCategory) || null;
-    this.form.get('service')?.setValue('');
+    const gender = this.form.get('gender')?.value;
+    return this.availableTreatments.filter((t) => t.category === category && (!t.gender || t.gender === 'All' || !gender || t.gender === gender));
   }
 
   private rawSumFor(keys: string[]): number {
     return keys.reduce((sum, key) => sum + (this.availableTreatments.find((t) => t.key === key)?.price ?? 0), 0);
   }
 
-  /** Combo price if a combo is active, otherwise the raw sum of individually picked treatments. */
+  /** Combo/package price if one is active, otherwise the raw sum of individually picked treatments. */
   get priceAfterCombo(): number {
     if (this.selectedComboKey) {
       return this.availableCombos.find((c) => c.key === this.selectedComboKey)?.price ?? 0;
+    }
+    if (this.selectedPackageKey) {
+      return this.availablePackages.find((p) => p.key === this.selectedPackageKey)?.price ?? 0;
     }
     return this.rawSumFor([...this.selectedTreatmentKeys]);
   }
@@ -281,9 +297,14 @@ export class BookingFormDialog {
   }
 
   private syncServiceControl(): void {
-    const label = this.selectedComboKey
-      ? this.availableCombos.find((c) => c.key === this.selectedComboKey)?.name ?? ''
-      : [...this.selectedTreatmentKeys].map((key) => this.treatmentName(key)).join(' + ');
+    let label: string;
+    if (this.selectedComboKey) {
+      label = this.availableCombos.find((c) => c.key === this.selectedComboKey)?.name ?? '';
+    } else if (this.selectedPackageKey) {
+      label = this.availablePackages.find((p) => p.key === this.selectedPackageKey)?.name ?? '';
+    } else {
+      label = [...this.selectedTreatmentKeys].map((key) => this.treatmentName(key)).join(' + ');
+    }
 
     const control = this.form.get('service');
     control?.setValue(label);
@@ -320,6 +341,7 @@ export class BookingFormDialog {
       const result: BookingFormResult = {
         customerName: raw.customerName,
         phone: raw.phone,
+        gender: raw.gender,
         branch: raw.branch,
         staff: raw.staff,
         service: raw.service,
@@ -329,6 +351,9 @@ export class BookingFormDialog {
         notes: raw.notes,
         treatmentKeys: [...this.selectedTreatmentKeys],
         comboKey: this.selectedComboKey,
+        packageKey: this.selectedPackageKey,
+        baldnessType: this.showBaldnessTypes ? (raw.baldnessType || null) : null,
+        doctorNotes: raw.doctorNotes,
         subtotal: this.priceAfterCombo,
         discountAmount: this.extraDiscountAmount,
         total: this.total,
@@ -337,7 +362,7 @@ export class BookingFormDialog {
         paymentStatus: this.paymentStatus,
       };
 
-      if (this.isAppointment && result.discountAmount > 0) {
+      if (result.discountAmount > 0) {
         this.raiseDiscountNotifications(result);
       }
 
