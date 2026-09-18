@@ -1,19 +1,16 @@
 <div class="leads-page container-fluid px-0 d-flex flex-column">
 
-  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
-    <div class="page-header-text">
-      <h6 class="page-title">Lead Managements</h6>
-    </div>
+  <div class="page-header d-flex align-items-center justify-content-between">
+    <h6 class="page-title"><i class="bi bi-person-lines-fill"></i> Lead Management</h6>
 
     <button type="button" class="add-lead-btn" (click)="openAddPopup()">
-      <i class="bi bi-plus-lg"></i>
-      Add Lead
+      <i class="bi bi-plus-lg"></i> <span>Add Lead</span>
     </button>
   </div>
 
   <div class="row g-2 g-md-3 stat-row">
     @for (stat of stats; track stat.label) {
-      <div class="col-6 col-md-2">
+      <div class="col-6 col-md">
         <app-common-detail-card
           [label]="stat.label"
           [value]="stat.value"

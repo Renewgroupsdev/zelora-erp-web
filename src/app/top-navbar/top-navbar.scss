@@ -13,10 +13,23 @@
   gap: 8px;
   padding: 0 8px;
   background: var(--header-bg);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
   border-bottom: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-header);
+  box-shadow: var(--shadow-header), 0 1px 0 color-mix(in srgb, var(--primary) 10%, transparent);
   position: relative;
   z-index: 50;
+}
+
+.top-navbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 35%, transparent) 50%, transparent);
+  pointer-events: none;
 }
 
 .top-navbar-left,
@@ -48,7 +61,7 @@
   justify-content: center;
   cursor: pointer;
   position: relative;
-  font-size: 19px;
+  font-size: 20px;
   transition: .18s ease;
 }
 
@@ -79,7 +92,7 @@
   height: 36px;
   border-radius: 10px;
   object-fit: cover;
-  box-shadow: 0 0 0 1px var(--border-soft), 0 6px 14px rgba(0, 54, 43, 0.12);
+  // box-shadow: 0 0 0 1px var(--border-soft), 0 0 0 4px color-mix(in srgb, var(--primary) 10%, transparent), 0 6px 14px rgba(0, 54, 43, 0.12);
 }
 
 .brand-copy {
@@ -90,7 +103,7 @@
 
 .brand-copy strong {
   font-family: var(--font-family-display);
-  font-size: 15.5px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text-dark);
   letter-spacing: -.2px;
@@ -98,7 +111,7 @@
 
 .brand-copy small {
   margin-top: 4px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: .35px;
@@ -108,8 +121,8 @@
   position: absolute;
   top: 4px;
   right: 3px;
-  min-width: 16px;
-  height: 16px;
+  min-width: 18px;
+  height: 18px;
   padding: 0 4px;
   display: inline-flex;
   align-items: center;
@@ -118,7 +131,7 @@
   background: #ef4444;
   border: 2px solid var(--header-bg);
   color: #fff;
-  font-size: 8px;
+  font-size: 10.5px;
   font-weight: 800;
 }
 
@@ -165,27 +178,28 @@
 
 .notification-header strong {
   color: var(--text-dark);
-  font-size: 14px;
+  font-size: 15.5px;
 }
 
 .notification-header small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .notification-count {
   color: var(--primary);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
 }
 
 .notification-item {
+  position: relative;
   width: 100%;
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 5px;
+  padding: 5px 5px 5px 14px;
   border: 0;
   border-bottom: 1px solid var(--border-soft);
   background: transparent;
@@ -199,15 +213,51 @@
   background: var(--primary-soft);
 }
 
+.notification-item.unread {
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
+}
+
+.notification-item.unread:hover {
+  background: var(--primary-soft);
+}
+
+.unread-dot {
+  position: absolute;
+  left: 4px;
+  top: 12px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+
+.notification-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px 10px;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 13px;
+
+  i {
+    font-size: 23px;
+    opacity: .5;
+  }
+}
+
 .notification-icon {
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
+  width: 29px;
+  height: 29px;
+  flex: 0 0 29px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 15.5px;
 }
 
 .notification-icon-green {
@@ -225,6 +275,16 @@
   color: var(--status-orange-text);
 }
 
+.notification-icon-purple {
+  background: var(--status-purple-bg);
+  color: var(--status-purple-text);
+}
+
+.notification-icon-teal {
+  background: var(--status-blue-bg);
+  color: var(--status-blue-text);
+}
+
 .notification-copy {
   display: flex;
   flex-direction: column;
@@ -233,18 +293,18 @@
 }
 
 .notification-copy strong {
-  font-size: 11.5px;
+  font-size: 13.5px;
 }
 
 .notification-copy small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
 .notification-copy em {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 11.5px;
   font-style: normal;
 }
 
@@ -258,7 +318,7 @@
   padding: 8px;
   background: transparent;
   color: var(--primary);
-  font-size: 10.5px;
+  font-size: 12.5px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -277,8 +337,8 @@
 }
 
 .profile-avatar {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -289,7 +349,7 @@
 }
 
 .profile-avatar i {
-  font-size: 17px;
+  font-size: 18px;
 }
 
 .profile-text {
@@ -299,18 +359,18 @@
 
 .profile-name {
   color: var(--text-dark);
-  font-size: 11.5px;
+  font-size: 13.5px;
   font-weight: 800;
 }
 
 .profile-role {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 11.5px;
 }
 
 .profile-chevron {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 11.5px;
   margin-left: 2px;
 }
 
@@ -338,7 +398,7 @@
   padding: 9px 10px;
   background: transparent;
   color: var(--text-dark);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   text-align: left;
   cursor: pointer;

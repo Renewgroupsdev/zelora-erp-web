@@ -30,11 +30,10 @@ export class LeftSideNavbar {
       path: '/app/lead-management',
       children: [
         { label: 'Follow-Ups', icon: 'bi-arrow-repeat', path: '/app/follow-ups' },
-        { label: 'Schedule', icon: 'bi-calendar3', path: '/app/schedule' },
       ],
     },
     { label: 'Appointment', icon: 'bi-calendar-check-fill', path: '/app/appointments' },
-    { label: 'CRM', icon: 'bi-person-vcard-fill', path: '/app/customers' },
+    { label: 'Client', icon: 'bi-person-vcard-fill', path: '/app/customers' },
     { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings' },
   ];
 

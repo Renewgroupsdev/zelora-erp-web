@@ -38,28 +38,40 @@ app-common-table-card {
 
 .page-header {
   position: relative;
-  gap: 5px;
-  padding: 7px;
-}
-
-.page-header-text {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  position: relative;
-  z-index: 1;
+  gap: 8px;
+  padding: 4px 2px;
 }
 
 .page-title {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   font-family: var(--font-family-display);
-  font-size: clamp(19px, 1.5vw, 22px);
+  font-size: clamp(17px, 1.4vw, 20px);
   line-height: var(--lh-tight);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-dark);
   letter-spacing: -0.3px;
   position: relative;
+
+  i {
+    flex: 0 0 auto;
+    font-size: 0.85em;
+    color: var(--primary);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .page-header {
+    padding: 2px 0;
+  }
+
+  .page-title {
+    font-size: 16px;
+    gap: 6px;
+  }
 }
 
 .stat-row {

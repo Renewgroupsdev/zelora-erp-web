@@ -1,1 +1,131 @@
-<p>customer-portal-page works!</p>
+<div class="crm-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex align-items-center justify-content-between">
+    <h6 class="page-title"><i class="bi bi-person-vcard-fill"></i> Client</h6>
+
+    <div class="header-actions">
+      <div class="view-toggle" role="group" aria-label="View mode">
+        <button type="button" class="view-btn" [class.active]="viewMode === 'grid'" (click)="setViewMode('grid')" title="Grid view">
+          <i class="bi bi-grid-3x3-gap-fill"></i>
+        </button>
+        <button type="button" class="view-btn" [class.active]="viewMode === 'table'" (click)="setViewMode('table')" title="Table view">
+          <i class="bi bi-list-ul"></i>
+        </button>
+      </div>
+
+      <!-- <button type="button" class="add-customer-btn" (click)="openAddCustomer()">
+        <i class="bi bi-plus-lg"></i> Add Customer
+      </button> -->
+    </div>
+  </div>
+
+  <div class="row g-2 g-md-3 stat-row">
+    @for (stat of stats; track stat.label) {
+      <div class="col-6 col-md">
+        <app-common-detail-card
+          [label]="stat.label"
+          [value]="stat.value"
+          [trendText]="stat.trendText"
+          [trendDirection]="stat.trendDirection ?? 'neutral'"
+        ></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by name, phone or email"
+    [filters]="filters"
+    (searchChange)="onSearch($event)"
+    (filterClick)="onFilterClick($event)"
+    (filtersChange)="onFiltersChange($event)"
+    (exportClick)="onExport()"
+  ></app-common-filter-card>
+
+  @if (viewMode === 'table') {
+    <div class="table-col">
+      <app-common-table-card
+        title="Customers"
+        [recordCountText]="recordCountText"
+        [columns]="columns"
+        [rows]="rows"
+        [totalRecords]="totalRecords"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="pageSizeOptions"
+        [currentPage]="currentPage"
+        [pageInfoText]="pageInfoText"
+        [sortActive]="sortActive"
+        [sortDirection]="sortDirection"
+        (pageChange)="onPageChange($event)"
+        (sortChange)="onSortChange($event)"
+        (quickActionClick)="onQuickAction($event)"
+        (profileClick)="openProfileFromRow($event)"
+      ></app-common-table-card>
+    </div>
+  } @else {
+    <div class="grid-section">
+
+      @if (!pagedCustomers.length) {
+        <div class="grid-empty">
+          <i class="bi bi-people"></i>
+          <p>No customers match the current filters.</p>
+        </div>
+      } @else {
+        <div class="customer-grid">
+          @for (customer of pagedCustomers; track customer.id) {
+            <div class="customer-card">
+              <div class="customer-card-top">
+                <span class="customer-avatar" [ngClass]="avatarColorForName(customer.name)">{{ initials(customer.name) }}</span>
+                <span class="segment-chip" [ngClass]="segmentClass(customer.segment)">{{ customer.segment }}</span>
+              </div>
+
+              <div class="customer-card-body">
+                <span class="customer-name">{{ customer.name }}</span>
+                <span class="customer-id">{{ customer.id }}</span>
+                <span class="customer-meta"><i class="bi bi-telephone"></i> {{ customer.phone }}</span>
+                <span class="customer-meta"><i class="bi bi-geo-alt-fill"></i> {{ customer.branch }}</span>
+              </div>
+
+              <div class="customer-card-stats">
+                <div class="mini-stat">
+                  <span class="mini-value">{{ customer.totalVisits }}</span>
+                  <span class="mini-label">Visits</span>
+                </div>
+                <div class="mini-stat">
+                  <span class="mini-value">{{ formatCurrency(customer.lifetimeValue) }}</span>
+                  <span class="mini-label">LTV</span>
+                </div>
+                <div class="mini-stat">
+                  <span class="mini-value">{{ formatDate(customer.lastVisit) }}</span>
+                  <span class="mini-label">Last Visit</span>
+                </div>
+              </div>
+
+              <div class="customer-card-footer">
+                <span class="status-dot" [ngClass]="statusClass(customer.status)">
+                  <i class="bi bi-circle-fill"></i> {{ customer.status }}
+                </span>
+                <button type="button" class="view-profile-btn" (click)="openProfile(customer)">
+                  View Profile <i class="bi bi-arrow-right"></i>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="grid-footer">
+        <span class="page-info">{{ pageInfoText }}</span>
+        <div class="grid-pagination">
+          <button type="button" class="page-nav-btn" [disabled]="currentPage <= 1" (click)="gridPrevPage()" aria-label="Previous page">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <span class="page-num">{{ currentPage }} / {{ totalPages }}</span>
+          <button type="button" class="page-nav-btn" [disabled]="currentPage >= totalPages" (click)="gridNextPage()" aria-label="Next page">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

@@ -1,0 +1,469 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.appointment-page {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* ---------- Header ---------- */
+.page-header {
+  gap: 8px;
+  padding: 4px 2px;
+}
+
+.page-title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-family: var(--font-family-display);
+  font-size: clamp(17px, 1.4vw, 20px);
+  line-height: var(--lh-tight);
+  font-weight: 700;
+  color: var(--text-dark);
+  letter-spacing: -0.3px;
+
+  i {
+    flex: 0 0 auto;
+    font-size: 0.85em;
+    color: var(--primary);
+  }
+}
+
+.add-appointment-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  font-family: var(--font-family-base);
+  font-size: 13px;
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  i {
+    font-size: 12px;
+  }
+}
+
+.add-appointment-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px var(--primary-shadow);
+}
+
+.add-appointment-btn:active {
+  transform: translateY(0);
+}
+
+.stat-row {
+  --bs-gutter-y: 8px;
+}
+
+/* Status color utility, shared by timeline items and table status pills */
+.status-green {
+  background: var(--status-green-bg);
+  color: var(--status-green-text);
+}
+
+.status-orange {
+  background: var(--status-orange-bg);
+  color: var(--status-orange-text);
+}
+
+.status-blue {
+  background: var(--status-blue-bg);
+  color: var(--status-blue-text);
+}
+
+.status-red {
+  background: var(--status-red-bg);
+  color: var(--status-red-text);
+}
+
+.status-gray {
+  background: var(--status-gray-bg);
+  color: var(--status-gray-text);
+}
+
+/* ---------- Today's timeline ---------- */
+.timeline-card {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+  background: var(--app-surface-solid);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 5px;
+  box-shadow: var(--shadow-card);
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 4px 2px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.timeline-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  font-size: 11px;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.timeline-header:hover .timeline-toggle-icon {
+  background: var(--primary-border);
+}
+
+.timeline-header h3 {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-family-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-dark);
+
+  i {
+    font-size: 14.5px;
+    color: var(--primary);
+  }
+}
+
+.timeline-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.timeline-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 20px 10px;
+  color: var(--text-muted);
+  text-align: center;
+
+  i {
+    font-size: 25px;
+    opacity: 0.5;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+  }
+}
+
+.timeline-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--table-scrollbar-thumb) var(--table-scrollbar-track);
+}
+
+.timeline-scroll::-webkit-scrollbar {
+  height: 7px;
+}
+
+.timeline-scroll::-webkit-scrollbar-thumb {
+  background: var(--table-scrollbar-thumb);
+  border-radius: var(--radius-md);
+}
+
+.timeline-scroll::-webkit-scrollbar-track {
+  background: var(--table-scrollbar-track);
+  border-radius: var(--radius-md);
+}
+
+.timeline-item {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--input-bg);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.timeline-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--primary-border);
+}
+
+.timeline-time {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.timeline-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.timeline-avatar {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+}
+
+.timeline-avatar.avatar-color-1 { background: var(--avatar-color-1-bg); color: var(--avatar-color-1-text); }
+.timeline-avatar.avatar-color-2 { background: var(--avatar-color-2-bg); color: var(--avatar-color-2-text); }
+.timeline-avatar.avatar-color-3 { background: var(--avatar-color-3-bg); color: var(--avatar-color-3-text); }
+.timeline-avatar.avatar-color-4 { background: var(--avatar-color-4-bg); color: var(--avatar-color-4-text); }
+.timeline-avatar.avatar-color-5 { background: var(--avatar-color-5-bg); color: var(--avatar-color-5-text); }
+
+.timeline-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timeline-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-service,
+.timeline-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  i {
+    font-size: 11.5px;
+    color: var(--primary);
+  }
+}
+
+.timeline-payment {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-soft);
+}
+
+.payment-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-dark);
+
+  i {
+    font-size: 11.5px;
+    color: var(--primary);
+  }
+}
+
+.timeline-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.status-pill {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-pill.sm {
+  padding: 1px 7px;
+  font-size: 11.5px;
+}
+
+.timeline-call-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  text-decoration: none;
+  transition: 0.15s ease;
+
+  i {
+    font-size: 12px;
+  }
+}
+
+.timeline-call-btn:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* ---------- Table section ---------- */
+.table-col {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+app-common-filter-card,
+app-common-table-card {
+  display: block;
+  min-width: 0;
+}
+
+app-common-table-card {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+:host ::ng-deep app-common-detail-card .detail-trend.trend-up {
+  color: var(--primary);
+}
+
+:host ::ng-deep app-common-table-card .sort-indicator.bi-arrow-up,
+:host ::ng-deep app-common-table-card .sort-indicator.bi-arrow-down {
+  color: var(--primary);
+}
+
+:host ::ng-deep app-common-table-card .table-scroll {
+  scrollbar-color: var(--primary) var(--table-scrollbar-track);
+}
+
+:host ::ng-deep app-common-table-card .table-scroll::-webkit-scrollbar-thumb {
+  background: var(--primary);
+}
+
+:host ::ng-deep app-common-table-card .mat-mdc-row:hover {
+  background: var(--primary-soft) !important;
+}
+
+/* ---------- Responsive: mobile -> large screens ---------- */
+@media (max-width: 991.98px) {
+  .timeline-item {
+    flex: 0 0 170px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .page-header {
+    padding: 2px 0;
+  }
+
+  .page-title {
+    font-size: 16px;
+    gap: 6px;
+  }
+
+  .add-appointment-btn {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 12.5px;
+
+    span {
+      display: none;
+    }
+
+    i {
+      font-size: 14px;
+    }
+  }
+
+  .timeline-card {
+    padding: 4px;
+  }
+
+  .timeline-header h3 {
+    font-size: 13.5px;
+  }
+
+  .timeline-item {
+    flex: 0 0 155px;
+    padding: 7px;
+  }
+
+  .timeline-name {
+    font-size: 12.5px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .timeline-item {
+    flex: 0 0 220px;
+  }
+}

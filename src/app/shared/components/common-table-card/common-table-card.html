@@ -96,7 +96,7 @@
                   {{ initials(asLeadCell(row[col.key]).name) }}
                 </span>
                 <span class="lead-text">
-                  <span class="lead-name">{{ asLeadCell(row[col.key]).name }}</span>
+                  <button type="button" class="lead-name lead-profile-link" (click)="profileClick.emit(row)" [attr.aria-label]="'Open ' + asLeadCell(row[col.key]).name + ' profile'">{{ asLeadCell(row[col.key]).name }}</button>
                   @if (asLeadCell(row[col.key]).subtitle) {
                     <span class="lead-subtitle">{{ asLeadCell(row[col.key]).subtitle }}</span>
                   }
@@ -162,6 +162,22 @@
                   title="View call log history">
                   <i class="bi bi-clock-history"></i>
                 </button>
+              </div>
+            }
+
+            @else if (col.type === 'quickActions') {
+              <div class="quick-actions-cell">
+                @for (act of asQuickActions(row[col.key]); track act.key) {
+                  <button
+                    type="button"
+                    class="row-action-btn"
+                    [ngClass]="'qa-' + (act.variant || 'default')"
+                    (click)="quickActionClick.emit({ row, action: act.key })"
+                    [attr.aria-label]="act.label"
+                    [title]="act.label">
+                    <i class="bi" [ngClass]="act.icon"></i>
+                  </button>
+                }
               </div>
             }
 

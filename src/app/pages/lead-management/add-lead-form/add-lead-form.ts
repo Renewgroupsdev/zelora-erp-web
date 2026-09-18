@@ -57,6 +57,7 @@ export class AddLeadForm implements OnInit{
     private dialogRef: MatDialogRef<AddLeadForm>,
     private apiDataService: ApiDataService,
     private toast: ToastService,
+    private notifications: NotificationService,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.leadForm = this.fb.group({
@@ -177,6 +178,16 @@ export class AddLeadForm implements OnInit{
 
         if (response && response.success !== false) {
           this.toast.success(this.isEdit ? 'Lead updated successfully' : 'Lead saved successfully');
+
+          if (!this.isEdit) {
+            this.notifications.add({
+              type: 'lead',
+              title: 'New lead added',
+              message: `${formValue.name} was added to the pipeline from ${formValue.source || 'an unspecified source'}.`,
+              link: '/app/lead-management',
+            });
+          }
+
           this.dialogRef.close(response.data ?? formValue);
         } else {
           this.toast.error(response || 'Failed to save lead. Please try again.');

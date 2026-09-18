@@ -45,36 +45,29 @@ app-common-table-card {
 
 .page-header {
   position: relative;
-  gap: 5px;
-  padding: 7px;
-}
-
-.page-header-text {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  position: relative;
-  z-index: 1;
+  gap: 8px;
+  padding: 4px 2px;
 }
 
 .page-title {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   font-family: var(--font-family-display);
-  font-size: clamp(19px, 1.5vw, 22px);
+  font-size: clamp(17px, 1.4vw, 20px);
   line-height: var(--lh-tight);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-dark);
   letter-spacing: -0.3px;
   position: relative;
-}
 
-.page-subtitle {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text-muted);
-  max-width: 60ch;
+  i {
+    flex: 0 0 auto;
+    font-size: 0.85em;
+    color: var(--primary);
+  }
 }
 
 .add-lead-btn {
@@ -82,23 +75,24 @@ app-common-table-card {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 25px;
-  padding: 0 8px;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
   background: linear-gradient(135deg, var(--primary-dark), var(--primary));
   color: #fff;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   font-family: var(--font-family-base);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: var(--fw-medium);
+  white-space: nowrap;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   position: relative;
   z-index: 1;
 
   i {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   &:hover {
@@ -108,6 +102,31 @@ app-common-table-card {
 
   &:active {
     transform: translateY(0);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .page-header {
+    padding: 2px 0;
+  }
+
+  .page-title {
+    font-size: 16px;
+    gap: 6px;
+  }
+
+  .add-lead-btn {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 12.5px;
+
+    span {
+      display: none;
+    }
+
+    i {
+      font-size: 14px;
+    }
   }
 }
 

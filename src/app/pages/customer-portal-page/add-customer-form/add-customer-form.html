@@ -1,0 +1,154 @@
+<div class="customer-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-person-plus-fill"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>Add Customer</h2>
+        <p>Register a new customer profile</p>
+      </div>
+    </div>
+
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="customerForm" (ngSubmit)="save()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-person-vcard"></i>
+        Customer Information
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field">
+          <label for="cust-name">Name <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-person"></i>
+            <input
+              id="cust-name"
+              type="text"
+              formControlName="name"
+              placeholder="Enter customer name"
+              autocomplete="name"
+              [class.is-invalid]="isInvalid('name')" />
+          </div>
+          @if (isInvalid('name')) {
+            <small class="error-text">Name is required.</small>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="cust-phone">Phone No <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-telephone"></i>
+            <input
+              id="cust-phone"
+              type="tel"
+              formControlName="phone"
+              placeholder="Enter phone number"
+              autocomplete="tel"
+              maxlength="15"
+              [class.is-invalid]="isInvalid('phone')" />
+          </div>
+          @if (isInvalid('phone')) {
+            <small class="error-text">Enter a valid phone number.</small>
+          }
+        </div>
+
+        <div class="form-field full-width">
+          <label for="cust-email">Email</label>
+          <div class="input-wrap">
+            <i class="bi bi-envelope"></i>
+            <input
+              id="cust-email"
+              type="email"
+              formControlName="email"
+              placeholder="Enter email address"
+              autocomplete="email"
+              [class.is-invalid]="isInvalid('email')" />
+          </div>
+          @if (isInvalid('email')) {
+            <small class="error-text">Enter a valid email address.</small>
+          }
+        </div>
+
+        <div class="form-field full-width">
+          <label>Gender <span>*</span></label>
+          <div class="gender-options" [class.is-invalid]="isInvalid('gender')">
+            @for (gender of genderOptions; track gender.value) {
+              <label class="gender-option" [class.selected]="customerForm.get('gender')?.value === gender.value">
+                <input type="radio" formControlName="gender" [value]="gender.value" />
+                <span class="gender-option-content">
+                  <i class="bi" [class]="gender.icon"></i>
+                  <span class="gender-option-label">{{ gender.label }}</span>
+                </span>
+              </label>
+            }
+          </div>
+          @if (isInvalid('gender')) {
+            <small class="error-text">Please select gender.</small>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="cust-branch">Branch <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-geo-alt"></i>
+            <select id="cust-branch" formControlName="branch" [class.is-invalid]="isInvalid('branch')">
+              <option value="">Select branch</option>
+              @for (branch of data.branches; track branch) {
+                <option [value]="branch">{{ branch }}</option>
+              }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="cust-segment">Segment <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-stars"></i>
+            <select id="cust-segment" formControlName="segment">
+              @for (segment of data.segments; track segment) {
+                <option [value]="segment">{{ segment }}</option>
+              }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="cust-service">Preferred Service <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-magic"></i>
+            <select id="cust-service" formControlName="preferredService" [class.is-invalid]="isInvalid('preferredService')">
+              <option value="">Select service</option>
+              @for (service of data.serviceOptions; track service) {
+                <option [value]="service">{{ service }}</option>
+              }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn" [disabled]="isSaving">
+        <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-check2]="!isSaving"></i>
+        {{ isSaving ? 'Saving...' : 'Save Customer' }}
+      </button>
+    </div>
+
+  </form>
+</div>

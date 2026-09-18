@@ -73,23 +73,23 @@
   /* ---------------------------------------------------------
      font-family 
   ---------------------------------------------------------- */
-  --font-family-base: "Segoe UI", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
-  --font-family-display: "Segoe UI", "Trebuchet MS", "Helvetica Neue", Arial, sans-serif;
+  --font-family-base: Helvetica, Arial, sans-serif;
+  --font-family-display: Helvetica, Arial, sans-serif;
 
   /* Premium accent — used sparingly (export actions, hero highlights) */
   --gold: #b4863a;
   --gold-dark: #96702f;
   --gold-soft: #f8edd8;
 
-  --fs-2xs: 10px; 
-  --fs-xs: 11px; 
-  --fs-sm: 12px; 
-  --fs-base: 13px; 
-  --fs-md: 14px;  
-  --fs-lg: 16px;  
-  --fs-xl: 19px;
-  --fs-2xl: 23px;  
-  --fs-3xl: 28px;
+  --fs-2xs: 12px;
+  --fs-xs: 13px;
+  --fs-sm: 14px;
+  --fs-base: 15px;
+  --fs-md: 16px;
+  --fs-lg: 18px;
+  --fs-xl: 21px;
+  --fs-2xl: 25px;
+  --fs-3xl: 30px;
 
   --fw-regular: 400;
   --fw-medium: 600;
@@ -120,8 +120,28 @@
   --shadow-elevated: 0 1px 2px rgba(0, 54, 43, 0.04), 0 12px 26px -10px rgba(0, 54, 43, 0.15);
   --shadow-pop: 0 18px 45px rgba(0, 54, 43, 0.18);
 
+  /* Premium elevation — soft, color-tinted "floating glass" shadows layered
+     on top of the plain ones above; used for headers, sidebars & hero surfaces */
+  --shadow-premium-sm: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 6px 16px -8px color-mix(in srgb, var(--primary, #18b875) 22%, transparent), 0 2px 6px rgba(16, 40, 36, 0.06);
+  --shadow-premium-md: 0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 16px 32px -14px color-mix(in srgb, var(--primary, #18b875) 26%, transparent), 0 4px 14px rgba(16, 40, 36, 0.08);
+  --shadow-premium-lg: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 26px 54px -18px color-mix(in srgb, var(--primary, #18b875) 30%, transparent), 0 8px 22px rgba(16, 40, 36, 0.1);
+  --glass-border: color-mix(in srgb, var(--primary, #18b875) 14%, rgba(255, 255, 255, 0.6));
+
+  /* ---------------------------------------------------------
+     Premium stat-card gradients — one dark, color-coded surface
+     per semantic color (green / blue / orange / purple / red),
+     plus a "primary" fallback tied to the active theme color.
+     Used for dashboard tiles & detail-card stat strips.
+  ---------------------------------------------------------- */
+  --stat-grad-primary: radial-gradient(circle at 90% -20%, var(--primary-shadow), transparent 55%), linear-gradient(155deg, var(--primary-dark), color-mix(in srgb, var(--primary-dark) 55%, #04120f) 85%);
+  --stat-grad-green: radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--status-green-text) 42%, transparent), transparent 55%), linear-gradient(155deg, color-mix(in srgb, var(--status-green-text) 58%, #062a20), #041b15 85%);
+  --stat-grad-blue: radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--status-blue-text) 42%, transparent), transparent 55%), linear-gradient(155deg, color-mix(in srgb, var(--status-blue-text) 58%, #051d33), #031222 85%);
+  --stat-grad-orange: radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--status-orange-text) 42%, transparent), transparent 55%), linear-gradient(155deg, color-mix(in srgb, var(--status-orange-text) 58%, #3a2408), #241705 85%);
+  --stat-grad-purple: radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--status-purple-text) 42%, transparent), transparent 55%), linear-gradient(155deg, color-mix(in srgb, var(--status-purple-text) 58%, #1c1033), #120a20 85%);
+  --stat-grad-red: radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--status-red-text) 42%, transparent), transparent 55%), linear-gradient(155deg, color-mix(in srgb, var(--status-red-text) 58%, #330a08), #200604 85%);
+
   --topnavbar-height: 48px;
-  --sidebar-width: 248px;
+  --sidebar-width: 236px;
   --sidebar-compact-width: 78px;
 
 
@@ -139,6 +159,22 @@
   --nav-text: rgba(255, 255, 255, .72);
   --nav-muted: rgba(255, 255, 255, .42);
   --nav-line: rgba(255, 255, 255, .10);
+
+  /* A fixed, neutral "ink navy" used for a few module icons so the sidebar
+     reads as a set of distinct sections rather than one flat color —
+     independent of the primary picker, the same way status colors are. */
+  --nav-module-ink: #33415c;
+
+  /* Soft, elegant light gradient for the sidebar surface — a gentle wash of
+     brand color from top to bottom rather than a flat white panel */
+  --nav-surface-gradient: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--primary) 26%, var(--app-surface-solid)) 0%,
+    color-mix(in srgb, var(--primary) 8%, var(--app-surface-solid)) 26%,
+    var(--app-surface-solid) 50%,
+    color-mix(in srgb, var(--primary) 7%, var(--app-surface-solid)) 74%,
+    color-mix(in srgb, var(--primary) 17%, var(--app-surface-solid)) 100%
+  );
 }
 
 :root[data-theme='dark'] {
@@ -250,8 +286,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 :root {
-  --font-family-base: 'Inter', 'Segoe UI', Arial, sans-serif;
-  --header-bg: rgba(255,255,255,.94);
+  --font-family-base: Helvetica, Arial, sans-serif;
+  --header-bg: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(255,255,255,.93) 100%);
   --sidebar-bg: rgba(255,255,255,.96);
   --primary: #18b875;
   --primary-dark: #0f9d64;
@@ -287,12 +323,61 @@ h1, h2, h3, h4, h5, h6 {
   --card-border: rgba(151,220,195,.11);
   --primary-soft: color-mix(in srgb, var(--primary) 15%, #172825);
   --primary-soft-strong: color-mix(in srgb, var(--primary) 23%, #172825);
+  --nav-module-ink: #4c5c82;
+
+  --nav-surface-gradient: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--primary) 34%, var(--app-surface-solid)) 0%,
+    color-mix(in srgb, var(--primary) 12%, var(--app-surface-solid)) 28%,
+    var(--app-surface-solid) 50%,
+    color-mix(in srgb, var(--primary) 10%, var(--app-surface-solid)) 74%,
+    color-mix(in srgb, var(--primary) 22%, var(--app-surface-solid)) 100%
+  );
+
+  /* Dark-mode stat gradients — pushed brighter so each color reads clearly
+     against the app's already-dark chrome instead of blending into it */
+  --stat-grad-primary: radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--primary) 55%, transparent), transparent 55%), linear-gradient(155deg, color-mix(in srgb, var(--primary) 62%, #06231c), #03110d 85%);
+  --stat-grad-green: radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--status-green-text) 50%, transparent), transparent 55%), linear-gradient(155deg, color-mix(in srgb, var(--status-green-text) 46%, #0c3a2c), #06231b 85%);
+  --stat-grad-blue: radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--status-blue-text) 50%, transparent), transparent 55%), linear-gradient(155deg, color-mix(in srgb, var(--status-blue-text) 46%, #0b2c48), #051a2c 85%);
+  --stat-grad-orange: radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--status-orange-text) 50%, transparent), transparent 55%), linear-gradient(155deg, color-mix(in srgb, var(--status-orange-text) 46%, #4a2f0a), #2e1d06 85%);
+  --stat-grad-purple: radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--status-purple-text) 50%, transparent), transparent 55%), linear-gradient(155deg, color-mix(in srgb, var(--status-purple-text) 46%, #2a1a4a), #180f2c 85%);
+  --stat-grad-red: radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--status-red-text) 50%, transparent), transparent 55%), linear-gradient(155deg, color-mix(in srgb, var(--status-red-text) 46%, #451009), #2a0906 85%);
 }
 
 body {
   font-family: var(--font-family-base);
-  font-size: 13px;
+  font-size: var(--fs-base);
   letter-spacing: -.01em;
+}
+
+/* Responsive type scale: text keeps growing a little on bigger screens instead
+   of staying pinned at the same pixel size regardless of available space. */
+@media (min-width: 1440px) {
+  :root {
+    --fs-2xs: 12.5px;
+    --fs-xs: 13.5px;
+    --fs-sm: 14.5px;
+    --fs-base: 15.5px;
+    --fs-md: 16.5px;
+    --fs-lg: 19px;
+    --fs-xl: 22px;
+    --fs-2xl: 26px;
+    --fs-3xl: 32px;
+  }
+}
+
+@media (min-width: 1920px) {
+  :root {
+    --fs-2xs: 13px;
+    --fs-xs: 14px;
+    --fs-sm: 15px;
+    --fs-base: 16px;
+    --fs-md: 17px;
+    --fs-lg: 20px;
+    --fs-xl: 23px;
+    --fs-2xl: 27px;
+    --fs-3xl: 34px;
+  }
 }
 
 
@@ -347,6 +432,86 @@ button, a, input, select, textarea {
 
 @media (max-width: 480px) {
   .add-lead-dialog .mat-mdc-dialog-surface {
+    border-radius: 10px !important;
+  }
+}
+
+/* ==========================================================
+   Booking Form Material Dialog (Schedule / Appointment)
+   ========================================================== */
+.booking-form-dialog .mat-mdc-dialog-surface {
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 14px !important;
+  background: var(--app-surface-solid) !important;
+  color: var(--text-dark) !important;
+  box-shadow: var(--shadow-pop) !important;
+}
+
+.booking-form-dialog .mat-mdc-dialog-container {
+  padding: 0 !important;
+}
+
+@media (max-width: 700px) {
+  .booking-form-dialog .mat-mdc-dialog-surface {
+    border-radius: 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .booking-form-dialog .mat-mdc-dialog-surface {
+    border-radius: 10px !important;
+  }
+}
+
+/* ==========================================================
+   Add Customer Material Dialog (CRM)
+   ========================================================== */
+.add-customer-dialog .mat-mdc-dialog-surface {
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 14px !important;
+  background: var(--app-surface-solid) !important;
+  color: var(--text-dark) !important;
+  box-shadow: var(--shadow-pop) !important;
+}
+
+.add-customer-dialog .mat-mdc-dialog-container {
+  padding: 0 !important;
+}
+
+@media (max-width: 480px) {
+  .add-customer-dialog .mat-mdc-dialog-surface {
+    border-radius: 10px !important;
+  }
+}
+
+/* ==========================================================
+   Customer Profile Material Dialog (CRM)
+   ========================================================== */
+.customer-profile-dialog .mat-mdc-dialog-surface {
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 14px !important;
+  background: var(--app-surface-solid) !important;
+  color: var(--text-dark) !important;
+  box-shadow: var(--shadow-pop) !important;
+}
+
+.customer-profile-dialog .mat-mdc-dialog-container {
+  padding: 0 !important;
+}
+
+.lead-profile-dialog .mat-mdc-dialog-surface,
+.lead-profile-dialog .mat-mdc-dialog-container {
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 18px !important;
+  background: var(--app-surface-solid) !important;
+}
+
+@media (max-width: 480px) {
+  .customer-profile-dialog .mat-mdc-dialog-surface {
     border-radius: 10px !important;
   }
 }

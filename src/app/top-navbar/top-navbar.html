@@ -29,8 +29,8 @@
         [attr.aria-expanded]="navLayout.notificationsOpen()"
         aria-label="Notifications">
         <i class="bi bi-bell"></i>
-        @if (navLayout.unreadNotificationCount() > 0) {
-          <span class="notification-count-badge">{{ navLayout.unreadNotificationCount() }}</span>
+        @if (notifications.unreadCount() > 0) {
+          <span class="notification-count-badge">{{ notifications.unreadCount() }}</span>
         }
       </button>
 
@@ -40,26 +40,36 @@
           <div class="notification-header">
             <div>
               <strong>Notifications</strong>
-              <small>You have {{ navLayout.unreadNotificationCount() }} new updates</small>
+              <small>You have {{ notifications.unreadCount() }} new updates</small>
             </div>
-            <span class="notification-count">{{ navLayout.unreadNotificationCount() }} new</span>
+            <span class="notification-count">{{ notifications.unreadCount() }} new</span>
           </div>
 
           <div class="notification-list">
-            <button type="button" class="notification-item">
-              <span class="notification-icon notification-icon-green"><i class="bi bi-person-plus"></i></span>
-              <span class="notification-copy"><strong>New lead added</strong><small>A new lead was added to your pipeline.</small><em>Just now</em></span>
-            </button>
-            <button type="button" class="notification-item">
-              <span class="notification-icon notification-icon-blue"><i class="bi bi-calendar-check"></i></span>
-              <span class="notification-copy"><strong>Appointment reminder</strong><small>You have an appointment scheduled today.</small><em>10 minutes ago</em></span>
-            </button>
-            <button type="button" class="notification-item">
-              <span class="notification-icon notification-icon-orange"><i class="bi bi-box-seam"></i></span>
-              <span class="notification-copy"><strong>Low stock alert</strong><small>Review items that need replenishing.</small><em>1 hour ago</em></span>
-            </button>
+            @if (!notifications.notifications().length) {
+              <div class="notification-empty">
+                <i class="bi bi-bell-slash"></i>
+                <span>You're all caught up.</span>
+              </div>
+            }
+
+            @for (item of notifications.notifications(); track item.id) {
+              <button type="button" class="notification-item" [class.unread]="!item.read" (click)="onNotificationClick(item)">
+                @if (!item.read) {
+                  <span class="unread-dot"></span>
+                }
+                <span class="notification-icon" [ngClass]="notifications.colorClass(item.type)">
+                  <i class="bi" [ngClass]="notifications.icon(item.type)"></i>
+                </span>
+                <span class="notification-copy">
+                  <strong>{{ item.title }}</strong>
+                  <small>{{ item.message }}</small>
+                  <em>{{ notifications.relativeTime(item.timestamp) }}</em>
+                </span>
+              </button>
+            }
           </div>
-          <button type="button" class="notification-footer">View all notifications <i class="bi bi-arrow-right"></i></button>
+          <button type="button" class="notification-footer" (click)="markAllRead()">Mark all as read <i class="bi bi-check2-all"></i></button>
         </div>
       }
     </div>

@@ -16,6 +16,34 @@
   </div>
 
   <div class="call-log-body">
+    @if (data.followUps?.length) {
+      <p class="call-log-section-title">Follow-up History</p>
+      @for (entry of data.followUps; track $index) {
+        <div class="call-log-entry">
+          <div class="call-log-entry-content">
+            <div class="call-log-entry-row">
+              <span class="call-log-caller">{{ entry.telecaller }}</span>
+            </div>
+
+            <div class="call-log-datetime">
+              <i class="bi bi-calendar-event"></i>
+              {{ entry.date }}
+            </div>
+
+            <p class="call-log-notes">{{ entry.notes }}</p>
+
+            @if (entry.nextFollowUpDate) {
+              <span class="next-followup-chip"><i class="bi bi-calendar2-week"></i> Next follow-up: {{ formatNextFollowUp(entry) }}</span>
+            }
+          </div>
+        </div>
+      }
+    }
+
+    @if (data.followUps?.length && data.entries.length) {
+      <p class="call-log-section-title">Call Log</p>
+    }
+
     @if (data.entries.length) {
       @for (entry of data.entries; track entry.dateTime + entry.empNo; let i = $index) {
         <div class="call-log-entry">
@@ -35,7 +63,9 @@
           </div>
         </div>
       }
-    } @else {
+    }
+
+    @if (!data.entries.length && !data.followUps?.length) {
       <p class="call-log-empty">No follow-up calls logged yet.</p>
     }
   </div>

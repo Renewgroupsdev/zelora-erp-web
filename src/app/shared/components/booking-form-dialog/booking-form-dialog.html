@@ -1,0 +1,305 @@
+<div class="booking-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-calendar2-check"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>{{ title }}</h2>
+        <p>{{ subtitle }}</p>
+      </div>
+    </div>
+
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-person-vcard"></i>
+        Customer Details
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field">
+          <label for="bk-name">Customer Name <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-person"></i>
+            <input
+              id="bk-name"
+              type="text"
+              formControlName="customerName"
+              placeholder="Enter customer name"
+              autocomplete="name"
+              [class.is-invalid]="isInvalid('customerName')" />
+          </div>
+          @if (isInvalid('customerName')) {
+            <small class="error-text">Customer name is required.</small>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="bk-phone">Phone No <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-telephone"></i>
+            <input
+              id="bk-phone"
+              type="tel"
+              formControlName="phone"
+              placeholder="Enter phone number"
+              autocomplete="tel"
+              maxlength="15"
+              [class.is-invalid]="isInvalid('phone')" />
+          </div>
+          @if (isInvalid('phone')) {
+            <small class="error-text">Enter a valid phone number.</small>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="bk-gender">Gender</label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-gender-ambiguous"></i>
+            <select id="bk-gender" formControlName="gender">
+              <option value="">Select gender</option><option value="M">Male</option><option value="F">Female</option>
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="bk-branch">Branch <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-geo-alt"></i>
+            <select id="bk-branch" formControlName="branch" [class.is-invalid]="isInvalid('branch')">
+              <option value="">Select branch</option>
+              @for (branch of data.branches; track branch) {
+                <option [value]="branch">{{ branch }}</option>
+              }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="bk-staff">Assign Staff <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-person-badge"></i>
+            <select id="bk-staff" formControlName="staff" [class.is-invalid]="isInvalid('staff')">
+              <option value="">Select staff</option>
+              @for (staff of data.staffOptions; track staff) {
+                <option [value]="staff">{{ staff }}</option>
+              }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label>Treatments <span>*</span></label>
+
+          <div class="booking-type-toggle">
+            <button type="button" [class.selected]="bookingType === 'single'" (click)="setBookingType('single')">
+              <i class="bi bi-check2-square"></i> Single Treatment
+            </button>
+            <button type="button" [class.selected]="bookingType === 'combo'" (click)="setBookingType('combo')">
+              <i class="bi bi-box2-heart"></i> Combo Package
+            </button>
+            <button type="button" [class.selected]="bookingType === 'package'" (click)="setBookingType('package')">
+              <i class="bi bi-bag-heart"></i> Treatment/Product Package
+            </button>
+          </div>
+
+          @if (bookingType === 'combo') {
+            <div class="combo-row">
+              @for (combo of availableCombos; track combo.key) {
+                <button
+                  type="button"
+                  class="combo-chip"
+                  [class.selected]="selectedComboKey === combo.key"
+                  (click)="selectCombo(combo.key)">
+                  <span class="combo-name">{{ combo.name }}</span>
+                  <span class="combo-price">{{ formatCurrency(combo.price) }}</span>
+                </button>
+              }
+            </div>
+          } @else {
+            <div class="category-tabs">
+              @for (category of categories; track category) {
+                <button type="button" [class.selected]="activeCategory === category" (click)="setCategory(category)">
+                  {{ category }}
+                </button>
+              }
+            </div>
+
+            @if (bookingType === 'package') {
+              <div class="combo-row">
+                @for (pkg of availablePackages; track pkg.key) {
+                  <button
+                    type="button"
+                    class="combo-chip"
+                    [class.selected]="isPackageSelected(pkg.key)"
+                    (click)="selectPackage(pkg.key)">
+                    <span class="combo-name">{{ pkg.name }} <em>({{ pkg.type }})</em></span>
+                    <span class="combo-price">{{ formatCurrency(pkg.price) }}</span>
+                  </button>
+                } @empty {
+                  <p class="empty-hint">No packages configured for {{ activeCategory }} yet.</p>
+                }
+              </div>
+            } @else {
+              @if (showBaldnessTypes) {
+                <div class="baldness-type-block">
+                  <label>Baldness Type</label>
+                  <div class="baldness-type-options">
+                    @for (type of baldnessTypeOptions; track type.key) {
+                      <label class="baldness-chip" [class.selected]="form.get('baldnessType')?.value === type.key">
+                        <input type="radio" formControlName="baldnessType" [value]="type.key" />
+                        <span>{{ type.label }}</span>
+                      </label>
+                    }
+                  </div>
+                </div>
+              }
+
+              <div class="treatment-list">
+                @for (treatment of treatmentsInCategory(activeCategory); track treatment.key) {
+                  <label class="treatment-option" [class.selected]="isTreatmentSelected(treatment.key)">
+                    <input type="checkbox" [checked]="isTreatmentSelected(treatment.key)" (change)="toggleTreatment(treatment.key)" />
+                    <span class="treatment-name">{{ treatment.name }}</span>
+                    <span class="treatment-price">{{ formatCurrency(treatment.price) }}</span>
+                  </label>
+                }
+              </div>
+            }
+          }
+
+          @if (isInvalid('service')) {
+            <small class="error-text">Select at least one treatment, a combo offer, or a package.</small>
+          }
+        </div>
+
+        <div class="form-field full-width">
+          <div class="price-summary">
+            <div class="price-row">
+              <span>Subtotal</span>
+              <span>{{ formatCurrency(priceAfterCombo) }}</span>
+            </div>
+            @if (comboSavings > 0) {
+              <div class="price-row savings">
+                <span><i class="bi bi-tags"></i> Combo savings</span>
+                <span>-{{ formatCurrency(comboSavings) }}</span>
+              </div>
+            }
+
+            <div class="price-row discount-row">
+              <label for="bk-discount">Extra discount</label>
+              <div class="discount-input">
+                <input id="bk-discount" type="number" min="0" max="50" formControlName="discountPercent" />
+                <span>%</span>
+                @if (extraDiscountAmount > 0) {
+                  <span class="discount-amount">-{{ formatCurrency(extraDiscountAmount) }}</span>
+                }
+              </div>
+            </div>
+
+            <div class="price-row total">
+              <span>Total Payable</span>
+              <span>{{ formatCurrency(total) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="bk-doctor-notes">Doctor Suggestions</label>
+          <div class="textarea-wrap">
+            <i class="bi bi-clipboard2-pulse"></i>
+            <textarea id="bk-doctor-notes" formControlName="doctorNotes" rows="2" placeholder="Doctor's recommendations for this treatment/package"></textarea>
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label>Payment Method</label>
+          <div class="payment-methods">
+            @for (method of paymentMethods; track method) {
+              <label class="payment-chip" [class.selected]="form.get('paymentMethod')?.value === method">
+                <input type="radio" formControlName="paymentMethod" [value]="method" />
+                <i class="bi" [ngClass]="paymentIcon(method)"></i>
+                <span>{{ method }}</span>
+              </label>
+            }
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="bk-amount-paid">Amount Paying Now</label>
+          <div class="input-wrap">
+            <i class="bi bi-cash-stack"></i>
+            <input id="bk-amount-paid" type="number" min="0" [attr.max]="total" formControlName="amountPaid" />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label>Payment Status</label>
+          <div class="payment-status-row">
+            <span class="status-pill" [ngClass]="paymentStatusClass">{{ paymentStatus }}</span>
+            <button type="button" class="pay-full-btn" (click)="markPaidInFull()">Pay in full</button>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="bk-date">Date <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-calendar3"></i>
+            <input id="bk-date" type="date" formControlName="date" [class.is-invalid]="isInvalid('date')" />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="bk-time">Start Time <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-clock"></i>
+            <input id="bk-time" type="time" formControlName="startTime" [class.is-invalid]="isInvalid('startTime')" />
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label>Duration</label>
+          <div class="duration-options">
+            @for (d of durationOptions; track d) {
+              <label class="duration-chip" [class.selected]="form.get('duration')?.value === d">
+                <input type="radio" formControlName="duration" [value]="d" />
+                <span>{{ d }} min</span>
+              </label>
+            }
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="bk-notes">Notes</label>
+          <div class="textarea-wrap">
+            <i class="bi bi-chat-left-text"></i>
+            <textarea id="bk-notes" formControlName="notes" rows="2" placeholder="Any additional notes"></textarea>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn" [disabled]="isSaving">
+        <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-check2]="!isSaving"></i>
+        {{ saveLabel }}
+      </button>
+    </div>
+
+  </form>
+</div>

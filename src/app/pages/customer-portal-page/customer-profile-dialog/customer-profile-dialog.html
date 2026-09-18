@@ -1,0 +1,102 @@
+<div class="profile-modal">
+
+  <div class="profile-header">
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+
+    <span class="profile-avatar">{{ initials(customer.name) }}</span>
+    <h2>{{ customer.name }}</h2>
+    <span class="profile-id">{{ customer.id }}</span>
+
+    <div class="profile-chips">
+      <span class="chip" [ngClass]="segmentClass(customer.segment)">{{ customer.segment }}</span>
+      <span class="chip" [ngClass]="statusClass(customer.status)">{{ customer.status }}</span>
+    </div>
+  </div>
+
+  <div class="profile-body">
+
+    <div class="profile-stats">
+      <div class="profile-stat">
+        <span class="stat-value">{{ customer.totalVisits }}</span>
+        <span class="stat-label">Visits</span>
+      </div>
+      <div class="profile-stat">
+        <span class="stat-value">{{ formatCurrency(customer.lifetimeValue) }}</span>
+        <span class="stat-label">Lifetime Value</span>
+      </div>
+      <div class="profile-stat">
+        <span class="stat-value">{{ formatDate(customer.lastVisit) }}</span>
+        <span class="stat-label">Last Visit</span>
+      </div>
+      <div class="profile-stat">
+        <span class="stat-value">{{ formatDate(customer.memberSince) }}</span>
+        <span class="stat-label">Member Since</span>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <div class="section-title"><i class="bi bi-person-lines-fill"></i> Contact Details</div>
+      <div class="detail-grid">
+        <div class="detail-row"><i class="bi bi-telephone"></i> <span>{{ customer.phone }}</span></div>
+        <div class="detail-row"><i class="bi bi-envelope"></i> <span>{{ customer.email }}</span></div>
+        <div class="detail-row"><i class="bi bi-geo-alt-fill"></i> <span>{{ customer.branch }}</span></div>
+        <div class="detail-row"><i class="bi bi-magic"></i> <span>{{ customer.preferredService }}</span></div>
+      </div>
+    </div>
+
+    @if (outstandingBalance > 0) {
+      <div class="outstanding-banner">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>Outstanding balance: <strong>{{ formatCurrency(outstandingBalance) }}</strong></span>
+      </div>
+    }
+
+    <div class="profile-section">
+      <div class="section-title"><i class="bi bi-clock-history"></i> Recent Visits &amp; Payments</div>
+
+      @if (!customer.visitHistory.length) {
+        <p class="empty-text">No visit history recorded yet.</p>
+      } @else {
+        <div class="visit-timeline">
+          @for (visit of customer.visitHistory; track visit.date) {
+            <div class="visit-item">
+              <span class="visit-dot"></span>
+              <div class="visit-info">
+                <div class="visit-info-top">
+                  <span class="visit-service">{{ visit.service }}</span>
+                  <span class="visit-amount">{{ formatCurrency(visit.amount) }}</span>
+                </div>
+                <span class="visit-meta">{{ formatDate(visit.date) }} &middot; {{ visit.branch }}</span>
+
+                <div class="visit-payment">
+                  <span class="payment-method"><i class="bi" [ngClass]="paymentMethodIcon(visit.paymentMethod)"></i> {{ visit.paymentMethod }}</span>
+                  <span class="status-pill sm" [ngClass]="paymentStatusClass(visit.paymentStatus)">{{ visit.paymentStatus }}</span>
+                  @if (visit.discount > 0) {
+                    <span class="discount-note"><i class="bi bi-tag-fill"></i> {{ formatCurrency(visit.discount) }} off</span>
+                  }
+                </div>
+
+                @if (visit.paymentStatus === 'Partial') {
+                  <span class="partial-note">{{ formatCurrency(visit.amountPaid) }} paid of {{ formatCurrency(visit.amount) }} &mdash; {{ formatCurrency(visit.amount - visit.amountPaid) }} due</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+  </div>
+
+  <div class="profile-footer">
+    <a class="footer-btn call-btn" [href]="'tel:' + customer.phone">
+      <i class="bi bi-telephone-fill"></i> Call
+    </a>
+    <button type="button" class="footer-btn book-btn" (click)="bookAppointment()">
+      <i class="bi bi-calendar2-check"></i> Book Appointment
+    </button>
+  </div>
+
+</div>

@@ -28,7 +28,6 @@ export class NavLayoutService {
 
   readonly settingsMenuOpen = signal<boolean>(false);
   readonly notificationsOpen = signal<boolean>(false);
-  readonly unreadNotificationCount = signal<number>(3);
 
   /**
    * `sidebarExpanded` is a persisted DESKTOP preference (full labels vs icon-only).
