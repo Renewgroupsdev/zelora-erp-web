@@ -167,20 +167,30 @@
 
             @else if (col.type === 'action') {
               <div class="action-cell">
+                  <!-- Edit -->
+                  <button
+                    type="button"
+                    class="row-action-btn action-edit"
+                    (click)="editClick.emit(row)"
+                    aria-label="Edit lead"
+                    title="Edit">
+                    <i class="bi bi-pencil-fill"></i>
+                  </button>
+
                   <!-- Appointment -->
                   <button
                     type="button"
-                    class="row-action-btn"
+                    class="row-action-btn action-appointment"
                     (click)="appointmentClick.emit(row)"
                     aria-label="Appointment"
                     title="Appointment">
-                    <i class="bi bi-calendar-check"></i>
+                    <i class="bi bi-calendar2-check-fill"></i>
                   </button>
 
                   <!-- Follow-up -->
                   <button
                     type="button"
-                    class="row-action-btn"
+                    class="row-action-btn action-followup"
                     (click)="followUpClick.emit(row)"
                     aria-label="Follow-up"
                     title="Follow-up">
@@ -190,11 +200,21 @@
                   <!-- Send to Branch -->
                   <button
                     type="button"
-                    class="row-action-btn"
+                    class="row-action-btn action-branch"
                     (click)="sendToBranchClick.emit(row)"
                     aria-label="Send to branch"
                     title="Send to branch">
-                    <i class="bi bi-building-add"></i>
+                    <i class="bi bi-building-fill-add"></i>
+                  </button>
+
+                  <!-- Delete -->
+                  <button
+                    type="button"
+                    class="row-action-btn action-delete"
+                    (click)="deleteClick.emit(row)"
+                    aria-label="Delete lead"
+                    title="Delete">
+                    <i class="bi bi-trash3-fill"></i>
                   </button>
                 </div>
             }

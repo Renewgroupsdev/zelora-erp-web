@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, OnInit } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -14,6 +14,7 @@ import {
 import { ApiDataService } from '../../../shared/common-services/api-data.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
+import { forkJoin } from 'rxjs/internal/observable/forkJoin';
 
 @Component({
   selector: 'app-add-lead-form',
@@ -22,20 +23,11 @@ import { ToastService } from '../../../shared/common-services/toast.service';
   templateUrl: './add-lead-form.html',
   styleUrl: './add-lead-form.scss',
 })
-export class AddLeadForm {
+export class AddLeadForm implements OnInit{
   leadForm: FormGroup;
   isSaving = false;
 
-  readonly sourceOptions = [
-    'Website',
-    'Instagram',
-    'Facebook',
-    'Google Ads',
-    'Referral',
-    'Walk-in',
-    'Call Center',
-    'Campaign',
-  ];
+  sourceOptions: any = [];
 
   readonly genderOptions = [
     {
@@ -55,14 +47,10 @@ export class AddLeadForm {
     },
   ];
 
-  readonly typeOptions = ['New', 'Existing', 'Corporate'];
+   typeOptions: any = [];
 
-  readonly statusOptions = [
-    'New',
-    'Contacted',
-    'Qualified',
-    'Lost',
-  ];
+   statusOptions: any = [];
+  
 
   constructor(
     private fb: FormBuilder,
@@ -73,22 +61,100 @@ export class AddLeadForm {
   ) {
     this.leadForm = this.fb.group({
       name: [data?.name ?? '', [Validators.required, Validators.maxLength(100)]],
-      phone: [
-        data?.phone ?? '',
-        [Validators.required, Validators.pattern(/^[0-9+\-\s()]{8,20}$/)],
-      ],
-      address: [data?.address ?? '', Validators.maxLength(250)],
-      location: [data?.location ?? '', Validators.maxLength(100)],
-      source: [data?.source ?? '', Validators.required],
+      mobile_no: [data?.mobile_no ?? '',[Validators.required, Validators.pattern(/^[0-9+\-\s()]{8,20}$/)],],
+      location: [data?.location ?? '', Validators.maxLength(250)],
+      pincode: [data?.pincode ?? '', Validators.maxLength(100)],
+      source: [data?.source_id ?? '', Validators.required],
       gender: [data?.gender ?? '', Validators.required],
-      type: [data?.type ?? '', Validators.required],
-      status: [data?.status ?? 'New', Validators.required],
+      type: [data?.service_category_id ?? data?.category_id ?? '', Validators.required],
+      status: [data?.status_id ?? '', Validators.required],
       reason: [data?.reason ?? '', Validators.maxLength(250)],
-    });
+      organization_id: ['1'],
+    })
+  }
+
+  ngOnInit(): void {
+    this.loadScheduleData();
   }
 
   get isEdit(): boolean {
     return !!this.data;
+  }
+
+  loadScheduleData(): void {
+
+
+    forkJoin({
+
+      sourceOption: this.apiDataService.GET(ApiRoutesConstants.Source_List_Options),
+
+      typeOption: this.apiDataService.GET(ApiRoutesConstants.Type_List_Options+`/2`),
+
+      statusOption: this.apiDataService.GET(ApiRoutesConstants.Status_List_Options),
+
+
+    }).subscribe({
+
+      next: (response: any) => {
+
+        this.sourceOptions = response.sourceOption?.data.data ?? [];
+        this.typeOptions = response.typeOption?.data.data ?? [];
+        this.statusOptions = response.statusOption?.data.data ?? [];
+
+        if (this.isEdit) {
+          this.patchEditDropdowns();
+        }
+
+      },
+
+      error: (error) => {
+
+
+        console.error('API loading failed:', error);
+
+      }
+
+    });
+
+  }
+
+
+  /** The lookup APIs load after the form controls are seeded, and the raw lead record's
+   *  source/category/status fields aren't guaranteed to already be the lookup `id` - so once
+   *  each option list arrives, re-resolve the stored value against it. */
+  private patchEditDropdowns(): void {
+    const source = this.resolveOptionId(this.sourceOptions, this.data?.source_id, 'source_name');
+    if (source !== null) {
+      this.leadForm.get('source')?.setValue(source);
+    }
+
+    const type = this.resolveOptionId(this.typeOptions, this.data?.service_category_id ?? this.data?.category_id, 'name');
+    if (type !== null) {
+      this.leadForm.get('type')?.setValue(type);
+    }
+
+    const status = this.resolveOptionId(this.statusOptions, this.data?.status_id, 'name');
+    if (status !== null) {
+      this.leadForm.get('status')?.setValue(status);
+    }
+  }
+
+  /** Matches a stored value against a lookup list's `id` first, falling back to its label
+   *  (case-insensitive) in case the backend sent the name/slug instead of the id. */
+  private resolveOptionId(options: any[], rawValue: unknown, labelKey: string): number | string | null {
+    if (rawValue === null || rawValue === undefined || rawValue === '') {
+      return null;
+    }
+
+    const byId = options.find((option) => String(option.id) === String(rawValue));
+    if (byId) {
+      return byId.id;
+    }
+
+    const byLabel = options.find(
+      (option) => String(option[labelKey]).toLowerCase() === String(rawValue).toLowerCase()
+    );
+    return byLabel ? byLabel.id : null;
   }
 
   saveLead(): void {
@@ -99,25 +165,13 @@ export class AddLeadForm {
 
     const formValue = this.leadForm.getRawValue();
 
-    // Map this form's field names to the ones the API expects. Note: the form's
-    // "location" input is labelled Pin Code, so it maps to `pincode`, while the
-    // form's "address" textarea maps to the API's `location` field.
-    const payload = {
-      name: formValue.name,
-      mobile_no: formValue.phone,
-      pincode: formValue.location,
-      location: formValue.address,
-      source: formValue.source,
-      gender: formValue.gender,
-      category: formValue.type,
-      status: formValue.status,
-      reason: formValue.reason,
-    };
-
     this.isSaving = true;
 
-    const path = ApiRoutesConstants.LEAD_ADD;
-    this.apiDataService.POST(path, payload).subscribe({
+    const request = this.isEdit
+      ? this.apiDataService.PUT(`${ApiRoutesConstants.LEAD_ADD}/${this.data.id}`, formValue)
+      : this.apiDataService.POST(ApiRoutesConstants.LEAD_ADD, formValue);
+
+    request.subscribe({
       next: (response: any) => {
         this.isSaving = false;
 

@@ -71,12 +71,15 @@ export class LeadManagement implements OnInit {
     { key: 'branch', header: 'Branch', type: 'branch' },
     { key: 'status', header: 'Status', type: 'badge' },
     { key: 'created_at', header: 'Lead Date', type: 'text' },
-    { key: 'action', header: 'Action', type: 'action', width: '72px', sortable: false },
+    { key: 'action', header: 'Action', type: 'action', width: '190px', sortable: false },
   ];
 
   readonly pageSizeOptions = [10, 30, 50, 100];
   isLoading = false;
   allRows: TableRow[] = [];
+  /** Raw lead records from the API, keyed by id, so the edit form can be pre-filled with fields
+   *  (mobile_no, address, type, reason, ...) that the table row doesn't carry. */
+  private leadsById = new Map<number, any>();
 
   rows: TableRow[] = [];
   currentPage = 1;
@@ -135,6 +138,8 @@ export class LeadManagement implements OnInit {
 
   /** Maps one lead record from the API's paginated payload into the row shape the table expects. */
   private mapLeadToRow(lead: any): TableRow {
+    this.leadsById.set(lead.id, lead);
+
     return {
       lead: {
         name: lead.name ?? '',
@@ -242,6 +247,39 @@ export class LeadManagement implements OnInit {
 
   onRowAction(row: TableRow) {
     // Open a row action menu as needed.
+  }
+
+  onEditLead(row: TableRow): void {
+    const lead = this.leadsById.get(Number(row['id']));
+    this.openAddPopup(lead ?? null);
+  }
+
+  async onDeleteLead(row: TableRow): Promise<void> {
+    const lead = row['lead'] as LeadCell;
+    const confirmed = await this.toast.confirm(
+      'Delete this lead?',
+      `${lead?.name ?? 'This lead'} will be permanently removed.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const path = `${ApiRoutesConstants.LEAD_DELETE}/${row['id']}`;
+    this.ApiDataService.Delete(path, {}).subscribe({
+      next: (response: any) => {
+        if (response && response.success !== false) {
+          this.toast.success('Lead deleted successfully');
+          this.loadLeadData();
+        } else {
+          this.toast.error(response?.message || 'Failed to delete lead. Please try again.');
+        }
+      },
+      error: (err: any) => {
+        this.toast.error(err?.error?.message || 'Failed to delete lead. Please try again.');
+        console.error('Failed to delete lead:', err);
+      },
+    });
   }
 
    onRowReorder(event: TableReorderEvent) {

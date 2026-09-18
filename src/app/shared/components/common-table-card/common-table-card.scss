@@ -402,31 +402,6 @@
 .badge-gray { background: var(--status-gray-bg); color: var(--status-gray-text); }
 .badge-blue { background: var(--status-blue-bg); color: var(--status-blue-text); }
 
-.action-cell {
-  width: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.row-action-btn {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-
-  &:hover {
-    background: transparent;
-    color: var(--primary);
-  }
-
-  i {
-    font-size: 13px;
-  }
-}
-
 .empty-material-row {
   height: 120px !important;
   background: var(--app-surface-solid) !important;
@@ -614,33 +589,67 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
   white-space: nowrap;
 }
 
 .row-action-btn {
   width: 28px;
   height: 28px;
+  flex: 0 0 28px;
   padding: 0;
   border: 0;
   border-radius: 8px;
-  background: transparent;
+  background: var(--primary-soft);
+  color: var(--primary);
 
   display: inline-flex;
   align-items: center;
   justify-content: center;
 
   cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
+
+  i {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  &:hover {
+    filter: brightness(0.94);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.14);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: scale(0.92);
+    box-shadow: none;
+  }
 }
 
-.row-action-btn:hover {
+.action-edit {
+  background: var(--status-blue-bg, #e3edff);
+  color: var(--status-blue-text, #2f6fed);
+}
+
+.action-appointment {
   background: var(--primary-soft);
+  color: var(--primary);
 }
 
-.row-action-btn:active {
-  transform: scale(0.94);
+.action-followup {
+  background: var(--status-orange-bg, #fff1e0);
+  color: var(--status-orange-text, #d9782f);
+}
+
+.action-branch {
+  background: #eee6ff;
+  color: #7c4dff;
+}
+
+.action-delete {
+  background: var(--status-red-bg, #fde6e6);
+  color: var(--status-red-text, #e0392f);
 }
 
 @media (max-width: 480px) {

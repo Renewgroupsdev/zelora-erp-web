@@ -35,5 +35,20 @@ export class ToastService {
   info(title: string, text?: string): void {
     this.fire('info', title, text);
   }
+
+  async confirm(title: string, text?: string, confirmButtonText = 'Yes, delete it'): Promise<boolean> {
+    const result = await Swal.fire({
+      icon: 'warning',
+      title,
+      text,
+      showCancelButton: true,
+      confirmButtonText,
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#e0392f',
+      cancelButtonColor: '#6c757d',
+    });
+
+    return result.isConfirmed;
+  }
 }
 

@@ -48,6 +48,8 @@ export class CommonTableCard {
   @Output() followUpClick = new EventEmitter<TableRow>();
   @Output() sendToBranchClick = new EventEmitter<TableRow>();
   @Output() viewCallLogClick = new EventEmitter<TableRow>();
+  @Output() editClick = new EventEmitter<TableRow>();
+  @Output() deleteClick = new EventEmitter<TableRow>();
   @Output() rowReorder = new EventEmitter<TableReorderEvent>();
 
   @Output() rowTransfer = new EventEmitter<TableTransferEvent>();
