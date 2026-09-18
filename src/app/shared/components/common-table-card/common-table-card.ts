@@ -12,7 +12,6 @@ const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue' | 
   lost: 'red', cancelled: 'red', failed: 'red', overdue: 'red',
   new: 'gray', draft: 'gray', inactive: 'gray',
   scheduled: 'blue', follow: 'blue', confirmed: 'blue',
-  vip: 'purple',
 };
 
 const AVATAR_PALETTE_SIZE = 5;

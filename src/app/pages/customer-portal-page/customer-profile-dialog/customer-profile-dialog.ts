@@ -38,7 +38,7 @@ export class CustomerProfileDialog {
   }
 
   segmentClass(segment: string): string {
-    const map: Record<string, string> = { VIP: 'status-purple', Regular: 'status-green', New: 'status-gray' };
+    const map: Record<string, string> = { Regular: 'status-green', New: 'status-gray' };
     return map[segment] ?? 'status-gray';
   }
 

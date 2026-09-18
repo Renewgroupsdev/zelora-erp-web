@@ -11,8 +11,6 @@ import {
   MatDialogModule,
   MatDialogRef,
 } from '@angular/material/dialog';
-import { ApiDataService } from '../../../shared/common-services/api-data.service';
-import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { NotificationService } from '../../../shared/common-services/notification.service';
 
@@ -56,7 +54,7 @@ export class AddLeadForm {
     },
   ];
 
-  readonly typeOptions = ['New', 'Existing', 'Corporate'];
+  readonly typeOptions = ['Hair', 'Skin', 'Slimming' ];
 
   readonly statusOptions = [
     'New',
@@ -68,7 +66,6 @@ export class AddLeadForm {
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<AddLeadForm>,
-    private apiDataService: ApiDataService,
     private toast: ToastService,
     private notifications: NotificationService,
     @Inject(MAT_DIALOG_DATA) public data: any
@@ -101,10 +98,12 @@ export class AddLeadForm {
 
     const formValue = this.leadForm.getRawValue();
 
-    // Map this form's field names to the ones the API expects. Note: the form's
-    // "location" input is labelled Pin Code, so it maps to `pincode`, while the
-    // form's "address" textarea maps to the API's `location` field.
-    const payload = {
+    // No live backend for leads yet - build the saved lead locally instead of calling the API.
+    // Note: the form's "location" input is labelled Pin Code, so it maps to `pincode`, while
+    // the form's "address" textarea maps to the API's `location` field, matching the shape a
+    // real lead-add endpoint would return.
+    const savedLead = {
+      id: this.data?.id ?? Date.now(),
       name: formValue.name,
       mobile_no: formValue.phone,
       pincode: formValue.location,
@@ -114,38 +113,21 @@ export class AddLeadForm {
       category: formValue.type,
       status: formValue.status,
       reason: formValue.reason,
+      created_at: new Date().toISOString(),
     };
 
-    this.isSaving = true;
+    this.toast.success(this.isEdit ? 'Lead updated successfully' : 'Lead saved successfully');
 
-    const path = ApiRoutesConstants.LEAD_ADD;
-    this.apiDataService.POST(path, payload).subscribe({
-      next: (response: any) => {
-        this.isSaving = false;
+    if (!this.isEdit) {
+      this.notifications.add({
+        type: 'lead',
+        title: 'New lead added',
+        message: `${formValue.name} was added to the pipeline from ${formValue.source || 'an unspecified source'}.`,
+        link: '/app/lead-management',
+      });
+    }
 
-        if (response && response.success !== false) {
-          this.toast.success(this.isEdit ? 'Lead updated successfully' : 'Lead saved successfully');
-
-          if (!this.isEdit) {
-            this.notifications.add({
-              type: 'lead',
-              title: 'New lead added',
-              message: `${formValue.name} was added to the pipeline from ${formValue.source || 'an unspecified source'}.`,
-              link: '/app/lead-management',
-            });
-          }
-
-          this.dialogRef.close(response.data ?? formValue);
-        } else {
-          this.toast.error(response || 'Failed to save lead. Please try again.');
-        }
-      },
-      error: (err: any) => {
-        this.isSaving = false;
-        this.toast.error(err?.error?.message || 'Failed to save lead. Please try again.');
-        console.error('Failed to save lead:', err);
-      },
-    });
+    this.dialogRef.close(savedLead);
   }
 
   close(): void {

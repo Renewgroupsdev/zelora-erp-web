@@ -258,7 +258,7 @@
           <label for="bk-date">Date <span>*</span></label>
           <div class="input-wrap">
             <i class="bi bi-calendar3"></i>
-            <input id="bk-date" type="date" formControlName="date" [class.is-invalid]="isInvalid('date')" />
+            <input id="bk-date" type="text" appDatePicker formControlName="date" placeholder="Select date" [class.is-invalid]="isInvalid('date')" />
           </div>
         </div>
 
@@ -266,7 +266,7 @@
           <label for="bk-time">Start Time <span>*</span></label>
           <div class="input-wrap">
             <i class="bi bi-clock"></i>
-            <input id="bk-time" type="time" formControlName="startTime" [class.is-invalid]="isInvalid('startTime')" />
+            <input id="bk-time" type="text" appTimePicker formControlName="startTime" placeholder="Select time" [class.is-invalid]="isInvalid('startTime')" />
           </div>
         </div>
 

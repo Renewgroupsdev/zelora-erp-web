@@ -1,10 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, Inject } from '@angular/core';
+import { Component, HostListener, Inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { FlowAppointment, FlowLead, FollowUpEntry } from '../../common-services/crm-flow.service';
 import { CallerLogEntry } from '../../models/common-components.model';
 import { CallLogHistoryDialog } from '../call-log-history-dialog/call-log-history-dialog';
+import { DatePickerDirective } from '../../directives/date-picker.directive';
+import { TimePickerDirective } from '../../directives/time-picker.directive';
 import {
   BaldnessType,
   ComboOffer,
@@ -26,6 +28,15 @@ export type FollowUpMode = 'schedule' | 'notes';
 
 /** Appointment stage treatment selection mode, mirroring the booking dialog. */
 export type AppointmentBookingType = 'single' | 'combo' | 'package';
+
+/** Which clinical photo gallery an upload/viewer action applies to. */
+export type ClinicalPhotoTarget = 'before' | 'after';
+
+interface ImageViewerState {
+  target: ClinicalPhotoTarget;
+  title: string;
+  index: number;
+}
 
 export interface LeadProfileDialogData {
   lead: FlowLead;
@@ -59,7 +70,7 @@ export interface LeadProfileDialogResult {
 @Component({
   selector: 'app-lead-profile-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule],
+  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, DatePickerDirective, TimePickerDirective],
   templateUrl: './lead-profile-dialog.html',
   styleUrl: './lead-profile-dialog.scss',
 })
@@ -79,6 +90,11 @@ export class LeadProfileDialog {
   selectedPackageKey: string | null = null;
   bookingType: AppointmentBookingType = 'single';
   activeCategory: TreatmentCategory = TREATMENT_CATEGORIES[0];
+
+  // Appointment stage - clinical examination photos (before/after), captured or uploaded.
+  beforeImages: string[] = [];
+  afterImages: string[] = [];
+  imageViewer: ImageViewerState | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -117,6 +133,9 @@ export class LeadProfileDialog {
       apptDate: [appointment?.date || ''],
       apptTime: [appointment?.startTime || ''],
     });
+
+    this.beforeImages = [...(appointment?.beforeImages ?? [])];
+    this.afterImages = [...(appointment?.afterImages ?? [])];
 
     (appointment?.treatmentKeys ?? []).forEach(key => this.selectedTreatmentKeys.add(key));
     this.selectedComboKey = appointment?.comboKey ?? null;
@@ -377,6 +396,80 @@ export class LeadProfileDialog {
     control?.markAsDirty();
   }
 
+  // ---------------------------------------------------------------------
+  // Clinical examination photos (before/after)
+  // ---------------------------------------------------------------------
+
+  private imagesFor(target: ClinicalPhotoTarget): string[] {
+    return target === 'before' ? this.beforeImages : this.afterImages;
+  }
+
+  /** Reads every selected file (from either the camera capture or the plain file picker,
+   *  both of which land here through the same `<input type="file">`) into a data URL so the
+   *  photo can be previewed/stored without a real upload backend. */
+  onPhotoSelected(event: Event, target: ClinicalPhotoTarget): void {
+    const input = event.target as HTMLInputElement;
+    const files = input.files ? Array.from(input.files) : [];
+    input.value = '';
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        if (target === 'before') this.beforeImages = [...this.beforeImages, dataUrl];
+        else this.afterImages = [...this.afterImages, dataUrl];
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  removePhoto(target: ClinicalPhotoTarget, index: number): void {
+    const images = this.imagesFor(target).filter((_, i) => i !== index);
+    if (target === 'before') this.beforeImages = images;
+    else this.afterImages = images;
+
+    if (this.imageViewer?.target === target) {
+      if (!images.length) this.imageViewer = null;
+      else this.imageViewer = { ...this.imageViewer, index: Math.min(this.imageViewer.index, images.length - 1) };
+    }
+  }
+
+  openImageViewer(target: ClinicalPhotoTarget, index: number): void {
+    this.imageViewer = { target, index, title: target === 'before' ? 'Before Photos' : 'After Photos' };
+  }
+
+  closeImageViewer(): void {
+    this.imageViewer = null;
+  }
+
+  get viewerImages(): string[] {
+    return this.imageViewer ? this.imagesFor(this.imageViewer.target) : [];
+  }
+
+  get viewerImage(): string {
+    return this.imageViewer ? this.viewerImages[this.imageViewer.index] ?? '' : '';
+  }
+
+  viewerPrev(): void {
+    if (!this.imageViewer) return;
+    const total = this.viewerImages.length;
+    this.imageViewer = { ...this.imageViewer, index: (this.imageViewer.index - 1 + total) % total };
+  }
+
+  viewerNext(): void {
+    if (!this.imageViewer) return;
+    const total = this.viewerImages.length;
+    this.imageViewer = { ...this.imageViewer, index: (this.imageViewer.index + 1) % total };
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onViewerKeydown(event: KeyboardEvent): void {
+    if (!this.imageViewer) return;
+    if (event.key === 'Escape') this.closeImageViewer();
+    else if (event.key === 'ArrowLeft') this.viewerPrev();
+    else if (event.key === 'ArrowRight') this.viewerNext();
+  }
+
   confirmAsClient(): void {
     if (!this.data.appointment) return;
 
@@ -394,6 +487,8 @@ export class LeadProfileDialog {
       doctorNotes: value.doctorNotes ?? '',
       paymentMethod: value.paymentMethod ?? this.data.appointment.paymentMethod,
       paymentStatus: this.paymentStatus,
+      beforeImages: this.beforeImages,
+      afterImages: this.afterImages,
     };
 
     this.dialogRef.close({ action: 'confirm-client', lead: this.data.lead, appointment, amountPaid: Number(value.amountPaid) || 0 });
@@ -432,6 +527,8 @@ export class LeadProfileDialog {
       paymentMethod: value.paymentMethod ?? PAYMENT_METHODS[0],
       paymentStatus: this.paymentStatus,
       status: 'Appointment',
+      beforeImages: this.beforeImages,
+      afterImages: this.afterImages,
     };
 
     this.dialogRef.close({ action: 'book-appointment', lead: this.data.lead, appointment, amountPaid: Number(value.amountPaid) || 0 });

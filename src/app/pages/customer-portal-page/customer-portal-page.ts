@@ -45,12 +45,12 @@ export class CustomerPortalPage implements OnInit {
   constructor(private dialog: MatDialog, private toast: ToastService, private crmFlow: CrmFlowService) { }
 
   readonly branches = ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'];
-  readonly segments: CustomerSegment[] = ['VIP', 'Regular', 'New'];
+  readonly segments: CustomerSegment[] = ['Regular', 'New'];
   readonly treatments = TREATMENTS;
   readonly combos = COMBO_OFFERS;
   readonly serviceOptions = TREATMENTS.map((t) => t.name);
 
-  viewMode: 'grid' | 'table' = 'grid';
+  viewMode: 'grid' | 'table' = 'table';
 
   filters: FilterOption[] = [
     { key: 'status', label: 'Status', options: ['Active', 'Inactive'] },
@@ -145,7 +145,7 @@ export class CustomerPortalPage implements OnInit {
   }
 
   segmentClass(segment: string): string {
-    const map: Record<string, string> = { VIP: 'badge-purple', Regular: 'badge-green', New: 'badge-gray' };
+    const map: Record<string, string> = { Regular: 'badge-green', New: 'badge-gray' };
     return map[segment] ?? 'badge-gray';
   }
 
@@ -475,21 +475,21 @@ export class CustomerPortalPage implements OnInit {
     };
 
     const seeds: Omit<Customer, 'id' | 'visitHistory'>[] = [
-      { name: 'Ananya Sharma', phone: '+91 98765 43210', email: 'ananya.sharma@example.com', gender: 'F', branch: 'Anna Nagar', segment: 'VIP', status: 'Active', memberSince: addDays(-420), totalVisits: 18, lastVisit: addDays(-2), lifetimeValue: 84500, preferredService: 'Hair Loss Consultation' },
+      { name: 'Ananya Sharma', phone: '+91 98765 43210', email: 'ananya.sharma@example.com', gender: 'F', branch: 'Anna Nagar', segment: 'Regular', status: 'Active', memberSince: addDays(-420), totalVisits: 18, lastVisit: addDays(-2), lifetimeValue: 84500, preferredService: 'Hair Loss Consultation' },
       { name: 'Rahul Kumar', phone: '+91 91234 56780', email: 'rahul.kumar@example.com', gender: 'M', branch: 'Velachery', segment: 'Regular', status: 'Active', memberSince: addDays(-260), totalVisits: 9, lastVisit: addDays(-8), lifetimeValue: 32800, preferredService: 'Acne Treatment' },
-      { name: 'Sneha Menon', phone: '+91 98867 66554', email: 'sneha.menon@example.com', gender: 'F', branch: 'Indiranagar', segment: 'VIP', status: 'Active', memberSince: addDays(-540), totalVisits: 26, lastVisit: addDays(-1), lifetimeValue: 121000, preferredService: 'Anti-Aging Therapy' },
+      { name: 'Sneha Menon', phone: '+91 98867 66554', email: 'sneha.menon@example.com', gender: 'F', branch: 'Indiranagar', segment: 'Regular', status: 'Active', memberSince: addDays(-540), totalVisits: 26, lastVisit: addDays(-1), lifetimeValue: 121000, preferredService: 'Anti-Aging Therapy' },
       { name: 'Vikram Patel', phone: '+91 90123 45678', email: 'vikram.patel@example.com', gender: 'M', branch: 'Coimbatore', segment: 'Regular', status: 'Inactive', memberSince: addDays(-610), totalVisits: 5, lastVisit: addDays(-180), lifetimeValue: 15200, preferredService: 'Dermatology Review' },
       { name: 'Neha Prasad', phone: '+91 93450 78920', email: 'neha.prasad@example.com', gender: 'F', branch: 'Anna Nagar', segment: 'New', status: 'Active', memberSince: addDays(-12), totalVisits: 2, lastVisit: addDays(-3), lifetimeValue: 6400, preferredService: 'Skin Rejuvenation' },
       { name: 'Kavin Raj', phone: '+91 99520 13840', email: 'kavin.raj@example.com', gender: 'M', branch: 'T Nagar', segment: 'Regular', status: 'Active', memberSince: addDays(-190), totalVisits: 7, lastVisit: addDays(-15), lifetimeValue: 27300, preferredService: 'Laser Toning' },
-      { name: 'Divya Bala', phone: '+91 90876 54321', email: 'divya.bala@example.com', gender: 'F', branch: 'Bengaluru', segment: 'VIP', status: 'Active', memberSince: addDays(-700), totalVisits: 34, lastVisit: addDays(-5), lifetimeValue: 156000, preferredService: 'Bridal Package' },
+      { name: 'Divya Bala', phone: '+91 90876 54321', email: 'divya.bala@example.com', gender: 'F', branch: 'Bengaluru', segment: 'Regular', status: 'Active', memberSince: addDays(-700), totalVisits: 34, lastVisit: addDays(-5), lifetimeValue: 156000, preferredService: 'Bridal Package' },
       { name: 'Arjun Nair', phone: '+91 91987 65432', email: 'arjun.nair@example.com', gender: 'M', branch: 'Velachery', segment: 'New', status: 'Active', memberSince: addDays(-20), totalVisits: 1, lastVisit: addDays(-20), lifetimeValue: 3200, preferredService: 'Hair Loss Consultation' },
       { name: 'Meera Iyer', phone: '+91 97654 32109', email: 'meera.iyer@example.com', gender: 'F', branch: 'Indiranagar', segment: 'Regular', status: 'Active', memberSince: addDays(-310), totalVisits: 11, lastVisit: addDays(-9), lifetimeValue: 39600, preferredService: 'Acne Treatment' },
       { name: 'Suresh Babu', phone: '+91 96543 21098', email: 'suresh.babu@example.com', gender: 'M', branch: 'Coimbatore', segment: 'Regular', status: 'Inactive', memberSince: addDays(-500), totalVisits: 6, lastVisit: addDays(-210), lifetimeValue: 19800, preferredService: 'Anti-Aging Therapy' },
-      { name: 'Lakshmi Narayan', phone: '+91 95432 10987', email: 'lakshmi.narayan@example.com', gender: 'F', branch: 'T Nagar', segment: 'VIP', status: 'Active', memberSince: addDays(-480), totalVisits: 21, lastVisit: addDays(-4), lifetimeValue: 98700, preferredService: 'Dermatology Review' },
+      { name: 'Lakshmi Narayan', phone: '+91 95432 10987', email: 'lakshmi.narayan@example.com', gender: 'F', branch: 'T Nagar', segment: 'Regular', status: 'Active', memberSince: addDays(-480), totalVisits: 21, lastVisit: addDays(-4), lifetimeValue: 98700, preferredService: 'Dermatology Review' },
       { name: 'Ganesh Prasad', phone: '+91 94321 09876', email: 'ganesh.prasad@example.com', gender: 'M', branch: 'Anna Nagar', segment: 'New', status: 'Active', memberSince: addDays(-25), totalVisits: 2, lastVisit: addDays(-6), lifetimeValue: 5400, preferredService: 'Skin Rejuvenation' },
       { name: 'Priyanka Rao', phone: '+91 93210 98765', email: 'priyanka.rao@example.com', gender: 'F', branch: 'Bengaluru', segment: 'Regular', status: 'Active', memberSince: addDays(-220), totalVisits: 8, lastVisit: addDays(-11), lifetimeValue: 28900, preferredService: 'Laser Toning' },
       { name: 'Manoj Verma', phone: '+91 92109 87654', email: 'manoj.verma@example.com', gender: 'M', branch: 'Velachery', segment: 'Regular', status: 'Active', memberSince: addDays(-160), totalVisits: 6, lastVisit: addDays(-18), lifetimeValue: 22100, preferredService: 'Bridal Package' },
-      { name: 'Anitha Krishnan', phone: '+91 91098 76543', email: 'anitha.krishnan@example.com', gender: 'F', branch: 'Coimbatore', segment: 'VIP', status: 'Active', memberSince: addDays(-650), totalVisits: 29, lastVisit: addDays(-7), lifetimeValue: 134500, preferredService: 'Hair Loss Consultation' },
+      { name: 'Anitha Krishnan', phone: '+91 91098 76543', email: 'anitha.krishnan@example.com', gender: 'F', branch: 'Coimbatore', segment: 'Regular', status: 'Active', memberSince: addDays(-650), totalVisits: 29, lastVisit: addDays(-7), lifetimeValue: 134500, preferredService: 'Hair Loss Consultation' },
       { name: 'Deepak Chandran', phone: '+91 90987 65432', email: 'deepak.chandran@example.com', gender: 'M', branch: 'T Nagar', segment: 'Regular', status: 'Inactive', memberSince: addDays(-390), totalVisits: 4, lastVisit: addDays(-240), lifetimeValue: 12600, preferredService: 'Acne Treatment' },
       { name: 'Revathi Sundaram', phone: '+91 89876 54321', email: 'revathi.sundaram@example.com', gender: 'F', branch: 'Anna Nagar', segment: 'New', status: 'Active', memberSince: addDays(-6), totalVisits: 1, lastVisit: addDays(-6), lifetimeValue: 2800, preferredService: 'Skin Rejuvenation' },
       { name: 'Harish Kumar', phone: '+91 88765 43210', email: 'harish.kumar@example.com', gender: 'M', branch: 'Indiranagar', segment: 'Regular', status: 'Active', memberSince: addDays(-280), totalVisits: 10, lastVisit: addDays(-13), lifetimeValue: 35200, preferredService: 'Dermatology Review' },

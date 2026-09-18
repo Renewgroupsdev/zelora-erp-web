@@ -37,6 +37,7 @@ interface FollowUpSeed {
   service_request: string;
   branch: string;
   status: string;
+  followup_count: number;
   callers: CallerAvatar[];
   callLog: CallerLogEntry[];
 }
@@ -50,6 +51,7 @@ export const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
     gender: 'F',
     source: 'Website', 
     service_category: 'Hair', 
+    followup_count: 3,
     service_request: 'Hair Loss',
     callers: [{ name: 'Priya', empNo: 'EMP-1042' }, { name: 'Karthik Iyer', empNo: 'EMP-1108' }],
     callLog: [
@@ -64,6 +66,7 @@ export const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
     branch: 'Velachery',
     status: 'Qualified',
     gender: 'M',
+    followup_count: 2,
     source: 'Referral',
     service_category: 'Dermatology',
     service_request: 'Acne Care',
@@ -79,6 +82,7 @@ export const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
     status: 'Pending',
     gender: 'F',
     source: 'Website',
+    followup_count: 4,
     service_category: 'Skin Care',
     service_request: 'Anti-Aging Treatment',
     callers: [{ name: 'Meera Nair', empNo: 'EMP-1075', }, { name: 'Priya', empNo: 'EMP-1042' }, { name: 'Karthik Iyer', empNo: 'EMP-1108' }],
@@ -96,6 +100,7 @@ export const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
     status: 'Lost',
     gender: 'M',
     source: 'Referral',
+    followup_count: 1,
     service_category: 'Dermatology',
     service_request: 'Acne Care',
     callers: [{ name: 'Meera Nair', empNo: 'EMP-1075' }],
@@ -110,6 +115,7 @@ export const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
     status: 'Contacted',
     gender: 'F',
     source: 'Website',
+    followup_count: 2,
     service_category: 'Skin Care',
     service_request: 'Anti-Aging Treatment',
     callers: [{ name: 'Priya', empNo: 'EMP-1042' }, { name: 'Meera Nair', empNo: 'EMP-1075' }],
@@ -125,6 +131,7 @@ export const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
     status: 'Qualified',
     gender: 'M',
     source: 'Referral',
+    followup_count: 3,
     service_category: 'Dermatology',
     service_request: 'Acne Care',
     callers: [{ name: 'Karthik Iyer', empNo: 'EMP-1108' }],
@@ -184,6 +191,7 @@ export class Followups implements OnInit {
     { key: 'source', header: 'Source', type: 'text' },
     { key: 'service_category', header: 'Service Category', type: 'text' },
     { key: 'service_request', header: 'Service Request', type: 'text'},
+    { key: 'followup_count', header: 'Follow-Up Count', type: 'text' },
     { key: 'follow_up_date', header: 'Follow-Up Date', type: 'text' },
     { key: 'branch', header: 'Branch', type: 'branch' },
     { key: 'telecaller', header: 'Telecaller Assigned', type: 'avatarGroup', sortable: false, width: '140px' },
@@ -208,6 +216,7 @@ export class Followups implements OnInit {
     telecaller: seed.callers,
     status: seed.status,
     action: QUICK_ACTIONS,
+    followup_count: seed.callLog.length,
     callLogEntries: seed.callLog,
   }));
 
@@ -340,6 +349,7 @@ export class Followups implements OnInit {
     };
 
     this.crmFlow.addAppointment(appointment);
+    this.crmFlow.removeFollowUp(leadData.id);
     this.allRows = this.allRows.filter(row => this.rowId(row) !== leadData.id);
     this.refreshRows();
     this.toast.success('Appointment booked', `${appointment.name} has been moved to Appointments.`);

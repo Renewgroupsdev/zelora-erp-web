@@ -3,6 +3,7 @@
 @import "bootstrap/dist/css/bootstrap-grid.min.css";
 @import "bootstrap/dist/css/bootstrap-utilities.min.css";
 @import "bootstrap-icons/font/bootstrap-icons.css";
+@import "@eonasdan/tempus-dominus/dist/css/tempus-dominus.css";
 
 :root {
   /* ---------------------------------------------------------
@@ -247,6 +248,13 @@
 
 .mat-mdc-option .mdc-list-item__primary-text {
   color: inherit !important;
+}
+
+/* mat-paginator ships its Previous/Next/First/Last buttons with a built-in tooltip
+   ("Previous page", "Next page", ...) via MatTooltip. Nothing else in the app uses
+   MatTooltip, so hiding its overlay globally just removes that unwanted hover bubble. */
+.mat-mdc-tooltip-panel {
+  display: none !important;
 }
 
 * {
@@ -514,4 +522,88 @@ button, a, input, select, textarea {
   .customer-profile-dialog .mat-mdc-dialog-surface {
     border-radius: 10px !important;
   }
+}
+
+
+/* ==========================================================
+   Date/time picker (Tempus Dominus) - retint its own CSS custom
+   properties to the app's tokens instead of its Bootstrap-blue
+   defaults, so it follows the active primary color and dark mode.
+   ========================================================== */
+:root {
+  --td-active-bg: var(--primary);
+  --td-active-color: #fff;
+  --td-widget-background: var(--app-surface-solid);
+  --td-font-color: var(--text-dark);
+  --td-border-radius: 10px;
+  --td-btn-hover-bg: var(--primary-soft);
+  --td-secondary-border-color: var(--border-soft-strong);
+  --td-secondary-border-color-rgba: var(--border-soft-strong);
+  --td-dow-color: var(--text-muted);
+  --td-disabled-color: var(--text-muted);
+}
+
+:root[data-theme='dark'] {
+  --td-dark-widget-background: var(--app-surface-solid);
+  --td-dark-font-color: var(--text-dark);
+  --td-dark-active-bg: var(--primary);
+  --td-dark-btn-hover-bg: var(--primary-soft);
+  --td-dark-secondary-border-color: var(--border-soft-strong);
+  --td-dark-secondary-border-color-rgba: var(--border-soft-strong);
+  --td-dark-dow-color: var(--text-muted);
+}
+
+.tempus-dominus-widget {
+  border: 1px solid var(--border-soft-strong);
+  box-shadow: var(--shadow-pop);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-family-base);
+  width: 17rem;
+  padding: 10px;
+}
+
+.tempus-dominus-widget .calendar-header .previous,
+.tempus-dominus-widget .calendar-header .next {
+  font-size: 14px;
+}
+
+.tempus-dominus-widget .date-container-days {
+  grid-auto-rows: 32px;
+}
+
+.tempus-dominus-widget .date-container-decades,
+.tempus-dominus-widget .date-container-years,
+.tempus-dominus-widget .date-container-months {
+  grid-auto-rows: 42px;
+}
+
+.tempus-dominus-widget :focus {
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.tempus-dominus-widget .time-container-hour,
+.tempus-dominus-widget .time-container-minute,
+.tempus-dominus-widget .time-container-second,
+.tempus-dominus-widget .time-container-clock {
+  grid-auto-rows: 42px;
+}
+
+.tempus-dominus-widget .toolbar {
+  grid-auto-rows: 32px;
+  display: none;
+}
+
+.tempus-dominus-widget .date-container-days div:not(.no-highlight).today:before { 
+  bottom: 2px;
+  right: 3px;
+}
+
+.mat-mdc-row, tr.mat-mdc-row, th.mat-mdc-header-cell, td.mat-mdc-cell {
+  font-family: var(--font-family-base);
+}
+
+.mat-mdc-icon-button .mat-mdc-button-touch-target {
+  width: 22px !important;
+  height: 22px !important;
 }

@@ -73,12 +73,10 @@
   overflow: hidden;
   color: #fff;
   background: var(--stat-grad-primary);
-  box-shadow: var(--shadow-card-hover), 0 18px 38px -18px color-mix(in srgb, var(--primary) 35%, transparent);
+  // box-shadow: var(--shadow-card-hover), 0 18px 38px -18px color-mix(in srgb, var(--primary) 35%, transparent);
   transition: transform .2s ease, box-shadow .2s ease;
 }
 
-/* Each card picks its gradient from the color of its own icon —
-   no template changes needed, the existing icon class drives it */
 .stat-card:has(.stat-icon.green) { background: var(--stat-grad-green); }
 .stat-card:has(.stat-icon.blue) { background: var(--stat-grad-blue); }
 .stat-card:has(.stat-icon.orange) { background: var(--stat-grad-orange); }
@@ -204,14 +202,108 @@
   font-size: 11px;
 }
 
-/* Featured tile — same premium gradient family, with a touch more lift
-   so it still reads as the "hero" metric in the row */
-.stat-card.hero {
-  box-shadow: var(--shadow-card-hover), 0 26px 50px -16px color-mix(in srgb, var(--primary) 48%, transparent);
-}
-
 .stat-card.hero:hover {
   transform: translateY(-3px);
+}
+
+:root[data-theme='dark'] {
+  .stat-card {
+    background: linear-gradient(165deg, color-mix(in srgb, #fff 4%, var(--app-surface-solid)), var(--app-surface-solid));
+    border-top: 3px solid transparent;
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .stat-card:hover {
+    box-shadow: var(--shadow-card-hover), 0 22px 44px -18px color-mix(in srgb, var(--primary) 30%, transparent);
+  }
+
+  .stat-card::before {
+    background: linear-gradient(120deg, rgba(255, 255, 255, .05), transparent 55%);
+  }
+
+  .stat-card::after {
+    width: 150px;
+    height: 150px;
+    opacity: .5;
+  }
+
+  .stat-card:has(.stat-icon.green) {
+    border-top-color: var(--status-green-text);
+  }
+
+  .stat-card:has(.stat-icon.green)::after {
+    background: radial-gradient(circle, color-mix(in srgb, var(--status-green-text) 45%, transparent), transparent 70%);
+  }
+
+  .stat-card:has(.stat-icon.blue) {
+    border-top-color: var(--status-blue-text);
+  }
+
+  .stat-card:has(.stat-icon.blue)::after {
+    background: radial-gradient(circle, color-mix(in srgb, var(--status-blue-text) 45%, transparent), transparent 70%);
+  }
+
+  .stat-card:has(.stat-icon.orange) {
+    border-top-color: var(--status-orange-text);
+  }
+
+  .stat-card:has(.stat-icon.orange)::after {
+    background: radial-gradient(circle, color-mix(in srgb, var(--status-orange-text) 45%, transparent), transparent 70%);
+  }
+
+  .stat-card:has(.stat-icon.purple) {
+    border-top-color: var(--status-purple-text);
+  }
+
+  .stat-card:has(.stat-icon.purple)::after {
+    background: radial-gradient(circle, color-mix(in srgb, var(--status-purple-text) 45%, transparent), transparent 70%);
+  }
+
+  .stat-icon.green {
+    background: color-mix(in srgb, var(--status-green-text) 20%, transparent);
+    color: var(--status-green-text);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-green-text) 35%, transparent);
+  }
+
+  .stat-icon.blue {
+    background: color-mix(in srgb, var(--status-blue-text) 20%, transparent);
+    color: var(--status-blue-text);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-blue-text) 35%, transparent);
+  }
+
+  .stat-icon.orange {
+    background: color-mix(in srgb, var(--status-orange-text) 20%, transparent);
+    color: var(--status-orange-text);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-orange-text) 35%, transparent);
+  }
+
+  .stat-icon.purple {
+    background: color-mix(in srgb, var(--status-purple-text) 20%, transparent);
+    color: var(--status-purple-text);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-purple-text) 35%, transparent);
+  }
+
+  .stat-label {
+    color: var(--text-muted);
+  }
+
+  .stat-value {
+    color: var(--text-dark);
+  }
+
+  .stat-card small {
+    color: var(--text-muted);
+  }
+
+  .trend.positive {
+    background: color-mix(in srgb, var(--status-green-text) 16%, transparent);
+    color: var(--status-green-text);
+  }
+
+  .trend.warning {
+    background: color-mix(in srgb, var(--status-orange-text) 16%, transparent);
+    color: var(--status-orange-text);
+  }
 }
 
 .dashboard-grid {
@@ -353,7 +445,7 @@
   background: linear-gradient(140deg, var(--primary-soft-strong), var(--primary-soft));
   color: var(--primary);
   font-size: 14px;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, .5) inset;
+  // box-shadow: 0 1px 0 rgba(255, 255, 255, .5) inset;
   transition: background .16s ease, color .16s ease, transform .16s ease;
 }
 

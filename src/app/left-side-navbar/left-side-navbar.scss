@@ -18,7 +18,7 @@
 
   --nav-accent-text: var(--primary-dark);
 
-  /* Elegant light gradient wash instead of a flat panel */
+  /* light gradient */
   background: var(--nav-surface-gradient);
   color: var(--nav-text);
   min-height: calc(100vh - var(--topnavbar-height, 48px));
@@ -40,16 +40,10 @@
   z-index: 30;
 }
 
-/* Slim luminous accent rule along the outer edge — the "premium" seam */
 .side-navbar:not(.horizontal) {
   border-right: 1px solid var(--nav-line);
 }
 
-/* Elegant, clearly-visible "wave" wash — a diagonal linear-gradient sweep
-   that runs color → white → color, plus soft crests layered underneath,
-   so the panel reads as a deliberate colored wave rather than plain
-   white. Fully driven by --primary, so it re-tints with the theme
-   picker and dark mode. */
 .side-navbar::before {
   content: '';
   position: absolute;
@@ -84,10 +78,7 @@
     radial-gradient(140% 56% at 5% 104%, color-mix(in srgb, var(--primary) 32%, transparent), transparent 72%);
 }
 
-/* An elegant, long diagonal wave sweeping from the top-left corner
-   down to the bottom-right corner — a single smooth curve (via SVG
-   mask) rather than tight repeated ripples, tinted with the primary
-   gradient. */
+
 .side-navbar::after {
   content: '';
   position: absolute;
@@ -107,8 +98,6 @@
   mask-repeat: no-repeat;
 }
 
-/* Graceful fallback for browsers without mask-image support — a soft
-   diagonal fade instead of a hard-edged rectangle */
 @supports not (mask-image: url("#x")) {
   .side-navbar::after {
     background: linear-gradient(150deg, transparent 40%, color-mix(in srgb, var(--primary) 16%, transparent));
@@ -139,7 +128,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 8px;
+  padding: 5px;
   padding-right: 20px;
   margin: 0 0 10px;
   overflow: hidden;
@@ -389,7 +378,7 @@
    ========================================================= */
 
 .subnav-shell {
-  margin: 0 0 0 8px;
+  margin: 0 0 0 25px;
   padding: 4px;
   border-radius: 10px;
 }
@@ -494,7 +483,7 @@
 
 .subnav-desc {
   color: var(--nav-muted);
-  font-size: 10px;
+  font-size: 9.7px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -1020,9 +1009,6 @@
     z-index: 30;
     box-shadow: 10px 0 30px rgba(25, 50, 60, .18);
 
-    /* Genuine frosted glass: a translucent tinted surface plus a strong
-       blur, so anything behind it reads as a soft blur — never as
-       legible text bleeding through. */
     background:
       linear-gradient(160deg,
         color-mix(in srgb, var(--primary) 26%, var(--app-surface-solid)) 0%,
@@ -1034,8 +1020,6 @@
     -webkit-backdrop-filter: blur(28px) saturate(1.4);
   }
 
-  /* Compact spacing on small screens — tighter rows, smaller icons,
-     less padding, so the panel never feels like it has dead air. */
   .org-box {
     padding: 6px;
     margin: 0 0 7px;
@@ -1152,8 +1136,6 @@
   }
 }
 
-/* Extra-small phones — trim a little further so nothing feels cramped
-   or oversized on narrow screens */
 @media (max-width: 380px) {
   .side-navbar.expanded {
     width: min(208px, 84vw);
@@ -1176,8 +1158,6 @@
   }
 }
 
-/* Large screens — a touch more breathing room so the sidebar stays
-   proportionate on big monitors instead of looking squeezed */
 @media (min-width: 1600px) {
   .side-navbar.expanded {
     width: 260px;
