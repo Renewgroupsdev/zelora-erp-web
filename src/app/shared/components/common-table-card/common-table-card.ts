@@ -4,15 +4,14 @@ import { Component, EventEmitter, Input, Output, ViewChild } from '@angular/core
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSortModule, Sort, SortDirection } from '@angular/material/sort';
 import { MatTable, MatTableModule } from '@angular/material/table';
-import { CallerAvatar, CallerLogEntry, LeadCell, QuickAction, TableColumn, TablePageChangeEvent, TableReorderEvent, TableRow, TableTransferEvent } from '../../models/common-components.model';
+import { CallerAvatar, CallerLogEntry, LeadCell, TableColumn, TablePageChangeEvent, TableReorderEvent, TableRow, TableTransferEvent } from '../../models/common-components.model';
 
-const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue' | 'purple'> = {
-  qualified: 'green', active: 'green', completed: 'green', converted: 'green', paid: 'green', regular: 'green',
-  contacted: 'orange', pending: 'orange', 'in progress': 'orange', due: 'orange', partial: 'orange',
+const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue'> = {
+  qualified: 'green', active: 'green', completed: 'green', converted: 'green', paid: 'green',
+  contacted: 'orange', pending: 'orange', 'in progress': 'orange', due: 'orange',
   lost: 'red', cancelled: 'red', failed: 'red', overdue: 'red',
   new: 'gray', draft: 'gray', inactive: 'gray',
-  scheduled: 'blue', follow: 'blue', confirmed: 'blue',
-  vip: 'purple',
+  scheduled: 'blue', follow: 'blue',
 };
 
 const AVATAR_PALETTE_SIZE = 5;
@@ -49,9 +48,11 @@ export class CommonTableCard {
   @Output() followUpClick = new EventEmitter<TableRow>();
   @Output() sendToBranchClick = new EventEmitter<TableRow>();
   @Output() viewCallLogClick = new EventEmitter<TableRow>();
-  @Output() quickActionClick = new EventEmitter<{ row: TableRow; action: string }>();
+  @Output() editClick = new EventEmitter<TableRow>();
+  @Output() deleteClick = new EventEmitter<TableRow>();
   @Output() rowReorder = new EventEmitter<TableReorderEvent>();
-
+  @Output() quickActionClick = new EventEmitter<{ row: TableRow; action: string }>();
+  @Output() profileClick = new EventEmitter<TableRow>();
   @Output() rowTransfer = new EventEmitter<TableTransferEvent>();
 
   @ViewChild(MatTable) table!: MatTable<TableRow>;
@@ -75,10 +76,6 @@ export class CommonTableCard {
 
   asCallerLog(value: TableRow[string]): CallerLogEntry[] {
     return Array.isArray(value) ? (value as CallerLogEntry[]) : [];
-  }
-
-  asQuickActions(value: TableRow[string]): QuickAction[] {
-    return Array.isArray(value) ? (value as QuickAction[]) : [];
   }
 
   showAvatarTooltip(event: Event, caller: CallerAvatar): void {
@@ -124,7 +121,7 @@ export class CommonTableCard {
   }
 
   isSortable(column: TableColumn): boolean {
-    return column.type !== 'action' && column.type !== 'quickActions' && column.sortable !== false;
+    return column.type !== 'action' && column.sortable !== false;
   }
 
   get hasConnections(): boolean {
