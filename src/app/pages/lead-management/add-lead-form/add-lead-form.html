@@ -56,7 +56,7 @@
             <input
               id="lead-phone"
               type="tel"
-              formControlName="mobile_no"
+              formControlName="phone"
               placeholder="Enter phone number"
               autocomplete="tel"
               [class.is-invalid]="isInvalid('phone')"  maxlength="10"/>
@@ -73,7 +73,7 @@
             <input
               id="lead-location"
               type="text"
-              formControlName="pincode"
+              formControlName="location"
               placeholder="Enter pincode" />
           </div>
         </div>
@@ -88,7 +88,7 @@
               [class.is-invalid]="isInvalid('source')">
               <option value="">Select source</option>
               @for (source of sourceOptions; track source) {
-                <option [value]="source.id">{{ source.source_name }}</option>
+                <option [value]="source">{{ source }}</option>
               }
             </select>
             <i class="bi bi-chevron-down select-arrow"></i>
@@ -123,7 +123,7 @@
         </div>
 
         <div class="form-field">
-          <label for="lead-type">Treatment Type <span>*</span></label>
+          <label for="lead-type">Type <span>*</span></label>
           <div class="input-wrap select-wrap">
             <i class="bi bi-tags"></i>
             <select
@@ -132,7 +132,7 @@
               [class.is-invalid]="isInvalid('type')">
               <option value="">Select type</option>
               @for (type of typeOptions; track type) {
-                <option [value]="type.id">{{ type.name }}</option>
+                <option [value]="type">{{ type }}</option>
               }
             </select>
             <i class="bi bi-chevron-down select-arrow"></i>
@@ -144,15 +144,13 @@
           <div class="input-wrap select-wrap">
             <i class="bi bi-circle-half"></i>
             <select id="lead-status" formControlName="status">
-              <option value="">Select Status</option>
               @for (status of statusOptions; track status) {
-                <option [value]="status.id">{{ status.name }}</option>
+                <option [value]="status">{{ status }}</option>
               }
             </select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
         </div>
-        
 
         <div class="form-field full-width">
           <label for="lead-address">Address</label>
@@ -160,7 +158,7 @@
             <i class="bi bi-house"></i>
             <textarea
               id="lead-address"
-              formControlName="location"
+              formControlName="address"
               rows="2"
               placeholder="Enter complete address"></textarea>
           </div>

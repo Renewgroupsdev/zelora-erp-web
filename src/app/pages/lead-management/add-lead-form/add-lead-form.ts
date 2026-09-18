@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -14,7 +14,6 @@ import {
 import { ApiDataService } from '../../../shared/common-services/api-data.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
-import { forkJoin } from 'rxjs/internal/observable/forkJoin';
 
 @Component({
   selector: 'app-add-lead-form',
@@ -23,11 +22,20 @@ import { forkJoin } from 'rxjs/internal/observable/forkJoin';
   templateUrl: './add-lead-form.html',
   styleUrl: './add-lead-form.scss',
 })
-export class AddLeadForm implements OnInit{
+export class AddLeadForm {
   leadForm: FormGroup;
   isSaving = false;
 
-  sourceOptions: any = [];
+  readonly sourceOptions = [
+    'Website',
+    'Instagram',
+    'Facebook',
+    'Google Ads',
+    'Referral',
+    'Walk-in',
+    'Call Center',
+    'Campaign',
+  ];
 
   readonly genderOptions = [
     {
@@ -47,115 +55,40 @@ export class AddLeadForm implements OnInit{
     },
   ];
 
-   typeOptions: any = [];
+  readonly typeOptions = ['New', 'Existing', 'Corporate'];
 
-   statusOptions: any = [];
-  
+  readonly statusOptions = [
+    'New',
+    'Contacted',
+    'Qualified',
+    'Lost',
+  ];
 
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<AddLeadForm>,
     private apiDataService: ApiDataService,
     private toast: ToastService,
-    private notifications: NotificationService,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
     this.leadForm = this.fb.group({
       name: [data?.name ?? '', [Validators.required, Validators.maxLength(100)]],
-      mobile_no: [data?.mobile_no ?? '',[Validators.required, Validators.pattern(/^[0-9+\-\s()]{8,20}$/)],],
-      location: [data?.location ?? '', Validators.maxLength(250)],
-      pincode: [data?.pincode ?? '', Validators.maxLength(100)],
-      source: [data?.source_id ?? '', Validators.required],
+      phone: [
+        data?.phone ?? '',
+        [Validators.required, Validators.pattern(/^[0-9+\-\s()]{8,20}$/)],
+      ],
+      address: [data?.address ?? '', Validators.maxLength(250)],
+      location: [data?.location ?? '', Validators.maxLength(100)],
+      source: [data?.source ?? '', Validators.required],
       gender: [data?.gender ?? '', Validators.required],
-      type: [data?.service_category_id ?? data?.category_id ?? '', Validators.required],
-      status: [data?.status_id ?? '', Validators.required],
+      type: [data?.type ?? '', Validators.required],
+      status: [data?.status ?? 'New', Validators.required],
       reason: [data?.reason ?? '', Validators.maxLength(250)],
-      organization_id: ['1'],
-    })
-  }
-
-  ngOnInit(): void {
-    this.loadScheduleData();
+    });
   }
 
   get isEdit(): boolean {
     return !!this.data;
-  }
-
-  loadScheduleData(): void {
-
-
-    forkJoin({
-
-      sourceOption: this.apiDataService.GET(ApiRoutesConstants.Source_List_Options),
-
-      typeOption: this.apiDataService.GET(ApiRoutesConstants.Type_List_Options+`/2`),
-
-      statusOption: this.apiDataService.GET(ApiRoutesConstants.Status_List_Options),
-
-
-    }).subscribe({
-
-      next: (response: any) => {
-
-        this.sourceOptions = response.sourceOption?.data.data ?? [];
-        this.typeOptions = response.typeOption?.data.data ?? [];
-        this.statusOptions = response.statusOption?.data.data ?? [];
-
-        if (this.isEdit) {
-          this.patchEditDropdowns();
-        }
-
-      },
-
-      error: (error) => {
-
-
-        console.error('API loading failed:', error);
-
-      }
-
-    });
-
-  }
-
-
-  /** The lookup APIs load after the form controls are seeded, and the raw lead record's
-   *  source/category/status fields aren't guaranteed to already be the lookup `id` - so once
-   *  each option list arrives, re-resolve the stored value against it. */
-  private patchEditDropdowns(): void {
-    const source = this.resolveOptionId(this.sourceOptions, this.data?.source_id, 'source_name');
-    if (source !== null) {
-      this.leadForm.get('source')?.setValue(source);
-    }
-
-    const type = this.resolveOptionId(this.typeOptions, this.data?.service_category_id ?? this.data?.category_id, 'name');
-    if (type !== null) {
-      this.leadForm.get('type')?.setValue(type);
-    }
-
-    const status = this.resolveOptionId(this.statusOptions, this.data?.status_id, 'name');
-    if (status !== null) {
-      this.leadForm.get('status')?.setValue(status);
-    }
-  }
-
-  /** Matches a stored value against a lookup list's `id` first, falling back to its label
-   *  (case-insensitive) in case the backend sent the name/slug instead of the id. */
-  private resolveOptionId(options: any[], rawValue: unknown, labelKey: string): number | string | null {
-    if (rawValue === null || rawValue === undefined || rawValue === '') {
-      return null;
-    }
-
-    const byId = options.find((option) => String(option.id) === String(rawValue));
-    if (byId) {
-      return byId.id;
-    }
-
-    const byLabel = options.find(
-      (option) => String(option[labelKey]).toLowerCase() === String(rawValue).toLowerCase()
-    );
-    return byLabel ? byLabel.id : null;
   }
 
   saveLead(): void {
@@ -166,28 +99,30 @@ export class AddLeadForm implements OnInit{
 
     const formValue = this.leadForm.getRawValue();
 
+    // Map this form's field names to the ones the API expects. Note: the form's
+    // "location" input is labelled Pin Code, so it maps to `pincode`, while the
+    // form's "address" textarea maps to the API's `location` field.
+    const payload = {
+      name: formValue.name,
+      mobile_no: formValue.phone,
+      pincode: formValue.location,
+      location: formValue.address,
+      source: formValue.source,
+      gender: formValue.gender,
+      category: formValue.type,
+      status: formValue.status,
+      reason: formValue.reason,
+    };
+
     this.isSaving = true;
 
-    const request = this.isEdit
-      ? this.apiDataService.PUT(`${ApiRoutesConstants.LEAD_ADD}/${this.data.id}`, formValue)
-      : this.apiDataService.POST(ApiRoutesConstants.LEAD_ADD, formValue);
-
-    request.subscribe({
+    const path = ApiRoutesConstants.LEAD_ADD;
+    this.apiDataService.POST(path, payload).subscribe({
       next: (response: any) => {
         this.isSaving = false;
 
         if (response && response.success !== false) {
           this.toast.success(this.isEdit ? 'Lead updated successfully' : 'Lead saved successfully');
-
-          if (!this.isEdit) {
-            this.notifications.add({
-              type: 'lead',
-              title: 'New lead added',
-              message: `${formValue.name} was added to the pipeline from ${formValue.source || 'an unspecified source'}.`,
-              link: '/app/lead-management',
-            });
-          }
-
           this.dialogRef.close(response.data ?? formValue);
         } else {
           this.toast.error(response || 'Failed to save lead. Please try again.');

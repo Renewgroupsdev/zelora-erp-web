@@ -28,9 +28,9 @@
 }
 
 .title-icon {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
   display: grid;
   place-items: center;
   border-radius: 10px;
@@ -40,7 +40,7 @@
 }
 
 .title-icon i {
-  font-size: 16.5px;
+  font-size: 15px;
 }
 
 .title-content {
@@ -50,7 +50,7 @@
 .title-content h2 {
   margin: 0;
   color: var(--text-dark);
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -58,14 +58,14 @@
 .title-content p {
   margin: 3px 0 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.3;
 }
 
 .modal-close-btn {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
   display: grid;
   place-items: center;
   border: 1px solid var(--primary-soft);
@@ -104,12 +104,12 @@
   gap: 7px;
   margin: 0 0 6px;
   color: var(--primary-dark);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .section-title i {
-  font-size: 14.5px;
+  font-size: 13px;
 }
 
 .form-grid {
@@ -130,11 +130,11 @@
   display: block;
   margin: 0 0 5px;
   color: var(--text-dark);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
 }
 
-.form-field > label > span {
+.form-field label span {
   color: #dc3545;
 }
 
@@ -150,7 +150,7 @@
   left: 11px;
   z-index: 2;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 12px;
   pointer-events: none;
 }
 
@@ -173,7 +173,7 @@
   background: var(--input-bg);
   color: var(--text-dark);
   font: inherit;
-  font-size: 14px;
+  font-size: 12px;
   transition: border-color .15s ease, box-shadow .15s ease;
 }
 
@@ -213,7 +213,7 @@
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
-  font-size: 11.5px;
+  font-size: 9px;
   pointer-events: none;
 }
 
@@ -229,7 +229,7 @@
   display: block;
   margin-top: 3px;
   color: #dc3545;
-  font-size: 12px;
+  font-size: 10px;
 }
 
 .modal-footer-custom {
@@ -253,11 +253,11 @@
 
 .cancel-btn,
 .save-btn {
-  min-height: 30px;
+  min-height: 25px;
   padding: 0 8px;
   border-radius: 8px;
   font: inherit;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: .15s ease;
@@ -328,7 +328,7 @@
   background: var(--input-bg);
   color: var(--text-muted) !important;
 
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
 
   transition:
@@ -340,7 +340,7 @@
 }
 
 .gender-option-content i {
-  font-size: 15.5px;
+  font-size: 14px;
 }
 
 .gender-option:hover .gender-option-content {
@@ -359,7 +359,7 @@
 .gender-option.selected .gender-option-content::after {
   content: '\f26a';
   font-family: "bootstrap-icons";
-  font-size: 14px;
+  font-size: 12px;
   margin-left: auto;
 }
 
@@ -402,17 +402,17 @@
   }
 
   .title-icon {
-    width: 26px;
-    height: 26px;
-    flex-basis: 26px;
+    width: 25px;
+    height: 25px;
+    flex-basis: 25px;
   }
 
   .title-content h2 {
-    font-size: 15.5px;
+    font-size: 14px;
   }
 
   .title-content p {
-    font-size: 12px;
+    font-size: 10px;
   }
 
   .modal-body-custom {
@@ -430,11 +430,11 @@
   .gender-option-content {
     min-height: 34px;
     padding: 0 5px;
-    font-size: 12px;
+    font-size: 10px;
     gap: 4px;
   }
 
   .gender-option-content i {
-    font-size: 14.5px;
+    font-size: 13px;
   }
 }

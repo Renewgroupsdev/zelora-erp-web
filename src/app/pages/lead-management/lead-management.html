@@ -1,16 +1,19 @@
 <div class="leads-page container-fluid px-0 d-flex flex-column">
 
-  <div class="page-header d-flex align-items-center justify-content-between">
-    <h6 class="page-title"><i class="bi bi-person-lines-fill"></i> Lead Management</h6>
+  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div class="page-header-text">
+      <h6 class="page-title">Lead Managements</h6>
+    </div>
 
     <button type="button" class="add-lead-btn" (click)="openAddPopup()">
-      <i class="bi bi-plus-lg"></i> <span>Add Lead</span>
+      <i class="bi bi-plus-lg"></i>
+      Add Lead
     </button>
   </div>
 
   <div class="row g-2 g-md-3 stat-row">
     @for (stat of stats; track stat.label) {
-      <div class="col-6 col-md">
+      <div class="col-6 col-md-2">
         <app-common-detail-card
           [label]="stat.label"
           [value]="stat.value"
@@ -56,8 +59,6 @@
         (appointmentClick)="openAppointment($event)"
         (followUpClick)="openFollowUp($event)"
         (sendToBranchClick)="sendToBranch($event)"
-        (editClick)="onEditLead($event)"
-        (deleteClick)="onDeleteLead($event)"
       ></app-common-table-card>
     </div>
 

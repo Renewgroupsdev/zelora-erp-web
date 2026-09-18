@@ -22,9 +22,6 @@ import { FOLLOW_UP_SEEDS } from '../followups/followups';
 import { ApiDataService } from '../../shared/common-services/api-data.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { ToastService } from '../../shared/common-services/toast.service';
-import { CrmFlowService, FlowAppointment, FlowLead } from '../../shared/common-services/crm-flow.service';
-import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
-import { COMBO_OFFERS, TREATMENTS } from '../../shared/data/treatment-catalog';
 
 @Component({
   selector: 'app-lead-management',
@@ -35,13 +32,14 @@ import { COMBO_OFFERS, TREATMENTS } from '../../shared/data/treatment-catalog';
 })
 export class LeadManagement implements OnInit {
 
-  constructor(private dialog: MatDialog, private router: Router, private ApiDataService: ApiDataService, private toast: ToastService, private crmFlow: CrmFlowService) { }
+  constructor(private dialog: MatDialog, private router: Router, private ApiDataService: ApiDataService, private toast: ToastService) { }
 
   stats: DetailCardData[] = [
     { label: 'Total Leads', value: '1,284', trendText: '8.4% this month', trendDirection: 'up' },
     { label: 'Total Follow-Ups', value: FOLLOW_UP_SEEDS.length, trendText: 'Across all telecallers', trendDirection: 'neutral' },
     // { label: 'Due Today', value: 2, trendText: 'Needs attention', trendDirection: 'up' },
     { label: 'Completed', value: 3, trendText: 'Follow-up closed', trendDirection: 'up' },
+    { label: 'Schedule', value: 18, trendText: 'Visits planned this week', trendDirection: 'neutral' },
     { label: 'Appointment', value: 12, trendText: 'Confirmed appointments', trendDirection: 'up' },
     { label: 'Conversion Rate', value: '30.2%', trendText: '3.1% vs last month', trendDirection: 'up' },
   ];
@@ -73,15 +71,12 @@ export class LeadManagement implements OnInit {
     { key: 'branch', header: 'Branch', type: 'branch' },
     { key: 'status', header: 'Status', type: 'badge' },
     { key: 'created_at', header: 'Lead Date', type: 'text' },
-    { key: 'action', header: 'Action', type: 'action', width: '110px', sortable: false },
+    { key: 'action', header: 'Action', type: 'action', width: '72px', sortable: false },
   ];
 
   readonly pageSizeOptions = [10, 30, 50, 100];
   isLoading = false;
   allRows: TableRow[] = [];
-  /** Raw lead records from the API, keyed by id, so the edit form can be pre-filled with fields
-   *  (mobile_no, address, type, reason, ...) that the table row doesn't carry. */
-  private leadsById = new Map<number, any>();
 
   rows: TableRow[] = [];
   currentPage = 1;
@@ -109,11 +104,8 @@ export class LeadManagement implements OnInit {
   followUpRows: TableRow[] = [];
 
   ngOnInit(): void {
-    // this.refreshRows();
-    // this.loadLeadData();
-     this.allRows = this.allRows.map((lead: any) => this.mapLeadToRow(lead));
-     this.currentPage = 1;
-     this.refreshRows();
+    this.refreshRows();
+    this.loadLeadData();
   }
 
   loadLeadData(): void {
@@ -143,8 +135,6 @@ export class LeadManagement implements OnInit {
 
   /** Maps one lead record from the API's paginated payload into the row shape the table expects. */
   private mapLeadToRow(lead: any): TableRow {
-    this.leadsById.set(lead.id, lead);
-
     return {
       lead: {
         name: lead.name ?? '',
@@ -152,8 +142,8 @@ export class LeadManagement implements OnInit {
       },
       contact: lead.mobile_no ?? '',
       source: this.formatSource(lead.source),
-      service_category: lead.service_category ?? '',
-      service_request: lead.service_request ?? '',
+      service_category: lead.category ?? '',
+      service_request: lead.reason ?? '',
       branch: lead.location ?? lead.organization_unit ?? '',
       status: this.formatStatus(lead.status),
       created_at: this.formatDate(lead.created_at),
@@ -254,39 +244,6 @@ export class LeadManagement implements OnInit {
     // Open a row action menu as needed.
   }
 
-  onEditLead(row: TableRow): void {
-    const lead = this.leadsById.get(Number(row['id']));
-    this.openAddPopup(lead ?? null);
-  }
-
-  async onDeleteLead(row: TableRow): Promise<void> {
-    const lead = row['lead'] as LeadCell;
-    const confirmed = await this.toast.confirm(
-      'Delete this lead?',
-      `${lead?.name ?? 'This lead'} will be permanently removed.`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    const path = `${ApiRoutesConstants.LEAD_DELETE}/${row['id']}`;
-    this.ApiDataService.Delete(path, {}).subscribe({
-      next: (response: any) => {
-        if (response && response.success !== false) {
-          this.toast.success('Lead deleted successfully');
-          this.loadLeadData();
-        } else {
-          this.toast.error(response?.message || 'Failed to delete lead. Please try again.');
-        }
-      },
-      error: (err: any) => {
-        this.toast.error(err?.error?.message || 'Failed to delete lead. Please try again.');
-        console.error('Failed to delete lead:', err);
-      },
-    });
-  }
-
    onRowReorder(event: TableReorderEvent) {
     // Rows were only reordered within one table (see (rowTransfer) below for cross-table
     // moves); `event.rows` is already the reordered array, nothing else to sync here.
@@ -309,28 +266,7 @@ export class LeadManagement implements OnInit {
   }
 
   openFollowUp(row: TableRow): void {
-    this.openLeadProfile(row);
-  }
-
-  openLeadProfile(row: TableRow): void {
-    const dialogRef = this.dialog.open(LeadProfileDialog, {
-      width: '600px', maxWidth: 'calc(100vw - 24px)', maxHeight: '92vh', autoFocus: false,
-      panelClass: 'lead-profile-dialog',
-      data: { lead: this.toFlowLead(row), stage: 'lead', telecallers: ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S', 'Meera Nair'] },
-    });
-    dialogRef.afterClosed().subscribe((result: LeadProfileDialogResult | undefined) => {
-      if (!result || result.action !== 'followup') return;
-
-      this.crmFlow.addFollowUp(result.lead);
-      this.allRows = this.allRows.filter(item => item !== row);
-      this.toast.success('Lead moved to Follow-Ups', `${result.lead.name} is assigned to ${result.lead.telecaller}.`);
-      this.refreshRows();
-    });
-  }
-
-  private toFlowLead(row: TableRow): FlowLead {
-    const lead = row['lead'] as LeadCell;
-    return { id: String(row['id'] ?? lead.subtitle ?? lead.name), name: lead.name, phone: String(row['contact'] ?? ''), gender: String(row['gender'] ?? ''), source: String(row['source'] ?? ''), category: String(row['service_category'] ?? ''), request: String(row['service_request'] ?? ''), branch: String(row['branch'] ?? ''), telecaller: String(row['telecaller'] ?? ''), notes: String(row['notes'] ?? ''), followUpDate: '', status: 'Valid' };
+    this.moveLeadToFollowUp(row);
   }
 
   private moveLeadToFollowUp(row: TableRow, targetIndex: number = this.followUpRows.length): void {
@@ -488,37 +424,7 @@ export class LeadManagement implements OnInit {
   }
 
   openAppointment(row: TableRow): void {
-    const lead = this.toFlowLead(row);
-    const telecallers = ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S', 'Meera Nair'];
-    const draftAppointment: FlowAppointment = {
-      ...lead,
-      service: '', date: '', startTime: '', staff: lead.telecaller,
-      total: 0, paymentMethod: '', paymentStatus: 'Pending',
-    };
-
-    const dialogRef = this.dialog.open(LeadProfileDialog, {
-      width: '640px', maxWidth: 'calc(100vw - 24px)', maxHeight: '92vh', autoFocus: false,
-      panelClass: 'lead-profile-dialog',
-      data: {
-        lead,
-        stage: 'appointment',
-        telecallers,
-        appointment: draftAppointment,
-        treatments: TREATMENTS,
-        combos: COMBO_OFFERS,
-        isNewBooking: true,
-      },
-    });
-
-    dialogRef.afterClosed().subscribe((result: LeadProfileDialogResult | undefined) => {
-      if (!result || result.action !== 'book-appointment' || !result.appointment) return;
-
-      this.crmFlow.addAppointment(result.appointment);
-      this.allRows = this.allRows.filter(item => item !== row);
-      this.refreshRows();
-      this.toast.success('Appointment booked', `${result.appointment!.name} has been moved to Appointments.`);
-      this.router.navigate(['/app/appointments']);
-    });
+    console.log('Appointment:', row);
   }
 
   sendToBranch(row: TableRow): void {
