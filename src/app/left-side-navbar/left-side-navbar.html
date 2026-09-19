@@ -21,8 +21,8 @@
 
     <ul class="nav-list">
       @for (link of navLinks; track link.path) {
-        <li class="nav-item" [class.has-children]="link.children?.length">
-          <a class="nav-link" [routerLink]="link.path" routerLinkActive="active" (click)="onNavLinkClick(link)">
+        <li class="nav-item" [class.has-children]="link.children?.length" [class]="'accent-' + (link.color ?? 'green')">
+          <a class="nav-link" [routerLink]="link.groupOnly ? null : link.path" routerLinkActive="active" (click)="onNavLinkClick(link, $event)">
             <span class="nav-active-bar"></span>
 
             <span class="nav-icon">
@@ -68,7 +68,8 @@
               <ul class="subnav-list" [class.subnav-flyout]="!navLayout.sidebarVisible()">
                 @for (child of link.children; track child.path) {
                   <li class="subnav-item">
-                    <a class="subnav-link" [routerLink]="child.path" routerLinkActive="active">
+                    <a class="subnav-link" [routerLink]="child.groupOnly ? null : child.path" routerLinkActive="active"
+                      (click)="onSubnavClick(child, $event)">
                       <span class="subnav-node"></span>
                       <span class="subnav-icon"><i [class]="'bi ' + child.icon"></i></span>
                       <span class="subnav-copy">
@@ -116,8 +117,8 @@
 
       <ul class="nav-list">
         @for (link of navLinks; track link.path) {
-          <li class="nav-item" [class.subnav-open]="openHorizontalSubmenu() === link.path">
-            <a class="nav-link" [routerLink]="link.path" routerLinkActive="active"
+          <li class="nav-item" [class.subnav-open]="openHorizontalSubmenu() === link.path" [class]="'accent-' + (link.color ?? 'green')">
+            <a class="nav-link" [routerLink]="link.groupOnly ? null : link.path" routerLinkActive="active"
               (click)="toggleHorizontalSubmenu(link, $event)">
               <span class="nav-icon"><i [class]="'bi ' + link.icon"></i></span>
               <span class="nav-label">{{ link.label }}</span>
@@ -142,9 +143,9 @@
 
                 @for (child of link.children; track child.path) {
                   <a class="horizontal-subnav-link"
-                    [routerLink]="child.path"
+                    [routerLink]="child.groupOnly ? null : child.path"
                     routerLinkActive="active"
-                    (click)="closeHorizontalSubmenu()">
+                    (click)="onSubnavClick(child, $event); closeHorizontalSubmenu()">
                     <span class="horizontal-child-icon">
                       <i [class]="'bi ' + child.icon"></i>
                     </span>

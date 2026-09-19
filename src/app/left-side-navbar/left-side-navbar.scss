@@ -316,8 +316,24 @@
   opacity: 0;
 }
 
+.nav-active-bar {
+  position: absolute;
+  left: -1px;
+  top: 50%;
+  width: 4px;
+  height: 20px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #fff, color-mix(in srgb, #fff 45%, transparent));
+  box-shadow: 0 0 10px rgba(255, 255, 255, .7);
+  transform: translateY(-50%) scaleY(0);
+  transform-origin: center;
+  transition: transform .18s ease;
+  pointer-events: none;
+}
+
+.nav-link:hover .nav-active-bar,
 .nav-link.active .nav-active-bar {
-  transform: scaleY(1);
+  transform: translateY(-50%) scaleY(1);
 }
 
 .nav-icon {
@@ -333,6 +349,40 @@
   border: 1px solid transparent;
   box-shadow: 0 3px 8px color-mix(in srgb, var(--primary) 32%, transparent);
   transition: background .16s ease, color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+
+/* Idle-state icon tint per module — each module gets its own accent color so
+   the sidebar reads as friendly and easy to scan at a glance rather than a
+   wall of identical icons. Hover/active still flips to the unified brand
+   color below, so the "current page" signal stays consistent. */
+.nav-item.accent-blue .nav-icon {
+  background: linear-gradient(140deg, var(--status-blue-text), color-mix(in srgb, var(--status-blue-text) 75%, black));
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--status-blue-text) 35%, transparent);
+}
+
+.nav-item.accent-green .nav-icon {
+  background: linear-gradient(140deg, var(--status-green-text), color-mix(in srgb, var(--status-green-text) 75%, black));
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--status-green-text) 35%, transparent);
+}
+
+.nav-item.accent-purple .nav-icon {
+  background: linear-gradient(140deg, var(--status-purple-text), color-mix(in srgb, var(--status-purple-text) 75%, black));
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--status-purple-text) 35%, transparent);
+}
+
+.nav-item.accent-orange .nav-icon {
+  background: linear-gradient(140deg, var(--status-orange-text), color-mix(in srgb, var(--status-orange-text) 75%, black));
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--status-orange-text) 35%, transparent);
+}
+
+.nav-item.accent-pink .nav-icon {
+  background: linear-gradient(140deg, var(--avatar-color-5-text), color-mix(in srgb, var(--avatar-color-5-text) 75%, black));
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--avatar-color-5-text) 35%, transparent);
+}
+
+.nav-item.accent-gray .nav-icon {
+  background: linear-gradient(140deg, var(--status-gray-text), color-mix(in srgb, var(--status-gray-text) 60%, black));
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--status-gray-text) 30%, transparent);
 }
 
 .nav-link:hover .nav-icon,

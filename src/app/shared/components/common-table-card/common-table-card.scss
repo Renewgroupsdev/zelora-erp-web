@@ -114,8 +114,7 @@
 
 .data-table {
   width: 100%;
-  min-width: 920px;
-  table-layout: auto;
+  table-layout: fixed;
   border-spacing: 0;
   background: transparent;
   font-family: var(--font-family-base);
@@ -138,6 +137,8 @@
     letter-spacing: normal;
     text-transform: none;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     z-index: 3;
   }
 
@@ -156,6 +157,7 @@
     font-size: 12px;
     vertical-align: middle;
     white-space: nowrap;
+    overflow: hidden;
   }
 
   .mat-mdc-row:nth-child(odd) {
@@ -180,6 +182,11 @@
 }
 
 .text-cell {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-dark);
   opacity: 0.84;
 }
@@ -188,6 +195,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .avatar {
@@ -218,6 +226,11 @@
 }
 
 .lead-name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
   line-height: 1.25;
   font-weight: 700;
@@ -225,6 +238,11 @@
 }
 
 .lead-subtitle {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 10px;
   line-height: var(--lh-tight);
   color: var(--text-muted);
@@ -361,12 +379,15 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  max-width: 100%;
   min-height: 20px;
   padding: 0 8px;
   border-radius: var(--radius-pill);
   font-size: 10px;
   font-weight: var(--fw-semibold);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .status-badge::before {
@@ -379,18 +400,24 @@
 }
 
 .location-cell {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 5px;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .location-icon {
+  flex: 0 0 auto;
   font-size: 13px;
   color: var(--primary);
 }
 
 .location-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-dark);
@@ -589,14 +616,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   white-space: nowrap;
 }
 
 .row-action-btn {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
   padding: 0;
   border: 0;
   border-radius: 8px;

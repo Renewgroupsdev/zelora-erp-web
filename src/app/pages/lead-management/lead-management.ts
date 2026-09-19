@@ -62,16 +62,16 @@ export class LeadManagement implements OnInit {
   };
 
   columns: TableColumn[] = [
-    { key: 'lead', header: 'Name', type: 'lead' },
-    { key: 'contact', header: 'Contact', type: 'text' },
-    { key: 'gender', header: 'Gender', type: 'text' },
-    { key: 'source', header: 'Source', type: 'text' },
-    { key: 'service_category', header: 'Service Category', type: 'text' },
-    { key: 'service_request', header: 'Service Request', type: 'text'},
-    { key: 'branch', header: 'Branch', type: 'branch' },
-    { key: 'status', header: 'Status', type: 'badge' },
-    { key: 'created_at', header: 'Lead Date', type: 'text' },
-    { key: 'action', header: 'Action', type: 'action', width: '190px', sortable: false },
+    { key: 'lead', header: 'Name', type: 'lead', width: '15%' },
+    { key: 'contact', header: 'Contact', type: 'text', width: '9%' },
+    { key: 'gender', header: 'Gender', type: 'text', width: '6%' },
+    { key: 'source', header: 'Source', type: 'text', width: '8%' },
+    { key: 'service_category', header: 'Service Category', type: 'text', width: '10%' },
+    { key: 'service_request', header: 'Service Request', type: 'text', width: '11%' },
+    { key: 'branch', header: 'Branch', type: 'branch', width: '10%' },
+    { key: 'status', header: 'Status', type: 'badge', width: '8%' },
+    { key: 'created_at', header: 'Lead Date', type: 'text', width: '7%' },
+    { key: 'action', header: 'Action', type: 'action', width: '13%', sortable: false },
   ];
 
   readonly pageSizeOptions = [10, 30, 50, 100];
@@ -136,7 +136,10 @@ export class LeadManagement implements OnInit {
     });
   }
 
-  /** Maps one lead record from the API's paginated payload into the row shape the table expects. */
+  /** Maps one lead record from the API's paginated payload into the row shape the table expects.
+   *  The API returns both raw ids (source_id, service_category_id, status_id, ...) and their
+   *  resolved lookup labels (source_name, service_category_name, status_name, ...) - the labels
+   *  are what the list should display. */
   private mapLeadToRow(lead: any): TableRow {
     this.leadsById.set(lead.id, lead);
 
@@ -146,21 +149,20 @@ export class LeadManagement implements OnInit {
         subtitle: `LD-${String(lead.id ?? '').padStart(5, '0')}`,
       },
       contact: lead.mobile_no ?? '',
-      source: this.formatSource(lead.source),
-      service_category: lead.category ?? '',
+      source: lead.source_name || this.formatSource(lead.source_id ?? lead.source),
+      service_category: lead.service_category_name ?? '',
       service_request: lead.reason ?? '',
-      branch: lead.location ?? lead.organization_unit ?? '',
-      status: this.formatStatus(lead.status),
+      branch: lead.organization_name ?? lead.location ?? '',
+      status: lead.status_name || this.formatStatus(lead.status),
       created_at: this.formatDate(lead.created_at),
       gender: lead.gender ?? '',
-      telecaller: lead.creator ?? '',
+      telecaller: this.formatPerson(lead.creator),
       action: 'menu',
       id: lead.id,
     };
   }
 
-  /** The API returns `source` as a numeric code. Adjust this map to match your backend's
-   *  actual source enum once confirmed. */
+  /** Fallback map for the numeric source id, used only when the API doesn't return source_name. */
   private readonly sourceLabels: Record<number, string> = {
     0: 'Website',
     1: 'Instagram',
@@ -179,11 +181,19 @@ export class LeadManagement implements OnInit {
     return (source as string) ?? '';
   }
 
-  /** "active" -> "Active" so it matches the badge styling used for status text. */
+  /** "active" -> "Active" so it matches the badge styling used for status text. Fallback used
+   *  only when the API doesn't return status_name. */
   private formatStatus(status: unknown): string {
     const value = String(status ?? '').trim();
     if (!value) return 'New';
     return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  /** creator/updater can come back as null, a plain name, or a { name } lookup object. */
+  private formatPerson(person: unknown): string {
+    if (!person) return '';
+    if (typeof person === 'string') return person;
+    return (person as { name?: string })?.name ?? '';
   }
 
   /** ISO timestamp from the API -> "DD-Mon-YYYY" to match the rest of the UI. */

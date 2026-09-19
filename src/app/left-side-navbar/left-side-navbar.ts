@@ -6,7 +6,13 @@ interface NavLink {
   label: string;
   icon: string;
   path: string;
+  color?: 'blue' | 'green' | 'purple' | 'orange' | 'pink' | 'gray';
   children?: NavLink[];
+  /** True when this item has no page of its own yet - a parent with this set only
+   *  expands/collapses its children, and a leaf with this set never navigates. Either way
+   *  it never shows as the active route. Also keeps every item's `path` unique, which
+   *  Angular's `@for track` needs to render each row independently. */
+  groupOnly?: boolean;
 }
 
 @Component({
@@ -23,18 +29,32 @@ export class LeftSideNavbar {
   readonly openHorizontalSubmenu = signal<string | null>(null);
 
   readonly navLinks: NavLink[] = [
-    { label: 'Dashboard', icon: 'bi-grid-1x2-fill', path: '/app/dashboard' },
+    { label: 'Dashboard', icon: 'bi-grid-1x2-fill', path: '/app/dashboard', color: 'blue' },
     {
       label: 'Lead Management',
       icon: 'bi-person-lines-fill',
       path: '/app/lead-management',
+      color: 'green',
       children: [
         { label: 'Follow-Ups', icon: 'bi-arrow-repeat', path: '/app/follow-ups' },
       ],
     },
-    { label: 'Appointment', icon: 'bi-calendar-check-fill', path: '/app/appointments' },
-    { label: 'Client', icon: 'bi-person-vcard-fill', path: '/app/customers' },
-    { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings' },
+    {
+      label: 'Masters',
+      icon: 'bi-boxes',
+      path: '/app/masters',
+      color: 'purple',
+      groupOnly: true,
+      children: [
+        { label: 'Service-Category', icon: 'bi-tags-fill', path: '/app/masters/service-category', groupOnly: true },
+        { label: 'Source', icon: 'bi-signpost-2-fill', path: '/app/masters/source', groupOnly: true },
+        { label: 'Lead-Status', icon: 'bi-flag-fill', path: '/app/masters/lead-status', groupOnly: true },
+        { label: 'Roles', icon: 'bi-shield-lock-fill', path: '/app/masters/roles', groupOnly: true },
+      ],
+    },
+    { label: 'Appointment', icon: 'bi-calendar-check-fill', path: '/app/appointments', color: 'orange' },
+    { label: 'Client', icon: 'bi-person-vcard-fill', path: '/app/customers', color: 'pink' },
+    { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings', color: 'gray' },
   ];
 
   constructor(public navLayout: NavLayoutService) { }
@@ -43,7 +63,11 @@ export class LeftSideNavbar {
     this.leadChildrenExpanded.update(expanded => !expanded);
   }
 
-  onNavLinkClick(link: NavLink): void {
+  onNavLinkClick(link: NavLink, event: Event): void {
+    if (link.groupOnly) {
+      event.preventDefault();
+    }
+
     if (link.children?.length) {
       this.toggleLeadChildren();
       return;
@@ -51,6 +75,12 @@ export class LeftSideNavbar {
 
     // On phones the sidebar is an overlay drawer; picking a page should close it.
     this.navLayout.closeMobileSidebar();
+  }
+
+  onSubnavClick(child: NavLink, event: Event): void {
+    if (child.groupOnly) {
+      event.preventDefault();
+    }
   }
 
   toggleHorizontalSubmenu(link: NavLink, event: Event): void {

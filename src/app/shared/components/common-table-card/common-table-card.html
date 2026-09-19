@@ -39,8 +39,8 @@
 
       @if (dragDropEnabled) {
         <ng-container matColumnDef="dragHandle">
-          <th mat-header-cell *matHeaderCellDef style="width: 30px; min-width: 30px;"></th>
-          <td mat-cell *matCellDef="let row" style="width: 30px; min-width: 30px;">
+          <th mat-header-cell *matHeaderCellDef style="width: 3%;"></th>
+          <td mat-cell *matCellDef="let row" style="width: 3%;">
             <span
               class="drag-handle"
               cdkDragHandle
@@ -96,7 +96,7 @@
                   {{ initials(asLeadCell(row[col.key]).name) }}
                 </span>
                 <span class="lead-text">
-                  <span class="lead-name">{{ asLeadCell(row[col.key]).name }}</span>
+                  <span class="lead-name" [title]="asLeadCell(row[col.key]).name">{{ asLeadCell(row[col.key]).name }}</span>
                   @if (asLeadCell(row[col.key]).subtitle) {
                     <span class="lead-subtitle">{{ asLeadCell(row[col.key]).subtitle }}</span>
                   }
@@ -107,7 +107,7 @@
             @else if (col.type === 'branch') {
               <div class="location-cell">
                 <i class="bi bi-geo-alt-fill location-icon" aria-hidden="true"></i>
-                <span class="location-text">
+                <span class="location-text" [title]="row[col.key]">
                   {{ row[col.key] }}
                 </span>
               </div>
@@ -220,7 +220,7 @@
             }
 
             @else {
-              <span class="text-cell">{{ row[col.key] }}</span>
+              <span class="text-cell" [title]="row[col.key]">{{ row[col.key] }}</span>
             }
 
           </td>
