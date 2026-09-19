@@ -23,7 +23,7 @@ export class LeftSideNavbar {
   readonly openHorizontalSubmenu = signal<string | null>(null);
 
   readonly navLinks: NavLink[] = [
-    { label: 'Dashboard', icon: 'bi-grid-1x2-fill', path: '/app/dashboard' },
+    { label: 'Dashboard', icon: 'bi-house-fill', path: '/app/dashboard' },
     {
       label: 'Lead Management',
       icon: 'bi-person-lines-fill',

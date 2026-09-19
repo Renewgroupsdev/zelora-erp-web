@@ -42,11 +42,36 @@
 }
 
 .wave-1 {
-  fill: var(--bg-color-light-green);
+  fill: url(#authWaveGradient1);
 }
 
 .wave-2 {
-  fill: var(--bg-color-green);
+  fill: url(#authWaveGradient2);
+}
+
+.wave-plus-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 44%;
+  min-height: 270px;
+}
+
+.plus-mark {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+}
+
+.plus-mark--outline polygon {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.32);
+  stroke-width: 1.5;
+}
+
+.plus-mark--filled polygon {
+  fill: rgba(255, 255, 255, 0.32);
 }
 
 /* ---------- Form panel ---------- */
