@@ -65,20 +65,6 @@
   transition: opacity .3s ease;
 }
 
-:root[data-theme='dark'] .side-navbar::before {
-  background-image:
-    linear-gradient(165deg,
-      color-mix(in srgb, var(--primary) 42%, transparent) 0%,
-      color-mix(in srgb, var(--primary) 14%, transparent) 32%,
-      transparent 50%,
-      color-mix(in srgb, var(--primary) 16%, transparent) 68%,
-      color-mix(in srgb, var(--primary) 38%, transparent) 100%),
-    radial-gradient(120% 46% at 8% 8%, color-mix(in srgb, var(--primary) 32%, transparent), transparent 72%),
-    radial-gradient(130% 52% at 105% 58%, color-mix(in srgb, var(--primary) 24%, transparent), transparent 74%),
-    radial-gradient(140% 56% at 5% 104%, color-mix(in srgb, var(--primary) 32%, transparent), transparent 72%);
-}
-
-
 .side-navbar::after {
   content: '';
   position: absolute;
@@ -191,7 +177,7 @@
 }
 
 .org-name {
-  font-family: var(--font-family-display);
+  font-family: var(--font-family-base);
   font-size: 14px;
   font-weight: 700;
   color: var(--nav-text);
@@ -254,7 +240,13 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) transparent;
 }
 
 .nav-item {
@@ -266,7 +258,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 46px;
+  min-height: 40px;
   padding: 4px 8px;
   border: 1px solid transparent;
   border-radius: 13px;
@@ -310,9 +302,9 @@
 }
 
 .nav-icon {
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   display: grid;
   place-items: center;
   border-radius: 10px;
@@ -429,7 +421,7 @@
   padding: 4px 7px;
   border: 1px solid transparent;
   border-radius: 11px;
-  color: var(--nav-muted);
+  color: var(--nav-text);
   text-decoration: none;
   transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease, box-shadow .16s ease;
 }
@@ -922,7 +914,7 @@
   box-sizing: border-box;
   border: 1px solid transparent;
   border-radius: 9px;
-  color: var(--nav-muted);
+  color: var(--nav-text);
   text-decoration: none;
   transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
 }
@@ -1164,12 +1156,38 @@
   }
 
   .nav-link {
-    min-height: 48px;
+    min-height: 40px;
   }
 
   .nav-icon {
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
   }
+}
+
+
+/* scroll-bar Chrome, Edge, Safari */
+.nav-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.nav-list::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.nav-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    var(--primary),
+    var(--primary-dark)
+  );
+
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.nav-list::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
 }
