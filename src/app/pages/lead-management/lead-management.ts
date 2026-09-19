@@ -376,11 +376,38 @@ export class LeadManagement implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe((leadData) => {
-      if (leadData) {
-        // The dialog already saved the lead via its own POST call - just refresh the list.
-        this.loadLeadData();
-      }
+      if (!leadData) return;
+
+      // The dialog already saved the lead via its own POST call - add it straight into the
+      // table instead of refetching, since `allRows` is seeded locally rather than from the API.
+      this.allRows = [this.mapNewLeadToRow(leadData), ...this.allRows];
+      this.currentPage = 1;
+      this.refreshRows();
     });
+  }
+
+  /** Builds a table row from whatever the Add Lead dialog closes with - either the API's
+   *  response payload or, if that's missing fields, the raw form values it fell back to. */
+  private mapNewLeadToRow(lead: any): TableRow {
+    const id = lead.id ?? Date.now();
+
+    return {
+      lead: {
+        name: lead.name ?? '',
+        subtitle: `LD-${String(id).padStart(5, '0')}`,
+      },
+      contact: lead.mobile_no ?? lead.phone ?? '',
+      gender: lead.gender ?? '',
+      source: this.formatSource(lead.source),
+      service_category: lead.service_category ?? lead.category ?? lead.type ?? '',
+      service_request: lead.service_request ?? lead.reason ?? '',
+      branch: lead.branch ?? '',
+      status: this.formatStatus(lead.status),
+      created_at: this.formatDate(lead.created_at ?? new Date().toISOString()),
+      telecaller: lead.creator ?? '',
+      action: 'menu',
+      id,
+    };
   }
 
 

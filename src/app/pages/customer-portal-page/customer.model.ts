@@ -1,7 +1,7 @@
 import { PaymentStatus } from '../../shared/data/treatment-catalog';
 
 export type CustomerStatus = 'Active' | 'Inactive';
-export type CustomerSegment = 'VIP' | 'Regular' | 'New';
+export type CustomerSegment = 'Regular' | 'New';
 
 export interface CustomerVisit {
   date: string;

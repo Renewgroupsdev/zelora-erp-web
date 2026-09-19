@@ -6,12 +6,17 @@
     </button>
 
     <span class="profile-avatar">{{ initials(customer.name) }}</span>
-    <h2>{{ customer.name }}</h2>
-    <span class="profile-id">{{ customer.id }}</span>
 
-    <div class="profile-chips">
-      <span class="chip" [ngClass]="segmentClass(customer.segment)">{{ customer.segment }}</span>
-      <span class="chip" [ngClass]="statusClass(customer.status)">{{ customer.status }}</span>
+    <div class="profile-header-info">
+      <div class="profile-name-row">
+        <h2>{{ customer.name }}</h2>
+        <span class="profile-id">{{ customer.id }}</span>
+      </div>
+
+      <div class="profile-chips">
+        <span class="chip" [ngClass]="segmentClass(customer.segment)">{{ customer.segment }}</span>
+        <span class="chip" [ngClass]="statusClass(customer.status)">{{ customer.status }}</span>
+      </div>
     </div>
   </div>
 

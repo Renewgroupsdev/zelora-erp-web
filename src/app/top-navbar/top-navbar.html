@@ -26,6 +26,7 @@
         class="icon-btn bell-btn"
         (click)="onToggleNotifications()"
         [class.active]="navLayout.notificationsOpen()"
+        [class.has-unread]="notifications.unreadCount() > 0"
         [attr.aria-expanded]="navLayout.notificationsOpen()"
         aria-label="Notifications">
         <i class="bi bi-bell"></i>

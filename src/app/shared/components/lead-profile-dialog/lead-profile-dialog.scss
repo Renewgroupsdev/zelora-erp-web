@@ -13,15 +13,30 @@
 .profile-header {
   position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 26px 20px 18px;
-  text-align: center;
+  gap: 12px;
+  padding: 15px;
+  text-align: left;
   background:
     radial-gradient(circle at 85% -10%, var(--primary-shadow), transparent 55%),
     linear-gradient(155deg, var(--primary-dark), #0a2c28 85%);
   color: #fff;
+}
+
+.profile-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.profile-name-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
 }
 
 .modal-close-btn {
@@ -45,6 +60,7 @@
 }
 
 .profile-avatar {
+  flex: 0 0 auto;
   width: 56px;
   height: 56px;
   display: grid;
@@ -58,23 +74,27 @@
 }
 
 .profile-header h2 {
-  margin: 4px 0 0;
+  margin: 0;
   font-family: var(--font-family-display);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .profile-id {
   font-size: 12.5px;
   opacity: 0.75;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .profile-chips {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
-  margin-top: 4px;
 }
 
 .chip {
@@ -633,6 +653,206 @@ textarea {
   color: var(--status-green-text);
 }
 
+.clinical-photos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.photo-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.photo-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border: 1px solid var(--border-soft-strong);
+  border-radius: 9px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--app-surface-bg);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.photo-thumb:hover {
+  border-color: var(--primary-border-strong);
+  box-shadow: 0 4px 10px var(--primary-shadow);
+  transform: translateY(-1px);
+}
+
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-remove {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.photo-remove i {
+  display: block;
+}
+
+.photo-remove:hover {
+  background: #dc3545;
+}
+
+.photo-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  aspect-ratio: 1 / 1;
+  border: 1.5px dashed var(--primary-border-strong);
+  border-radius: 9px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+
+  i {
+    font-size: 16px;
+  }
+}
+
+.photo-add:hover {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.image-viewer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(6, 20, 18, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.image-viewer {
+  display: flex;
+  flex-direction: column;
+  width: min(520px, 100%);
+  max-height: 90vh;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--app-surface-solid);
+  box-shadow: var(--shadow-pop);
+}
+
+.image-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.image-viewer-close {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.image-viewer-close:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.image-viewer-body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  background: #000;
+}
+
+.image-viewer-body img {
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  display: block;
+}
+
+.image-viewer-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.image-viewer-nav:hover {
+  background: var(--primary);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.image-viewer-nav.prev {
+  left: 10px;
+}
+
+.image-viewer-nav.next {
+  right: 10px;
+}
+
 .pay-full-row {
   display: flex;
   justify-content: flex-end;
@@ -774,7 +994,8 @@ textarea {
 
   .payment-methods,
   .treatment-list,
-  .baldness-type-options {
+  .baldness-type-options,
+  .clinical-photos {
     grid-template-columns: 1fr;
   }
 
@@ -786,7 +1007,10 @@ textarea {
     flex: 1 1 100%;
   }
 
-  .profile-header,
+  .profile-header {
+    padding: 16px 46px 16px 16px;
+  }
+
   .profile-body {
     padding: 16px;
   }
@@ -796,6 +1020,6 @@ textarea {
   }
 
   .profile-header h2 {
-    font-size: 18px;
+    font-size: 16px;
   }
 }

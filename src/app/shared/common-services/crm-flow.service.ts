@@ -42,6 +42,9 @@ export interface FlowAppointment extends FlowLead {
   packageKey?: string;
   /** Doctor's suggestions, separate from general telecaller/booking notes. */
   doctorNotes?: string;
+  /** Clinical examination photos, captured/uploaded as data URLs. */
+  beforeImages?: string[];
+  afterImages?: string[];
   /** Individually selected treatment keys, when not booked via a combo/package. */
   treatmentKeys?: string[];
   comboKey?: string | null;
@@ -61,6 +64,10 @@ export class CrmFlowService {
   }
 
   getFollowUps(): FlowLead[] { return [...this.followUps]; }
+
+  removeFollowUp(id: string): void {
+    this.followUps = this.followUps.filter(item => item.id !== id);
+  }
 
   addAppointment(appointment: FlowAppointment): void {
     this.appointments = [{ ...appointment, status: 'Appointment' }, ...this.appointments.filter(item => item.id !== appointment.id)];

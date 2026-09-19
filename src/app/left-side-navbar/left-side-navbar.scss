@@ -18,7 +18,7 @@
 
   --nav-accent-text: var(--primary-dark);
 
-  /* Elegant light gradient wash instead of a flat panel */
+  /* light gradient */
   background: var(--nav-surface-gradient);
   color: var(--nav-text);
   min-height: calc(100vh - var(--topnavbar-height, 48px));
@@ -40,16 +40,10 @@
   z-index: 30;
 }
 
-/* Slim luminous accent rule along the outer edge — the "premium" seam */
 .side-navbar:not(.horizontal) {
   border-right: 1px solid var(--nav-line);
 }
 
-/* Elegant, clearly-visible "wave" wash — a diagonal linear-gradient sweep
-   that runs color → white → color, plus soft crests layered underneath,
-   so the panel reads as a deliberate colored wave rather than plain
-   white. Fully driven by --primary, so it re-tints with the theme
-   picker and dark mode. */
 .side-navbar::before {
   content: '';
   position: absolute;
@@ -71,23 +65,6 @@
   transition: opacity .3s ease;
 }
 
-:root[data-theme='dark'] .side-navbar::before {
-  background-image:
-    linear-gradient(165deg,
-      color-mix(in srgb, var(--primary) 42%, transparent) 0%,
-      color-mix(in srgb, var(--primary) 14%, transparent) 32%,
-      transparent 50%,
-      color-mix(in srgb, var(--primary) 16%, transparent) 68%,
-      color-mix(in srgb, var(--primary) 38%, transparent) 100%),
-    radial-gradient(120% 46% at 8% 8%, color-mix(in srgb, var(--primary) 32%, transparent), transparent 72%),
-    radial-gradient(130% 52% at 105% 58%, color-mix(in srgb, var(--primary) 24%, transparent), transparent 74%),
-    radial-gradient(140% 56% at 5% 104%, color-mix(in srgb, var(--primary) 32%, transparent), transparent 72%);
-}
-
-/* An elegant, long diagonal wave sweeping from the top-left corner
-   down to the bottom-right corner — a single smooth curve (via SVG
-   mask) rather than tight repeated ripples, tinted with the primary
-   gradient. */
 .side-navbar::after {
   content: '';
   position: absolute;
@@ -107,8 +84,6 @@
   mask-repeat: no-repeat;
 }
 
-/* Graceful fallback for browsers without mask-image support — a soft
-   diagonal fade instead of a hard-edged rectangle */
 @supports not (mask-image: url("#x")) {
   .side-navbar::after {
     background: linear-gradient(150deg, transparent 40%, color-mix(in srgb, var(--primary) 16%, transparent));
@@ -139,7 +114,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 8px;
+  padding: 5px;
   padding-right: 20px;
   margin: 0 0 10px;
   overflow: hidden;
@@ -202,7 +177,7 @@
 }
 
 .org-name {
-  font-family: var(--font-family-display);
+  font-family: var(--font-family-base);
   font-size: 14px;
   font-weight: 700;
   color: var(--nav-text);
@@ -265,7 +240,13 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) transparent;
 }
 
 .nav-item {
@@ -277,7 +258,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 46px;
+  min-height: 40px;
   padding: 4px 8px;
   border: 1px solid transparent;
   border-radius: 13px;
@@ -337,9 +318,9 @@
 }
 
 .nav-icon {
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   display: grid;
   place-items: center;
   border-radius: 10px;
@@ -439,7 +420,7 @@
    ========================================================= */
 
 .subnav-shell {
-  margin: 0 0 0 8px;
+  margin: 0 0 0 25px;
   padding: 4px;
   border-radius: 10px;
 }
@@ -490,7 +471,7 @@
   padding: 4px 7px;
   border: 1px solid transparent;
   border-radius: 11px;
-  color: var(--nav-muted);
+  color: var(--nav-text);
   text-decoration: none;
   transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease, box-shadow .16s ease;
 }
@@ -544,7 +525,7 @@
 
 .subnav-desc {
   color: var(--nav-muted);
-  font-size: 10px;
+  font-size: 9.7px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -983,7 +964,7 @@
   box-sizing: border-box;
   border: 1px solid transparent;
   border-radius: 9px;
-  color: var(--nav-muted);
+  color: var(--nav-text);
   text-decoration: none;
   transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
 }
@@ -1070,9 +1051,6 @@
     z-index: 30;
     box-shadow: 10px 0 30px rgba(25, 50, 60, .18);
 
-    /* Genuine frosted glass: a translucent tinted surface plus a strong
-       blur, so anything behind it reads as a soft blur — never as
-       legible text bleeding through. */
     background:
       linear-gradient(160deg,
         color-mix(in srgb, var(--primary) 26%, var(--app-surface-solid)) 0%,
@@ -1084,8 +1062,6 @@
     -webkit-backdrop-filter: blur(28px) saturate(1.4);
   }
 
-  /* Compact spacing on small screens — tighter rows, smaller icons,
-     less padding, so the panel never feels like it has dead air. */
   .org-box {
     padding: 6px;
     margin: 0 0 7px;
@@ -1202,8 +1178,6 @@
   }
 }
 
-/* Extra-small phones — trim a little further so nothing feels cramped
-   or oversized on narrow screens */
 @media (max-width: 380px) {
   .side-navbar.expanded {
     width: min(208px, 84vw);
@@ -1226,20 +1200,44 @@
   }
 }
 
-/* Large screens — a touch more breathing room so the sidebar stays
-   proportionate on big monitors instead of looking squeezed */
 @media (min-width: 1600px) {
   .side-navbar.expanded {
     width: 260px;
   }
 
   .nav-link {
-    min-height: 48px;
+    min-height: 40px;
   }
 
   .nav-icon {
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
   }
+}
+
+
+/* scroll-bar Chrome, Edge, Safari */
+.nav-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.nav-list::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.nav-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    var(--primary),
+    var(--primary-dark)
+  );
+
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.nav-list::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
 }

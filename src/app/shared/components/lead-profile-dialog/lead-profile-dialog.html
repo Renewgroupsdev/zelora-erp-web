@@ -6,12 +6,17 @@
     </button>
 
     <span class="profile-avatar">{{ initials(data.lead.name) }}</span>
-    <h2>{{ data.lead.name }}</h2>
-    <span class="profile-id">{{ data.lead.phone }} &middot; {{ data.lead.gender || 'Not specified' }}</span>
 
-    <div class="profile-chips">
-      <span class="chip status-blue">{{ stageLabel }}</span>
-      @if (data.lead.branch) { <span class="chip status-gray">{{ data.lead.branch }}</span> }
+    <div class="profile-header-info">
+      <div class="profile-name-row">
+        <h2>{{ data.lead.name }}</h2>
+        <span class="profile-id">{{ data.lead.phone }} - {{ data.lead.gender }}</span>
+      </div>
+
+      <div class="profile-chips">
+        <span class="chip status-blue">{{ stageLabel }}</span>
+        @if (data.lead.branch) { <span class="chip status-gray">{{ data.lead.branch }}</span> }
+      </div>
     </div>
   </div>
 
@@ -69,8 +74,8 @@
 
         @if (followupMode === 'schedule') {
           <div class="field-grid">
-            <label>Appointment date<input type="date" formControlName="scheduleDate" [class.is-invalid]="isInvalid('scheduleDate')"></label>
-            <label>Appointment time<input type="time" formControlName="scheduleTime" [class.is-invalid]="isInvalid('scheduleTime')"></label>
+            <label>Appointment date<input type="text" appDatePicker formControlName="scheduleDate" placeholder="Select date" [class.is-invalid]="isInvalid('scheduleDate')"></label>
+            <label>Appointment time<input type="text" appTimePicker formControlName="scheduleTime" placeholder="Select time" [class.is-invalid]="isInvalid('scheduleTime')"></label>
           </div>
         } @else {
           @if (history.length) {
@@ -90,10 +95,10 @@
           }
 
           <div class="field-grid">
-            <label>Follow-up date<input type="date" formControlName="entryDate"></label>
-            <label>Follow-up time<input type="time" formControlName="entryTime"></label>
-            <label>Next follow-up date<input type="date" formControlName="nextFollowUpDate"></label>
-            <label>Next follow-up time<input type="time" formControlName="nextFollowUpTime"></label>
+            <label>Follow-up date<input type="text" appDatePicker formControlName="entryDate" placeholder="Select date"></label>
+            <label>Follow-up time<input type="text" appTimePicker formControlName="entryTime" placeholder="Select time"></label>
+            <label>Next follow-up date<input type="text" appDatePicker formControlName="nextFollowUpDate" placeholder="Select date"></label>
+            <label>Next follow-up time<input type="text" appTimePicker formControlName="nextFollowUpTime" placeholder="Select time"></label>
             <label class="full">Follow-up note<textarea rows="3" formControlName="notes" [class.is-invalid]="isInvalid('notes')" placeholder="Record the call outcome, needs, and next action"></textarea></label>
             <div class="full add-followup-row">
               <button type="button" class="secondary" (click)="addFollowUpEntry()"><i class="bi bi-plus-lg"></i> Add follow-up note</button>
@@ -110,8 +115,8 @@
           <div class="field-grid">
             <label>Branch<select formControlName="apptBranch" [class.is-invalid]="isInvalid('apptBranch')"><option value="">Select branch</option>@for (branch of branches; track branch) { <option [value]="branch">{{ branch }}</option> }</select></label>
             <label>Assigned staff<select formControlName="apptStaff" [class.is-invalid]="isInvalid('apptStaff')"><option value="">Select staff</option>@for (caller of data.telecallers; track caller) { <option [value]="caller">{{ caller }}</option> }</select></label>
-            <label>Appointment date<input type="date" formControlName="apptDate" [class.is-invalid]="isInvalid('apptDate')"></label>
-            <label>Appointment time<input type="time" formControlName="apptTime" [class.is-invalid]="isInvalid('apptTime')"></label>
+            <label>Appointment date<input type="text" appDatePicker formControlName="apptDate" placeholder="Select date" [class.is-invalid]="isInvalid('apptDate')"></label>
+            <label>Appointment time<input type="text" appTimePicker formControlName="apptTime" placeholder="Select time" [class.is-invalid]="isInvalid('apptTime')"></label>
           </div>
         } @else {
           <div class="detail-grid">
@@ -122,7 +127,7 @@
       </div>
 
       <div class="profile-section">
-        <div class="section-title"><i class="bi bi-clipboard2-pulse"></i> Complete Appointment Details</div>
+        <div class="section-title"><i class="bi bi-clipboard2-pulse"></i> Clinical Examination Details</div>
 
         <div class="booking-type-toggle">
           <button type="button" [class.selected]="bookingType === 'single'" (click)="setBookingType('single')">
@@ -194,6 +199,51 @@
           <small class="error-text">Select at least one treatment, a combo, or a package.</small>
         }
 
+         <div class="clinical-photos">
+          <div class="photo-group">
+            <span class="photo-group-title"><i class="bi bi-camera"></i> Before Photos</span>
+            <div class="photo-grid">
+              @for (img of beforeImages; track $index) {
+                <div class="photo-thumb" role="button" tabindex="0" (click)="openImageViewer('before', $index)" (keydown.enter)="openImageViewer('before', $index)">
+                  <img [src]="img" alt="Before photo {{ $index + 1 }}">
+                  <button type="button" class="photo-remove" (click)="$event.stopPropagation(); removePhoto('before', $index)" aria-label="Remove photo">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
+              }
+              <label class="photo-add">
+                <input type="file" accept="image/*" capture="environment" multiple hidden (change)="onPhotoSelected($event, 'before')">
+                <i class="bi bi-camera-fill"></i>
+                <span>Add Photo</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="photo-group">
+            <span class="photo-group-title"><i class="bi bi-camera"></i> After Photos</span>
+            <div class="photo-grid">
+              @for (img of afterImages; track $index) {
+                <div class="photo-thumb" role="button" tabindex="0" (click)="openImageViewer('after', $index)" (keydown.enter)="openImageViewer('after', $index)">
+                  <img [src]="img" alt="After photo {{ $index + 1 }}">
+                  <button type="button" class="photo-remove" (click)="$event.stopPropagation(); removePhoto('after', $index)" aria-label="Remove photo">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
+              }
+              <label class="photo-add">
+                <input type="file" accept="image/*" capture="environment" multiple hidden (change)="onPhotoSelected($event, 'after')">
+                <i class="bi bi-camera-fill"></i>
+                <span>Add Photo</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <label class="full">Doctor Suggestions<textarea rows="3" formControlName="doctorNotes" placeholder="Doctor's recommendations for this appointment"></textarea></label>
+        </div>
+
+
         <div class="price-summary">
           <div class="price-row">
             <span>Subtotal</span>
@@ -222,10 +272,6 @@
         </div>
 
         <div class="field-grid">
-          <label class="full">Doctor Suggestions<textarea rows="3" formControlName="doctorNotes" placeholder="Doctor's recommendations for this appointment"></textarea></label>
-        </div>
-
-        <div class="field-grid">
           <label>Amount Paid<input type="number" min="0" formControlName="amountPaid"></label>
           <label>Payment Status<span class="status-pill" [ngClass]="paymentStatusClass">{{ paymentStatus }}</span></label>
         </div>
@@ -248,6 +294,35 @@
     }
 
   </form>
+
+  @if (imageViewer) {
+    <div class="image-viewer-backdrop" (click)="closeImageViewer()">
+      <div class="image-viewer" (click)="$event.stopPropagation()">
+        <div class="image-viewer-header">
+          <span>{{ imageViewer.title }} ({{ imageViewer.index + 1 }}/{{ viewerImages.length }})</span>
+          <button type="button" class="image-viewer-close" (click)="closeImageViewer()" aria-label="Close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="image-viewer-body">
+          @if (viewerImages.length > 1) {
+            <button type="button" class="image-viewer-nav prev" (click)="viewerPrev()" aria-label="Previous photo">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+          }
+
+          <img [src]="viewerImage" alt="">
+
+          @if (viewerImages.length > 1) {
+            <button type="button" class="image-viewer-nav next" (click)="viewerNext()" aria-label="Next photo">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
 
   <div class="profile-footer">
     <!-- <a class="footer-btn call-btn" [href]="'tel:' + data.lead.phone">

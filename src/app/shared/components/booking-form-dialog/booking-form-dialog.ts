@@ -4,6 +4,8 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { BaldnessType, ComboOffer, PAYMENT_METHODS, PaymentStatus, TREATMENT_CATEGORIES, Treatment, TreatmentCategory, TreatmentPackage, baldnessTypesFor, formatCurrency, packagesByCategory } from '../../data/treatment-catalog';
 import { NotificationService } from '../../common-services/notification.service';
+import { DatePickerDirective } from '../../directives/date-picker.directive';
+import { TimePickerDirective } from '../../directives/time-picker.directive';
 
 export type BookingType = 'single' | 'combo' | 'package';
 
@@ -48,7 +50,7 @@ export interface BookingFormResult {
 @Component({
   selector: 'app-booking-form-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule],
+  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, DatePickerDirective, TimePickerDirective],
   templateUrl: './booking-form-dialog.html',
   styleUrl: './booking-form-dialog.scss',
 })

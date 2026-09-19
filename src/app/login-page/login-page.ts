@@ -63,7 +63,7 @@ export class LoginPage implements OnInit {
   }
 
   Onsubmit() {
-    this.formSubmitted = true;
+    // this.formSubmitted = true;
     this.error = '';
 
     // if (this.loginForm.invalid) {
