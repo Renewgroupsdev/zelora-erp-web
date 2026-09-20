@@ -1449,8 +1449,8 @@
   color: #fff;
 }
 
-.side-navbar.expanded .help-title { color: #174d43; font-size: 9px; }
-.side-navbar.expanded .help-subtext { color: #5d8379; font-size: 7px; }
+.side-navbar.expanded .help-title { color: #174d43; font-size: clamp(12px, 0.82vw, 15px); }
+.side-navbar.expanded .help-subtext { color: #5d8379; font-size: clamp(7px, 0.5vw + 5px, 9px); }
 .side-navbar.expanded .help-arrow { color: #187a63; }
 
 .help-icon {

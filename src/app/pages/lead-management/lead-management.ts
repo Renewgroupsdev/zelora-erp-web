@@ -38,12 +38,12 @@ export class LeadManagement implements OnInit {
   constructor(private dialog: MatDialog, private router: Router, private ApiDataService: ApiDataService, private toast: ToastService, private crmFlow: CrmFlowService) { }
 
   stats: DetailCardData[] = [
-    { label: 'Total Leads', value: '1,284', trendText: '8.4% this month', trendDirection: 'up' },
-    { label: 'Total Follow-Ups', value: FOLLOW_UP_SEEDS.length, trendText: 'Across all telecallers', trendDirection: 'neutral' },
+    { label: 'Total Leads', value: '1,284', trendText: '8.4% this month', trendDirection: 'up', icon: 'bi-person-lines-fill', iconVariant: 'primary' },
+    { label: 'Total Follow-Ups', value: FOLLOW_UP_SEEDS.length, trendText: 'Across all telecallers', trendDirection: 'neutral', icon: 'bi-arrow-repeat', iconVariant: 'blue' },
     // { label: 'Due Today', value: 2, trendText: 'Needs attention', trendDirection: 'up' },
-    { label: 'Completed', value: 3, trendText: 'Follow-up closed', trendDirection: 'up' },
-    { label: 'Appointment', value: 12, trendText: 'Confirmed appointments', trendDirection: 'up' },
-    { label: 'Conversion Rate', value: '30.2%', trendText: '3.1% vs last month', trendDirection: 'up' },
+    { label: 'Completed', value: 3, trendText: 'Follow-up closed', trendDirection: 'up', icon: 'bi-check-circle', iconVariant: 'green' },
+    { label: 'Appointment', value: 12, trendText: 'Confirmed appointments', trendDirection: 'up', icon: 'bi-calendar-check', iconVariant: 'orange' },
+    { label: 'Conversion Rate', value: '30.2%', trendText: '3.1% vs last month', trendDirection: 'up', icon: 'bi-graph-up-arrow', iconVariant: 'purple' },
   ];
 
   filters: FilterOption[] = [

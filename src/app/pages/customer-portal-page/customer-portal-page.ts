@@ -194,10 +194,10 @@ export class CustomerPortalPage implements OnInit {
       : 0;
 
     return [
-      { label: 'Total Customers', value: this.customers.length.toLocaleString(), trendText: 'Across all branches', trendDirection: 'neutral' },
-      { label: 'New This Month', value: newThisMonth.length, trendText: 'Recently onboarded', trendDirection: 'up' },
-      { label: 'Active Customers', value: active.length, trendText: `${this.customers.length ? Math.round((active.length / this.customers.length) * 100) : 0}% of base`, trendDirection: 'up' },
-      { label: 'Avg. Total Amount', value: this.formatCurrency(avgLifetime), trendText: 'Per customer', trendDirection: 'neutral' },
+      { label: 'Total Customers', value: this.customers.length.toLocaleString(), trendText: 'Across all branches', trendDirection: 'neutral', icon: 'bi-people-fill', iconVariant: 'primary' },
+      { label: 'New This Month', value: newThisMonth.length, trendText: 'Recently onboarded', trendDirection: 'up', icon: 'bi-person-plus-fill', iconVariant: 'green' },
+      { label: 'Active Customers', value: active.length, trendText: `${this.customers.length ? Math.round((active.length / this.customers.length) * 100) : 0}% of base`, trendDirection: 'up', icon: 'bi-check-circle', iconVariant: 'blue' },
+      { label: 'Avg. Total Amount', value: this.formatCurrency(avgLifetime), trendText: 'Per customer', trendDirection: 'neutral', icon: 'bi-cash-stack', iconVariant: 'orange' },
     ];
   }
 
