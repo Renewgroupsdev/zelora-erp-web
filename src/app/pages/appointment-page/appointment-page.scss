@@ -205,7 +205,7 @@
   overflow-x: auto;
   padding-bottom: 4px;
   scrollbar-width: thin;
-  scrollbar-color: var(--table-scrollbar-thumb) var(--table-scrollbar-track);
+  scrollbar-color: var(--primary) var(--table-scrollbar-track);
 }
 
 .timeline-scroll::-webkit-scrollbar {

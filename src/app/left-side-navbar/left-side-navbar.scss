@@ -2124,6 +2124,7 @@
 .help-subtext,
 .brand-footer {
   font-size: clamp(8px, .55vw, 10px);
+  text-decoration: underline;
 }
 
 @media (min-width: 1600px) {

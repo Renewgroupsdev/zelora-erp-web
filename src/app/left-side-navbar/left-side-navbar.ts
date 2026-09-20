@@ -34,7 +34,7 @@ export class LeftSideNavbar {
         { label: 'Follow-up', icon: 'bi-arrow-repeat', path: '/app/follow-ups' },
       ],
     },
-    { label: 'Appointments', icon: 'bi-currency-dollar', path: '/app/appointments' },
+    { label: 'Appointments', icon: 'bi-calendar2-check-fill', path: '/app/appointments' },
     { label: 'Customer Management', icon: 'bi-person-fill', path: '/app/customers' },
     { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings' },
   ];
