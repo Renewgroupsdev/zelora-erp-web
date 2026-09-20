@@ -12,25 +12,13 @@
       <div class="brand-row">
         <img src="assets/Renew-plus-logo.jpg" alt="Renew Plus" class="brand-mark">
 
-        @if (navLayout.sidebarVisible()) {
-          <div class="brand-copy">
-            <span class="brand-name">RENEW<span class="brand-plus">+</span></span>
-            <span class="brand-sub">ERP</span>
-          </div>
-        }
+        <div class="brand-copy">
+          <span class="brand-name">RENEW<span class="brand-plus"> Plus ERP</span></span>
+          @if (navLayout.sidebarVisible()) {
+            <p class="brand-tagline"> Healthier business </p>
+          }
+        </div>
       </div>
-
-      @if (navLayout.sidebarVisible()) {
-        <p class="brand-tagline">Healthier business<br>brighter tomorrow</p>
-      }
-
-      <button
-        type="button"
-        class="sidebar-collapse-btn"
-        (click)="navLayout.toggleSidebar()"
-        [attr.aria-label]="navLayout.sidebarVisible() ? 'Collapse navigation' : 'Expand navigation'">
-        <i class="bi" [class.bi-chevron-double-left]="navLayout.sidebarVisible()" [class.bi-chevron-double-right]="!navLayout.sidebarVisible()"></i>
-      </button>
     </div>
 
     <div class="nav-caption">
@@ -42,8 +30,11 @@
       @for (link of navLinks; track link.path) {
         <li class="nav-item"
           [class.has-children]="link.children?.length"
-          [class.expanded]="link.children?.length && leadChildrenExpanded()">
-          <a class="nav-link" [routerLink]="link.path" routerLinkActive="active" (click)="onNavLinkClick(link)">
+          [class.expanded]="link.children?.length && leadChildrenExpanded()"
+          [class.compact-subnav-open]="openCompactSubmenu() === link.path"
+          (mouseenter)="showVerticalSubmenu(link)">
+          <a class="nav-link" [routerLink]="link.path" routerLinkActive="active" (click)="onNavLinkClick(link, $event)"
+            [attr.aria-expanded]="link.children?.length ? (navLayout.sidebarVisible() ? leadChildrenExpanded() : openCompactSubmenu() === link.path) : null">
             <span class="nav-active-bar"></span>
 
             <span class="nav-icon">
@@ -65,11 +56,11 @@
                     [class.bi-chevron-down]="!leadChildrenExpanded()"></i>
                 </span>
               } @else {
-                <i class="bi bi-chevron-right nav-end-arrow"></i>
+                <i class="bi bi-arrow-up-right horizontal-end-arrow"></i>
               }
             }
 
-            @if (!navLayout.sidebarVisible()) {
+            @if (!navLayout.sidebarVisible() && !link.children?.length) {
               <span class="nav-tooltip">
                 <span class="tooltip-icon"><i [class]="'bi ' + link.icon"></i></span>
                 <span class="tooltip-content">
@@ -84,18 +75,42 @@
           </a>
 
           @if (link.children?.length && (!navLayout.sidebarVisible() || leadChildrenExpanded())) {
-            <div class="subnav-shell">
+            <div class="subnav-shell" [class.open]="openCompactSubmenu() === link.path"
+              [style.opacity]="openCompactSubmenu() === link.path ? '1' : null"
+              [style.visibility]="openCompactSubmenu() === link.path ? 'visible' : null"
+              [style.pointer-events]="openCompactSubmenu() === link.path ? 'auto' : null">
+              @if (!navLayout.sidebarVisible()) {
+                <div class="compact-subnav-head">
+                  <span class="compact-subnav-icon"><i [class]="'bi ' + link.icon"></i></span>
+                  <div>
+                    <strong>{{ link.label }}</strong>
+                    <small>Workspace submodules</small>
+                  </div>
+                </div>
 
-              <ul class="subnav-list" [class.subnav-flyout]="!navLayout.sidebarVisible()">
                 @for (child of link.children; track child.path) {
-                  <li class="subnav-item">
-                    <a class="subnav-link" [routerLink]="child.path" routerLinkActive="active">
-                      <span class="subnav-dot"></span>
-                      <span class="subnav-label">{{ child.label }}</span>
-                    </a>
-                  </li>
+                  <a class="compact-subnav-link" [routerLink]="child.path" routerLinkActive="active"
+                    (click)="closeCompactSubmenu()">
+                    <span class="compact-child-icon"><i [class]="'bi ' + child.icon"></i></span>
+                    <span class="compact-child-copy">
+                      <strong>{{ child.label }}</strong>
+                      <small>Follow-up activities</small>
+                    </span>
+                    <i class="bi bi-arrow-right-short"></i>
+                  </a>
                 }
-              </ul>
+              } @else {
+                <ul class="subnav-list">
+                  @for (child of link.children; track child.path) {
+                    <li class="subnav-item">
+                      <a class="subnav-link" [routerLink]="child.path" routerLinkActive="active" (click)="closeCompactSubmenu()">
+                        <span class="subnav-dot"></span>
+                        <span class="subnav-label">{{ child.label }}</span>
+                      </a>
+                    </li>
+                  }
+                </ul>
+              }
             </div>
           }
         </li>
@@ -116,11 +131,9 @@
       </div>
 
       <div class="brand-footer">
-        <i class="bi bi-heart-pulse"></i>
         @if (navLayout.sidebarVisible()) {
-          <span class="brand-footer-name">Renew Plus ERP</span>
+          <span class="brand-footer-name">&copy; 2026 Renew Plus Hair and Skin Care pvt ltd</span>
         }
-        <span class="brand-footer-version">v1.0.0</span>
       </div>
     </div>
   } @else {
@@ -136,7 +149,11 @@
         @for (link of navLinks; track link.path) {
           <li class="nav-item" [class.subnav-open]="openHorizontalSubmenu() === link.path">
             <a class="nav-link" [routerLink]="link.path" routerLinkActive="active"
-              (click)="toggleHorizontalSubmenu(link, $event)">
+              [attr.aria-expanded]="link.children?.length ? openHorizontalSubmenu() === link.path : null"
+              [attr.aria-haspopup]="link.children?.length ? 'menu' : null"
+              (click)="toggleHorizontalSubmenu(link, $event)"
+              (keydown.enter)="toggleHorizontalSubmenu(link, $event)"
+              (keydown.space)="$event.preventDefault(); toggleHorizontalSubmenu(link, $event)">
               <span class="nav-icon"><i [class]="'bi ' + link.icon"></i></span>
               <span class="nav-label">{{ link.label }}</span>
 
@@ -148,7 +165,10 @@
             </a>
 
             @if (link.children?.length) {
-              <div class="horizontal-subnav" [class.open]="openHorizontalSubmenu() === link.path"
+              <div class="horizontal-subnav" role="menu" [class.open]="openHorizontalSubmenu() === link.path"
+                [style.opacity]="openHorizontalSubmenu() === link.path ? '1' : null"
+                [style.visibility]="openHorizontalSubmenu() === link.path ? 'visible' : null"
+                [style.pointer-events]="openHorizontalSubmenu() === link.path ? 'auto' : null"
                 (click)="$event.stopPropagation()">
                 <div class="horizontal-subnav-head">
                   <span class="horizontal-subnav-icon"><i [class]="'bi ' + link.icon"></i></span>
@@ -169,7 +189,7 @@
                     <span class="horizontal-child-copy">
                       <strong>{{ child.label }}</strong>
                       <small>
-                        @if (child.label === 'Follow-Ups') { Follow-up activities }
+                        @if (child.label === 'Follow-up') { Follow-up activities }
                         @else { Calendar &amp; planning }
                       </small>
                     </span>

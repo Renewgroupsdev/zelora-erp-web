@@ -22,6 +22,8 @@ export class LeftSideNavbar {
 
   readonly openHorizontalSubmenu = signal<string | null>(null);
 
+  readonly openCompactSubmenu = signal<string | null>(null);
+
   readonly navLinks: NavLink[] = [
     { label: 'Dashboard', icon: 'bi-house-fill', path: '/app/dashboard' },
     {
@@ -29,11 +31,11 @@ export class LeftSideNavbar {
       icon: 'bi-person-lines-fill',
       path: '/app/lead-management',
       children: [
-        { label: 'Follow-Ups', icon: 'bi-arrow-repeat', path: '/app/follow-ups' },
+        { label: 'Follow-up', icon: 'bi-arrow-repeat', path: '/app/follow-ups' },
       ],
     },
-    { label: 'Appointment', icon: 'bi-calendar-check-fill', path: '/app/appointments' },
-    { label: 'Client', icon: 'bi-person-vcard-fill', path: '/app/customers' },
+    { label: 'Appointments', icon: 'bi-currency-dollar', path: '/app/appointments' },
+    { label: 'Customer Management', icon: 'bi-person-fill', path: '/app/customers' },
     { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings' },
   ];
 
@@ -43,13 +45,31 @@ export class LeftSideNavbar {
     this.leadChildrenExpanded.update(expanded => !expanded);
   }
 
-  onNavLinkClick(link: NavLink): void {
-    if (link.children?.length) {
-      this.toggleLeadChildren();
+  showVerticalSubmenu(link: NavLink): void {
+    if (!link.children?.length) {
       return;
     }
 
-    // On phones the sidebar is an overlay drawer; picking a page should close it.
+    if (this.navLayout.sidebarVisible()) {
+      this.leadChildrenExpanded.set(true);
+    } else {
+      this.openCompactSubmenu.set(link.path);
+    }
+  }
+
+  onNavLinkClick(link: NavLink, event: MouseEvent): void {
+    if (link.children?.length) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (this.navLayout.sidebarVisible()) {
+        this.toggleLeadChildren();
+      } else {
+        this.openCompactSubmenu.update(current => (current === link.path ? null : link.path));
+      }
+      return;
+    }
+
     this.navLayout.closeMobileSidebar();
   }
 
@@ -68,8 +88,13 @@ export class LeftSideNavbar {
     this.openHorizontalSubmenu.set(null);
   }
 
+  closeCompactSubmenu(): void {
+    this.openCompactSubmenu.set(null);
+  }
+
   @HostListener('document:click')
   onDocumentClick(): void {
     this.closeHorizontalSubmenu();
+    this.closeCompactSubmenu();
   }
 }
