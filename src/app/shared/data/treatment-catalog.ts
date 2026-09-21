@@ -11,12 +11,29 @@ export type TreatmentCategory = 'Hair' | 'Skin' | 'Slimming';
 
 export const TREATMENT_CATEGORIES: TreatmentCategory[] = ['Hair', 'Skin', 'Slimming'];
 
+export interface TreatmentMaterial {
+  key: string;
+  name: string;
+  unit: string;
+  quantity: number;
+}
+
+export type DiscountType = 'percentage' | 'fixed';
+
 export interface Treatment {
   key: string;
   name: string;
   price: number;
   category: TreatmentCategory;
   gender?: 'M' | 'F' | 'All';
+  description?: string;
+  discount?: number;
+  discountType?: DiscountType;
+  gstRate?: number;
+  maxSessions?: number;
+  isCombo?: boolean;
+  treatmentKeys?: string[];
+  materials?: TreatmentMaterial[];
 }
 
 export interface ComboOffer {
@@ -24,6 +41,11 @@ export interface ComboOffer {
   name: string;
   treatmentKeys: string[];
   price: number;
+  discount?: number;
+  discountType?: DiscountType;
+  gstRate?: number;
+  maxSessions?: number;
+  materials?: TreatmentMaterial[];
 }
 
 /** Clinical baldness classification picked during a Hair-category consult, alongside the treatment itself. */
@@ -64,6 +86,12 @@ export interface TreatmentPackage {
   type: 'Treatment' | 'Product';
   price: number;
   description: string;
+  discount?: number;
+  discountType?: DiscountType;
+  gstRate?: number;
+  maxSessions?: number;
+  treatmentKeys?: string[];
+  materials?: TreatmentMaterial[];
 }
 
 export const TREATMENTS: Treatment[] = [

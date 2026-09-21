@@ -299,6 +299,23 @@
   padding: 0;
 }
 
+.back-to-login-row {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 14.5px;
+  color: #50665f;
+
+  a {
+    color: var(--brand-green-dark, #146c43);
+    text-decoration: none;
+    font-weight: 600;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
 .login-form {
   display: flex;
   flex-direction: column;

@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { Preloader } from '../preloader/preloader';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
+import { AuthService } from '../core/service/auth.service';
 
 @Component({
   selector: 'app-login-page',
@@ -22,7 +23,7 @@ export class LoginPage implements OnInit {
 
   private readonly rememberMeKey = environment.rememberMeKey;
 
-  constructor(private fb: FormBuilder, private router: Router) { }
+  constructor(private fb: FormBuilder, private router: Router, private authService: AuthService) { }
 
   ngOnInit(): void {
 
@@ -63,31 +64,37 @@ export class LoginPage implements OnInit {
   }
 
   Onsubmit() {
-    // this.formSubmitted = true;
+    this.formSubmitted = true;
     this.error = '';
 
-    // if (this.loginForm.invalid) {
-    //   this.error = 'Please enter your user name and password.';
-    //   return;
-    // }
+    if (this.loginForm.invalid) {
+      this.error = 'Please enter your user name and password.';
+      return;
+    }
 
-    // const username = this.loginForm.get('user_name')?.value;
-    // const password = this.loginForm.get('password')?.value;
-    // const rememberMe = this.loginForm.get('rememberMe')?.value;
-
-    // if (username != 'admin' || password != 'password123') {
-    //   this.error = 'Invalid user name and password.';
-    //   return;
-    // }
-
-    // this.processRememberMe(username, password, rememberMe);
+    const username = this.loginForm.get('user_name')?.value;
+    const password = this.loginForm.get('password')?.value;
+    const rememberMe = this.loginForm.get('rememberMe')?.value;
 
     this.loading = true;
 
-    setTimeout(() => {
-      this.loading = false;
-      this.router.navigate(['/app/dashboard']);
-    }, 1800);
+    this.authService.login(username, password).subscribe({
+      next: (response) => {
+        this.loading = false;
+
+        if (!response.success || !response.data) {
+          this.error = response.message || 'Invalid user name and password.';
+          return;
+        }
+
+        this.processRememberMe(username, password, rememberMe);
+        this.router.navigate(['/app/dashboard']);
+      },
+      error: (err) => {
+        this.loading = false;
+        this.error = err?.error?.message || 'Unable to login. Please try again.';
+      },
+    });
   }
 
   clearError() {

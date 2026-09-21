@@ -498,6 +498,63 @@
   transform: translateX(19px);
 }
 
+.idle-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+.idle-option {
+  padding: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 9px;
+  background: var(--app-surface-soft);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.idle-option:hover,
+.idle-option.selected {
+  border-color: var(--primary-border-strong);
+  color: var(--text-dark);
+  background: var(--primary-soft);
+}
+
+.idle-custom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 13px;
+  border: 1px solid var(--border-soft);
+  border-radius: 11px;
+  background: var(--app-surface-soft);
+  color: var(--text-dark);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.idle-custom input {
+  width: 70px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-soft-strong);
+  border-radius: 7px;
+  background: var(--app-surface-solid);
+  color: var(--text-dark);
+  font-size: 13px;
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .idle-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 800px) {
   .settings-grid {
     grid-template-columns: 1fr;

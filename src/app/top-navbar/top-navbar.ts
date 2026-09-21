@@ -3,6 +3,7 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { NavLayoutService } from '../services/nav-layout.service';
 import { AppNotification, NotificationService } from '../shared/common-services/notification.service';
+import { AuthService } from '../core/service/auth.service';
 
 @Component({
   selector: 'app-top-navbar',
@@ -17,6 +18,7 @@ export class TopNavbar {
     public navLayout: NavLayoutService,
     public notifications: NotificationService,
     private router: Router,
+    private authService: AuthService,
   ) { }
 
   onNotificationClick(notification: AppNotification): void {
@@ -56,6 +58,6 @@ export class TopNavbar {
 
   logout(): void {
     this.navLayout.closeSettingsMenu();
-    this.router.navigate(['/login']);
+    this.authService.logout();
   }
 }

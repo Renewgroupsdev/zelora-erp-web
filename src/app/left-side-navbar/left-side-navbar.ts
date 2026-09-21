@@ -19,6 +19,7 @@ interface NavLink {
 export class LeftSideNavbar {
 
   readonly leadChildrenExpanded = signal(true);
+  readonly treatmentChildrenExpanded = signal(true);
 
   readonly openHorizontalSubmenu = signal<string | null>(null);
 
@@ -36,13 +37,30 @@ export class LeftSideNavbar {
     },
     { label: 'Appointments', icon: 'bi-calendar2-check-fill', path: '/app/appointments' },
     { label: 'Customer Management', icon: 'bi-person-fill', path: '/app/customers' },
+    {
+      label: 'Treatment Management',
+      icon: 'bi-heart-pulse-fill',
+      path: '/app/treatments',
+      children: [
+        { label: 'Treatment Management', icon: 'bi-heart-pulse', path: '/app/treatments' },
+      ],
+    },
     { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings' },
   ];
 
   constructor(public navLayout: NavLayoutService) { }
 
-  toggleLeadChildren(): void {
-    this.leadChildrenExpanded.update(expanded => !expanded);
+  childrenExpanded(path: string): boolean {
+    return path === '/app/lead-management' ? this.leadChildrenExpanded() : this.treatmentChildrenExpanded();
+  }
+
+  setChildrenExpanded(path: string, expanded: boolean): void {
+    if (path === '/app/lead-management') this.leadChildrenExpanded.set(expanded);
+    if (path === '/app/treatments') this.treatmentChildrenExpanded.set(expanded);
+  }
+
+  toggleChildren(path: string): void {
+    this.setChildrenExpanded(path, !this.childrenExpanded(path));
   }
 
   showVerticalSubmenu(link: NavLink): void {
@@ -51,7 +69,7 @@ export class LeftSideNavbar {
     }
 
     if (this.navLayout.sidebarVisible()) {
-      this.leadChildrenExpanded.set(true);
+      this.setChildrenExpanded(link.path, true);
     } else {
       this.openCompactSubmenu.set(link.path);
     }
@@ -63,7 +81,7 @@ export class LeftSideNavbar {
       event.stopPropagation();
 
       if (this.navLayout.sidebarVisible()) {
-        this.toggleLeadChildren();
+        this.toggleChildren(link.path);
       } else {
         this.openCompactSubmenu.update(current => (current === link.path ? null : link.path));
       }

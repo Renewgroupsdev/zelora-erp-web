@@ -622,3 +622,7 @@ button, a, input, select, textarea {
   width: 22px !important;
   height: 22px !important;
 }
+
+div:where(.swal2-container) h2:where(.swal2-title) {
+  font-size: 1.2em;
+}

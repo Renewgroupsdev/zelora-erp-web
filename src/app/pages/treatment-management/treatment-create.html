@@ -1,0 +1,141 @@
+<div class="treatment-page">
+  <div class="page-heading">
+    <div>
+      <span class="eyebrow"><i class="bi bi-heart-pulse"></i> Treatment Master</span>
+      <h1>{{ editingKey ? (readOnly ? 'View Treatment' : 'Edit Treatment') : 'Create Treatment' }}</h1>
+      <p>{{ readOnly ? 'Review treatment configuration and pricing.' : 'Configure category, pricing, combo treatments, GST, consumables and maximum sittings in one place.' }}</p>
+    </div>
+    <div class="heading-actions">
+      <!-- <span class="status-pill"><i class="bi bi-shield-check"></i> Master data</span> -->
+      <button class="btn secondary" type="button" (click)="router.navigate(['/app/treatments'])"><i class="bi bi-arrow-left"></i> Back</button>
+      <button *ngIf="!readOnly" class="btn primary" type="button" (click)="save()"><i class="bi bi-check2"></i> {{ editingKey ? 'Update Treatment' : 'Create Treatment' }}</button>
+    </div>
+  </div>
+
+  <div class="category-tabs">
+    @for (category of categories; track category) {
+      <button type="button" [class.active]="activeCategory() === category" (click)="setCategory(category)">
+        <span class="category-icon"><i class="bi" [class.bi-scissors]="category === 'Hair'" [class.bi-stars]="category === 'Skin'" [class.bi-person-walking]="category === 'Slimming'"></i></span>
+        <span><strong>{{ category }}</strong><small>{{ filteredTreatments().length }} existing</small></span>
+      </button>
+    }
+  </div>
+
+  <form [formGroup]="form" class="workspace" (ngSubmit)="save()">
+    <section class="card main-card">
+      <div class="section-head">
+        <div class="section-icon"><i class="bi bi-file-earmark-medical"></i></div>
+        <div><h2>Basic treatment details</h2><p>Define the treatment that will be available for appointments and packages.</p></div>
+      </div>
+
+      @if (!readOnly) {
+        <div class="field-grid">
+          <label class="field span-2"><span>Treatment name *</span><input formControlName="name" placeholder="e.g. Advanced Hair PRP" /></label>
+          <label class="field"><span>Category *</span><select formControlName="category"><option value="Hair">Hair</option><option value="Skin">Skin</option><option value="Slimming">Slimming</option></select></label>
+          <label class="field"><span>Max sittings *</span><input type="number" min="1" formControlName="maxSessions" /></label>
+          <label class="field span-2"><span>Description</span><textarea formControlName="description" rows="3" placeholder="Short treatment description"></textarea></label>
+        </div>
+      } @else {
+        <div class="field-grid view-grid">
+          <div class="field span-2"><span>Treatment name</span><strong>{{ form.controls.name.value }}</strong></div>
+          <div class="field"><span>Category</span><strong>{{ form.controls.category.value }}</strong></div>
+          <div class="field"><span>Max sittings</span><strong>{{ form.controls.maxSessions.value }}</strong></div>
+          <div class="field span-2"><span>Description</span><strong>{{ form.controls.description.value || 'No description added' }}</strong></div>
+        </div>
+      }
+
+      <div class="combo-box">
+        @if (!readOnly) {
+          <label class="check-line"><input type="checkbox" formControlName="isCombo" /><span><strong>Combo treatment</strong><small>Use multiple existing treatments together as one package.</small></span></label>
+        } @else {
+          <div class="check-line view-line"><i class="bi" [class.bi-check-circle-fill]="form.controls.isCombo.value" [class.bi-dash-circle]="!form.controls.isCombo.value"></i><span><strong>{{ form.controls.isCombo.value ? 'Combo treatment' : 'Single treatment' }}</strong><small>{{ form.controls.isCombo.value ? 'Bundles multiple existing treatments together.' : 'Standalone treatment, not part of a combo.' }}</small></span></div>
+        }
+
+        @if (form.controls.isCombo.value) {
+          <div class="combo-list">
+            <div class="mini-title">Select treatments in this combo</div>
+            @for (item of filteredTreatments(); track item.key) {
+              <button type="button" class="treatment-chip" [class.selected]="isSelected(item.key)" [disabled]="readOnly" (click)="toggleTreatment(item.key)">
+                <span><i class="bi" [class.bi-check-circle-fill]="isSelected(item.key)" [class.bi-circle]="!isSelected(item.key)"></i>{{ item.name }}</span>
+                <strong>₹{{ item.price | number:'1.0-0' }}</strong>
+              </button>
+            }
+            @if (!filteredTreatments().length) { <small class="empty">Create a normal treatment first, then it can be added to a combo.</small> }
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="card pricing-card">
+      <div class="section-head">
+        <div class="section-icon"><i class="bi bi-receipt-cutoff"></i></div>
+        <div><h2>Pricing & tax</h2><p>Discount and GST are calculated automatically.</p></div>
+      </div>
+
+      @if (!readOnly) {
+        <div class="field-grid">
+          <label class="field"><span>Base price (₹) *</span><input type="number" min="0" formControlName="price" /></label>
+          <label class="field"><span>Discount type</span><select formControlName="discountType"><option value="percentage">Percentage (%)</option><option value="fixed">Fixed amount (₹)</option></select></label>
+          <label class="field"><span>Discount</span><input type="number" min="0" formControlName="discount" /></label>
+          <label class="field"><span>GST rate (%) *</span><input type="number" min="0" max="100" formControlName="gstRate" /></label>
+        </div>
+      } @else {
+        <div class="field-grid view-grid">
+          <div class="field"><span>Base price</span><strong>₹{{ form.controls.price.value | number:'1.0-0' }}</strong></div>
+          <div class="field"><span>Discount type</span><strong>{{ form.controls.discountType.value === 'percentage' ? 'Percentage (%)' : 'Fixed amount (₹)' }}</strong></div>
+          <div class="field"><span>Discount</span><strong>{{ form.controls.discount.value }}{{ form.controls.discountType.value === 'percentage' ? '%' : '' }}</strong></div>
+          <div class="field"><span>GST rate</span><strong>{{ form.controls.gstRate.value }}%</strong></div>
+        </div>
+      }
+
+      <div class="price-summary">
+        <div><span>After discount</span><strong>₹{{ subtotal() | number:'1.2-2' }}</strong></div>
+        <div><span>GST</span><strong>₹{{ gstAmount() | number:'1.2-2' }}</strong></div>
+        <div class="grand"><span>Final treatment price</span><strong>₹{{ total() | number:'1.2-2' }}</strong></div>
+      </div>
+    </section>
+
+    <section class="card materials-card">
+      <div class="section-head">
+        <div class="section-icon"><i class="bi bi-box-seam"></i></div>
+        <div><h2>Consumables / materials</h2><p>Maintain what is used for one sitting of this treatment.</p></div>
+        <button *ngIf="!readOnly" type="button" class="icon-btn" (click)="addMaterial()" aria-label="Add material"><i class="bi bi-plus-lg"></i></button>
+      </div>
+
+      <div formArrayName="materials" class="material-table" [class.view-grid]="readOnly">
+        <div class="material-row header"><span>Item</span><span>Unit</span><span>Qty / sitting</span><span></span></div>
+        @for (material of materials.controls; track $index) {
+          <div class="material-row" [formGroupName]="$index">
+            @if (!readOnly) {
+              <input formControlName="name" placeholder="e.g. Syringe" />
+              <input formControlName="unit" placeholder="piece" />
+              <input type="number" min="0.01" step="0.01" formControlName="quantity" />
+              <button type="button" class="remove-btn" (click)="removeMaterial($index)" [disabled]="materials.length === 1"><i class="bi bi-trash3"></i></button>
+            } @else {
+              <strong>{{ material.value.name }}</strong>
+              <strong>{{ material.value.unit }}</strong>
+              <strong>{{ material.value.quantity }}</strong>
+              <span></span>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <aside class="card preview-card">
+      <div class="preview-top">
+        <span class="preview-label">LIVE PREVIEW</span>
+        <span class="category-badge">{{ activeCategory() }}</span>
+      </div>
+      <h2>{{ form.controls.name.value || 'Your treatment name' }}</h2>
+      <p>{{ form.controls.description.value || 'Treatment description will appear here.' }}</p>
+      <div class="preview-price">₹{{ total() | number:'1.0-0' }} <small>/ sitting</small></div>
+      <div class="preview-grid">
+        <span><i class="bi bi-calendar2-check"></i><b>{{ form.controls.maxSessions.value || 1 }}</b> max sittings</span>
+        <span><i class="bi bi-percent"></i><b>{{ form.controls.gstRate.value || 0 }}%</b> GST</span>
+        <span><i class="bi bi-box-seam"></i><b>{{ materials.length }}</b> materials</span>
+        <span><i class="bi bi-layers"></i><b>{{ form.controls.isCombo.value ? 'Combo' : 'Single' }}</b> type</span>
+      </div>
+    </aside>
+  </form>
+</div>

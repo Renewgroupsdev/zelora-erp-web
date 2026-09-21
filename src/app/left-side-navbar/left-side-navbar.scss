@@ -1465,15 +1465,15 @@
 .brand-footer i { font-size: 8px; }
 
 @media (min-width: 1600px) {
-  .side-navbar.expanded { width: 235px; }
+  .side-navbar.expanded { width: 240px; }
 }
 
 @media (max-width: 768px) {
-  .side-navbar.expanded { width: min(235px, 82vw); }
+  .side-navbar.expanded { width: min(240px, 82vw); }
 }
 
 @media (max-width: 380px) {
-  .side-navbar.expanded { width: min(235px, 84vw); }
+  .side-navbar.expanded { width: min(240px, 84vw); }
 }
 
 .side-navbar.expanded .nav-decoration::before,
@@ -2123,7 +2123,7 @@
 
 .help-subtext,
 .brand-footer {
-  font-size: clamp(8px, .55vw, 10px);
+  font-size: clamp(8px, .55vw, 9.7px);
   text-decoration: underline;
 }
 

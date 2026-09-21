@@ -30,11 +30,11 @@
       @for (link of navLinks; track link.path) {
         <li class="nav-item"
           [class.has-children]="link.children?.length"
-          [class.expanded]="link.children?.length && leadChildrenExpanded()"
+          [class.expanded]="link.children?.length && childrenExpanded(link.path)"
           [class.compact-subnav-open]="openCompactSubmenu() === link.path"
           (mouseenter)="showVerticalSubmenu(link)">
           <a class="nav-link" [routerLink]="link.path" routerLinkActive="active" (click)="onNavLinkClick(link, $event)"
-            [attr.aria-expanded]="link.children?.length ? (navLayout.sidebarVisible() ? leadChildrenExpanded() : openCompactSubmenu() === link.path) : null">
+            [attr.aria-expanded]="link.children?.length ? (navLayout.sidebarVisible() ? childrenExpanded(link.path) : openCompactSubmenu() === link.path) : null">
             <span class="nav-active-bar"></span>
 
             <span class="nav-icon">
@@ -48,12 +48,12 @@
                 <span class="nav-chevron-toggle"
                   role="button"
                   tabindex="0"
-                  [attr.aria-label]="leadChildrenExpanded() ? 'Collapse Lead Management' : 'Expand Lead Management'"
-                  (click)="$event.preventDefault(); $event.stopPropagation(); toggleLeadChildren()"
-                  (keydown.enter)="$event.preventDefault(); $event.stopPropagation(); toggleLeadChildren()">
+                  [attr.aria-label]="childrenExpanded(link.path) ? 'Collapse submenu' : 'Expand submenu'"
+                  (click)="$event.preventDefault(); $event.stopPropagation(); toggleChildren(link.path)"
+                  (keydown.enter)="$event.preventDefault(); $event.stopPropagation(); toggleChildren(link.path)">
                   <i class="bi"
-                    [class.bi-chevron-up]="leadChildrenExpanded()"
-                    [class.bi-chevron-down]="!leadChildrenExpanded()"></i>
+                    [class.bi-chevron-up]="childrenExpanded(link.path)"
+                    [class.bi-chevron-down]="!childrenExpanded(link.path)"></i>
                 </span>
               } @else {
                 <i class="bi bi-arrow-up-right horizontal-end-arrow"></i>
@@ -74,7 +74,7 @@
             }
           </a>
 
-          @if (link.children?.length && (!navLayout.sidebarVisible() || leadChildrenExpanded())) {
+          @if (link.children?.length && (!navLayout.sidebarVisible() || childrenExpanded(link.path))) {
             <div class="subnav-shell" [class.open]="openCompactSubmenu() === link.path"
               [style.opacity]="openCompactSubmenu() === link.path ? '1' : null"
               [style.visibility]="openCompactSubmenu() === link.path ? 'visible' : null"
