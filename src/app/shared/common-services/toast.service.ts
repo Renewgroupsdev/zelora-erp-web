@@ -35,5 +35,20 @@ export class ToastService {
   info(title: string, text?: string): void {
     this.fire('info', title, text);
   }
+
+  /** Swal-based Yes/No prompt so destructive actions never fall back to the browser's native confirm(). */
+  confirm(title: string, text?: string, confirmButtonText = 'Yes, delete it'): Promise<boolean> {
+    return Swal.fire({
+      icon: 'warning',
+      title,
+      text,
+      showCancelButton: true,
+      confirmButtonText,
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc4c4c',
+      cancelButtonColor: '#6C63FF',
+      reverseButtons: true,
+    }).then(result => result.isConfirmed);
+  }
 }
 

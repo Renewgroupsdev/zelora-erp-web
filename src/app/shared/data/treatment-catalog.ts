@@ -18,6 +18,13 @@ export interface TreatmentMaterial {
   quantity: number;
 }
 
+/** One treatment line-item entered directly while building a combo treatment on the Treatment Master page. */
+export interface ComboTreatmentItem {
+  key: string;
+  name: string;
+  price: number;
+}
+
 export type DiscountType = 'percentage' | 'fixed';
 
 export interface Treatment {
@@ -33,6 +40,7 @@ export interface Treatment {
   maxSessions?: number;
   isCombo?: boolean;
   treatmentKeys?: string[];
+  comboItems?: ComboTreatmentItem[];
   materials?: TreatmentMaterial[];
 }
 

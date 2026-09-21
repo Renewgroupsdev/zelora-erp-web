@@ -1,0 +1,22 @@
+<nav class="app-breadcrumb" aria-label="Breadcrumb">
+  <ol>
+    @for (item of items; track item.label; let last = $last) {
+      <li [class.active]="last">
+        @if (item.link && !last) {
+          <a [routerLink]="item.link">
+            @if (item.icon) { <i class="bi" [ngClass]="item.icon"></i> }
+            {{ item.label }}
+          </a>
+        } @else {
+          <span>
+            @if (item.icon) { <i class="bi" [ngClass]="item.icon"></i> }
+            {{ item.label }}
+          </span>
+        }
+        @if (!last) {
+          <i class="bi bi-chevron-right sep" aria-hidden="true"></i>
+        }
+      </li>
+    }
+  </ol>
+</nav>

@@ -8,12 +8,12 @@ export const routes: Routes = [
   },
   {
     path: 'login',
-    canActivate: [loginRedirectGuard],
+    // canActivate: [loginRedirectGuard],
     loadChildren: () => import('./login-page-module/login-page-module-module').then(m => m.LoginPageModuleModule),
   },
   {
     path: 'app',
-    canActivate: [authGuard],
+    // canActivate: [authGuard],
     loadComponent: () => import('./layout/layout').then(m => m.Layout),
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },

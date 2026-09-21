@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import {
+  ComboTreatmentItem,
   DiscountType,
   Treatment,
   TreatmentCategory,
@@ -19,6 +20,7 @@ export interface TreatmentDraft {
   maxSessions: number;
   isCombo: boolean;
   treatmentKeys: string[];
+  comboItems: ComboTreatmentItem[];
   materials: TreatmentMaterial[];
 }
 
@@ -69,6 +71,7 @@ export class TreatmentManagementService {
       maxSessions: t.maxSessions ?? 1,
       isCombo: t.isCombo ?? false,
       treatmentKeys: t.treatmentKeys ?? [],
+      comboItems: t.comboItems ?? [],
       materials: t.materials ?? [],
     }));
   }

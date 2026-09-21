@@ -1,11 +1,15 @@
-<div class="treatment-page">
-  <div class="page-heading">
-    <div>
-      <span class="eyebrow"><i class="bi bi-heart-pulse"></i> Treatment Master</span>
-      <h1>Treatment Management</h1>
-      <p>Manage all treatment services, packages, combos, pricing, GST, sittings and consumables.</p>
+<div class="treatment-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex align-items-center justify-content-between">
+    <h6 class="page-title"><i class="bi bi-heart-pulse-fill"></i> Treatment Management</h6>
+
+    <div class="page-header-actions">
+      <span class="today-date-badge"><i class="bi bi-grid-3x3-gap"></i> {{ store.treatments().length }} treatments</span>
+
+      <button type="button" class="add-treatment-btn" (click)="create()">
+        <i class="bi bi-plus-lg"></i> <span>Create Treatment</span>
+      </button>
     </div>
-    <button class="btn primary" type="button" (click)="create()"><i class="bi bi-plus-lg"></i> Create Treatment</button>
   </div>
 
   <div class="row g-2 g-md-3 stat-row">
@@ -21,20 +25,18 @@
     }
   </div>
 
-  <section class="card list-card">
-    <div class="toolbar">
-      <div class="category-tabs">
-        @for (cat of categories; track cat) {
-          <button type="button" [class.active]="cat === category()" (click)="setCategory(cat)">
-            <i class="bi" [class.bi-scissors]="cat === 'Hair'" [class.bi-stars]="cat === 'Skin'" [class.bi-person-walking]="cat === 'Slimming'"></i>
-            {{ cat }} <span>{{ categoryCount(cat) }}</span>
-          </button>
-        }
-      </div>
-      <label class="search"><i class="bi bi-search"></i><input [ngModel]="search()" (ngModelChange)="onSearchChange($event)" placeholder="Search treatment..." /></label>
-    </div>
+  <app-common-filter-card
+    searchPlaceholder="Search treatment by name or description"
+    [filters]="filters"
+    (searchChange)="onSearch($event)"
+    (filterClick)="onFilterClick($event)"
+    (filtersChange)="onFiltersChange($event)"
+    (exportClick)="onExport()"
+  ></app-common-filter-card>
 
+  <div class="table-col">
     <app-common-table-card
+      title="All Treatments"
       [recordCountText]="recordCountText()"
       [columns]="columns"
       [rows]="rows()"
@@ -43,8 +45,12 @@
       [pageSizeOptions]="pageSizeOptions"
       [currentPage]="currentPage()"
       [pageInfoText]="pageInfoText()"
+      [sortActive]="sortActive()"
+      [sortDirection]="sortDirection()"
       (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
       (quickActionClick)="onQuickAction($event)"
     ></app-common-table-card>
-  </section>
+  </div>
+
 </div>

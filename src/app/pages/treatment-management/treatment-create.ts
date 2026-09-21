@@ -2,14 +2,17 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnInit } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { TreatmentCategory, TreatmentMaterial, TREATMENT_CATEGORIES } from '../../shared/data/treatment-catalog';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ComboTreatmentItem, TreatmentCategory, TreatmentMaterial, TREATMENT_CATEGORIES } from '../../shared/data/treatment-catalog';
 import { TreatmentManagementService } from '../../shared/common-services/treatment-management.service';
+import { Breadcrumb } from '../../shared/components/breadcrumb/breadcrumb';
+import { BreadcrumbItem } from '../../shared/models/common-components.model';
+import { ToastService } from '../../shared/common-services/toast.service';
 
 @Component({
   selector: 'app-treatment-create',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, Breadcrumb],
   templateUrl: './treatment-create.html',
   styleUrl: './treatment-create.scss',
 })
@@ -17,6 +20,7 @@ export class TreatmentCreate implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
   editingKey: string | null = null;
   readonly readOnly = this.route.snapshot.queryParamMap.get('mode') === 'view';
   readonly store = inject(TreatmentManagementService);
@@ -32,7 +36,7 @@ export class TreatmentCreate implements OnInit {
     gstRate: [18, [Validators.required, Validators.min(0), Validators.max(100)]],
     maxSessions: [1, [Validators.required, Validators.min(1)]],
     isCombo: [false],
-    treatmentKeys: this.fb.array<string>([]),
+    comboTreatments: this.fb.array([]),
     materials: this.fb.array([
       this.createMaterial('Gloves', 'pair'),
     ]),
@@ -73,7 +77,7 @@ export class TreatmentCreate implements OnInit {
   readonly total = computed(() => this.subtotal() + this.gstAmount());
 
   get materials(): FormArray { return this.form.controls.materials; }
-  get treatmentKeys(): FormArray { return this.form.controls.treatmentKeys; }
+  get comboTreatments(): FormArray { return this.form.controls.comboTreatments; }
 
   createMaterial(name = '', unit = 'piece') {
     return this.fb.group({
@@ -83,12 +87,46 @@ export class TreatmentCreate implements OnInit {
     });
   }
 
+  createComboItem(name = '', price: number | null = null) {
+    return this.fb.group({
+      name: [name, Validators.required],
+      price: [price, [Validators.required, Validators.min(0)]],
+    });
+  }
+
+  get breadcrumbItems(): BreadcrumbItem[] {
+    return [
+      { label: 'Treatment Management', link: ['/app/treatments'], icon: 'bi-heart-pulse-fill' },
+      { label: this.editingKey ? (this.readOnly ? 'View Treatment' : 'Edit Treatment') : 'Create Treatment' },
+    ];
+  }
+
   setCategory(category: TreatmentCategory): void {
     if (this.readOnly) return;
     this.form.controls.category.setValue(category);
   }
 
+  setComboMode(isCombo: boolean): void {
+    if (this.readOnly) return;
+    this.form.controls.isCombo.setValue(isCombo);
+    if (!isCombo) {
+      while (this.comboTreatments.length) this.comboTreatments.removeAt(0);
+    } else if (!this.comboTreatments.length) {
+      this.addComboTreatment();
+    }
+  }
+
+  invalid(control: AbstractControl | null | undefined): boolean {
+    return !!control && control.invalid && (control.touched || control.dirty);
+  }
+
   addMaterial(): void {
+    const last = this.materials.at(this.materials.length - 1) as FormGroup | undefined;
+    if (last && last.invalid) {
+      last.markAllAsTouched();
+      this.toast.warning('Complete this item first', 'Fill in the item name, unit and quantity before adding another.');
+      return;
+    }
     this.materials.push(this.createMaterial());
   }
 
@@ -96,32 +134,66 @@ export class TreatmentCreate implements OnInit {
     if (this.materials.length > 1) this.materials.removeAt(index);
   }
 
-  toggleTreatment(key: string): void {
-    if (this.readOnly) return;
-    const index = this.treatmentKeys.controls.findIndex(control => control.value === key);
-    if (index >= 0) {
-      this.treatmentKeys.removeAt(index);
-    } else {
-      this.treatmentKeys.push(this.fb.control(key));
+  addComboTreatment(): void {
+    const last = this.comboTreatments.at(this.comboTreatments.length - 1) as FormGroup | undefined;
+    if (last && last.invalid) {
+      last.markAllAsTouched();
+      this.toast.warning('Complete this treatment first', 'Fill in the treatment name and price before adding another.');
+      return;
     }
+    this.comboTreatments.push(this.createComboItem());
   }
 
-  isSelected(key: string): boolean {
-    return this.treatmentKeys.controls.some(control => control.value === key);
+  removeComboTreatment(index: number): void {
+    if (this.comboTreatments.length > 1) this.comboTreatments.removeAt(index);
   }
 
   ngOnInit(): void {
+    // Base price is derived from the combo line-items whenever "Combo Treatment" is on,
+    // so keep it in sync with every edit/add/remove and lock the field while it applies.
+    this.comboTreatments.valueChanges.subscribe(() => this.syncComboPrice());
+    this.form.controls.isCombo.valueChanges.subscribe(isCombo => this.applyComboPriceLock(isCombo));
+
     const key = this.route.snapshot.queryParamMap.get('key');
     if (key) {
       const treatment = this.store.getTreatment(key);
       if (treatment) { this.editingKey = key; this.patchTreatment(treatment); }
     }
+
+    this.applyComboPriceLock(this.form.controls.isCombo.value);
+  }
+
+  private syncComboPrice(): void {
+    if (!this.form.controls.isCombo.value) return;
+    const total = (this.comboTreatments.getRawValue() as { price: number }[])
+      .reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+    this.form.controls.price.setValue(total);
+  }
+
+  private applyComboPriceLock(isCombo: boolean | null): void {
+    if (isCombo) {
+      this.syncComboPrice();
+      this.form.controls.price.disable({ emitEvent: false });
+    } else {
+      this.form.controls.price.enable({ emitEvent: false });
+    }
   }
 
   private patchTreatment(treatment: any): void {
     this.form.patchValue({ name: treatment.name, category: treatment.category, description: treatment.description, price: treatment.price, discount: treatment.discount, discountType: treatment.discountType, gstRate: treatment.gstRate, maxSessions: treatment.maxSessions, isCombo: treatment.isCombo });
-    while (this.treatmentKeys.length) this.treatmentKeys.removeAt(0);
-    (treatment.treatmentKeys || []).forEach((key: string) => this.treatmentKeys.push(this.fb.control(key)));
+
+    while (this.comboTreatments.length) this.comboTreatments.removeAt(0);
+    // Older records only stored keys into the shared treatment catalogue; resolve those to
+    // name/price rows so they still show up when reopened for edit under the new add-a-row form.
+    const comboSource: { name: string; price: number }[] = treatment.comboItems?.length
+      ? treatment.comboItems
+      : (treatment.treatmentKeys || []).map((key: string) => {
+          const referenced = this.store.getTreatment(key);
+          return { name: referenced?.name ?? key, price: referenced?.price ?? 0 };
+        });
+    comboSource.forEach((c) => this.comboTreatments.push(this.createComboItem(c.name, c.price)));
+    if (treatment.isCombo && !this.comboTreatments.length) this.addComboTreatment();
+
     while (this.materials.length) this.materials.removeAt(0);
     const list = treatment.materials?.length ? treatment.materials : [{name: 'Gloves', unit: 'pair', quantity: 1}];
     list.forEach((m: any) => { const group = this.createMaterial(m.name, m.unit); group.patchValue({ quantity: m.quantity }); this.materials.push(group); });
@@ -130,6 +202,7 @@ export class TreatmentCreate implements OnInit {
   save(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      // this.toast.error('Missing required details', 'Please fill in the treatment name, category, max sittings, pricing and all added rows before creating the treatment.');
       return;
     }
 
@@ -140,6 +213,14 @@ export class TreatmentCreate implements OnInit {
       unit: m.unit,
       quantity: Number(m.quantity),
     }));
+
+    const comboItems: ComboTreatmentItem[] = !raw.isCombo ? [] : (raw.comboTreatments ?? [])
+      .filter((c: any) => (c.name ?? '').trim())
+      .map((c: any, i: number) => ({
+        key: `${this.slug(c.name)}-${i + 1}`,
+        name: c.name,
+        price: Number(c.price) || 0,
+      }));
 
     const key = this.editingKey ?? `${this.slug(raw.name ?? '')}-${Date.now()}`;
     const treatment = {
@@ -153,11 +234,17 @@ export class TreatmentCreate implements OnInit {
       gstRate: Number(raw.gstRate),
       maxSessions: Number(raw.maxSessions),
       isCombo: !!raw.isCombo,
-      treatmentKeys: (raw.treatmentKeys ?? []) as string[],
+      treatmentKeys: [] as string[],
+      comboItems,
       materials,
     };
-    if (this.editingKey) this.store.updateTreatment(this.editingKey, treatment);
-    else this.store.addTreatment(treatment);
+    if (this.editingKey) {
+      this.store.updateTreatment(this.editingKey, treatment);
+      this.toast.success('Treatment updated', `${treatment.name} has been updated successfully.`);
+    } else {
+      this.store.addTreatment(treatment);
+      this.toast.success('Treatment created', `${treatment.name} has been added to Treatment Management.`);
+    }
     this.router.navigate(['/app/treatments']);
   }
 
@@ -173,7 +260,7 @@ export class TreatmentCreate implements OnInit {
       maxSessions: 1,
       isCombo: false,
     });
-    while (this.treatmentKeys.length) this.treatmentKeys.removeAt(0);
+    while (this.comboTreatments.length) this.comboTreatments.removeAt(0);
     while (this.materials.length) this.materials.removeAt(0);
     this.materials.push(this.createMaterial('Gloves', 'pair'));
   }

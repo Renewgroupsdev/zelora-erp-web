@@ -1,12 +1,23 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Sort, SortDirection } from '@angular/material/sort';
 import { CommonDetailCard } from '../../shared/components/common-detail-card/common-detail-card';
+import { CommonFilterCard } from '../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../shared/components/common-table-card/common-table-card';
-import { DetailCardData, LeadCell, QuickAction, TableColumn, TablePageChangeEvent, TableRow } from '../../shared/models/common-components.model';
+import {
+  CommonFilterState,
+  DetailCardData,
+  FilterOption,
+  LeadCell,
+  QuickAction,
+  TableColumn,
+  TablePageChangeEvent,
+  TableRow,
+} from '../../shared/models/common-components.model';
 import { TreatmentCategory, TREATMENT_CATEGORIES } from '../../shared/data/treatment-catalog';
 import { TreatmentDraft, TreatmentManagementService } from '../../shared/common-services/treatment-management.service';
+import { ToastService } from '../../shared/common-services/toast.service';
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'view', icon: 'bi-eye', label: 'View', variant: 'default' },
@@ -17,21 +28,37 @@ const QUICK_ACTIONS: QuickAction[] = [
 @Component({
   selector: 'app-treatment-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, CommonDetailCard, CommonTableCard],
+  imports: [CommonModule, CommonDetailCard, CommonFilterCard, CommonTableCard],
   templateUrl: './treatment-management.html',
   styleUrl: './treatment-management.scss',
 })
 export class TreatmentManagement {
   readonly store = inject(TreatmentManagementService);
   private readonly router = inject(Router);
-  readonly categories = TREATMENT_CATEGORIES;
+  private readonly toast = inject(ToastService);
+
+  // The shared filter card only knows about a fixed CommonFilterState shape, so the
+  // "status" slot doubles as Category and "source" as Type (Treatment/Combo) here.
+  readonly filters: FilterOption[] = [
+    { key: 'status', label: 'Category', options: [...TREATMENT_CATEGORIES] },
+    { key: 'source', label: 'Type', options: ['Treatment', 'Combo'] },
+  ];
 
   // Real signals (not plain fields) so the computed()s below actually re-run when these change.
-  readonly category = signal<TreatmentCategory>('Hair');
   readonly search = signal('');
+  readonly filterState = signal<CommonFilterState>({
+    status: null,
+    source: null,
+    branch: [],
+    telecaller: null,
+    dateFrom: null,
+    dateTo: null,
+  });
   readonly currentPage = signal(1);
   readonly pageSize = signal(10);
   readonly pageSizeOptions = [10, 30, 50, 100];
+  readonly sortActive = signal('treatment');
+  readonly sortDirection = signal<SortDirection>('asc');
 
   readonly columns: TableColumn[] = [
     { key: 'treatment', header: 'Treatment', type: 'lead' },
@@ -46,13 +73,20 @@ export class TreatmentManagement {
     { label: 'Total treatments', value: this.store.treatments().length, icon: 'bi-grid-3x3-gap', iconVariant: 'primary' },
     { label: 'Hair', value: this.categoryCount('Hair'), icon: 'bi-scissors', iconVariant: 'green' },
     { label: 'Skin', value: this.categoryCount('Skin'), icon: 'bi-stars', iconVariant: 'blue' },
+    { label: 'Slimming', value: this.categoryCount('Slimming'), icon: 'bi-person-walking', iconVariant: 'orange' },
     { label: 'Combo treatments', value: this.comboCount(), icon: 'bi-layers', iconVariant: 'purple' },
   ]);
 
   readonly filteredTreatments = computed(() => {
     const query = this.search().trim().toLowerCase();
-    const category = this.category();
-    return this.store.treatments().filter(t => t.category === category && (!query || t.name.toLowerCase().includes(query)));
+    const filters = this.filterState();
+    const matched = this.store.treatments().filter(t => {
+      if (query && !t.name.toLowerCase().includes(query) && !(t.description ?? '').toLowerCase().includes(query)) return false;
+      if (filters.status && t.category !== filters.status) return false;
+      if (filters.source && (t.isCombo ? 'Combo' : 'Treatment') !== filters.source) return false;
+      return true;
+    });
+    return this.sortTreatments(matched);
   });
 
   readonly totalRecords = computed(() => this.filteredTreatments().length);
@@ -66,25 +100,39 @@ export class TreatmentManagement {
 
   readonly pageInfoText = computed(() => {
     const total = this.totalRecords();
-    if (!total) return `No ${this.category()} treatments found`;
+    if (!total) return 'No treatments found';
     const start = (this.currentPage() - 1) * this.pageSize() + 1;
     const end = Math.min(this.currentPage() * this.pageSize(), total);
     return `Showing ${start}-${end} of ${total}`;
   });
 
-  setCategory(category: TreatmentCategory): void {
-    this.category.set(category);
+  onSearch(term: string): void {
+    this.search.set(term);
     this.currentPage.set(1);
   }
 
-  onSearchChange(value: string): void {
-    this.search.set(value);
+  onFilterClick(key: string): void {
+    console.debug('Filter opened:', key);
+  }
+
+  onFiltersChange(filters: CommonFilterState): void {
+    this.filterState.set({ ...filters, branch: [...filters.branch] });
     this.currentPage.set(1);
+  }
+
+  onExport(): void {
+    // Trigger export as needed.
   }
 
   onPageChange(event: TablePageChangeEvent): void {
     this.currentPage.set(event.page);
     this.pageSize.set(event.pageSize);
+  }
+
+  onSortChange(sort: Sort): void {
+    this.sortActive.set(sort.active);
+    this.sortDirection.set(sort.direction || 'asc');
+    this.currentPage.set(1);
   }
 
   onQuickAction(event: { row: TableRow; action: string }): void {
@@ -97,10 +145,15 @@ export class TreatmentManagement {
   create(): void { this.router.navigate(['/app/treatments/create']); }
   edit(key: string): void { this.router.navigate(['/app/treatments/create'], { queryParams: { key, mode: 'edit' } }); }
   view(key: string): void { this.router.navigate(['/app/treatments/create'], { queryParams: { key, mode: 'view' } }); }
-  delete(key: string): void {
+  async delete(key: string): Promise<void> {
     const treatment = this.store.getTreatment(key);
     if (!treatment) return;
-    if (confirm(`Delete "${treatment.name}"? This action cannot be undone.`)) this.store.removeTreatment(key);
+
+    const confirmed = await this.toast.confirm('Delete this treatment?', `"${treatment.name}" will be permanently removed. This action cannot be undone.`);
+    if (!confirmed) return;
+
+    this.store.removeTreatment(key);
+    this.toast.success('Treatment deleted', `${treatment.name} has been removed from Treatment Management.`);
   }
 
   finalPrice(t: TreatmentDraft): number {
@@ -111,6 +164,30 @@ export class TreatmentManagement {
 
   categoryCount(category: TreatmentCategory): number { return this.store.treatments().filter(t => t.category === category).length; }
   comboCount(): number { return this.store.treatments().filter(t => t.isCombo).length; }
+
+  private sortTreatments(items: TreatmentDraft[]): TreatmentDraft[] {
+    const active = this.sortActive();
+    const direction = this.sortDirection();
+    if (!active || !direction) return items;
+
+    const factor = direction === 'asc' ? 1 : -1;
+    return [...items].sort((left, right) => {
+      const leftValue = this.getSortableValue(left, active);
+      const rightValue = this.getSortableValue(right, active);
+      if (leftValue < rightValue) return -1 * factor;
+      if (leftValue > rightValue) return 1 * factor;
+      return 0;
+    });
+  }
+
+  private getSortableValue(item: TreatmentDraft, key: string): string | number {
+    if (key === 'treatment') return item.name.toLowerCase();
+    if (key === 'type') return item.isCombo ? 'combo' : 'treatment';
+    if (key === 'pricing') return this.finalPrice(item);
+    if (key === 'sessions') return item.maxSessions;
+    if (key === 'materials') return item.materials.length;
+    return item.name.toLowerCase();
+  }
 
   private toRow(item: TreatmentDraft): TableRow {
     return {
