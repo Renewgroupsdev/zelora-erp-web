@@ -17,10 +17,6 @@
   padding: 0;
 }
 
-/* This was missing here (present on the Lead Management page already):
-   without it, the table's host element sizes to its full content height
-   instead of filling the remaining space, so the whole page scrolls
-   instead of just the table body scrolling inside its own box. */
 app-common-filter-card,
 app-common-table-card {
   display: block;
@@ -135,6 +131,17 @@ app-common-table-card {
   --bs-gutter-y: 8px;
 }
 
+/* Bootstrap's .col-md defaults to flex-shrink: 0, so once the icon stat
+   cards' content is wide enough, the row wraps a card onto its own line
+   instead of letting all of them compress evenly. Allow shrinking at the
+   same breakpoint .col-md itself activates at. */
+@media (min-width: 768px) {
+  .stat-row > .col-md {
+    min-width: 0;
+    flex: 1 1 0%;
+  }
+}
+
 /* Local badge utility - used by the grid view (segment chips / status dots) */
 .badge-green { background: var(--status-green-bg); color: var(--status-green-text); }
 .badge-orange { background: var(--status-orange-bg); color: var(--status-orange-text); }
@@ -149,10 +156,6 @@ app-common-table-card {
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-:host ::ng-deep app-common-detail-card .detail-trend.trend-up {
-  color: var(--primary);
 }
 
 :host ::ng-deep app-common-table-card .sort-indicator.bi-arrow-up,

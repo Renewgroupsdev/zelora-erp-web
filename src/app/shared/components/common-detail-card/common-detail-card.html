@@ -1,18 +1,24 @@
-<div class="detail-card" [class.hero]="hero">
-  <span class="detail-label">{{ label }}</span>
-  <span class="detail-value">{{ value }}</span>
-
-  @if (trendText) {
-    <span class="detail-trend" [ngClass]="'trend-' + trendDirection">
-      @if (trendDirection === 'up') {
-        <i class="bi bi-arrow-up-short"></i>
-      }
-      @if (trendDirection === 'down') {
-        <i class="bi bi-arrow-down-short"></i>
-      }
-      {{ trendText }}
-    </span>
+<div class="detail-card" [class.hero]="hero" [class.has-icon]="!!icon" [ngClass]="icon ? 'variant-' + iconVariant : ''">
+  @if (icon) {
+    <span class="detail-icon" [ngClass]="'icon-' + iconVariant"><i class="bi" [ngClass]="icon"></i></span>
   }
+
+  <div class="detail-card-main">
+    <span class="detail-label">{{ label }}</span>
+    <span class="detail-value">{{ value }}</span>
+
+    @if (trendText) {
+      <span class="detail-trend" [ngClass]="'trend-' + trendDirection">
+        @if (trendDirection === 'up') {
+          <i class="bi bi-arrow-up-short"></i>
+        }
+        @if (trendDirection === 'down') {
+          <i class="bi bi-arrow-down-short"></i>
+        }
+        {{ trendText }}
+      </span>
+    }
+  </div>
 
   @if (hero) {
     <i class="bi bi-bullseye hero-mark" aria-hidden="true"></i>

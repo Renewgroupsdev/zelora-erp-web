@@ -28,15 +28,17 @@ export class LeftSideNavbar {
 
   readonly openHorizontalSubmenu = signal<string | null>(null);
 
+  readonly openCompactSubmenu = signal<string | null>(null);
+
   readonly navLinks: NavLink[] = [
-    { label: 'Dashboard', icon: 'bi-grid-1x2-fill', path: '/app/dashboard', color: 'blue' },
+    { label: 'Dashboard', icon: 'bi-house-fill', path: '/app/dashboard' },
     {
       label: 'Lead Management',
       icon: 'bi-person-lines-fill',
       path: '/app/lead-management',
       color: 'green',
       children: [
-        { label: 'Follow-Ups', icon: 'bi-arrow-repeat', path: '/app/follow-ups' },
+        { label: 'Follow-up', icon: 'bi-arrow-repeat', path: '/app/follow-ups' },
       ],
     },
     {
@@ -52,8 +54,8 @@ export class LeftSideNavbar {
         { label: 'Roles', icon: 'bi-shield-lock-fill', path: '/app/masters/roles'},
       ],
     },
-    { label: 'Appointment', icon: 'bi-calendar-check-fill', path: '/app/appointments', color: 'orange' },
-    { label: 'Client', icon: 'bi-person-vcard-fill', path: '/app/customers', color: 'pink' },
+    { label: 'Appointments', icon: 'bi-calendar2-check-fill', path: '/app/appointments', color: 'orange' },
+    { label: 'Customer Management', icon: 'bi-person-fill', path: '/app/customers', color: 'pink' },
     { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings', color: 'gray' },
   ];
 
@@ -63,17 +65,31 @@ export class LeftSideNavbar {
     this.leadChildrenExpanded.update(expanded => !expanded);
   }
 
-  onNavLinkClick(link: NavLink, event: Event): void {
-    if (link.groupOnly) {
-      event.preventDefault();
-    }
-
-    if (link.children?.length) {
-      this.toggleLeadChildren();
+  showVerticalSubmenu(link: NavLink): void {
+    if (!link.children?.length) {
       return;
     }
 
-    // On phones the sidebar is an overlay drawer; picking a page should close it.
+    if (this.navLayout.sidebarVisible()) {
+      this.leadChildrenExpanded.set(true);
+    } else {
+      this.openCompactSubmenu.set(link.path);
+    }
+  }
+
+  onNavLinkClick(link: NavLink, event: MouseEvent): void {
+    if (link.children?.length) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (this.navLayout.sidebarVisible()) {
+        this.toggleLeadChildren();
+      } else {
+        this.openCompactSubmenu.update(current => (current === link.path ? null : link.path));
+      }
+      return;
+    }
+
     this.navLayout.closeMobileSidebar();
   }
 
@@ -98,8 +114,13 @@ export class LeftSideNavbar {
     this.openHorizontalSubmenu.set(null);
   }
 
+  closeCompactSubmenu(): void {
+    this.openCompactSubmenu.set(null);
+  }
+
   @HostListener('document:click')
   onDocumentClick(): void {
     this.closeHorizontalSubmenu();
+    this.closeCompactSubmenu();
   }
 }

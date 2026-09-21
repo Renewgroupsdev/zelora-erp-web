@@ -3,9 +3,13 @@
   <div class="page-header d-flex align-items-center justify-content-between">
     <h6 class="page-title"><i class="bi bi-calendar-check-fill"></i> Appointments</h6>
 
-    <button type="button" class="add-appointment-btn" (click)="openAddAppointment()">
-      <i class="bi bi-plus-lg"></i> <span>New Appointment</span>
-    </button>
+    <div class="page-header-actions">
+      <span class="today-date-badge"><i class="bi bi-calendar3"></i> {{ formattedTodayDate }}</span>
+
+      <button type="button" class="add-appointment-btn" (click)="openAddAppointment()">
+        <i class="bi bi-plus-lg"></i> <span>New Appointment</span>
+      </button>
+    </div>
   </div>
 
   <div class="row g-2 g-md-3 stat-row">
@@ -16,6 +20,9 @@
           [value]="stat.value"
           [trendText]="stat.trendText"
           [trendDirection]="stat.trendDirection ?? 'neutral'"
+          [icon]="stat.icon"
+          [iconVariant]="stat.iconVariant ?? 'primary'"
+          [sparkline]="stat.sparkline"
         ></app-common-detail-card>
       </div>
     }
@@ -37,33 +44,43 @@
           <p>No appointments booked for today yet.</p>
         </div>
       } @else {
-        <div class="timeline-scroll">
-          @for (appt of todaysAppointments; track appt.id) {
-            <div class="timeline-item">
-              <div class="timeline-time">{{ formatTime(appt.startTime) }}</div>
+        <div class="timeline-scroll-wrap">
+          <button type="button" class="timeline-nav-btn prev" (click)="scrollTimeline(-1)" [disabled]="!canScrollTimelinePrev" aria-label="Scroll to previous appointments">
+            <i class="bi bi-chevron-left"></i>
+          </button>
 
-              <div class="timeline-body">
-                <span class="timeline-avatar" [ngClass]="avatarColorForName(appt.customerName)">{{ initials(appt.customerName) }}</span>
-                <div class="timeline-info">
-                  <span class="timeline-name">{{ appt.customerName }}</span>
-                  <span class="timeline-service"><i class="bi bi-magic"></i> {{ appt.service }}</span>
-                  <span class="timeline-branch"><i class="bi bi-geo-alt-fill"></i> {{ appt.branch }}</span>
+          <div class="timeline-scroll" #timelineScroll (scroll)="onTimelineScroll()">
+            @for (appt of todaysAppointments; track appt.id) {
+              <div class="timeline-item">
+                <div class="timeline-time">{{ formatTime(appt.startTime) }}</div>
+
+                <div class="timeline-body">
+                  <span class="timeline-avatar" [ngClass]="avatarColorForName(appt.customerName)">{{ initials(appt.customerName) }}</span>
+                  <div class="timeline-info">
+                    <span class="timeline-name">{{ appt.customerName }}</span>
+                    <span class="timeline-service"><i class="bi bi-magic"></i> {{ appt.service }}</span>
+                    <span class="timeline-branch"><i class="bi bi-geo-alt-fill"></i> {{ appt.branch }}</span>
+                  </div>
+                </div>
+
+                <div class="timeline-payment">
+                  <span class="payment-amount"><i class="bi bi-cash-stack"></i> {{ formatCurrency(appt.total) }}</span>
+                  <span class="status-pill sm" [ngClass]="paymentStatusClass(appt.paymentStatus)">{{ appt.paymentStatus }}</span>
+                </div>
+
+                <div class="timeline-footer">
+                  <span class="status-pill" [ngClass]="statusClass(appt.status)">{{ appt.status }}</span>
+                  <a class="timeline-call-btn" [href]="'tel:' + appt.phone" [attr.aria-label]="'Call ' + appt.customerName" title="Call">
+                    <i class="bi bi-telephone-fill"></i>
+                  </a>
                 </div>
               </div>
+            }
+          </div>
 
-              <div class="timeline-payment">
-                <span class="payment-amount"><i class="bi bi-cash-stack"></i> {{ formatCurrency(appt.total) }}</span>
-                <span class="status-pill sm" [ngClass]="paymentStatusClass(appt.paymentStatus)">{{ appt.paymentStatus }}</span>
-              </div>
-
-              <div class="timeline-footer">
-                <span class="status-pill" [ngClass]="statusClass(appt.status)">{{ appt.status }}</span>
-                <a class="timeline-call-btn" [href]="'tel:' + appt.phone" [attr.aria-label]="'Call ' + appt.customerName" title="Call">
-                  <i class="bi bi-telephone-fill"></i>
-                </a>
-              </div>
-            </div>
-          }
+          <button type="button" class="timeline-nav-btn next" (click)="scrollTimeline(1)" [disabled]="!canScrollTimelineNext" aria-label="Scroll to next appointments">
+            <i class="bi bi-chevron-right"></i>
+          </button>
         </div>
       }
     }

@@ -27,6 +27,8 @@
           [value]="stat.value"
           [trendText]="stat.trendText"
           [trendDirection]="stat.trendDirection ?? 'neutral'"
+          [icon]="stat.icon"
+          [iconVariant]="stat.iconVariant ?? 'primary'"
         ></app-common-detail-card>
       </div>
     }
@@ -91,7 +93,7 @@
                   <span class="mini-label">Visits</span>
                 </div>
                 <div class="mini-stat">
-                  <span class="mini-value">{{ formatCurrency(customer.lifetimeValue) }}</span>
+                  <span class="mini-value">{{ formatCurrency(customer.totalAmount) }}</span>
                   <span class="mini-label">LTV</span>
                 </div>
                 <div class="mini-stat">

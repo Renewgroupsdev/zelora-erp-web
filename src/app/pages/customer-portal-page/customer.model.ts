@@ -27,7 +27,7 @@ export interface Customer {
   memberSince: string;
   totalVisits: number;
   lastVisit: string;
-  lifetimeValue: number;
+  totalAmount: number;
   preferredService: string;
   visitHistory: CustomerVisit[];
 }

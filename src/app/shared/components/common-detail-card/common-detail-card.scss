@@ -19,14 +19,94 @@
   transition: border-color .15s ease, background .15s ease;
 }
 
-.detail-card:hover {
+.detail-card:not(.has-icon):hover {
   background: var(--primary-soft);
 }
 
-/* Featured entry — the standout metric gets the ledger's gold ink, not a dark card */
+.detail-card.has-icon {
+  min-height: clamp(62px, 5vw + 46px, 84px);
+  padding: clamp(8px, 0.6vw + 6px, 10px) clamp(9px, 0.7vw + 6px, 12px);
+  flex-direction: row;
+  align-items: center;
+  gap: clamp(6px, 0.8vw + 3px, 10px);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--detail-tint-border, var(--border-soft));
+  border-top: 1px solid var(--detail-tint-border, var(--border-soft));
+  background: linear-gradient(135deg, var(--detail-tint-bg, var(--app-surface)) 0%, var(--app-surface-solid) 65%);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.detail-card.has-icon:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.detail-card.has-icon.variant-primary {
+  --detail-tint-bg: color-mix(in srgb, var(--primary) 14%, var(--app-surface-solid));
+  --detail-tint-border: color-mix(in srgb, var(--primary) 22%, var(--border-soft));
+  --detail-tint-accent: var(--primary-dark);
+}
+
+.detail-card.has-icon.variant-green {
+  --detail-tint-bg: color-mix(in srgb, var(--status-green-text) 14%, var(--app-surface-solid));
+  --detail-tint-border: color-mix(in srgb, var(--status-green-text) 22%, var(--border-soft));
+  --detail-tint-accent: var(--status-green-text);
+}
+
+.detail-card.has-icon.variant-orange {
+  --detail-tint-bg: color-mix(in srgb, var(--status-orange-text) 16%, var(--app-surface-solid));
+  --detail-tint-border: color-mix(in srgb, var(--status-orange-text) 24%, var(--border-soft));
+  --detail-tint-accent: var(--status-orange-text);
+}
+
+.detail-card.has-icon.variant-blue {
+  --detail-tint-bg: color-mix(in srgb, var(--status-blue-text) 14%, var(--app-surface-solid));
+  --detail-tint-border: color-mix(in srgb, var(--status-blue-text) 22%, var(--border-soft));
+  --detail-tint-accent: var(--status-blue-text);
+}
+
+.detail-card.has-icon.variant-purple {
+  --detail-tint-bg: color-mix(in srgb, var(--status-purple-text) 14%, var(--app-surface-solid));
+  --detail-tint-border: color-mix(in srgb, var(--status-purple-text) 22%, var(--border-soft));
+  --detail-tint-accent: var(--status-purple-text);
+}
+
+.detail-card.has-icon .detail-label {
+  min-width: 0;
+  font-size: clamp(10.5px, 0.5vw + 9px, 12.5px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail-card.has-icon .detail-value {
+  font-size: clamp(17px, 1.7vw + 11px, 24px);
+}
+
+.detail-card.has-icon .detail-trend {
+  max-width: 100%;
+  font-size: clamp(10px, 0.4vw + 9px, 12px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail-card.has-icon .detail-trend.trend-neutral {
+  color: var(--detail-tint-accent, var(--text-muted));
+}
+
+.detail-card.has-icon .detail-card-main {
+  flex: 1 1 auto;
+}
+
 .detail-card.hero {
   border-top-color: var(--gold);
   background: var(--gold-soft);
+}
+
+.detail-card.hero.has-icon {
+  border-color: color-mix(in srgb, var(--gold) 32%, var(--border-soft));
+  background: linear-gradient(135deg, var(--gold-soft) 0%, var(--app-surface-solid) 65%);
 }
 
 .hero-mark {
@@ -56,6 +136,65 @@
 
 .detail-card.hero .detail-trend.trend-up {
   color: var(--gold-dark);
+}
+
+.detail-icon {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid transparent;
+
+  i {
+    font-size: 13px;
+    font-weight: var(--fw-bold);
+    -webkit-text-stroke: 0.45px currentColor;
+  }
+
+  &.icon-primary { background: var(--primary-soft); color: var(--primary-dark); border-color: color-mix(in srgb, var(--primary) 38%, transparent); }
+  &.icon-green { background: var(--status-green-bg); color: var(--status-green-text); border-color: color-mix(in srgb, var(--status-green-text) 38%, transparent); }
+  &.icon-orange { background: var(--status-orange-bg); color: var(--status-orange-text); border-color: color-mix(in srgb, var(--status-orange-text) 38%, transparent); }
+  &.icon-blue { background: var(--status-blue-bg); color: var(--status-blue-text); border-color: color-mix(in srgb, var(--status-blue-text) 38%, transparent); }
+  &.icon-purple { background: var(--status-purple-bg); color: var(--status-purple-text); border-color: color-mix(in srgb, var(--status-purple-text) 38%, transparent); }
+}
+
+.detail-card.has-icon .detail-icon {
+  width: clamp(26px, 2.2vw + 18px, 36px);
+  height: clamp(26px, 2.2vw + 18px, 36px);
+
+  i { font-size: clamp(12px, 0.9vw + 9px, 16px); }
+}
+
+.detail-card-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.detail-sparkline {
+  flex: 0 0 auto;
+  width: 60px;
+  height: 30px;
+  color: var(--detail-tint-accent, var(--primary));
+
+  .detail-sparkline-line {
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+.detail-card.has-icon .detail-sparkline {
+  flex: 0 1 auto;
+  width: clamp(38px, 4.5vw + 10px, 66px);
+  min-width: 28px;
+  height: clamp(24px, 2.2vw + 12px, 34px);
 }
 
 .detail-label {

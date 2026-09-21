@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { Sort, SortDirection } from '@angular/material/sort';
@@ -65,7 +65,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   templateUrl: './appointment-page.html',
   styleUrl: './appointment-page.scss',
 })
-export class AppointmentPage implements OnInit {
+export class AppointmentPage implements OnInit, AfterViewInit {
   constructor(private dialog: MatDialog, private toast: ToastService, private crmFlow: CrmFlowService, private router: Router) { }
 
   readonly branches = ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'];
@@ -120,6 +120,10 @@ export class AppointmentPage implements OnInit {
   // Today's Timeline starts collapsed on mobile (< 576px) and expanded on larger screens.
   timelineExpanded = typeof window === 'undefined' || window.matchMedia('(min-width: 576px)').matches;
 
+  @ViewChild('timelineScroll') private timelineScrollRef?: ElementRef<HTMLDivElement>;
+  canScrollTimelinePrev = false;
+  canScrollTimelineNext = false;
+
   ngOnInit(): void {
     this.today = new Date();
     this.appointments = this.buildSeedAppointments();
@@ -128,8 +132,44 @@ export class AppointmentPage implements OnInit {
     this.refreshRows();
   }
 
+  ngAfterViewInit(): void {
+    setTimeout(() => this.updateTimelineScrollState());
+  }
+
   toggleTimeline(): void {
     this.timelineExpanded = !this.timelineExpanded;
+    if (this.timelineExpanded) {
+      setTimeout(() => this.updateTimelineScrollState());
+    }
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateTimelineScrollState();
+  }
+
+  scrollTimeline(direction: 1 | -1): void {
+    const el = this.timelineScrollRef?.nativeElement;
+    if (!el) return;
+
+    const amount = Math.min(el.clientWidth * 0.9, 480);
+    el.scrollBy({ left: direction * amount, behavior: 'smooth' });
+  }
+
+  onTimelineScroll(): void {
+    this.updateTimelineScrollState();
+  }
+
+  private updateTimelineScrollState(): void {
+    const el = this.timelineScrollRef?.nativeElement;
+    if (!el) {
+      this.canScrollTimelinePrev = false;
+      this.canScrollTimelineNext = false;
+      return;
+    }
+
+    this.canScrollTimelinePrev = el.scrollLeft > 4;
+    this.canScrollTimelineNext = el.scrollLeft < el.scrollWidth - el.clientWidth - 4;
   }
 
   // ---------------------------------------------------------------------
@@ -219,11 +259,15 @@ export class AppointmentPage implements OnInit {
     const completionRate = Math.round((completed.length / total) * 100);
 
     return [
-      { label: "Today's Appointments", value: today.length, trendText: `${today.filter((a) => a.status === 'Confirmed').length} confirmed`, trendDirection: 'up' },
-      { label: 'Confirmed', value: confirmed.length, trendText: 'Ready to visit', trendDirection: 'up' },
-      { label: 'Pending', value: pending.length, trendText: 'Awaiting confirmation', trendDirection: 'neutral' },
-      { label: 'Completion Rate', value: `${completionRate}%`, trendText: `${completed.length} completed overall`, trendDirection: 'up' },
+      { label: "Today's Appointments", value: today.length, trendText: `${today.filter((a) => a.status === 'Confirmed').length} confirmed`, trendDirection: 'up', icon: 'bi-calendar-check', iconVariant: 'primary', sparkline: [3, 4, 3, 5, 4, 6, today.length] },
+      { label: 'Confirmed', value: confirmed.length, trendText: 'Ready to visit', trendDirection: 'up', icon: 'bi-check-circle', iconVariant: 'green', sparkline: [2, 3, 3, 4, 3, 5, confirmed.length] },
+      { label: 'Pending', value: pending.length, trendText: 'Awaiting confirmation', trendDirection: 'neutral', icon: 'bi-clock-history', iconVariant: 'orange', sparkline: [5, 4, 5, 3, 4, 3, pending.length] },
+      { label: 'Completion Rate', value: `${completionRate}%`, trendText: `${completed.length} completed overall`, trendDirection: 'up', icon: 'bi-check2-circle', iconVariant: 'blue', sparkline: [10, 15, 12, 20, 18, 22, completionRate] },
     ];
+  }
+
+  get formattedTodayDate(): string {
+    return this.today.toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   // ---------------------------------------------------------------------
@@ -527,6 +571,7 @@ export class AppointmentPage implements OnInit {
     const endIndex = startIndex + this.pageSize;
 
     this.rows = sorted.slice(startIndex, endIndex).map((appt, i) => this.mapAppointmentToRow(appt, startIndex + i));
+    setTimeout(() => this.updateTimelineScrollState());
   }
 
   private getFilteredAppointments(): Appointment[] {

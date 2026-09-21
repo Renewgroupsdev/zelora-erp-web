@@ -115,8 +115,11 @@ app-common-table-card {
   --bs-gutter-y: 8px;
 }
 
-:host ::ng-deep app-common-detail-card .detail-trend.trend-up {
-  color: var(--primary);
+@media (min-width: 768px) {
+  .stat-row > .col-md {
+    min-width: 0;
+    flex: 1 1 0%;
+  }
 }
 
 :host ::ng-deep app-common-table-card .sort-indicator.bi-arrow-up,
