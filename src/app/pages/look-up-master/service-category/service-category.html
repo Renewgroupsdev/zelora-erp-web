@@ -1,0 +1,111 @@
+<div class="service-category-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div class="page-header-text">
+      <h6 class="page-title">Service Category</h6>
+    </div>
+
+    <button type="button" class="add-lead-btn" (click)="onAddCategory()">
+      <i class="bi bi-plus-lg"></i>
+      Add Category
+    </button>
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by category name"
+    [filters]="filters"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filterClick)="onFilterClick($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
+
+  <div class="category-tree-card">
+    <div class="category-tree-header d-flex align-items-center justify-content-between">
+      <span class="record-count">{{ recordCountText }}</span>
+    </div>
+
+    <div class="category-tree-scroll">
+      @for (parent of filteredCategories; track parent.id) {
+        <div class="category-group" [class.expanded]="parent.expanded">
+
+          <div class="category-row parent-row" (click)="toggleExpand(parent)">
+            <button
+              type="button"
+              class="expand-toggle"
+              [class.rotated]="parent.expanded"
+              [attr.aria-expanded]="parent.expanded"
+              [attr.aria-label]="parent.expanded ? 'Collapse ' + parent.name : 'Expand ' + parent.name">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+
+            <div class="category-info">
+              <span class="category-name">{{ parent.name }}</span>
+              @if (parent.children.length) {
+                <span class="child-count">{{ parent.children.length }} sub-categories</span>
+              }
+            </div>
+
+            <span class="status-badge" [class.status-active]="parent.statusLabel === 'Active'" [class.status-inactive]="parent.statusLabel === 'Inactive'">
+              {{ parent.statusLabel }}
+            </span>
+
+            <span class="category-date">{{ parent.createdAt }}</span>
+
+            <div class="row-actions">
+              <button type="button" class="row-action-btn action-add" (click)="onAddSubCategory(parent, $event)" aria-label="Add sub-category" title="Add sub-category">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+              <button type="button" class="row-action-btn action-edit" (click)="onEditCategory(parent, $event)" aria-label="Edit category" title="Edit">
+                <i class="bi bi-pencil-fill"></i>
+              </button>
+              <button type="button" class="row-action-btn action-delete" (click)="onDeleteCategory(parent, $event)" aria-label="Delete category" title="Delete">
+                <i class="bi bi-trash3-fill"></i>
+              </button>
+            </div>
+          </div>
+
+          @if (parent.expanded) {
+            <div class="children-list">
+              @for (child of parent.children; track child.id) {
+                <div class="category-row child-row">
+                  <span class="child-connector"></span>
+
+                  <div class="category-info">
+                    <span class="category-name">{{ child.name }}</span>
+                  </div>
+
+                  <span class="status-badge" [class.status-active]="child.statusLabel === 'Active'" [class.status-inactive]="child.statusLabel === 'Inactive'">
+                    {{ child.statusLabel }}
+                  </span>
+
+                  <span class="category-date">{{ child.createdAt }}</span>
+
+                  <div class="row-actions">
+                    <button type="button" class="row-action-btn action-edit" (click)="onEditCategory(child, $event)" aria-label="Edit sub-category" title="Edit">
+                      <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    <button type="button" class="row-action-btn action-delete" (click)="onDeleteCategory(child, $event)" aria-label="Delete sub-category" title="Delete">
+                      <i class="bi bi-trash3-fill"></i>
+                    </button>
+                  </div>
+                </div>
+              } @empty {
+                <div class="children-empty">No sub-categories yet.</div>
+              }
+            </div>
+          }
+        </div>
+      } @empty {
+        <div class="empty-state">
+          @if (isLoading) {
+            Loading categories...
+          } @else {
+            No categories found
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+</div>

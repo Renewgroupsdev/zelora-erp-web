@@ -1,0 +1,108 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-person-badge-fill"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>{{ isEdit ? 'Edit Role' : 'Add Role' }}</h2>
+        <p>{{ isEdit ? 'Update role information' : 'Create a new role' }}</p>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="modal-close-btn"
+      aria-label="Close"
+      (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="roleForm" (ngSubmit)="saveRole()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-shield-lock"></i>
+        Role Information
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field">
+          <label for="role-name">Role Name <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-person-badge"></i>
+            <input
+              id="role-name"
+              type="text"
+              formControlName="name"
+              placeholder="Enter role name"
+              [class.is-invalid]="isInvalid('name')" />
+          </div>
+          @if (isInvalid('name')) {
+            <small class="error-text">Role name is required.</small>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="role-slug">Slug <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-link-45deg"></i>
+            <input
+              id="role-slug"
+              type="text"
+              formControlName="slug"
+              placeholder="e.g. branch_manager"
+              (input)="onSlugInput()"
+              [class.is-invalid]="isInvalid('slug')" />
+          </div>
+          @if (isInvalid('slug')) {
+            <small class="error-text">Slug is required.</small>
+          }
+        </div>
+
+        <div class="form-field full-width">
+          <label for="role-description">Description</label>
+          <div class="textarea-wrap">
+            <i class="bi bi-card-text"></i>
+            <textarea
+              id="role-description"
+              formControlName="description"
+              rows="2"
+              placeholder="Describe what this role can do"></textarea>
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="role-status">Status <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-circle-half"></i>
+            <select id="role-status" formControlName="status">
+              <option [value]="1">Active</option>
+              <option [value]="0">Inactive</option>
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button
+        type="submit"
+        class="save-btn"
+        [disabled]="isSaving"
+        [title]="isEdit ? 'Update Role' : 'Save Role'">
+        <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-floppy]="!isSaving && !isEdit" [class.bi-pencil-square]="!isSaving && isEdit"></i>
+        {{ isSaving ? 'Saving...' : (isEdit ? 'Update' : 'Save') }}
+      </button>
+    </div>
+
+  </form>
+</div>

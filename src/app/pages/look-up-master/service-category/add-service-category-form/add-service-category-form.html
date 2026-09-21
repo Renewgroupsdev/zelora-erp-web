@@ -1,0 +1,93 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-tags-fill"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>{{ isEdit ? 'Edit Service Category' : 'Add Service Category' }}</h2>
+        <p>{{ isEdit ? 'Update category information' : 'Create a new service category' }}</p>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="modal-close-btn"
+      aria-label="Close"
+      (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="categoryForm" (ngSubmit)="saveCategory()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-diagram-3"></i>
+        Category Information
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field full-width">
+          <label for="category-name">Category Name <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-tag"></i>
+            <input
+              id="category-name"
+              type="text"
+              formControlName="name"
+              placeholder="Enter category name"
+              [class.is-invalid]="isInvalid('name')" />
+          </div>
+          @if (isInvalid('name')) {
+            <small class="error-text">Category name is required.</small>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="category-parent">Parent Category</label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-diagram-2"></i>
+            <select id="category-parent" formControlName="parent_id">
+              <option value="">None (Top-level category)</option>
+              @for (parent of parentOptions; track parent.id) {
+                <option [value]="parent.id">{{ parent.name }}</option>
+              }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="category-status">Status <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-circle-half"></i>
+            <select id="category-status" formControlName="status">
+              <option [value]="1">Active</option>
+              <option [value]="0">Inactive</option>
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button
+        type="submit"
+        class="save-btn"
+        [disabled]="isSaving"
+        [title]="isEdit ? 'Update Category' : 'Save Category'">
+        <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-floppy]="!isSaving && !isEdit" [class.bi-pencil-square]="!isSaving && isEdit"></i>
+        {{ isSaving ? 'Saving...' : (isEdit ? 'Update' : 'Save') }}
+      </button>
+    </div>
+
+  </form>
+</div>

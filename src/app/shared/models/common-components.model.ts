@@ -29,7 +29,7 @@ export interface CommonFilterState {
 }
 
 /** Supported cell renderers for app-common-table-card columns. */
-export type TableColumnType = 'text' | 'lead' | 'branch' | 'badge' | 'action' | 'avatarGroup' | 'callLog' | 'quickActions';
+export type TableColumnType = 'text' | 'lead' | 'branch' | 'badge' | 'action' | 'rowActions' | 'avatarGroup' | 'callLog' | 'quickActions';
 
 /**
  * One icon button rendered by the 'quickActions' column type (e.g. Confirm / Reschedule /

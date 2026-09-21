@@ -1,0 +1,79 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-flag-fill"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>{{ isEdit ? 'Edit Lead Status' : 'Add Lead Status' }}</h2>
+        <p>{{ isEdit ? 'Update status information' : 'Create a new lead status' }}</p>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="modal-close-btn"
+      aria-label="Close"
+      (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="statusForm" (ngSubmit)="saveStatus()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-flag"></i>
+        Status Information
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field full-width">
+          <label for="status-name">Status Name <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-tag"></i>
+            <input
+              id="status-name"
+              type="text"
+              formControlName="name"
+              placeholder="Enter status name"
+              [class.is-invalid]="isInvalid('name')" />
+          </div>
+          @if (isInvalid('name')) {
+            <small class="error-text">Status name is required.</small>
+          }
+        </div>
+
+        <div class="form-field full-width">
+          <label for="status-active">Status <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-circle-half"></i>
+            <select id="status-active" formControlName="status">
+              <option [value]="1">Active</option>
+              <option [value]="0">Inactive</option>
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button
+        type="submit"
+        class="save-btn"
+        [disabled]="isSaving"
+        [title]="isEdit ? 'Update Status' : 'Save Status'">
+        <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-floppy]="!isSaving && !isEdit" [class.bi-pencil-square]="!isSaving && isEdit"></i>
+        {{ isSaving ? 'Saving...' : (isEdit ? 'Update' : 'Save') }}
+      </button>
+    </div>
+
+  </form>
+</div>

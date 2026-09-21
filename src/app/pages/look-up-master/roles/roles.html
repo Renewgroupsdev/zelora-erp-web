@@ -1,0 +1,44 @@
+<div class="roles-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div class="page-header-text">
+      <h6 class="page-title">Roles</h6>
+    </div>
+
+    <button type="button" class="add-lead-btn" (click)="openAddPopup()">
+      <i class="bi bi-plus-lg"></i>
+      Add Role
+    </button>
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by role name or slug"
+    [filters]="filters"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filterClick)="onFilterClick($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
+
+  <div class="tables-row d-flex flex-column">
+    <div class="table-col">
+      <app-common-table-card
+        [recordCountText]="recordCountText"
+        [columns]="columns"
+        [rows]="rows"
+        [totalRecords]="totalRecords"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="pageSizeOptions"
+        [currentPage]="currentPage"
+        [pageInfoText]="pageInfoText"
+        [sortActive]="sortActive"
+        [sortDirection]="sortDirection"
+        (pageChange)="onPageChange($event)"
+        (sortChange)="onSortChange($event)"
+        (editClick)="onEditRole($event)"
+        (deleteClick)="onDeleteRole($event)"
+      ></app-common-table-card>
+    </div>
+  </div>
+
+</div>

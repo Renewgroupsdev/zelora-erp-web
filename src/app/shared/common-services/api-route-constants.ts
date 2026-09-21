@@ -16,4 +16,24 @@ export class ApiRoutesConstants {
    public static Type_List_Options    ='service-category-requests';
    public static Status_List_Options    ='lead-statuses';
 
+   //Service Category (CURD)
+   public static SERVICE_CATEGORY_GET_List = "service-category-requests/2";
+   public static SERVICE_CATEGORY_ADD = "service-category-requests";
+   public static SERVICE_CATEGORY_DELETE = "service-category-requests";
+
+   //Source (CURD)
+   public static SOURCE_GET_List = "sources";
+   public static SOURCE_ADD = "sources";
+   public static SOURCE_DELETE = "sources";
+
+   //Lead Status (CURD)
+   public static LEAD_STATUS_GET_List = "lead-statuses";
+   public static LEAD_STATUS_ADD = "lead-statuses";
+   public static LEAD_STATUS_DELETE = "lead-statuses";
+
+   //Roles (CURD)
+   public static ROLES_GET_List = "roles";
+   public static ROLES_ADD = "roles";
+   public static ROLES_DELETE = "roles";
+
 }

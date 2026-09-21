@@ -121,7 +121,7 @@ export class CommonTableCard {
   }
 
   isSortable(column: TableColumn): boolean {
-    return column.type !== 'action' && column.sortable !== false;
+    return column.type !== 'action' && column.type !== 'rowActions' && column.sortable !== false;
   }
 
   get hasConnections(): boolean {
