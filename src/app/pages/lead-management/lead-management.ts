@@ -106,8 +106,11 @@ export class LeadManagement implements OnInit {
   followUpRows: TableRow[] = [];
 
   ngOnInit(): void {
-    this.refreshRows();
+    // this.refreshRows();
     this.loadLeadData();
+     this.allRows = this.allRows.map((lead: any) => this.mapLeadToRow(lead));
+     this.currentPage = 1;
+     this.refreshRows();
   }
 
   loadLeadData(): void {
@@ -129,8 +132,7 @@ export class LeadManagement implements OnInit {
       },
       error: (err: any) => {
         this.isLoading = false;
-        this.toast.error('Failed to load leads. Please try again.');
-        console.error('Failed to load leads:', err);
+        this.toast.error(err.message);
       },
     });
   }

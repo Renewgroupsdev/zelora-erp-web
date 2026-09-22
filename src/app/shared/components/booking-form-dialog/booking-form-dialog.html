@@ -29,7 +29,7 @@
       <div class="form-grid">
 
         <div class="form-field">
-          <label for="bk-name">Customer Name <span>*</span></label>
+          <label for="bk-name">Customer Name <span class="required-asterisk">*</span></label>
           <div class="input-wrap">
             <i class="bi bi-person"></i>
             <input
@@ -46,7 +46,7 @@
         </div>
 
         <div class="form-field">
-          <label for="bk-phone">Phone No <span>*</span></label>
+          <label for="bk-phone">Phone No <span class="required-asterisk">*</span></label>
           <div class="input-wrap">
             <i class="bi bi-telephone"></i>
             <input
@@ -75,7 +75,7 @@
         </div>
 
         <div class="form-field">
-          <label for="bk-branch">Branch <span>*</span></label>
+          <label for="bk-branch">Branch <span class="required-asterisk">*</span></label>
           <div class="input-wrap select-wrap">
             <i class="bi bi-geo-alt"></i>
             <select id="bk-branch" formControlName="branch" [class.is-invalid]="isInvalid('branch')">
@@ -89,7 +89,7 @@
         </div>
 
         <div class="form-field">
-          <label for="bk-staff">Assign Staff <span>*</span></label>
+          <label for="bk-staff">Assign Staff <span class="required-asterisk">*</span></label>
           <div class="input-wrap select-wrap">
             <i class="bi bi-person-badge"></i>
             <select id="bk-staff" formControlName="staff" [class.is-invalid]="isInvalid('staff')">
@@ -103,7 +103,7 @@
         </div>
 
         <div class="form-field full-width">
-          <label>Treatments <span>*</span></label>
+          <label>Treatments <span class="required-asterisk">*</span></label>
 
           <div class="booking-type-toggle">
             <button type="button" [class.selected]="bookingType === 'single'" (click)="setBookingType('single')">
@@ -255,7 +255,7 @@
         </div>
 
         <div class="form-field">
-          <label for="bk-date">Date <span>*</span></label>
+          <label for="bk-date">Date <span class="required-asterisk">*</span></label>
           <div class="input-wrap">
             <i class="bi bi-calendar3"></i>
             <input id="bk-date" type="text" appDatePicker formControlName="date" placeholder="Select date" [class.is-invalid]="isInvalid('date')" />
@@ -263,7 +263,7 @@
         </div>
 
         <div class="form-field">
-          <label for="bk-time">Start Time <span>*</span></label>
+          <label for="bk-time">Start Time <span class="required-asterisk">*</span></label>
           <div class="input-wrap">
             <i class="bi bi-clock"></i>
             <input id="bk-time" type="text" appTimePicker formControlName="startTime" placeholder="Select time" [class.is-invalid]="isInvalid('startTime')" />

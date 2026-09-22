@@ -1,15 +1,23 @@
-/**
- * Single source of truth for treatment pricing, combo packages and payment
- * methods, shared by the booking dialog (Schedule/Appointments), the
- * Appointments table/timeline, and CRM visit history - so a treatment's
- * price is never hand-typed differently in more than one place.
- */
-
 export type PaymentStatus = 'Paid' | 'Partial' | 'Pending';
 
-export type TreatmentCategory = 'Hair' | 'Skin' | 'Slimming';
+export type TreatmentCategory = 'Hair' | 'Skin' | 'Slimming' | 'Combo';
 
-export const TREATMENT_CATEGORIES: TreatmentCategory[] = ['Hair', 'Skin', 'Slimming'];
+export const TREATMENT_CATEGORIES: TreatmentCategory[] = ['Hair', 'Skin', 'Slimming', 'Combo'];
+
+export interface TreatmentMaterial {
+  key: string;
+  name: string;
+  unit: string;
+  quantity: number;
+}
+
+export interface ComboTreatmentItem {
+  key: string;
+  name: string;
+  price: number;
+}
+
+export type DiscountType = 'percentage' | 'fixed';
 
 export interface Treatment {
   key: string;
@@ -17,6 +25,15 @@ export interface Treatment {
   price: number;
   category: TreatmentCategory;
   gender?: 'M' | 'F' | 'All';
+  description?: string;
+  discount?: number;
+  discountType?: DiscountType;
+  gstRate?: number;
+  maxSessions?: number;
+  isCombo?: boolean;
+  treatmentKeys?: string[];
+  comboItems?: ComboTreatmentItem[];
+  materials?: TreatmentMaterial[];
 }
 
 export interface ComboOffer {
@@ -24,9 +41,13 @@ export interface ComboOffer {
   name: string;
   treatmentKeys: string[];
   price: number;
+  discount?: number;
+  discountType?: DiscountType;
+  gstRate?: number;
+  maxSessions?: number;
+  materials?: TreatmentMaterial[];
 }
 
-/** Clinical baldness classification picked during a Hair-category consult, alongside the treatment itself. */
 export interface BaldnessType {
   key: string;
   label: string;
@@ -43,7 +64,6 @@ export const MALE_BALDNESS_TYPES: BaldnessType[] = [
   { key: 'norwood-6', label: 'Norwood Type VI - Sparse bridge of hair', gender: 'M' },
 ];
 
-/** Ludwig scale (female pattern hair loss) - 3 stages. */
 export const FEMALE_BALDNESS_TYPES: BaldnessType[] = [
   { key: 'ludwig-1', label: 'Ludwig Stage I - Mild diffuse thinning', gender: 'F' },
   { key: 'ludwig-2', label: 'Ludwig Stage II - Moderate diffuse thinning', gender: 'F' },
@@ -56,7 +76,6 @@ export function baldnessTypesFor(gender: string): BaldnessType[] {
   return [];
 }
 
-/** A treatment or product bundle a doctor can suggest, on top of (or instead of) picking individual treatments. */
 export interface TreatmentPackage {
   key: string;
   name: string;
@@ -64,6 +83,12 @@ export interface TreatmentPackage {
   type: 'Treatment' | 'Product';
   price: number;
   description: string;
+  discount?: number;
+  discountType?: DiscountType;
+  gstRate?: number;
+  maxSessions?: number;
+  treatmentKeys?: string[];
+  materials?: TreatmentMaterial[];
 }
 
 export const TREATMENTS: Treatment[] = [

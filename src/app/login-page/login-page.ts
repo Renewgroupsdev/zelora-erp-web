@@ -4,11 +4,16 @@ import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { Preloader } from '../preloader/preloader';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
+import { AuthService } from '../core/service/auth.service';
+import { CookieService } from '../shared/common-services/cookie.service';
+import { AuthBackground } from '../shared/components/auth-background/auth-background';
+
+const REMEMBER_ME_DAYS = 30;
 
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [Preloader, CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [Preloader, CommonModule, ReactiveFormsModule, FormsModule, AuthBackground],
   templateUrl: './login-page.html',
   styleUrl: './login-page.scss',
 })
@@ -22,7 +27,12 @@ export class LoginPage implements OnInit {
 
   private readonly rememberMeKey = environment.rememberMeKey;
 
-  constructor(private fb: FormBuilder, private router: Router) { }
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+    private authService: AuthService,
+    private cookieService: CookieService,
+  ) { }
 
   ngOnInit(): void {
 
@@ -38,56 +48,62 @@ export class LoginPage implements OnInit {
   get formValues() { return this.loginForm.controls; }
 
   private restoreRememberedUser(): void {
-    const rememberedData = JSON.parse(localStorage.getItem(this.rememberMeKey) || 'null');
+    const rememberedData = JSON.parse(this.cookieService.get(this.rememberMeKey) || 'null');
 
     if(!rememberedData) {
       return;
     }
 
-    if (rememberedData.user_name) { 
+    if (rememberedData.user_name) {
           this.loginForm.patchValue({
-            user_name: rememberedData.user_name, 
-            password: rememberedData.password || '', 
-            rememberMe: true, 
-            }); 
+            user_name: rememberedData.user_name,
+            password: rememberedData.password || '',
+            rememberMe: true,
+            });
     }
   }
 
   private processRememberMe(username: string, password: string, rememberMe: boolean): void {
     if (rememberMe) {
-      const loginData = { user_name: username, password: password }; 
-      localStorage.setItem( this.rememberMeKey, JSON.stringify(loginData) );
+      const loginData = { user_name: username, password: password };
+      this.cookieService.set(this.rememberMeKey, JSON.stringify(loginData), REMEMBER_ME_DAYS);
     } else {
-      localStorage.removeItem(this.rememberMeKey);
+      this.cookieService.remove(this.rememberMeKey);
     }
   }
 
   Onsubmit() {
-    // this.formSubmitted = true;
+    this.formSubmitted = true;
     this.error = '';
 
-    // if (this.loginForm.invalid) {
-    //   this.error = 'Please enter your user name and password.';
-    //   return;
-    // }
+    if (this.loginForm.invalid) {
+      this.error = 'Please enter your user name and password.';
+      return;
+    }
 
-    // const username = this.loginForm.get('user_name')?.value;
-    // const password = this.loginForm.get('password')?.value;
-    // const rememberMe = this.loginForm.get('rememberMe')?.value;
-
-    // if (username != 'admin' || password != 'password123') {
-    //   this.error = 'Invalid user name and password.';
-    //   return;
-    // }
-
-    // this.processRememberMe(username, password, rememberMe);
+    const username = this.loginForm.get('user_name')?.value;
+    const password = this.loginForm.get('password')?.value;
+    const rememberMe = this.loginForm.get('rememberMe')?.value;
 
     this.loading = true;
 
-    setTimeout(() => {
-      this.loading = false;
-      this.router.navigate(['/app/dashboard']);
-    }, 1800);
+    this.authService.login(username, password).subscribe({
+      next: (response) => {
+        this.loading = false;
+
+        if (!response.success || !response.data) {
+          this.error = response.message || 'Invalid user name and password.';
+          return;
+        }
+
+        this.processRememberMe(username, password, rememberMe);
+        this.router.navigate(['/app/dashboard']);
+      },
+      error: (err) => {
+        this.loading = false;
+        this.error = err?.error?.message || 'Unable to login. Please try again.';
+      },
+    });
   }
 
   clearError() {

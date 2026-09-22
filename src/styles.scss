@@ -291,6 +291,10 @@ input {
   -webkit-overflow-scrolling: touch;
 }
 
+.required-asterisk {
+  color: #dc3545 !important;
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-family: inherit;
 }
@@ -622,4 +626,8 @@ button, a, input, select, textarea {
 .mat-mdc-icon-button .mat-mdc-button-touch-target {
   width: 22px !important;
   height: 22px !important;
+}
+
+div:where(.swal2-container) h2:where(.swal2-title) {
+  font-size: 1.2em;
 }

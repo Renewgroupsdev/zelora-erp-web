@@ -14,6 +14,12 @@ export interface DetailCardData {
   sparkline?: number[];
 }
 
+export interface BreadcrumbItem {
+  label: string;
+  link?: string | unknown[];
+  icon?: string;
+}
+
 export interface FilterOption {
   key: string;
   label: string;

@@ -1,0 +1,66 @@
+:host {
+  display: block;
+}
+
+.app-breadcrumb {
+  margin: 0 0 4px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.app-breadcrumb ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-breadcrumb li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.app-breadcrumb a,
+.app-breadcrumb span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-family-base);
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-breadcrumb a {
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.app-breadcrumb a:hover {
+  color: var(--primary);
+}
+
+.app-breadcrumb a i,
+.app-breadcrumb span i {
+  font-size: 12px;
+  color: var(--primary);
+}
+
+.app-breadcrumb li.active span {
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.app-breadcrumb .sep {
+  font-size: 9px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}

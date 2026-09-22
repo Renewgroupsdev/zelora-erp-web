@@ -24,10 +24,8 @@ interface NavLink {
 })
 export class LeftSideNavbar {
 
-  /** Path of the one parent nav item whose children are expanded in the full (labeled) vertical
-   *  sidebar - null means every group is collapsed. Tracking the path (not a shared boolean)
-   *  is what makes opening one group close any other. */
-  readonly expandedSubmenu = signal<string | null>(null);
+  readonly leadChildrenExpanded = signal(true);
+  readonly treatmentChildrenExpanded = signal(true);
 
   readonly openHorizontalSubmenu = signal<string | null>(null);
 
@@ -44,31 +42,32 @@ export class LeftSideNavbar {
         { label: 'Follow-up', icon: 'bi-arrow-repeat', path: '/app/follow-ups' },
       ],
     },
-    { label: 'Appointments', icon: 'bi-calendar2-check-fill', path: '/app/appointments', color: 'orange' },
-    { label: 'Customer Management', icon: 'bi-person-fill', path: '/app/customers', color: 'pink' },
-    { label: 'Settings', 
-      icon: 'bi-gear-fill', 
-      path: '/app/settings', 
-      color: 'gray',
-
-      children: [
-        { label: 'Service-Category', icon: 'bi-tags-fill', path: '/app/masters/service-category'},
-        { label: 'Source', icon: 'bi-signpost-2-fill', path: '/app/masters/source'},
-        { label: 'Lead-Status', icon: 'bi-flag-fill', path: '/app/masters/lead-status'},
-        { label: 'Roles', icon: 'bi-shield-lock-fill', path: '/app/masters/roles'},
-        { label: 'Roles-&-permssions', icon: 'bi-shield-lock-fill', path: '/app/masters/roles-and-permission'},
-      ],
-    
+    { label: 'Appointments', icon: 'bi-calendar2-check-fill', path: '/app/appointments' },
+    { label: 'Customer Management', icon: 'bi-person-fill', path: '/app/customers' },
+    {
+      label: 'Treatment Management',
+      icon: 'bi-heart-pulse-fill',
+      path: '/app/treatments',
+      // children: [
+      //   { label: 'Create Treatment', icon: 'bi-heart-pulse', path: '/app/treatments/create' },
+      // ],
     },
-    { label: 'Reports', icon: 'bi-bar-chart-fill', path: '/app/reports', color: 'gray'},
+    { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings' },
   ];
 
   constructor(public navLayout: NavLayoutService) { }
 
-  /** Exclusive accordion toggle - opening a group's children always closes whichever other
-   *  group was open, instead of both staying expanded at once. */
-  toggleSubmenu(link: NavLink): void {
-    this.expandedSubmenu.update(current => (current === link.path ? null : link.path));
+  childrenExpanded(path: string): boolean {
+    return path === '/app/lead-management' ? this.leadChildrenExpanded() : this.treatmentChildrenExpanded();
+  }
+
+  setChildrenExpanded(path: string, expanded: boolean): void {
+    if (path === '/app/lead-management') this.leadChildrenExpanded.set(expanded);
+    if (path === '/app/treatments') this.treatmentChildrenExpanded.set(expanded);
+  }
+
+  toggleChildren(path: string): void {
+    this.setChildrenExpanded(path, !this.childrenExpanded(path));
   }
 
   showVerticalSubmenu(link: NavLink): void {
@@ -76,10 +75,9 @@ export class LeftSideNavbar {
       return;
     }
 
-    // Only the collapsed/icon-only sidebar opens its flyout on hover - the full labeled
-    // sidebar's inline accordion only responds to an explicit click (toggleSubmenu), so hovering
-    // over a different group here doesn't force it open on top of one already expanded.
-    if (!this.navLayout.sidebarVisible()) {
+    if (this.navLayout.sidebarVisible()) {
+      this.setChildrenExpanded(link.path, true);
+    } else {
       this.openCompactSubmenu.set(link.path);
     }
   }
@@ -90,7 +88,7 @@ export class LeftSideNavbar {
       event.stopPropagation();
 
       if (this.navLayout.sidebarVisible()) {
-        this.toggleSubmenu(link);
+        this.toggleChildren(link.path);
       } else {
         this.openCompactSubmenu.update(current => (current === link.path ? null : link.path));
       }

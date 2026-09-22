@@ -1,0 +1,104 @@
+<div class="splash-background" aria-hidden="true">
+  <!-- Soft background lighting -->
+  <div class="background-orb background-orb--top"></div>
+  <div class="background-orb background-orb--right"></div>
+  <div class="background-dot background-dot--left"></div>
+  <div class="background-dot background-dot--right"></div>
+  <div class="background-dot background-dot--tiny"></div>
+
+  <!-- Exact-style botanical corner artwork -->
+  <svg class="leaf-art" viewBox="0 0 330 300" preserveAspectRatio="xMinYMin meet" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="leafA" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0" stop-color="#087e9b"/>
+        <stop offset=".48" stop-color="#22b9ad"/>
+        <stop offset="1" stop-color="#7adfc7"/>
+      </linearGradient>
+      <linearGradient id="leafB" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0" stop-color="#13a7ae"/>
+        <stop offset="1" stop-color="#83e4c7"/>
+      </linearGradient>
+      <linearGradient id="leafC" x1="0" y1="1" x2="1" y2="0">
+        <stop offset="0" stop-color="#54c9c1"/>
+        <stop offset="1" stop-color="#b3eee0"/>
+      </linearGradient>
+    </defs>
+    <path d="M-28 245 C54 218 83 156 135 107 C183 62 231 35 302 25" fill="none" stroke="#1a9eaa" stroke-opacity=".42" stroke-width="5" stroke-linecap="round"/>
+    <path d="M34 218 C20 166 36 112 76 73 C81 125 66 174 34 218Z" fill="url(#leafA)" opacity=".92"/>
+    <path d="M77 174 C91 116 134 72 190 57 C168 116 128 158 77 174Z" fill="url(#leafB)" opacity=".76"/>
+    <path d="M119 124 C144 67 188 32 244 29 C216 83 173 114 119 124Z" fill="url(#leafC)" opacity=".72"/>
+    <path d="M159 82 C189 31 228 7 278 12 C253 52 212 75 159 82Z" fill="url(#leafB)" opacity=".56"/>
+    <path d="M2 253 C33 226 67 223 101 238 C74 270 35 277 2 253Z" fill="url(#leafA)" opacity=".52"/>
+    <path d="M18 214 C37 183 58 166 84 154" fill="none" stroke="#b4eee0" stroke-opacity=".52" stroke-width="2"/>
+  </svg>
+
+  <!-- Handwritten-style upper-right message -->
+  <div class="corner-tagline">
+    <span>Healthy Hair</span>
+    <span>Glowing Skin</span>
+    <svg viewBox="0 0 190 22" preserveAspectRatio="none">
+      <path d="M7 12 C53 21 128 22 183 5"/>
+    </svg>
+  </div>
+
+  <!-- Layered bottom waves -->
+  <svg class="splash-waves" viewBox="0 0 1774 440" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="waveBackGradient" x1="0" y1="0" x2="1" y2=".95">
+        <stop offset="0" stop-color="#38c3ba"/>
+        <stop offset=".43" stop-color="#53d9ca"/>
+        <stop offset=".73" stop-color="#19a9bd"/>
+        <stop offset="1" stop-color="#087bb9"/>
+      </linearGradient>
+      <linearGradient id="waveMiddleGradient" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#13b8b3"/>
+        <stop offset=".5" stop-color="#0aa7bc"/>
+        <stop offset="1" stop-color="#087ebd"/>
+      </linearGradient>
+      <linearGradient id="waveFrontGradient" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#16b6b8"/>
+        <stop offset=".48" stop-color="#0b9abd"/>
+        <stop offset="1" stop-color="#0873b8"/>
+      </linearGradient>
+      <linearGradient id="waveLight" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#ffffff" stop-opacity=".78"/>
+        <stop offset=".52" stop-color="#ffffff" stop-opacity=".45"/>
+        <stop offset="1" stop-color="#ffffff" stop-opacity=".16"/>
+      </linearGradient>
+      <filter id="softWaveGlow" x="-10%" y="-20%" width="120%" height="140%">
+        <feGaussianBlur stdDeviation="5"/>
+      </filter>
+    </defs>
+
+    <!-- Back turquoise sheet: its upper edge is the large soft S-curve from the reference -->
+    <path d="M0 30 C190 34 290 98 475 202 C646 299 786 334 932 299 C1097 260 1238 142 1388 84 C1538 25 1650 17 1774 42 L1774 440 L0 440 Z" fill="url(#waveBackGradient)"/>
+
+    <!-- Bright translucent ribbon crossing the back sheet -->
+    <path d="M0 45 C180 52 304 119 476 218 C647 317 795 354 940 314 C1102 270 1240 157 1392 100 C1541 44 1654 37 1774 59 L1774 79 C1648 56 1534 64 1400 118 C1248 178 1112 290 947 333 C792 373 637 336 462 235 C293 138 177 74 0 67 Z" fill="url(#waveLight)" opacity=".9"/>
+
+    <!-- Middle blue sheet -->
+    <path d="M0 105 C145 151 279 232 442 292 C610 354 768 387 924 347 C1097 303 1221 204 1379 135 C1532 68 1653 64 1774 91 L1774 440 L0 440 Z" fill="url(#waveMiddleGradient)"/>
+
+    <!-- Thin white separation line -->
+    <path d="M0 111 C146 157 280 238 442 298 C611 360 770 393 927 353 C1099 309 1224 210 1382 141 C1534 74 1654 70 1774 97" fill="none" stroke="#e8ffff" stroke-opacity=".74" stroke-width="4"/>
+
+    <!-- Front blue wave -->
+    <path d="M0 180 C157 228 303 307 464 350 C632 395 781 404 929 363 C1094 317 1208 236 1371 175 C1525 117 1648 114 1774 137 L1774 440 L0 440 Z" fill="url(#waveFrontGradient)"/>
+
+    <!-- Soft luminous front rim -->
+    <path d="M0 183 C156 231 302 310 464 353 C633 398 781 407 930 366 C1095 320 1209 239 1372 178 C1526 120 1649 117 1774 140" fill="none" stroke="#8cf1e7" stroke-opacity=".62" stroke-width="8" filter="url(#softWaveGlow)"/>
+    <path d="M0 184 C156 232 302 311 464 354 C633 399 781 408 930 367 C1095 321 1209 240 1372 179 C1526 121 1649 118 1774 141" fill="none" stroke="#d9fffa" stroke-opacity=".74" stroke-width="2.5"/>
+  </svg>
+
+  <!-- Medical plus decorations -->
+  <div class="medical-pluses">
+    <span class="medical-plus medical-plus--outline medical-plus--1"></span>
+    <span class="medical-plus medical-plus--soft medical-plus--2"></span>
+    <span class="medical-plus medical-plus--small medical-plus--3"></span>
+    <span class="medical-plus medical-plus--outline medical-plus--4"></span>
+    <span class="medical-plus medical-plus--tiny medical-plus--5"></span>
+    <span class="medical-plus medical-plus--large medical-plus--6"></span>
+    <span class="medical-plus medical-plus--small medical-plus--7"></span>
+    <span class="medical-plus medical-plus--tiny medical-plus--8"></span>
+  </div>
+</div>

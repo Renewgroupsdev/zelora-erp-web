@@ -196,6 +196,7 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
+  min-width: 0;
 }
 
 .avatar {
@@ -220,6 +221,7 @@
 
 .lead-text {
   min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -231,19 +233,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 14.5px;
   line-height: 1.25;
   font-weight: 700;
   color: var(--text-dark);
 }
 
 .lead-subtitle {
-  display: block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 10px;
+  font-size: 12px;
   line-height: var(--lh-tight);
   color: var(--text-muted);
   letter-spacing: 0.02em;
@@ -659,20 +656,19 @@
   color: var(--status-blue-text, #2f6fed);
 }
 
-.action-appointment {
-  background: var(--primary-soft);
-  color: var(--primary);
+.quick-actions-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  white-space: nowrap;
 }
 
-.action-followup {
-  background: var(--status-orange-bg, #fff1e0);
-  color: var(--status-orange-text, #d9782f);
-}
+.row-action-btn.qa-primary { background: var(--primary-soft); color: var(--primary-dark); }
+.row-action-btn.qa-primary:hover { background: var(--primary); color: #fff; box-shadow: 0 4px 10px -4px var(--primary-shadow); }
 
-.action-branch {
-  background: #eee6ff;
-  color: #7c4dff;
-}
+.row-action-btn.qa-danger { background: var(--status-red-bg); color: var(--status-red-text); }
+.row-action-btn.qa-danger:hover { background: var(--status-red-text); color: #fff; box-shadow: 0 4px 10px -4px rgba(208, 57, 44, .4); }
 
 .action-delete {
   background: var(--status-red-bg, #fde6e6);
