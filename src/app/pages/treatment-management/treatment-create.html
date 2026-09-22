@@ -12,7 +12,7 @@
         <i class="bi bi-arrow-left"></i> <span>Back</span>
       </button> -->
 
-      <button *ngIf="!readOnly" type="button" class="add-treatment-btn" (click)="save()">
+      <button *ngIf="!readOnly" type="button" class="add-treatment-btn" [attr.aria-label]="editingKey ? 'Update Treatment' : 'Create Treatment'" (click)="save()">
         <i class="bi bi-check2"></i> <span>{{ editingKey ? 'Update Treatment' : 'Create Treatment' }}</span>
       </button>
     </div>
@@ -21,7 +21,7 @@
   <!-- <div class="category-tabs">
     @for (category of categories; track category) {
       <button type="button" [class.active]="activeCategory() === category" (click)="setCategory(category)">
-        <span class="category-icon"><i class="bi" [class.bi-scissors]="category === 'Hair'" [class.bi-stars]="category === 'Skin'" [class.bi-person-walking]="category === 'Slimming'"></i></span>
+        <span class="category-icon"><i class="bi" [class.bi-droplet-half]="category === 'Hair'" [class.bi-stars]="category === 'Skin'" [class.bi-person-walking]="category === 'Slimming'"></i></span>
         <span><strong>{{ category }}</strong><small>{{ filteredTreatments().length }} existing</small></span>
       </button>
     }
@@ -35,62 +35,43 @@
         <div><h2>Basic treatment details</h2><p>Define the treatment that will be available for appointments and packages.</p></div>
       </div>
 
-      @if (!readOnly) {
-        <div class="field-grid">
-          <label class="field span-2" [class.has-error]="invalid(form.controls.name)">
-            <span>Treatment name *</span>
-            <input formControlName="name" placeholder="e.g. Advanced Hair PRP" />
-            @if (invalid(form.controls.name)) { <small class="error-text">Treatment name is required</small> }
-          </label>
-          <label class="field" [class.has-error]="invalid(form.controls.category)">
-            <span>Category *</span>
-            <select formControlName="category"><option value="Hair">Hair</option><option value="Skin">Skin</option><option value="Slimming">Slimming</option></select>
-          </label>
-          <label class="field" [class.has-error]="invalid(form.controls.maxSessions)">
-            <span>Max sittings *</span>
-            <input type="number" min="1" formControlName="maxSessions" />
-            @if (invalid(form.controls.maxSessions)) { <small class="error-text">Enter at least 1 sitting</small> }
-          </label>
-          <label class="field span-2"><span>Description</span><textarea formControlName="description" rows="3" placeholder="Short treatment description"></textarea></label>
-        </div>
-      } @else {
-        <div class="field-grid view-grid">
-          <div class="field span-2"><span>Treatment name</span><strong>{{ form.controls.name.value }}</strong></div>
-          <div class="field"><span>Category</span><strong>{{ form.controls.category.value }}</strong></div>
-          <div class="field"><span>Max sittings</span><strong>{{ form.controls.maxSessions.value }}</strong></div>
-          <div class="field span-2"><span>Description</span><strong>{{ form.controls.description.value || 'No description added' }}</strong></div>
-        </div>
-      }
+      <div class="field-grid">
+        <label class="field span-2" [class.has-error]="invalid(form.controls.name)">
+          <span>Treatment name <span class="required-asterisk">*</span></span>
+          <input formControlName="name" placeholder="e.g. Advanced Hair PRP" />
+          @if (invalid(form.controls.name)) { <small class="error-text">Treatment name is required</small> }
+        </label>
+        <label class="field" [class.has-error]="invalid(form.controls.category)">
+          <span>Category <span class="required-asterisk">*</span></span>
+          <select id="cust-branch" formControlName="category">
+            <option value="">Select category</option>
+            @for (category of categories; track category) {
+              <option [value]="category">{{ category }}</option>
+            }
+          </select>
+        </label>
+        <label class="field" [class.has-error]="invalid(form.controls.maxSessions)">
+          <span>Max sittings <span class="required-asterisk">*</span></span>
+          <input type="number" min="1" formControlName="maxSessions" />
+          @if (invalid(form.controls.maxSessions)) { <small class="error-text">Enter at least 1 sitting</small> }
+        </label>
+        <label class="field span-2"><span>Description</span><textarea formControlName="description" rows="3" placeholder="Short treatment description"></textarea></label>
+      </div>
 
-      <label class="switch-line">
-        <input type="checkbox" class="switch-input" [checked]="form.controls.isCombo.value" [disabled]="readOnly" (change)="setComboMode($any($event.target).checked)" />
-        <span class="switch-track"><span class="switch-thumb"></span></span>
-        <span class="switch-text">
-          <strong>{{ form.controls.isCombo.value ? 'Combo Treatment' : 'Single Treatment' }}</strong>
-          <small>{{ form.controls.isCombo.value ? 'This bundles multiple treatments together as one package.' : 'Switch on to bundle multiple treatments as a combo.' }}</small>
-        </span>
-      </label>
-
-      @if (form.controls.isCombo.value) {
+      @if (activeCategory() === 'Combo') {
         <div class="combo-box" formArrayName="comboTreatments">
           <div class="mini-title-row">
             <div class="mini-title">Treatments included in this combo</div>
             <button *ngIf="!readOnly" type="button" class="icon-btn" (click)="addComboTreatment()" aria-label="Add combo treatment"><i class="bi bi-plus-lg"></i></button>
           </div>
 
-          <div class="combo-table" [class.view-grid]="readOnly">
+          <div class="combo-table">
             <div class="combo-row header"><span>Treatment name</span><span>Price (₹)</span><span></span></div>
             @for (item of comboTreatments.controls; track $index) {
               <div class="combo-row" [formGroupName]="$index">
-                @if (!readOnly) {
-                  <input formControlName="name" placeholder="e.g. Skin Rejuvenation" [class.error]="invalid(item.get('name'))" />
-                  <input type="number" min="0" formControlName="price" placeholder="0" [class.error]="invalid(item.get('price'))" />
-                  <button type="button" class="remove-btn" (click)="removeComboTreatment($index)" [disabled]="comboTreatments.length === 1"><i class="bi bi-trash3"></i></button>
-                } @else {
-                  <strong>{{ item.value.name }}</strong>
-                  <strong>₹{{ item.value.price | number:'1.0-0' }}</strong>
-                  <span></span>
-                }
+                <input formControlName="name" placeholder="e.g. Skin Rejuvenation" [class.error]="invalid(item.get('name'))" />
+                <input type="number" min="0" formControlName="price" placeholder="0" [class.error]="invalid(item.get('price'))" />
+                <button *ngIf="!readOnly" type="button" class="remove-btn" (click)="removeComboTreatment($index)" [disabled]="comboTreatments.length === 1"><i class="bi bi-trash3"></i></button>
               </div>
             }
           </div>
@@ -105,21 +86,14 @@
         <button *ngIf="!readOnly" type="button" class="icon-btn" (click)="addMaterial()" aria-label="Add material"><i class="bi bi-plus-lg"></i></button>
       </div>
 
-      <div formArrayName="materials" class="material-table" [class.view-grid]="readOnly">
-        <div class="material-row header"><span>Item</span><span>Unit</span><span>Qty / sitting</span><span></span></div>
+      <div formArrayName="materials" class="material-table">
+        <div class="material-row header"><span>Item</span><span>Unit</span><span>Qty </span><span></span></div>
         @for (material of materials.controls; track $index) {
           <div class="material-row" [formGroupName]="$index">
-            @if (!readOnly) {
-              <input formControlName="name" placeholder="e.g. Syringe" [class.error]="invalid(material.get('name'))" />
-              <input formControlName="unit" placeholder="piece" [class.error]="invalid(material.get('unit'))" />
-              <input type="number" min="0.01" step="0.01" formControlName="quantity" [class.error]="invalid(material.get('quantity'))" />
-              <button type="button" class="remove-btn" (click)="removeMaterial($index)" [disabled]="materials.length === 1"><i class="bi bi-trash3"></i></button>
-            } @else {
-              <strong>{{ material.value.name }}</strong>
-              <strong>{{ material.value.unit }}</strong>
-              <strong>{{ material.value.quantity }}</strong>
-              <span></span>
-            }
+            <input formControlName="name" placeholder="e.g. Syringe" [class.error]="invalid(material.get('name'))" />
+            <input formControlName="unit" placeholder="piece" [class.error]="invalid(material.get('unit'))" />
+            <input type="number" min="0.01" step="0.01" formControlName="quantity" [class.error]="invalid(material.get('quantity'))" />
+            <button *ngIf="!readOnly" type="button" class="remove-btn" (click)="removeMaterial($index)" [disabled]="materials.length === 1"><i class="bi bi-trash3"></i></button>
           </div>
         }
       </div>
@@ -133,31 +107,28 @@
         <div><h2>Pricing & tax</h2><p>Discount and GST are calculated automatically.</p></div>
       </div>
 
-      @if (!readOnly) {
-        <div class="field-grid">
-          <label class="field" [class.has-error]="!form.controls.isCombo.value && invalid(form.controls.price)">
-            <span>Base price (₹) *</span>
-            <input type="number" min="0" formControlName="price" />
-            @if (form.controls.isCombo.value) { <small class="field-hint">Auto-calculated from the combo treatments total</small> }
-            @if (!form.controls.isCombo.value && invalid(form.controls.price)) { <small class="error-text">Enter a valid base price</small> }
-          </label>
-          <label class="field"><span>Discount type</span><select formControlName="discountType"><option value="percentage">Percentage (%)</option><option value="fixed">Fixed amount (₹)</option></select></label>
-          <label class="field"><span>Discount</span><input type="number" min="0" formControlName="discount" /></label>
-          <label class="field"><span>GST rate (%) *</span><input type="number" min="0" max="100" formControlName="gstRate" /></label>
-        </div>
-      } @else {
-        <div class="field-grid view-grid">
-          <div class="field"><span>Base price</span><strong>₹{{ form.controls.price.value | number:'1.0-0' }}</strong></div>
-          <div class="field"><span>Discount type</span><strong>{{ form.controls.discountType.value === 'percentage' ? 'Percentage (%)' : 'Fixed amount (₹)' }}</strong></div>
-          <div class="field"><span>Discount</span><strong>{{ form.controls.discount.value }}{{ form.controls.discountType.value === 'percentage' ? '%' : '' }}</strong></div>
-          <div class="field"><span>GST rate</span><strong>{{ form.controls.gstRate.value }}%</strong></div>
-        </div>
-      }
+      <div class="field-grid">
+        <label class="field" [class.has-error]="activeCategory() !== 'Combo' && invalid(form.controls.price)">
+          <span>Base price (₹) <span class="required-asterisk">*</span></span>
+          <input type="number" min="0" formControlName="price" />
+          @if (activeCategory() === 'Combo') { <small class="field-hint">Auto-calculated from the combo treatments total</small> }
+          @if (activeCategory() !== 'Combo' && invalid(form.controls.price)) { <small class="error-text">Enter a valid base price</small> }
+        </label>
+        <label class="field"><span>Discount type</span><select formControlName="discountType"><option value="percentage">Percentage (%)</option><option value="fixed">Fixed amount (₹)</option></select></label>
+        <label class="field"><span>Discount</span><input type="number" min="0" formControlName="discount" /></label>
+        <label class="field"><span>GST rate (%) <span class="required-asterisk">*</span></span><input type="number" min="0" max="100" formControlName="gstRate" /></label>
+      </div>
 
       <div class="price-summary">
         <div><span>After discount</span><strong>₹{{ subtotal() | number:'1.2-2' }}</strong></div>
         <div><span>GST</span><strong>₹{{ gstAmount() | number:'1.2-2' }}</strong></div>
-        <div class="grand"><span>Final treatment price</span><strong>₹{{ total() | number:'1.2-2' }}</strong></div>
+        <div class="grand">
+          <span>Total treatment price</span>
+          <span class="grand-value">
+            @if (hasDiscount()) { <small class="strike-price">₹{{ originalTotal() | number:'1.2-2' }}</small> }
+            <strong>₹{{ total() | number:'1.2-2' }}</strong>
+          </span>
+        </div>
       </div>
     </section>
 
@@ -168,12 +139,18 @@
       </div>
       <h2>{{ form.controls.name.value || 'Your treatment name' }}</h2>
       <p>{{ form.controls.description.value || 'Treatment description will appear here.' }}</p>
-      <div class="preview-price">₹{{ total() | number:'1.0-0' }} <small>/ sitting</small></div>
+      <div class="preview-price">
+        @if (hasDiscount()) { <div class="preview-strike">₹{{ originalTotal() | number:'1.0-0' }}</div> }
+        <span class="preview-price-row">
+          ₹{{ total() | number:'1.0-0' }} <small>/ sitting</small>
+          @if (hasDiscount()) { <span class="discount-badge">{{ discountPercent() }}% OFF</span> }
+        </span>
+      </div>
       <div class="preview-grid">
         <span><i class="bi bi-calendar2-check"></i><b>{{ form.controls.maxSessions.value || 1 }}</b> max sittings</span>
         <span><i class="bi bi-percent"></i><b>{{ form.controls.gstRate.value || 0 }}%</b> GST</span>
         <span><i class="bi bi-box-seam"></i><b>{{ materials.length }}</b> materials</span>
-        <span><i class="bi bi-layers"></i><b>{{ form.controls.isCombo.value ? 'Combo' : 'Single' }}</b> type</span>
+        <span><i class="bi bi-layers"></i><b>{{ activeCategory() === 'Combo' ? 'Combo' : 'Single' }}</b> type</span>
       </div>
     </aside>
    </div>

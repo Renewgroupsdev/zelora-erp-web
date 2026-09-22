@@ -35,7 +35,6 @@ export class TreatmentCreate implements OnInit {
     discountType: ['percentage' as 'percentage' | 'fixed', Validators.required],
     gstRate: [18, [Validators.required, Validators.min(0), Validators.max(100)]],
     maxSessions: [1, [Validators.required, Validators.min(1)]],
-    isCombo: [false],
     comboTreatments: this.fb.array([]),
     materials: this.fb.array([
       this.createMaterial('Gloves', 'pair'),
@@ -76,6 +75,20 @@ export class TreatmentCreate implements OnInit {
   readonly gstAmount = computed(() => this.subtotal() * (Number(this.gstRateValue()) || 0) / 100);
   readonly total = computed(() => this.subtotal() + this.gstAmount());
 
+  // Pre-discount total, shown struck-through above the final price whenever a discount applies.
+  readonly originalTotal = computed(() => {
+    const price = Number(this.priceValue()) || 0;
+    const gstRate = Number(this.gstRateValue()) || 0;
+    return price + (price * gstRate / 100);
+  });
+
+  readonly hasDiscount = computed(() => this.originalTotal() > this.total());
+
+  readonly discountPercent = computed(() => {
+    const original = this.originalTotal();
+    return original > 0 ? Math.round((1 - this.total() / original) * 100) : 0;
+  });
+
   get materials(): FormArray { return this.form.controls.materials; }
   get comboTreatments(): FormArray { return this.form.controls.comboTreatments; }
 
@@ -96,6 +109,7 @@ export class TreatmentCreate implements OnInit {
 
   get breadcrumbItems(): BreadcrumbItem[] {
     return [
+      { label: 'Dashboard', link: ['/app/dashboard'], icon: 'bi-house-fill' },
       { label: 'Treatment Management', link: ['/app/treatments'], icon: 'bi-heart-pulse-fill' },
       { label: this.editingKey ? (this.readOnly ? 'View Treatment' : 'Edit Treatment') : 'Create Treatment' },
     ];
@@ -104,16 +118,6 @@ export class TreatmentCreate implements OnInit {
   setCategory(category: TreatmentCategory): void {
     if (this.readOnly) return;
     this.form.controls.category.setValue(category);
-  }
-
-  setComboMode(isCombo: boolean): void {
-    if (this.readOnly) return;
-    this.form.controls.isCombo.setValue(isCombo);
-    if (!isCombo) {
-      while (this.comboTreatments.length) this.comboTreatments.removeAt(0);
-    } else if (!this.comboTreatments.length) {
-      this.addComboTreatment();
-    }
   }
 
   invalid(control: AbstractControl | null | undefined): boolean {
@@ -149,10 +153,10 @@ export class TreatmentCreate implements OnInit {
   }
 
   ngOnInit(): void {
-    // Base price is derived from the combo line-items whenever "Combo Treatment" is on,
-    // so keep it in sync with every edit/add/remove and lock the field while it applies.
+    // Base price is derived from the combo line-items whenever the "Combo" category is active,
+    // so keep it in sync with every pick/remove and lock the field while it applies.
     this.comboTreatments.valueChanges.subscribe(() => this.syncComboPrice());
-    this.form.controls.isCombo.valueChanges.subscribe(isCombo => this.applyComboPriceLock(isCombo));
+    this.form.controls.category.valueChanges.subscribe(category => this.applyComboPriceLock(category === 'Combo'));
 
     const key = this.route.snapshot.queryParamMap.get('key');
     if (key) {
@@ -160,31 +164,39 @@ export class TreatmentCreate implements OnInit {
       if (treatment) { this.editingKey = key; this.patchTreatment(treatment); }
     }
 
-    this.applyComboPriceLock(this.form.controls.isCombo.value);
+    this.applyComboPriceLock(this.form.controls.category.value === 'Combo');
+
+    // View Treatment reuses this same form; disabling it after every control is in place
+    // greys every field out instead of swapping in a separate read-only layout.
+    if (this.readOnly) {
+      this.form.disable({ emitEvent: false });
+    }
   }
 
   private syncComboPrice(): void {
-    if (!this.form.controls.isCombo.value) return;
+    if (this.form.controls.category.value !== 'Combo') return;
     const total = (this.comboTreatments.getRawValue() as { price: number }[])
       .reduce((sum, item) => sum + (Number(item.price) || 0), 0);
     this.form.controls.price.setValue(total);
   }
 
-  private applyComboPriceLock(isCombo: boolean | null): void {
+  private applyComboPriceLock(isCombo: boolean): void {
     if (isCombo) {
+      if (!this.comboTreatments.length) this.addComboTreatment();
       this.syncComboPrice();
       this.form.controls.price.disable({ emitEvent: false });
     } else {
+      while (this.comboTreatments.length) this.comboTreatments.removeAt(0);
       this.form.controls.price.enable({ emitEvent: false });
     }
   }
 
   private patchTreatment(treatment: any): void {
-    this.form.patchValue({ name: treatment.name, category: treatment.category, description: treatment.description, price: treatment.price, discount: treatment.discount, discountType: treatment.discountType, gstRate: treatment.gstRate, maxSessions: treatment.maxSessions, isCombo: treatment.isCombo });
+    this.form.patchValue({ name: treatment.name, category: treatment.category, description: treatment.description, price: treatment.price, discount: treatment.discount, discountType: treatment.discountType, gstRate: treatment.gstRate, maxSessions: treatment.maxSessions });
 
     while (this.comboTreatments.length) this.comboTreatments.removeAt(0);
     // Older records only stored keys into the shared treatment catalogue; resolve those to
-    // name/price rows so they still show up when reopened for edit under the new add-a-row form.
+    // name/price rows so they still show up when reopened for edit under the add-a-row form.
     const comboSource: { name: string; price: number }[] = treatment.comboItems?.length
       ? treatment.comboItems
       : (treatment.treatmentKeys || []).map((key: string) => {
@@ -192,7 +204,7 @@ export class TreatmentCreate implements OnInit {
           return { name: referenced?.name ?? key, price: referenced?.price ?? 0 };
         });
     comboSource.forEach((c) => this.comboTreatments.push(this.createComboItem(c.name, c.price)));
-    if (treatment.isCombo && !this.comboTreatments.length) this.addComboTreatment();
+    if (this.form.controls.category.value === 'Combo' && !this.comboTreatments.length) this.addComboTreatment();
 
     while (this.materials.length) this.materials.removeAt(0);
     const list = treatment.materials?.length ? treatment.materials : [{name: 'Gloves', unit: 'pair', quantity: 1}];
@@ -214,7 +226,8 @@ export class TreatmentCreate implements OnInit {
       quantity: Number(m.quantity),
     }));
 
-    const comboItems: ComboTreatmentItem[] = !raw.isCombo ? [] : (raw.comboTreatments ?? [])
+    const isCombo = raw.category === 'Combo';
+    const comboItems: ComboTreatmentItem[] = !isCombo ? [] : (raw.comboTreatments ?? [])
       .filter((c: any) => (c.name ?? '').trim())
       .map((c: any, i: number) => ({
         key: `${this.slug(c.name)}-${i + 1}`,
@@ -233,7 +246,7 @@ export class TreatmentCreate implements OnInit {
       discountType: raw.discountType!,
       gstRate: Number(raw.gstRate),
       maxSessions: Number(raw.maxSessions),
-      isCombo: !!raw.isCombo,
+      isCombo,
       treatmentKeys: [] as string[],
       comboItems,
       materials,
@@ -258,7 +271,6 @@ export class TreatmentCreate implements OnInit {
       discountType: 'percentage',
       gstRate: 18,
       maxSessions: 1,
-      isCombo: false,
     });
     while (this.comboTreatments.length) this.comboTreatments.removeAt(0);
     while (this.materials.length) this.materials.removeAt(0);

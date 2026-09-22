@@ -4,7 +4,7 @@ import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiDataService } from '../../shared/common-services/api-data.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
-import { AuthUser, LoginResponse, LoginResponseData } from '../auth/auth.model';
+import { ApiResponse, AuthUser, LoginResponse, LoginResponseData, ResetPasswordPayload } from '../auth/auth.model';
 import { IdleService } from '../idle-service/idle.service';
 
 const ACCESS_TOKEN_KEY = 'token';
@@ -43,6 +43,14 @@ export class AuthService {
       .pipe(tap((response: LoginResponse) => this.handleAuthResponse(response)));
   }
 
+  forgotPassword(email: string): Observable<ApiResponse<unknown>> {
+    return this.api.POST(ApiRoutesConstants.AUTH_FORGOT_PASSWORD, { email });
+  }
+
+  resetPassword(payload: ResetPasswordPayload): Observable<ApiResponse<unknown>> {
+    return this.api.POST(ApiRoutesConstants.AUTH_RESET_PASSWORD, payload);
+  }
+
   logout(navigateToLogin = true): void {
     this.idleService.stop();
     localStorage.removeItem(ACCESS_TOKEN_KEY);
@@ -79,11 +87,13 @@ export class AuthService {
     return url.startsWith(environment.apiBaseUrl);
   }
 
-  /** Login/refresh calls must skip the Authorization header and must never trigger a refresh-on-401 loop. */
+  /** Login/refresh/forgot-password/reset-password calls must skip the Authorization header and must never trigger a refresh-on-401 loop. */
   isAuthEndpoint(url: string): boolean {
     const loginUrl = `${environment.apiBaseUrl}${ApiRoutesConstants.AUTH_LOGIN}`;
     const refreshUrl = `${environment.apiBaseUrl}${ApiRoutesConstants.AUTH_REFRESH}`;
-    return url === loginUrl || url === refreshUrl;
+    const forgotPasswordUrl = `${environment.apiBaseUrl}${ApiRoutesConstants.AUTH_FORGOT_PASSWORD}`;
+    const resetPasswordUrl = `${environment.apiBaseUrl}${ApiRoutesConstants.AUTH_RESET_PASSWORD}`;
+    return url === loginUrl || url === refreshUrl || url === forgotPasswordUrl || url === resetPasswordUrl;
   }
 
   private handleAuthResponse(response: LoginResponse): void {

@@ -71,7 +71,7 @@ export class TreatmentManagement {
 
   readonly stats = computed<DetailCardData[]>(() => [
     { label: 'Total treatments', value: this.store.treatments().length, icon: 'bi-grid-3x3-gap', iconVariant: 'primary' },
-    { label: 'Hair', value: this.categoryCount('Hair'), icon: 'bi-scissors', iconVariant: 'green' },
+    { label: 'Hair', value: this.categoryCount('Hair'), icon: 'bi-droplet-half', iconVariant: 'green' },
     { label: 'Skin', value: this.categoryCount('Skin'), icon: 'bi-stars', iconVariant: 'blue' },
     { label: 'Slimming', value: this.categoryCount('Slimming'), icon: 'bi-person-walking', iconVariant: 'orange' },
     { label: 'Combo treatments', value: this.comboCount(), icon: 'bi-layers', iconVariant: 'purple' },
@@ -194,9 +194,9 @@ export class TreatmentManagement {
       key: item.key,
       treatment: { name: item.name, subtitle: item.description || 'No description added' } as LeadCell,
       type: item.isCombo ? 'Combo' : 'Treatment',
-      pricing: `₹${this.formatCurrency(this.finalPrice(item))} · Base ₹${this.formatCurrency(item.price)} · GST ${item.gstRate}%`,
+      pricing: `₹${this.formatCurrency(this.finalPrice(item))}`,
       sessions: `${item.maxSessions} max sittings`,
-      materials: `${item.materials.length} items / sitting`,
+      materials: `${item.materials.length} items`,
       actions: QUICK_ACTIONS,
     };
   }

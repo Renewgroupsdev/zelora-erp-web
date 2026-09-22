@@ -41,9 +41,9 @@ export class LeftSideNavbar {
       label: 'Treatment Management',
       icon: 'bi-heart-pulse-fill',
       path: '/app/treatments',
-      children: [
-        { label: 'Create Treatment', icon: 'bi-heart-pulse', path: '/app/treatments/create' },
-      ],
+      // children: [
+      //   { label: 'Create Treatment', icon: 'bi-heart-pulse', path: '/app/treatments/create' },
+      // ],
     },
     { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings' },
   ];

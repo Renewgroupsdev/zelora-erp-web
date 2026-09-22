@@ -10,6 +10,12 @@ export interface AuthUser {
   [key: string]: unknown;
 }
 
+export interface ResetPasswordPayload {
+  data: string;
+  password: string;
+  password_confirmation: string;
+}
+
 export interface LoginResponseData {
   user: AuthUser;
   token: string;
@@ -25,3 +31,12 @@ export interface ApiResponse<T> {
 }
 
 export type LoginResponse = ApiResponse<LoginResponseData>;
+
+export const ROLE_LABELS: Record<number, string> = {
+  1: 'Administrator',
+};
+
+export function roleLabel(roleId: number | null | undefined): string {
+  if (roleId == null) return 'Staff';
+  return ROLE_LABELS[roleId] ?? 'Staff';
+}

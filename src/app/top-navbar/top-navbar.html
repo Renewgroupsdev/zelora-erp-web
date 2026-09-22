@@ -78,8 +78,8 @@
     <div class="profile-block">
       <div class="profile-avatar"><i class="bi bi-person-fill"></i></div>
       <div class="profile-text d-none d-sm-flex">
-        <span class="profile-name">Admin</span>
-        <span class="profile-role">Administrator</span>
+        <span class="profile-name">{{ currentUser()?.name || 'User' }}</span>
+        <span class="profile-role">{{ currentUserRole() }}</span>
       </div>
       <i class="bi bi-chevron-down profile-chevron d-none d-sm-block"></i>
     </div>

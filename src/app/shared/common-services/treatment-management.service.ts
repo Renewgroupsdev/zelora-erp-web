@@ -52,12 +52,10 @@ export class TreatmentManagementService {
   }
 
   private load(): TreatmentDraft[] {
-    try {
-      const saved = localStorage.getItem(this.storageKey);
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // Fall back to the catalogue when local storage is unavailable/corrupt.
-    }
+    
+    const saved = localStorage.getItem(this.storageKey);
+    if (saved) return JSON.parse(saved);
+   
 
     return TREATMENTS.map(t => ({
       key: t.key,

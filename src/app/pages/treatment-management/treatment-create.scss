@@ -93,7 +93,7 @@
   border-radius: 16px;
   background: var(--app-surface-solid);
   box-shadow: var(--shadow-card);
-  padding: 12px
+  padding: 10px
 }
 
 .section-head {
@@ -112,7 +112,7 @@
 
 .section-head h2 {
   margin: 1px 0 3px;
-  font-size: 15px;
+  font-size: clamp(13px, 0.8vw + 10px, 16px);
   color: var(--text-dark);
   font-family: var(--font-family-display)
 }
@@ -120,7 +120,7 @@
 .section-head p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 11px
+  font-size: clamp(10px, 0.3vw + 9px, 11px)
 }
 
 .field-grid {
@@ -136,7 +136,7 @@
 }
 
 .field span {
-  font-size: 10.5px;
+  font-size: clamp(9.5px, 0.25vw + 10.5px, 12.5px);
   font-weight: 800;
   color: var(--text-muted)
 }
@@ -149,11 +149,11 @@
   box-sizing: border-box;
   border: 1px solid var(--border-soft);
   border-radius: 9px;
-  background: var(--app-surface-soft);
+  // background: var(--app-surface-soft);
   color: var(--text-dark);
   padding: 9px 10px;
   font: inherit;
-  font-size: 12px;
+  font-size: clamp(12px, 0.2vw + 11px, 13px);
   outline: none
 }
 
@@ -213,7 +213,7 @@
 }
 
 .mini-title {
-  font-size: 10px;
+  font-size: clamp(9.5px, 0.25vw + 9px, 10px);
   font-weight: 800;
   color: var(--text-muted);
   margin-bottom: 7px
@@ -262,6 +262,7 @@
   font-size: 11px
 }
 
+
 .pricing-card {
   height: max-content
 }
@@ -278,7 +279,7 @@
   justify-content: space-between;
   padding: 8px 10px;
   border-bottom: 1px solid var(--border-soft);
-  font-size: 11px;
+  font-size: clamp(10.5px, 0.25vw + 10px, 11px);
   color: var(--text-muted)
 }
 
@@ -297,8 +298,21 @@
 }
 
 .price-summary .grand strong {
-  font-size: 14px;
+  font-size: clamp(13px, 0.6vw + 11px, 15px);
   color: var(--primary-dark)
+}
+
+.grand-value {
+  display: flex;
+  align-items: baseline;
+  gap: 7px
+}
+
+.strike-price {
+  color: #dc4c4c;
+  text-decoration: line-through;
+  font-size: 11px;
+  font-weight: 600
 }
 
 .icon-btn {
@@ -341,7 +355,7 @@
 
 .material-row input {
   padding: 7px 8px;
-  font-size: 11px
+  font-size: clamp(10.5px, 0.2vw + 10px, 11px)
 }
 
 .remove-btn {
@@ -383,27 +397,27 @@
   border-radius: 999px;
   background: var(--app-surface-solid);
   color: var(--primary-dark);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800
 }
 
 .preview-card h2 {
-  margin: 13px 0 4px;
-  font-size: 18px;
+  margin: 8px 0 4px;
+  font-size: clamp(16px, 1vw + 13px, 19px);
   color: var(--text-dark)
 }
 
 .preview-card>p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: clamp(10px, 0.3vw + 9px, 11px);
   min-height: 31px
 }
 
 .preview-price {
-  margin: 12px 0;
+  margin: 5px 0;
   color: var(--primary-dark);
-  font-size: 25px;
+  font-size: clamp(20px, 2vw + 14px, 26px);
   font-weight: 900
 }
 
@@ -411,6 +425,31 @@
   font-size: 10px;
   font-weight: 700;
   color: var(--text-muted)
+}
+
+.preview-strike {
+  color: #dc4c4c;
+  text-decoration: line-through;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 2px
+}
+
+.preview-price-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap
+}
+
+.discount-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  vertical-align: middle
 }
 
 .preview-grid {
@@ -424,7 +463,7 @@
   border: 1px solid var(--border-soft);
   border-radius: 9px;
   background: var(--app-surface-solid);
-  font-size: 9.5px;
+  font-size: clamp(9px, 0.25vw + 8.5px, 9.5px);
   color: var(--text-muted)
 }
 
@@ -438,22 +477,36 @@
   margin-right: 3px
 }
 
+@media(min-width:1400px) {
+  .card {
+    padding: 10px
+  }
+
+  .workspace {
+    gap: 10px
+  }
+
+  .workspace-col {
+    gap: 10px
+  }
+}
+
 @media(max-width:900px) {
   .workspace {
-    flex-direction: column
+    flex-direction: column;
+    align-items: stretch
   }
 
   .workspace-col-side {
     min-width: 0
   }
-
-  .page-header {
-    align-items: flex-start;
-    flex-direction: column
-  }
 }
 
 @media(max-width:600px) {
+  .card {
+    padding: 10px
+  }
+
   .category-tabs {
     grid-template-columns: 1fr
   }
@@ -472,6 +525,64 @@
 
   .material-row.header {
     display: none
+  }
+
+  .combo-row {
+    grid-template-columns: 1fr 1fr 30px
+  }
+
+  .combo-row.header {
+    display: none
+  }
+
+  .preview-grid {
+    grid-template-columns: 1fr
+  }
+
+  .add-treatment-btn {
+    min-height: 34px;
+    width: 34px;
+    padding: 0;
+    gap: 0;
+    border-radius: 50%;
+
+    span {
+      display: none
+    }
+
+    i {
+      font-size: 15px
+    }
+  }
+}
+
+@media(max-width:420px) {
+  .material-row {
+    grid-template-columns: 1fr 30px;
+    grid-template-areas:
+      "name remove"
+      "unit remove"
+      "quantity remove";
+  }
+
+  .material-row input:nth-child(1) { grid-area: name }
+  .material-row input:nth-child(2) { grid-area: unit }
+  .material-row input:nth-child(3) { grid-area: quantity }
+  .material-row .remove-btn { grid-area: remove }
+
+  .combo-row {
+    grid-template-columns: 1fr 30px;
+    grid-template-areas:
+      "name remove"
+      "price remove"
+  }
+
+  .combo-row input:nth-child(1) { grid-area: name }
+  .combo-row input:nth-child(2) { grid-area: price }
+  .combo-row .remove-btn { grid-area: remove }
+
+  .preview-price {
+    font-size: clamp(18px, 5vw, 22px)
   }
 }
 
@@ -500,7 +611,7 @@
   border-color: #dc4c4c;
 }
 
-/* Header (mirrors Appointments / Treatment Management page-header) */
+/* Treatment Management page-header */
 .page-header {
   gap: 8px;
   padding: 4px 2px;
@@ -513,12 +624,15 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+  overflow: hidden;
   font-family: var(--font-family-display);
   font-size: clamp(17px, 1.4vw, 20px);
   line-height: var(--lh-tight);
   font-weight: 700;
   color: var(--text-dark);
   letter-spacing: -0.3px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 
   i {
     flex: 0 0 auto;
@@ -595,83 +709,6 @@
   transform: translateY(0);
 }
 
-/* Single / Combo toggle switch (placed below the Description field) */
-.switch-line {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 12px;
-  padding: 10px;
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
-  background: var(--app-surface-soft);
-  cursor: pointer;
-}
-
-.switch-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-.switch-track {
-  flex: 0 0 auto;
-  width: 40px;
-  height: 22px;
-  border-radius: 999px;
-  background: var(--border-soft-strong, var(--border-soft));
-  position: relative;
-  transition: background 0.18s ease;
-}
-
-.switch-thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  transition: transform 0.18s ease;
-}
-
-.switch-input:checked+.switch-track {
-  background: var(--primary);
-}
-
-.switch-input:checked+.switch-track .switch-thumb {
-  transform: translateX(18px);
-}
-
-.switch-input:disabled~.switch-track,
-.switch-input:disabled~.switch-text {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.switch-input:focus-visible+.switch-track {
-  box-shadow: 0 0 0 3px var(--primary-soft);
-}
-
-.switch-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.switch-text strong {
-  font-size: 12.5px;
-  color: var(--text-dark);
-}
-
-.switch-text small {
-  font-size: 10.5px;
-  color: var(--text-muted);
-}
 
 .field-hint {
   margin-top: 2px;
@@ -679,7 +716,7 @@
   color: var(--text-muted);
 }
 
-/* Combo treatment line-items (add-a-row, same pattern as the materials table) */
+/* Combo treatment  */
 .mini-title-row {
   display: flex;
   align-items: center;
@@ -689,12 +726,6 @@
 
 .mini-title-row .mini-title {
   margin-bottom: 0;
-}
-
-.mini-title-row .icon-btn {
-  margin-left: 0;
-  width: 27px;
-  height: 27px;
 }
 
 .combo-table {
@@ -733,7 +764,7 @@
   color: var(--text-dark);
   padding: 7px 8px;
   font: inherit;
-  font-size: 11px;
+  font-size: clamp(10.5px, 0.2vw + 10px, 11px);
   outline: none;
 }
 
@@ -742,50 +773,16 @@
   box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
-.combo-table.view-grid .combo-row {
-  grid-template-columns: 1.7fr 1fr 34px;
-}
-
-.combo-table.view-grid strong {
-  align-self: center;
+/* View Treatment */
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled,
+.material-row input:disabled,
+.combo-row input:disabled {
+  // background: var(--app-surface-soft);
   color: var(--text-dark);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-@media (max-width: 600px) {
-  .combo-row {
-    grid-template-columns: 1fr 1fr 30px;
-  }
-
-  .combo-row.header {
-    display: none;
-  }
-}
-
-/* Read-only ("View Treatment") display: plain text instead of disabled form controls. */
-.view-grid .field {
-  border: 1px solid var(--border-soft);
-  border-radius: 9px;
-  background: var(--app-surface-soft);
-  padding: 8px 10px;
-}
-
-.view-grid .field strong {
-  color: var(--text-dark);
-  font-size: 12.5px;
-  font-weight: 700;
-}
-
-.material-table.view-grid .material-row {
-  grid-template-columns: 1.5fr .7fr .8fr 34px;
-}
-
-.material-table.view-grid strong {
-  align-self: center;
-  color: var(--text-dark);
-  font-size: 12px;
-  font-weight: 700;
+  opacity: 0.85;
+  cursor: not-allowed;
 }
 
 .treatment-chip:disabled {

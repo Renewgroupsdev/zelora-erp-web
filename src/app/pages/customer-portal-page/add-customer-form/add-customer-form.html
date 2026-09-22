@@ -29,7 +29,7 @@
       <div class="form-grid">
 
         <div class="form-field">
-          <label for="cust-name">Name <span>*</span></label>
+          <label for="cust-name">Name <span class="required-asterisk">*</span></label>
           <div class="input-wrap">
             <i class="bi bi-person"></i>
             <input
@@ -46,7 +46,7 @@
         </div>
 
         <div class="form-field">
-          <label for="cust-phone">Phone No <span>*</span></label>
+          <label for="cust-phone">Phone No <span class="required-asterisk">*</span></label>
           <div class="input-wrap">
             <i class="bi bi-telephone"></i>
             <input
@@ -81,7 +81,7 @@
         </div>
 
         <div class="form-field full-width">
-          <label>Gender <span>*</span></label>
+          <label>Gender <span class="required-asterisk">*</span></label>
           <div class="gender-options" [class.is-invalid]="isInvalid('gender')">
             @for (gender of genderOptions; track gender.value) {
               <label class="gender-option" [class.selected]="customerForm.get('gender')?.value === gender.value">
@@ -99,7 +99,7 @@
         </div>
 
         <div class="form-field">
-          <label for="cust-branch">Branch <span>*</span></label>
+          <label for="cust-branch">Branch <span class="required-asterisk">*</span></label>
           <div class="input-wrap select-wrap">
             <i class="bi bi-geo-alt"></i>
             <select id="cust-branch" formControlName="branch" [class.is-invalid]="isInvalid('branch')">
@@ -113,7 +113,7 @@
         </div>
 
         <div class="form-field">
-          <label for="cust-segment">Segment <span>*</span></label>
+          <label for="cust-segment">Segment <span class="required-asterisk">*</span></label>
           <div class="input-wrap select-wrap">
             <i class="bi bi-stars"></i>
             <select id="cust-segment" formControlName="segment">
@@ -126,7 +126,7 @@
         </div>
 
         <div class="form-field full-width">
-          <label for="cust-service">Preferred Service <span>*</span></label>
+          <label for="cust-service">Preferred Service <span class="required-asterisk">*</span></label>
           <div class="input-wrap select-wrap">
             <i class="bi bi-magic"></i>
             <select id="cust-service" formControlName="preferredService" [class.is-invalid]="isInvalid('preferredService')">

@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { NavLayoutService } from '../services/nav-layout.service';
 import { AppNotification, NotificationService } from '../shared/common-services/notification.service';
 import { AuthService } from '../core/service/auth.service';
+import { roleLabel } from '../core/auth/auth.model';
 
 @Component({
   selector: 'app-top-navbar',
@@ -13,12 +14,15 @@ import { AuthService } from '../core/service/auth.service';
   styleUrl: './top-navbar.scss',
 })
 export class TopNavbar {
+  private readonly authService = inject(AuthService);
+
+  readonly currentUser = this.authService.currentUser;
+  readonly currentUserRole = computed(() => roleLabel(this.currentUser()?.role_id));
 
   constructor(
     public navLayout: NavLayoutService,
     public notifications: NotificationService,
     private router: Router,
-    private authService: AuthService,
   ) { }
 
   onNotificationClick(notification: AppNotification): void {

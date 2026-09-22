@@ -3,11 +3,13 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Preloader } from '../preloader/preloader';
+import { AuthBackground } from '../shared/components/auth-background/auth-background';
+import { AuthService } from '../core/service/auth.service';
 
 @Component({
   selector: 'app-forgot-password',
   standalone: true,
-  imports: [Preloader, CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [Preloader, CommonModule, ReactiveFormsModule, FormsModule, AuthBackground],
   templateUrl: './forgot-password.html',
   styleUrl: './forgot-password.scss',
 })
@@ -19,7 +21,7 @@ export class ForgotPassword implements OnInit {
   successMessage: string = '';
   loading: boolean = false;
 
-  constructor(private fb: FormBuilder, private router: Router) { }
+  constructor(private fb: FormBuilder, private router: Router, private authService: AuthService) { }
 
   ngOnInit(): void {
     this.forgotForm = this.fb.group({
@@ -43,14 +45,26 @@ export class ForgotPassword implements OnInit {
 
     this.loading = true;
 
-    setTimeout(() => {
-      this.loading = false;
-      this.successMessage = `If an account exists for ${email}, a password reset link has been sent.`;
+    this.authService.forgotPassword(email).subscribe({
+      next: (response) => {
+        this.loading = false;
 
-      setTimeout(() => {
-        this.router.navigate(['/login']);
-      }, 1500);
-    }, 1800);
+        if (!response?.success) {
+          this.error = response?.message || 'Unable to send reset link. Please try again.';
+          return;
+        }
+
+        this.successMessage = response.message || `If an account exists for ${email}, a password reset link has been sent.`;
+
+        setTimeout(() => {
+          this.router.navigate(['/login']);
+        }, 1500);
+      },
+      error: (err) => {
+        this.loading = false;
+        this.error = err?.error?.message || 'Unable to send reset link. Please try again.';
+      },
+    });
   }
 
   clearError() {
