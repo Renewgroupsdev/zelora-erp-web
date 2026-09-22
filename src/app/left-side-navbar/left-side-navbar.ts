@@ -98,7 +98,7 @@ export class LeftSideNavbar {
     // Navigating straight to a leaf item (e.g. Appointments) - whatever group was expanded is
     // no longer relevant to the page you're on, so close it instead of leaving it open behind
     // the new active item.
-    this.expandedSubmenu.set(null);
+    // this.expandedSubmenu.set(null);
     this.navLayout.closeMobileSidebar();
   }
 
