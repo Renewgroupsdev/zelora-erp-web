@@ -52,7 +52,18 @@ export class LeftSideNavbar {
       //   { label: 'Create Treatment', icon: 'bi-heart-pulse', path: '/app/treatments/create' },
       // ],
     },
+    { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings', 
+      
+      children: [
+          { label: 'Service-Category', icon: 'bi-tags-fill', path: '/app/masters/service-category'},
+          { label: 'Source', icon: 'bi-signpost-2-fill', path: '/app/masters/source'},
+          { label: 'Lead-Status', icon: 'bi-flag-fill', path: '/app/masters/lead-status'},
+          { label: 'Roles', icon: 'bi-shield-lock-fill', path: '/app/masters/roles'},
+          { label: 'Roles-&-permssions', icon: 'bi-shield-lock-fill', path: '/app/masters/roles-and-permission'},
+        ],
+    },
     { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings' },
+    { label: 'Reports', icon: 'bi-bar-chart-fill', path: '/app/reports' },
   ];
 
   constructor(public navLayout: NavLayoutService) { }
