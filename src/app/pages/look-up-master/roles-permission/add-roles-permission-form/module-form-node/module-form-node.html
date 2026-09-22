@@ -1,0 +1,169 @@
+<div class="module-form-node" [class.depth-0]="depth === 0">
+
+  <div class="node-card-header" (click)="toggleCollapsed()">
+    <button type="button" class="collapse-toggle" [class.rotated]="!collapsed" [attr.aria-expanded]="!collapsed">
+      <i class="bi bi-chevron-right"></i>
+    </button>
+
+    <div class="node-card-title">
+      <i class="bi" [class.bi-folder2-open]="depth === 0" [class.bi-folder]="depth > 0"></i>
+      <span>{{ group.get('module_name')?.value || (depth === 0 ? 'New Module' : 'New Sub-Module') }}</span>
+      @if (subModulesArray.length) {
+        <span class="title-badge">{{ subModulesArray.length }} sub-module{{ subModulesArray.length > 1 ? 's' : '' }}</span>
+      }
+    </div>
+
+    @if (removable) {
+      <button type="button" class="remove-node-btn" (click)="removeRequested.emit(); $event.stopPropagation()" title="Remove this sub-module">
+        <i class="bi bi-trash3-fill"></i>
+        Remove
+      </button>
+    }
+  </div>
+
+  @if (!collapsed) {
+    <div class="node-card-body" [formGroup]="group">
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Module Name <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-collection"></i>
+            <input
+              type="text"
+              formControlName="module_name"
+              placeholder="e.g. Settings"
+              [class.is-invalid]="isInvalid('module_name')" />
+          </div>
+          @if (isInvalid('module_name')) {
+            <small class="error-text">Module name is required.</small>
+          }
+        </div>
+
+        <div class="form-field">
+          <label>Slug <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-link-45deg"></i>
+            <input
+              type="text"
+              formControlName="slug_name"
+              placeholder="e.g. settings"
+              (input)="onSlugInput()"
+              [class.is-invalid]="isInvalid('slug_name')" />
+          </div>
+          @if (isInvalid('slug_name')) {
+            <small class="error-text">Slug is required.</small>
+          }
+        </div>
+
+        <div class="form-field full-width">
+          <label>Page URL</label>
+          <div class="input-wrap">
+            <i class="bi bi-link-45deg"></i>
+            <input
+              type="text"
+              formControlName="url"
+              placeholder="e.g. /app/masters/settings or https://example.com/page"
+              [class.is-invalid]="isInvalid('url')" />
+          </div>
+          @if (isInvalid('url')) {
+            <small class="error-text">URL is too long.</small>
+          }
+        </div>
+
+        <div class="form-field full-width">
+          <label>Role Access <span>*</span></label>
+          <div class="role-picker">
+            @for (role of roles; track role.id) {
+              <label class="role-chip" [class.selected]="isRoleSelected(role.id)">
+                <input type="checkbox" [checked]="isRoleSelected(role.id)" (change)="toggleRole(role.id)" />
+                {{ role.name }}
+              </label>
+            } @empty {
+              <span class="muted-text">Loading roles...</span>
+            }
+          </div>
+          @if (isInvalid('role_ids')) {
+            <small class="error-text">Select at least one role.</small>
+          }
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="section-header">
+          <span class="section-label"><i class="bi bi-key-fill"></i> Actions / Permissions ({{ actionsArray.length }})</span>
+          <button type="button" class="add-row-btn" (click)="addAction()">
+            <i class="bi bi-plus-lg"></i> Add Action
+          </button>
+        </div>
+
+        <div class="actions-table" formArrayName="actions">
+          @if (actionsArray.controls.length) {
+            <div class="actions-table-head">
+              <span>Action Name</span>
+              <span>Slug</span>
+              <span>URL</span>
+              <span>Logo</span>
+              <span>Permission</span>
+              <span></span>
+            </div>
+          }
+
+          @for (actionGroup of actionsArray.controls; track $index; let i = $index) {
+            <div class="action-row" [formGroupName]="i">
+              <input
+                type="text"
+                formControlName="action_name"
+                placeholder="e.g. View"
+                [class.is-invalid]="isActionInvalid(i, 'action_name')" />
+              <input
+                type="text"
+                formControlName="slug_name"
+                placeholder="Auto-generated from action name"
+                class="slug-readonly" />
+              <input
+                type="text"
+                formControlName="url"
+                placeholder="e.g. /app/masters/settings"
+                [class.is-invalid]="isActionInvalid(i, 'url')" />
+              <app-icon-picker formControlName="logo" placeholder="Choose icon"></app-icon-picker>
+              <select formControlName="permission">
+                <option [value]="1">Allowed</option>
+                <option [value]="0">Denied</option>
+              </select>
+              <button type="button" class="remove-row-btn" (click)="removeAction(i)" title="Remove action">
+                <i class="bi bi-trash3-fill"></i>
+              </button>
+            </div>
+          } @empty {
+            <div class="empty-row">No actions added yet.</div>
+          }
+        </div>
+      </div>
+
+      <div class="section-block sub-modules-section">
+        <div class="section-header">
+          <span class="section-label"><i class="bi bi-diagram-3-fill"></i> Sub-Modules ({{ subModulesArray.length }})</span>
+          <button type="button" class="add-row-btn" (click)="addSubModule()">
+            <i class="bi bi-plus-lg"></i> Add Sub-Module
+          </button>
+        </div>
+
+        @for (subGroup of subModulesArray.controls; track $index; let i = $index) {
+          <div class="sub-module-wrap">
+            <app-module-form-node
+              [group]="asFormGroup(subGroup)"
+              [roles]="roles"
+              [depth]="depth + 1"
+              [removable]="true"
+              (removeRequested)="removeSubModule(i)">
+            </app-module-form-node>
+          </div>
+        } @empty {
+          <div class="empty-row">No sub-modules yet. Add one to nest permissions under this module.</div>
+        }
+      </div>
+
+    </div>
+  }
+</div>

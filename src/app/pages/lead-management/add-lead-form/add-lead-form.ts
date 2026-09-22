@@ -12,6 +12,7 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import { ToastService } from '../../../shared/common-services/toast.service';
+import { ApiDataService } from '../../../shared/common-services/api-data.service';
 import { forkJoin } from 'rxjs/internal/observable/forkJoin';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 
@@ -49,12 +50,11 @@ export class AddLeadForm implements OnInit{
    typeOptions: any = [];
 
    statusOptions: any = [];
-  apiDataService: any;
-  
 
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<AddLeadForm>,
+    private apiDataService: ApiDataService,
     private toast: ToastService,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {

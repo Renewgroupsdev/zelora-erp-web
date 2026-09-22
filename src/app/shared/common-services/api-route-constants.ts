@@ -36,4 +36,9 @@ export class ApiRoutesConstants {
    public static ROLES_ADD = "roles";
    public static ROLES_DELETE = "roles";
 
+   //Roles & Permission (CURD)
+   public static ROLES_PERMISSION_GET_List = "module-with-actions";
+   public static ROLES_PERMISSION_ADD = "module-with-actions";
+   public static ROLES_PERMISSION_DELETE = "module-with-actions";
+
 }

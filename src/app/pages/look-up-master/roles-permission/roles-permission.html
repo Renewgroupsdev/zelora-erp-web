@@ -1,1 +1,77 @@
-<p>roles-permission works!</p>
+<div class="roles-permission-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div class="page-header-text">
+      <h6 class="page-title">Roles &amp; Permission</h6>
+      <p class="page-subtitle">Control which roles can access every module, sub-module and action.</p>
+    </div>
+
+    <button type="button" class="add-lead-btn" (click)="onAddModule()">
+      <i class="bi bi-plus-lg"></i>
+      Add Module
+    </button>
+  </div>
+
+  <div class="summary-row d-flex">
+    <div class="summary-card">
+      <div class="summary-icon icon-modules"><i class="bi bi-diagram-3-fill"></i></div>
+      <div class="summary-text">
+        <span class="summary-value">{{ totalModules }}</span>
+        <span class="summary-label">Modules</span>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-icon icon-actions"><i class="bi bi-key-fill"></i></div>
+      <div class="summary-text">
+        <span class="summary-value">{{ totalActions }}</span>
+        <span class="summary-label">Actions</span>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-icon icon-roles"><i class="bi bi-people-fill"></i></div>
+      <div class="summary-text">
+        <span class="summary-value">{{ totalRolesMapped }}</span>
+        <span class="summary-label">Roles Mapped</span>
+      </div>
+    </div>
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by module name or slug"
+    [filters]="filters"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filterClick)="onFilterClick($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
+
+  <div class="module-tree-card">
+    <div class="module-tree-header d-flex align-items-center justify-content-between">
+      <span class="record-count">{{ recordCountText }}</span>
+    </div>
+
+    <div class="module-tree-scroll">
+      @for (module of filteredModules; track module.id) {
+        <app-module-tree-node
+          [node]="module"
+          [level]="0"
+          (editNode)="onEditModule($event)"
+          (addChildNode)="onAddChildModule($event)"
+          (deleteNode)="onDeleteModule($event)"
+          (openUrl)="onOpenModuleUrl($event)">
+        </app-module-tree-node>
+      } @empty {
+        <div class="empty-state">
+          @if (isLoading) {
+            Loading modules...
+          } @else {
+            No modules found
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+</div>

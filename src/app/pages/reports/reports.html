@@ -1,0 +1,29 @@
+<div class="reports-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div class="page-header-text">
+      <h6 class="page-title">Reports</h6>
+      <p class="page-subtitle">Pick a report to view performance across leads, appointments and teams.</p>
+    </div>
+  </div>
+
+  <div class="report-grid">
+    @for (report of reports; track report.id) {
+      <a
+        class="report-card"
+        [ngClass]="'variant-' + report.variant"
+        [routerLink]="['/app/reports', report.id]">
+        <span class="report-card-icon"><i class="bi" [ngClass]="report.icon"></i></span>
+
+        <span class="report-card-body">
+          <span class="report-card-label">{{ report.label }}</span>
+          <span class="report-card-category">{{ report.category }}</span>
+          <span class="report-card-desc">{{ report.description }}</span>
+        </span>
+
+        <span class="report-card-arrow"><i class="bi bi-arrow-right"></i></span>
+      </a>
+    }
+  </div>
+
+</div>

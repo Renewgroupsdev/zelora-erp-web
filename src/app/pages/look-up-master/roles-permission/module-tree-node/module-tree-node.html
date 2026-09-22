@@ -1,0 +1,90 @@
+<div class="tree-node" [style.--level]="level">
+  <div class="node-row" [class.has-children]="node.sub_modules.length" [class.expanded]="node.expanded" (click)="onToggle()">
+    @if (level > 0) {
+      <span class="node-connector"></span>
+    }
+
+    <button
+      type="button"
+      class="expand-toggle"
+      [class.rotated]="node.expanded"
+      [class.invisible]="!node.sub_modules.length"
+      [attr.aria-expanded]="node.expanded"
+      [attr.aria-label]="node.expanded ? 'Collapse ' + node.module_name : 'Expand ' + node.module_name">
+      <i class="bi bi-chevron-right"></i>
+    </button>
+
+    <div class="node-icon">
+      <i class="bi" [class.bi-folder2-open]="node.expanded" [class.bi-folder2]="!node.expanded"></i>
+    </div>
+
+    <div class="node-info">
+      <div class="node-name-row">
+        <span
+          class="node-name"
+          [class.has-link]="node.url"
+          [title]="node.url ? 'Open ' + node.url : node.module_name"
+          (click)="onOpenUrl($event)">
+          {{ node.module_name }}
+        </span>
+        @if (node.url) {
+          <i class="bi bi-box-arrow-up-right link-indicator"></i>
+        }
+        <span class="node-slug">{{ node.slug_name }}</span>
+      </div>
+
+      <div class="node-meta">
+        <span class="meta-chip roles-chip" [title]="node.roleNames">
+          <i class="bi bi-people-fill"></i>
+          {{ node.roleNames }}
+        </span>
+
+        @if (node.actions.length) {
+          <span class="meta-chip actions-chip">
+            <i class="bi bi-key-fill"></i>
+            {{ allowedActionsCount }}/{{ node.actions.length }} actions
+          </span>
+        }
+
+        @if (node.sub_modules.length) {
+          <span class="meta-chip submodules-chip">
+            <i class="bi bi-diagram-3-fill"></i>
+            {{ node.sub_modules.length }} sub-module{{ node.sub_modules.length > 1 ? 's' : '' }}
+          </span>
+        }
+      </div>
+    </div>
+
+    <div class="row-actions">
+      @if (node.url) {
+        <button type="button" class="row-action-btn action-link" title="Open page" aria-label="Open linked page" (click)="onOpenUrl($event)">
+          <i class="bi bi-box-arrow-up-right"></i>
+        </button>
+      }
+      <button type="button" class="row-action-btn action-add" title="Add sub-module" aria-label="Add sub-module" (click)="onAddChild($event)">
+        <i class="bi bi-plus-lg"></i>
+      </button>
+      <button type="button" class="row-action-btn action-edit" title="Edit" aria-label="Edit module" (click)="onEdit($event)">
+        <i class="bi bi-pencil-fill"></i>
+      </button>
+      <button type="button" class="row-action-btn action-delete" title="Delete" aria-label="Delete module" (click)="onDelete($event)">
+        <i class="bi bi-trash3-fill"></i>
+      </button>
+    </div>
+  </div>
+
+  @if (node.expanded && node.sub_modules.length) {
+    <div class="node-children">
+      @for (child of node.sub_modules; track child.id) {
+        <app-module-tree-node
+          [node]="child"
+          [level]="level + 1"
+          (editNode)="editNode.emit($event)"
+          (addChildNode)="addChildNode.emit($event)"
+          (deleteNode)="deleteNode.emit($event)"
+          (openUrl)="openUrl.emit($event)">
+        </app-module-tree-node>
+      }
+    </div>
+  }
+</div>

@@ -59,9 +59,9 @@
               formControlName="mobile_no"
               placeholder="Enter phone number"
               autocomplete="tel"
-              [class.is-invalid]="isInvalid('phone')"  maxlength="10"/>
+              [class.is-invalid]="isInvalid('mobile_no')"  maxlength="10"/>
           </div>
-          @if (isInvalid('phone')) {
+          @if (isInvalid('mobile_no')) {
             <small class="error-text">Enter a valid phone number.</small>
           }
         </div>

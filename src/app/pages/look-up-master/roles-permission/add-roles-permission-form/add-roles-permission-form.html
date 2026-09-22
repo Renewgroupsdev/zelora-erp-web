@@ -1,1 +1,31 @@
-<p>add-roles-permission-form works!</p>
+<div class="roles-permission-form-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div class="page-header-text">
+      <button type="button" class="back-btn" (click)="goBack()" aria-label="Back to Roles & Permission">
+        <i class="bi bi-arrow-left"></i>
+      </button>
+      <div class="page-header-copy">
+        <h6 class="page-title">{{ formTitle }}</h6>
+        <p class="page-subtitle">{{ formSubtitle }}</p>
+      </div>
+    </div>
+  </div>
+
+  @if (isLoading) {
+    <div class="form-loading">Loading module details...</div>
+  } @else if (rootGroup) {
+    <form [formGroup]="rootGroup" (ngSubmit)="save()" novalidate class="form-scroll">
+      <app-module-form-node [group]="rootGroup" [roles]="roles" [depth]="0" [removable]="false"></app-module-form-node>
+
+      <div class="form-footer">
+        <button type="button" class="cancel-btn" (click)="goBack()">Cancel</button>
+        <button type="submit" class="save-btn" [disabled]="isSaving">
+          <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-floppy]="!isSaving"></i>
+          {{ isSaving ? 'Saving...' : (isEdit ? 'Update Module' : 'Save Module') }}
+        </button>
+      </div>
+    </form>
+  }
+
+</div>

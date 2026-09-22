@@ -331,7 +331,11 @@
   font-weight: 800;
 }
 
-/* Active leaf item (e.g. Dashboard): solid brand-gradient card, white content */
+/* Active leaf item (e.g. Dashboard): solid brand-gradient card, white content.
+   This is the single authoritative definition - it used to be redefined three more times
+   further down this file (each only overriding a subset of these properties), so the actually
+   rendered result was whichever property each one happened to touch last, not any one coherent
+   design. Those duplicates are gone; this is the only place this state is styled now. */
 .side-navbar.expanded .nav-item:not(.has-children) .nav-link.active {
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   border-color: transparent;
@@ -345,7 +349,7 @@
   box-shadow: none;
 }
 
-.side-navbar.expanded .nav-item:not(.has-children) .nav-link.active .nav-end-arrow {
+.side-navbar.expanded .nav-item:not(.has-children) .nav-link.active .horizontal-end-arrow {
   color: #fff;
   opacity: 1;
 }
@@ -1352,14 +1356,6 @@
   gap: 5px;
 }
 
-.nav-link {
-  min-height: 35px;
-  padding: 3px 5px;
-  gap: 8px;
-  border-radius: 8px;
-  font-size: 9px;
-}
-
 .side-navbar.expanded .nav-item:not(.has-children) .nav-link {
   box-shadow: none;
 }
@@ -1368,24 +1364,6 @@
   padding: 3px;
   border-radius: 8px;
   box-shadow: none;
-}
-
-.nav-icon {
-  width: 25px;
-  height: 25px;
-  flex-basis: 25px;
-  border-radius: 8px;
-  font-size: 12px;
-  box-shadow: 0 3px 7px color-mix(in srgb, var(--primary) 28%, transparent);
-}
-
-.side-navbar.expanded .nav-item:not(.has-children) .nav-link.active {
-  background: linear-gradient(135deg, #24cf92, #079867);
-  box-shadow: 0 5px 12px rgba(24, 184, 117, .24);
-}
-
-.side-navbar.expanded .nav-item:not(.has-children) .nav-link.active .nav-icon {
-  color: #087e59;
 }
 
 .side-navbar:not(.expanded) .nav-link {
@@ -1572,18 +1550,6 @@
   border: 1px solid rgba(24, 184, 117, .13);
 }
 
-.side-navbar.expanded .nav-item:not(.has-children) .nav-link.active {
-  color: #0b4d40;
-  background: linear-gradient(100deg, #e1f8f0, #effbf8);
-  box-shadow: none;
-}
-
-.side-navbar.expanded .nav-item:not(.has-children) .nav-link.active .nav-icon {
-  color: #fff;
-  background: linear-gradient(135deg, #19bd7b, #087a5f);
-  box-shadow: 0 4px 10px rgba(10, 138, 96, .24);
-}
-
 .side-navbar.expanded .nav-link:hover {
   color: #0b4d40;
   background: #edf9f5;
@@ -1642,16 +1608,9 @@
   // border-color: color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
-.side-navbar.expanded .nav-item:not(.has-children) .nav-link.active,
 .side-navbar.expanded .nav-link:hover {
   color: color-mix(in srgb, var(--primary-dark) 76%, var(--text-dark));
   background: color-mix(in srgb, var(--primary) 11%, var(--app-surface-solid));
-}
-
-.side-navbar.expanded .nav-item:not(.has-children) .nav-link.active .nav-icon {
-  color: #fff;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  box-shadow: 0 4px 10px color-mix(in srgb, var(--primary) 28%, transparent);
 }
 
 .side-navbar.expanded .subnav-link.active {

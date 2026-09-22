@@ -259,8 +259,18 @@ export class LeadManagement implements OnInit {
   }
 
   onEditLead(row: TableRow): void {
-    const lead = this.leadsById.get(Number(row['id']));
-    this.openAddPopup(lead ?? null);
+    const id = Number(row['id']);
+
+    this.ApiDataService.GET(`${ApiRoutesConstants.LEAD_ADD}/${id}`).subscribe({
+      next: (response: any) => {
+        const lead = response?.success ? response.data : this.leadsById.get(id);
+        this.openAddPopup(lead ?? null);
+      },
+      error: (err: any) => {
+        this.toast.error('Failed to load lead details. Please try again.');
+        console.error('Failed to load lead details:', err);
+      },
+    });
   }
 
   async onDeleteLead(row: TableRow): Promise<void> {
@@ -377,38 +387,11 @@ export class LeadManagement implements OnInit {
     dialogRef.afterClosed().subscribe((leadData) => {
       if (!leadData) return;
 
-      // The dialog already saved the lead via its own POST call - add it straight into the
-      // table instead of refetching, since `allRows` is seeded locally rather than from the API.
-      this.allRows = [this.mapNewLeadToRow(leadData), ...this.allRows];
-      this.currentPage = 1;
-      this.refreshRows();
+      // The dialog already saved the lead via its own POST/PUT call - refetch instead of
+      // patching locally so edits replace the existing row instead of duplicating it.
+      this.loadLeadData();
     });
   }
-
-  /** Builds a table row from whatever the Add Lead dialog closes with - either the API's
-   *  response payload or, if that's missing fields, the raw form values it fell back to. */
-  private mapNewLeadToRow(lead: any): TableRow {
-    const id = lead.id ?? Date.now();
-
-    return {
-      lead: {
-        name: lead.name ?? '',
-        subtitle: `LD-${String(id).padStart(5, '0')}`,
-      },
-      contact: lead.mobile_no ?? lead.phone ?? '',
-      gender: lead.gender ?? '',
-      source: this.formatSource(lead.source),
-      service_category: lead.service_category ?? lead.category ?? lead.type ?? '',
-      service_request: lead.service_request ?? lead.reason ?? '',
-      branch: lead.branch ?? '',
-      status: this.formatStatus(lead.status),
-      created_at: this.formatDate(lead.created_at ?? new Date().toISOString()),
-      telecaller: lead.creator ?? '',
-      action: 'menu',
-      id,
-    };
-  }
-
 
   private refreshRows(): void {
     const filteredRows = this.getFilteredRows();

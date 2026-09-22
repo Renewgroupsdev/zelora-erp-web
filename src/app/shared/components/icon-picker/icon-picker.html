@@ -1,0 +1,59 @@
+<div class="icon-picker" [class.open]="isOpen" [class.disabled]="disabled">
+  <button #trigger type="button" class="icon-picker-trigger" (click)="toggleOpen()" [disabled]="disabled">
+    @if (value) {
+      <i class="bi" [ngClass]="value"></i>
+      <span class="trigger-label">{{ value }}</span>
+    } @else {
+      <i class="bi bi-search trigger-placeholder-icon"></i>
+      <span class="trigger-placeholder">{{ placeholder }}</span>
+    }
+    <i class="bi bi-chevron-down trigger-caret"></i>
+  </button>
+
+  @if (value && !disabled) {
+    <button type="button" class="icon-picker-clear" (click)="clear($event)" title="Clear icon">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  }
+</div>
+
+<ng-template #panelTemplate>
+  <div class="icon-picker-panel">
+    <div class="icon-picker-search">
+      <i class="bi bi-search"></i>
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="onSearchChange()"
+        placeholder="Search bootstrap icons..."
+        autocomplete="off" />
+    </div>
+
+    <div class="icon-picker-count">
+      Showing {{ filteredIcons.length.toLocaleString() }} of {{ resultCount.toLocaleString() }} icon{{ resultCount === 1 ? '' : 's' }}
+    </div>
+
+    <div class="icon-picker-list">
+      @for (name of filteredIcons; track name) {
+        <button
+          type="button"
+          class="icon-option"
+          [class.selected]="value === ('bi-' + name)"
+          [title]="name"
+          (click)="select(name)">
+          <i class="bi" [ngClass]="'bi-' + name"></i>
+          <span>{{ name }}</span>
+        </button>
+      } @empty {
+        <div class="icon-picker-empty">No icons match "{{ searchTerm }}"</div>
+      }
+    </div>
+
+    @if (hasMore) {
+      <button type="button" class="icon-picker-more" (click)="showMore()">
+        Show {{ remainingCount > pageSize ? pageSize : remainingCount }} more
+        <i class="bi bi-chevron-down"></i>
+      </button>
+    }
+  </div>
+</ng-template>

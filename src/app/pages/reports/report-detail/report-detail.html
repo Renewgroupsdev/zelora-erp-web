@@ -1,0 +1,35 @@
+<div class="report-detail-page container-fluid px-0 d-flex flex-column">
+
+  @if (report) {
+    <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+      <div class="page-header-text">
+        <button type="button" class="back-btn" (click)="goBack()" aria-label="Back to Reports">
+          <i class="bi bi-arrow-left"></i>
+        </button>
+        <div class="page-header-copy">
+          <span class="page-eyebrow">{{ report.category }}</span>
+          <h6 class="page-title">{{ report.label }} Report</h6>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-panel">
+      <div class="report-panel-header" [ngClass]="'variant-' + report.variant">
+        <span class="report-panel-icon"><i class="bi" [ngClass]="report.icon"></i></span>
+        <p class="report-panel-desc">{{ report.description }}</p>
+      </div>
+
+      <div class="report-panel-body">
+        <i class="bi bi-bar-chart-line report-panel-body-icon" aria-hidden="true"></i>
+        <p>Report data will appear here once this report is connected.</p>
+      </div>
+    </div>
+  } @else {
+    <div class="not-found">
+      <i class="bi bi-exclamation-circle"></i>
+      <p>Report not found.</p>
+      <button type="button" class="back-link" (click)="goBack()">Back to Reports</button>
+    </div>
+  }
+
+</div>
