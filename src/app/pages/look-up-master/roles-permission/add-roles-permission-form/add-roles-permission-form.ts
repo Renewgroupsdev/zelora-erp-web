@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ApiDataService } from '../../../../shared/common-services/api-data.service';
+import { ApiDataService } from '../../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../../shared/common-services/toast.service';
 import { isSuccessResponse, RoleOption, RolePermissionModule } from '../roles-permission.model';

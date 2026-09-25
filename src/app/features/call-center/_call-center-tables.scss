@@ -1,0 +1,145 @@
+/* Panel / table / status styles shared by the call-center pages. Angular scopes component
+   styles, so each page @use's this partial instead of inheriting from the shell. */
+
+.eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #19796b; }
+
+.panel {
+  background: #fff;
+  border: 1px solid #dfe9e7;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 8px 25px rgba(20, 70, 65, 0.06);
+  margin-bottom: 16px;
+}
+
+.panel-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+
+  h2 { margin: 0; font-size: 17px; }
+  span { color: #859592; font-size: 11px; }
+
+  .heading-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+
+    h2 { margin: 0; }
+  }
+
+  .record-count {
+    background: #eef6f4;
+    color: #14695e;
+    font-weight: 700;
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+}
+
+.link-btn { border: 0; background: transparent; color: #0d6b5f; font-weight: 700; cursor: pointer; }
+
+.table-wrap { overflow: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+
+th {
+  text-align: left;
+  color: #82918f;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 11px;
+  border-bottom: 1px solid #e9efee;
+}
+
+td { padding: 12px 11px; border-bottom: 1px solid #eef3f2; vertical-align: middle; }
+
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: #f7fbfa; }
+
+td strong, td small { display: block; }
+td small { color: #899693; margin-top: 3px; }
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: capitalize;
+
+  &::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: 0 0 5px;
+  }
+
+  &.success { background: #e2f5ed; color: #197255; }
+  &.danger { background: #fde9e8; color: #bd3f3f; }
+  &.warning { background: #fff1d8; color: #a56a09; }
+  &.neutral { background: #edf1f1; color: #657572; }
+}
+
+.direction { display: inline-flex; gap: 5px; align-items: center; text-transform: capitalize; }
+
+.alert-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 0;
+  border-bottom: 1px solid #edf2f1;
+
+  &:last-child { border-bottom: 0; }
+}
+
+.alert-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: #fff0dc;
+  color: #c07819;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.alert-copy {
+  flex: 1;
+
+  strong { font-size: 12px; }
+  p { margin: 3px 0; color: #647471; font-size: 11px; line-height: 1.4; }
+  small { color: #9aa7a5; font-size: 10px; }
+}
+
+.read-btn {
+  border: 0;
+  background: #f0f6f4;
+  color: #14695e;
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.empty { text-align: center; color: #9aa7a5; padding: 28px; }
+
+.recording-player {
+  height: 30px;
+  max-width: 190px;
+  vertical-align: middle;
+}
+
+.no-recording { color: #b7c1bf; }

@@ -331,26 +331,14 @@
   font-weight: 800;
 }
 
-/* Active leaf item (e.g. Dashboard): solid brand-gradient card, white content.
-   This is the single authoritative definition - it used to be redefined three more times
-   further down this file (each only overriding a subset of these properties), so the actually
-   rendered result was whichever property each one happened to touch last, not any one coherent
-   design. Those duplicates are gone; this is the only place this state is styled now. */
 .side-navbar.expanded .nav-item:not(.has-children) .nav-link.active {
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, var(--app-surface-solid)), color-mix(in srgb, var(--primary) 5%, var(--app-surface-solid)));
   border-color: transparent;
-  color: #fff;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 38%, transparent);
-}
-
-.side-navbar.expanded .nav-item:not(.has-children) .nav-link.active .nav-icon {
-  background: #fff;
-  color: var(--primary-dark);
-  box-shadow: none;
+  color: color-mix(in srgb, var(--primary-dark) 76%, var(--text-dark));
 }
 
 .side-navbar.expanded .nav-item:not(.has-children) .nav-link.active .horizontal-end-arrow {
-  color: #fff;
+  color: color-mix(in srgb, var(--primary-dark) 76%, var(--text-dark));
   opacity: 1;
 }
 
@@ -361,6 +349,7 @@
   padding: 5px;
 }
 
+.side-navbar.expanded .nav-item.has-children.expanded,
 .side-navbar.expanded .nav-item.has-children:has(.nav-link.active) {
   background: var(--bubble-primary-soft);
 }
@@ -1603,6 +1592,7 @@
   stroke: none;
 }
 
+.side-navbar.expanded .nav-item.has-children.expanded,
 .side-navbar.expanded .nav-item.has-children:has(.nav-link.active) {
   background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, var(--app-surface-solid)), color-mix(in srgb, var(--primary) 5%, var(--app-surface-solid)));
   // border-color: color-mix(in srgb, var(--primary) 18%, transparent);
@@ -1941,10 +1931,7 @@
 }
 
 .side-navbar.expanded .nav-item.has-children {
-  padding: 5px;
-  // border: 1px solid color-mix(in srgb, var(--primary) 34%, transparent);
   border-radius: 11px;
-  // background: color-mix(in srgb, var(--primary) 5%, var(--app-surface-solid));
 }
 
 .side-navbar.expanded .nav-item.has-children .nav-link {

@@ -1,0 +1,32 @@
+<div class="modal-backdrop" (click)="closed.emit()">
+  <section class="call-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Call details">
+    <button class="close" (click)="closed.emit()" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+    <span class="eyebrow">CALL DETAILS</span>
+    <h2>{{ customerNumber(call) }}</h2>
+    <p>{{ call.lead?.name || 'Unknown caller' }}</p>
+
+    <div class="detail-grid">
+      <div><span>Direction</span><strong>{{ call.direction }}</strong></div>
+      <div><span>Status</span><strong>{{ call.status }}</strong></div>
+      <div><span>Telecaller</span><strong>{{ call.telecaller?.name || 'Unassigned' }}</strong></div>
+      <div><span>Duration</span><strong>{{ formatDuration(call.talk_duration) }}</strong></div>
+      <div><span>Outcome</span><strong>{{ call.disposition || 'Not logged' }}</strong></div>
+      <div><span>Started</span><strong>{{ call.started_at | date:'dd MMM, hh:mm a' }}</strong></div>
+    </div>
+
+    @if (call.notes) { <p>{{ call.notes }}</p> }
+
+    <div class="recording-block">
+      <span>Call recording</span>
+      @if (call.recording_url) {
+        <audio controls preload="none" [src]="call.recording_url"></audio>
+      } @else {
+        <p class="no-recording">Not available yet.</p>
+      }
+    </div>
+
+    @if (canLogOutcome) {
+      <button class="save-btn" type="button" (click)="logOutcome.emit(call)">Log Call Outcome</button>
+    }
+  </section>
+</div>

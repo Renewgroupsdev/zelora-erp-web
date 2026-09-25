@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { Preloader } from '../preloader/preloader';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
-import { AuthService } from '../core/service/auth.service';
+import { AuthService } from '../core/auth/auth.service';
 import { CookieService } from '../shared/common-services/cookie.service';
 import { AuthBackground } from '../shared/components/auth-background/auth-background';
 

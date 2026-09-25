@@ -1,0 +1,29 @@
+.dialer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #dce7e5;
+  border-radius: 14px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(20, 70, 65, 0.06);
+
+  input { border: 0; outline: 0; padding: 9px; width: 210px; font: inherit; }
+
+  button {
+    border: 0;
+    border-radius: 10px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #0d6b5f, #063d37);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+}
+
+@media (max-width: 700px) {
+  .dialer { margin-top: 14px; }
+  .dialer input { width: 100%; }
+}

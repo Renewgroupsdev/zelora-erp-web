@@ -13,7 +13,7 @@
 
   <div class="row g-2 g-md-3 stat-row">
     @for (stat of stats; track stat.label) {
-      <div class="col-6 col-md-2">
+      <div class="col-6 col-sm-4 col-md">
         <app-common-detail-card
           [label]="stat.label"
           [value]="stat.value"
@@ -61,6 +61,7 @@
         (appointmentClick)="openAppointment($event)"
         (followUpClick)="openFollowUp($event)"
         (sendToBranchClick)="sendToBranch($event)"
+        (callClick)="onCallLead($event)"
         (editClick)="onEditLead($event)"
         (deleteClick)="onDeleteLead($event)"
       ></app-common-table-card>

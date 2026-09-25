@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, loginRedirectGuard } from './core/auth/auth.guard';
+import { authGuard, branchHeadGuard, loginRedirectGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   {
@@ -8,16 +8,27 @@ export const routes: Routes = [
   },
   {
     path: 'login',
-    canActivate: [loginRedirectGuard],
+    // canActivate: [loginRedirectGuard],
     loadChildren: () => import('./login-page-module/login-page-module-module').then(m => m.LoginPageModuleModule),
   },
   {
     path: 'app',
-    canActivate: [authGuard],
+    // canActivate: [authGuard],
     loadComponent: () => import('./layout/layout').then(m => m.Layout),
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard/dashboard').then(m => m.Dashboard) },
+      {
+        path: 'call-center',
+        loadComponent: () => import('./features/call-center/call-center').then(m => m.CallCenter),
+        children: [
+          { path: '', pathMatch: 'full', loadComponent: () => import('./features/call-center/dashboard/call-center-dashboard').then(m => m.CallCenterDashboard) },
+          { path: 'history', loadComponent: () => import('./features/call-center/call-history/call-history').then(m => m.CallHistory) },
+          { path: 'missed', canActivate: [branchHeadGuard], loadComponent: () => import('./features/call-center/missed-calls/missed-calls').then(m => m.MissedCalls) },
+          { path: 'telecallers', canActivate: [branchHeadGuard], loadComponent: () => import('./features/call-center/telecaller-status/telecaller-status').then(m => m.TelecallerStatus) },
+        ],
+      },
+      { path: 'crm', pathMatch: 'full', redirectTo: 'call-center' },
       { path: 'lead-management', loadComponent: () => import('./pages/lead-management/lead-management').then(m => m.LeadManagement) },
       { path: 'follow-ups', loadComponent: () => import('./pages/followups/followups').then(m => m.Followups) },
       { path: 'masters/service-category', loadComponent: () => import('./pages/look-up-master/service-category/service-category').then(m => m.ServiceCategory) },

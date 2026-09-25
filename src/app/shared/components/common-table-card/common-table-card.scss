@@ -446,8 +446,9 @@
 }
 
 .page-info {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-dark);
   white-space: nowrap;
 }
 
@@ -467,26 +468,27 @@
 }
 
 :host ::ng-deep .compact-paginator .mat-mdc-paginator-range-actions {
-  gap: 2px;
+  gap: 7px;
   align-items: center;
   flex-shrink: 0;
 }
 
 :host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-previous,
 :host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-next {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   margin: 0;
   padding: 0;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  color: var(--text-muted);
+  border: 1px solid rgba(17, 95, 78, 0.22);
+  border-radius: 50%;
+  background: var(--app-surface-solid);
+  box-shadow: 0 1px 3px rgba(15, 60, 50, .08);
+  color: var(--text-dark);
+  transition: background .16s ease, color .16s ease, border-color .16s ease;
 }
 
 :host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-previous svg,
@@ -497,8 +499,9 @@
 
 :host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-previous:hover:not(:disabled),
 :host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-next:hover:not(:disabled) {
-  background: transparent;
-  color: var(--primary);
+  background: var(--primary);
+  border-color: transparent;
+  color: #fff;
 }
 
 :host ::ng-deep .compact-paginator .mat-mdc-paginator-navigation-previous:disabled,
@@ -516,9 +519,14 @@
 :host ::ng-deep .compact-paginator .mat-mdc-paginator-page-size-label,
 :host ::ng-deep .compact-paginator .mat-mdc-paginator-range-label {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 11.5px;
   margin: 0;
   white-space: nowrap;
+}
+
+:host ::ng-deep .compact-paginator .mat-mdc-paginator-range-label {
+  font-weight: 600;
+  color: var(--text-dark);
 }
 
 :host ::ng-deep .compact-paginator .mat-mdc-paginator-page-size-select {
@@ -654,6 +662,11 @@
 .action-edit {
   background: var(--status-blue-bg, #e3edff);
   color: var(--status-blue-text, #2f6fed);
+}
+
+.action-call {
+  background: var(--status-green-bg, #e3f9ee);
+  color: var(--status-green-text, #1f9d55);
 }
 
 .quick-actions-cell {

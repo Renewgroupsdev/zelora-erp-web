@@ -1,0 +1,39 @@
+<section class="dock-card incoming" role="alertdialog" aria-live="assertive" aria-label="Incoming call">
+  <header class="card-head">
+    <span class="pulse"><i class="bi bi-telephone-inbound-fill"></i></span>
+    <div class="head-copy">
+      <span class="eyebrow">Incoming call · {{ secondsLeft }}s</span>
+      <strong class="caller-name">{{ call.lead?.name || 'Unknown caller' }}</strong>
+      <span class="caller-number">{{ customerNumber(call) }}</span>
+    </div>
+  </header>
+
+  @if (caller; as profile) {
+    <div class="caller-card">
+      @if (profile.lead) {
+        <div class="chips">
+          @if (profile.lead.status_name) { <span class="chip">{{ profile.lead.status_name }}</span> }
+          @if (profile.lead.service_category_name) { <span class="chip">{{ profile.lead.service_category_name }}</span> }
+          @if (profile.lead.assigned_to_name) { <span class="chip chip-owner"><i class="bi bi-person-check"></i> {{ profile.lead.assigned_to_name }}</span> }
+        </div>
+      } @else {
+        <p class="muted">Not in CRM yet. You can create the lead from the outcome form after the call.</p>
+      }
+      @if (profile.next_follow_up; as fu) {
+        <p class="meta"><i class="bi bi-calendar-event"></i> Follow-up due {{ fu.follow_up_date | date:'dd MMM' }} {{ fu.follow_up_time || '' }}</p>
+      }
+      @if (profile.recent_calls.length) {
+        <p class="meta"><i class="bi bi-clock-history"></i> Last call {{ profile.recent_calls[0].started_at | date:'dd MMM, hh:mm a' }} · {{ profile.recent_calls[0].disposition || profile.recent_calls[0].status }}</p>
+      }
+    </div>
+  }
+
+  <div class="actions two">
+    <button type="button" class="btn-reject" [disabled]="busy" (click)="reject.emit(call)">
+      <i class="bi bi-telephone-x-fill"></i> Reject
+    </button>
+    <button type="button" class="btn-answer" [disabled]="busy" (click)="answer.emit(call)">
+      <i class="bi bi-telephone-fill"></i> Answer
+    </button>
+  </div>
+</section>

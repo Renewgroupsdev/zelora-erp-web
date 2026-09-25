@@ -1,0 +1,54 @@
+@if (showDock) {
+  <div class="telephony-dock" [style.transform]="dockPos() ? 'translate(' + dockPos()!.x + 'px, ' + dockPos()!.y + 'px)' : null">
+
+    @if (ringing(); as call) {
+      <app-incoming-call
+        [call]="call"
+        [caller]="callerProfile()"
+        [secondsLeft]="ringSecondsLeft()"
+        [busy]="busy()"
+        (answer)="answer($event)"
+        (reject)="reject($event)"></app-incoming-call>
+    }
+
+    @if (active(); as call) {
+      <app-active-call
+        [call]="call"
+        [caller]="callerProfile()"
+        [seconds]="callSeconds()"
+        [busy]="busy()"
+        [transferTargets]="transferTargets()"
+        (hangup)="hangup($event)"
+        (toggleHold)="toggleHold($event)"
+        (transferOpened)="loadTransferTargets()"
+        (transfer)="transfer(call, $event)"
+        (note)="saveNote(call, $event)"></app-active-call>
+    }
+
+    @if (telephony.isTelecaller()) {
+      <div class="presence" [class.pinned-open]="statusMenuOpen()">
+        <button type="button" class="presence-pill" [ngClass]="statusClass(telephony.agentStatus())"
+                [disabled]="telephony.onCall()" (click)="toggleStatusMenu()" aria-haspopup="menu" [attr.aria-expanded]="statusMenuOpen()"
+                (pointerdown)="onDockPointerDown($event)" (pointermove)="onDockPointerMove($event)" (pointerup)="onDockPointerUp()">
+          <span class="dot" [ngClass]="statusClass(telephony.agentStatus())"></span>
+          <i class="bi bi-headset"></i>
+          <span class="presence-label">
+            {{ statusLabels[telephony.agentStatus()] }}
+            <i class="bi bi-chevron-up caret"></i>
+          </span>
+        </button>
+
+        @if (statusMenuOpen()) {
+          <div class="status-menu" role="menu">
+            @for (s of statuses; track s.value) {
+              <button type="button" role="menuitemradio" [attr.aria-checked]="telephony.agentStatus() === s.value"
+                      [class.selected]="telephony.agentStatus() === s.value" (click)="setStatus(s.value)">
+                <span class="dot" [ngClass]="statusClass(s.value)"></span>{{ s.label }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+}

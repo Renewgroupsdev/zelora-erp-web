@@ -1,0 +1,75 @@
+<div class="row g-2 g-md-3 stat-row">
+  @for (stat of stats; track stat.label) {
+    <div class="col-6 col-sm-4 col-md">
+      <app-common-detail-card
+        [label]="stat.label"
+        [value]="stat.value"
+        [trendText]="stat.trendText"
+        [icon]="stat.icon"
+        [iconVariant]="stat.iconVariant"
+      ></app-common-detail-card>
+    </div>
+  }
+</div>
+
+<div class="content-grid" [class.single-col]="!isBranchHeadView()">
+  <section class="panel">
+    <div class="panel-title">
+      <div><h2>Recent calls</h2><span>Live call activity</span></div>
+      <a class="link-btn" routerLink="../history">View all</a>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Caller</th><th>Direction</th><th>Telecaller</th><th>Status</th><th>Duration</th><th>Recording</th></tr></thead>
+        <tbody>
+          @for (call of calls; track call.id) {
+            <tr>
+              <td (click)="openCall(call)"><strong>{{ customerNumber(call) }}</strong><small>{{ call.lead?.name || 'Unknown caller' }}</small></td>
+              <td (click)="openCall(call)"><span class="direction"><i [class]="call.direction === 'inbound' ? 'bi bi-arrow-down-left' : 'bi bi-arrow-up-right'"></i>{{ call.direction }}</span></td>
+              <td (click)="openCall(call)">{{ call.telecaller?.name || 'Unassigned' }}</td>
+              <td (click)="openCall(call)"><span class="status" [class]="statusClass(call.status)">{{ call.status }}</span></td>
+              <td (click)="openCall(call)">{{ formatDuration(call.talk_duration) }}</td>
+              <td>
+                @if (call.recording_url) {
+                  <audio controls preload="none" class="recording-player" [src]="call.recording_url"></audio>
+                } @else {
+                  <span class="no-recording">—</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="empty">No call records yet.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  @if (isBranchHeadView()) {
+    <section class="panel alert-panel">
+      <div class="panel-title">
+        <div><h2>Branch alerts</h2><span>Missed / rejected / unassigned calls</span></div>
+        <a class="link-btn" routerLink="../missed">Open</a>
+      </div>
+
+      @for (alert of alerts.slice(0, 5); track alert.id) {
+        <article class="alert-row">
+          <div class="alert-icon"><i class="bi bi-exclamation-circle"></i></div>
+          <div class="alert-copy">
+            <strong>{{ alert.title }}</strong>
+            <p>{{ alert.message }}</p>
+            <small>{{ alert.triggered_at | date:'dd MMM, hh:mm a' }}</small>
+          </div>
+          <button type="button" class="read-btn" (click)="markAlertRead(alert)">Read</button>
+        </article>
+      } @empty {
+        <div class="empty">No open branch alerts.</div>
+      }
+    </section>
+  }
+</div>
+
+@if (selectedCall; as call) {
+  <app-call-details [call]="call" (closed)="selectedCall = null" (logOutcome)="logOutcome($event)"></app-call-details>
+}

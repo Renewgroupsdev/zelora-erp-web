@@ -1,0 +1,46 @@
+<section class="panel">
+  <div class="panel-title">
+    <div>
+      <div class="heading-line">
+        <h2>Call History</h2>
+        <span class="record-count">{{ calls.length }} record{{ calls.length === 1 ? '' : 's' }}</span>
+      </div>
+      <span>Every telephony event is persisted by Laravel.</span>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Call ID</th><th>Customer</th><th>Direction</th><th>Branch</th><th>Telecaller</th><th>Status</th><th>Outcome</th><th>Duration</th><th>Recording</th></tr>
+      </thead>
+      <tbody>
+        @for (call of calls; track call.id) {
+          <tr>
+            <td (click)="openCall(call)">{{ call.call_id }}</td>
+            <td (click)="openCall(call)">{{ customerNumber(call) }}<small>{{ call.lead?.name }}</small></td>
+            <td (click)="openCall(call)"><span class="direction">{{ call.direction }}</span></td>
+            <td (click)="openCall(call)">{{ call.branch?.name || '—' }}</td>
+            <td (click)="openCall(call)">{{ call.telecaller?.name || 'Unassigned' }}</td>
+            <td (click)="openCall(call)"><span class="status" [class]="statusClass(call.status)">{{ call.status }}</span></td>
+            <td (click)="openCall(call)">{{ call.disposition || '—' }}</td>
+            <td (click)="openCall(call)">{{ formatDuration(call.talk_duration) }}</td>
+            <td>
+              @if (call.recording_url) {
+                <audio controls preload="none" class="recording-player" [src]="call.recording_url"></audio>
+              } @else {
+                <span class="no-recording">—</span>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="9" class="empty">{{ loading ? 'Loading…' : 'No call records yet.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+@if (selectedCall; as call) {
+  <app-call-details [call]="call" (closed)="selectedCall = null" (logOutcome)="logOutcome($event)"></app-call-details>
+}

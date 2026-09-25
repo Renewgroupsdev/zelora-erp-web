@@ -1,0 +1,58 @@
+<div class="missed-calls-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex align-items-center justify-content-between">
+    <h6 class="page-title"><i class="bi bi-telephone-x"></i> Missed Calls</h6>
+    <div class="d-flex align-items-center gap-2">
+      <span class="connection-pill" [class.is-live]="connectionLabel() === 'Live'">
+        <i class="bi bi-broadcast"></i> {{ connectionLabel() }}
+      </span>
+      <button type="button" class="btn btn-sm btn-outline-primary" (click)="refresh()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="row g-2 g-md-3 stat-row">
+    @for (stat of stats(); track stat.label) {
+      <div class="col-6 col-md">
+        <app-common-detail-card
+          [label]="stat.label"
+          [value]="stat.value"
+          [trendText]="stat.trendText"
+          [trendDirection]="stat.trendDirection ?? 'neutral'"
+          [icon]="stat.icon"
+          [iconVariant]="stat.iconVariant ?? 'primary'"
+        ></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by telecaller, branch or customer number"
+    [filters]="filters"
+    (searchChange)="onSearch($event)"
+    (filterClick)="onFilterClick($event)"
+    (filtersChange)="onFiltersChange($event)"
+    (exportClick)="onExport()"
+  ></app-common-filter-card>
+
+  <div class="table-col">
+    <app-common-table-card
+      title="Missed Calls"
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+      (quickActionClick)="onQuickAction($event)"
+    ></app-common-table-card>
+  </div>
+
+</div>

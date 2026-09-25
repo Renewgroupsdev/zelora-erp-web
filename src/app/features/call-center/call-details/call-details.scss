@@ -1,0 +1,67 @@
+.eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #19796b; }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 31, 28, 0.48);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.call-modal {
+  position: relative;
+  background: #fff;
+  border-radius: 20px;
+  padding: 24px;
+  width: min(520px, 100%);
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2);
+  color: #183330;
+
+  h2 { margin: 7px 0 2px; }
+  > p { margin: 0 0 18px; color: #72827f; }
+}
+
+.close {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  border: 0;
+  background: #f0f4f3;
+  border-radius: 9px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+
+  div { background: #f5f9f8; border-radius: 10px; padding: 11px; }
+  span { display: block; color: #8a9996; font-size: 10px; }
+  strong { display: block; margin-top: 4px; font-size: 12px; text-transform: capitalize; }
+}
+
+.recording-block {
+  margin-bottom: 16px;
+
+  span { display: block; color: #8a9996; font-size: 10px; margin-bottom: 6px; }
+  audio { width: 100%; height: 34px; }
+  .no-recording { margin: 0; color: #b7c1bf; font-size: 12px; }
+}
+
+.save-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #0d6b5f, #063d37);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+}

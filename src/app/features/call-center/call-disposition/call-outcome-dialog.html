@@ -1,0 +1,107 @@
+<div class="outcome-dialog">
+  <header class="dialog-head">
+    <div>
+      <span class="eyebrow">
+        <i class="bi" [ngClass]="call.direction === 'inbound' ? 'bi-telephone-inbound' : 'bi-telephone-outbound'"></i>
+        {{ call.direction === 'inbound' ? 'Incoming' : 'Outgoing' }} call · {{ call.answered_at ? duration : 'not answered' }}
+      </span>
+      <h2>Call outcome</h2>
+      <p class="sub">{{ leadName || 'Unknown caller' }} · {{ number }}</p>
+    </div>
+    @if (!data.required) {
+      <button type="button" class="close-btn" (click)="skip()" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+    }
+  </header>
+
+  <div class="dialog-body">
+    @if (!leadId) {
+      <div class="notice">
+        <i class="bi bi-person-plus"></i>
+        <span>This number is not in the CRM. Create the lead to schedule a follow-up or appointment.</span>
+        <button type="button" class="link-btn" (click)="createLead()">Create lead</button>
+      </div>
+      @if (errors()['lead_id']) { <p class="field-error">{{ errors()['lead_id'] }}</p> }
+    }
+
+    <fieldset class="outcomes">
+      <legend>What happened on this call?</legend>
+      @for (d of dispositions(); track d.code) {
+        <button type="button" class="outcome" [class.selected]="selectedCode() === d.code"
+                [attr.aria-pressed]="selectedCode() === d.code" (click)="select(d.code)">
+          <i class="bi" [ngClass]="icon(d)"></i>
+          <span>{{ d.label }}</span>
+        </button>
+      }
+    </fieldset>
+    @if (errors()['disposition']) { <p class="field-error">{{ errors()['disposition'] }}</p> }
+
+    @if (action() === 'follow_up' || action() === 'callback') {
+      <section class="section">
+        <h3><i class="bi bi-arrow-repeat"></i> Next follow-up</h3>
+        <div class="grid">
+          <label>Date
+            <input type="date" [(ngModel)]="followUpDate" [min]="today" />
+            @if (errors()['follow_up_date']) { <span class="field-error">{{ errors()['follow_up_date'] }}</span> }
+          </label>
+          <label>Time
+            <input type="time" [(ngModel)]="followUpTime" />
+          </label>
+        </div>
+        @if (action() === 'follow_up') {
+          <div class="segmented" role="radiogroup" aria-label="Lead temperature">
+            @for (t of followUpTypes; track t.value) {
+              <button type="button" role="radio" [attr.aria-checked]="followUpType === t.value"
+                      [class.selected]="followUpType === t.value" [class]="'temp-' + t.value" (click)="followUpType = t.value">
+                {{ t.label }}
+              </button>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    @if (action() === 'appointment') {
+      <section class="section">
+        <h3><i class="bi bi-calendar2-check"></i> Appointment</h3>
+        <div class="grid">
+          <label>Date
+            <input type="date" [(ngModel)]="appointmentDate" [min]="today" />
+            @if (errors()['appointment_date']) { <span class="field-error">{{ errors()['appointment_date'] }}</span> }
+          </label>
+          <label>Time
+            <input type="time" [(ngModel)]="appointmentTime" />
+            @if (errors()['appointment_time']) { <span class="field-error">{{ errors()['appointment_time'] }}</span> }
+          </label>
+          <label class="full">Counselor
+            <select [(ngModel)]="counselorId">
+              <option [ngValue]="null">Select counselor</option>
+              @for (c of counselors(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
+            </select>
+            @if (errors()['counselor_id']) { <span class="field-error">{{ errors()['counselor_id'] }}</span> }
+          </label>
+          <label class="full">Reason / treatment interest
+            <input type="text" [(ngModel)]="appointmentReason" maxlength="1000" placeholder="e.g. Hair loss consultation" />
+          </label>
+        </div>
+      </section>
+    }
+
+    @if (action() === 'converted') {
+      <p class="hint"><i class="bi bi-info-circle"></i> The lead will be marked as <strong>Customer</strong>.</p>
+    }
+
+    <label class="notes">Notes @if (selected()?.requires_note) { <span class="req">*</span> }
+      <textarea [(ngModel)]="notes" rows="3" maxlength="5000" placeholder="Summary of the conversation"></textarea>
+      @if (errors()['notes']) { <span class="field-error">{{ errors()['notes'] }}</span> }
+    </label>
+  </div>
+
+  <footer class="dialog-foot">
+    @if (!data.required) {
+      <button type="button" class="btn-secondary" (click)="skip()">Skip</button>
+    }
+    <button type="button" class="btn-primary" [disabled]="saving() || !selectedCode()" (click)="save()">
+      {{ saving() ? 'Saving…' : 'Save outcome' }}
+    </button>
+  </footer>
+</div>

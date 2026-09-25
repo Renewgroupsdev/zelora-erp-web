@@ -1,0 +1,62 @@
+<section class="dock-card live" [class.minimized]="minimized()" aria-label="Current call">
+  <header class="card-head">
+    <span class="call-icon" [class.on-hold]="call.status === 'hold'">
+      <i class="bi" [ngClass]="call.direction === 'inbound' ? 'bi-telephone-inbound-fill' : 'bi-telephone-outbound-fill'"></i>
+    </span>
+    <div class="head-copy">
+      <span class="eyebrow">{{ statusLabel() }}</span>
+      <strong class="caller-name">{{ call.lead?.name || customerNumber(call) }}</strong>
+      @if (call.lead) { <span class="caller-number">{{ customerNumber(call) }}</span> }
+    </div>
+    <span class="timer">{{ formatDuration(seconds) }}</span>
+    <button type="button" class="icon-btn" (click)="minimized.set(!minimized())" [attr.aria-label]="minimized() ? 'Expand' : 'Minimize'">
+      <i class="bi" [ngClass]="minimized() ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+    </button>
+  </header>
+
+  @if (!minimized()) {
+    @if (caller?.lead; as lead) {
+      <div class="chips">
+        @if (lead.status_name) { <span class="chip">{{ lead.status_name }}</span> }
+        @if (lead.service_category_name) { <span class="chip">{{ lead.service_category_name }}</span> }
+      </div>
+    }
+
+    <div class="actions">
+      <button type="button" class="ctrl" [disabled]="busy || !controllable" (click)="toggleHold.emit(call)">
+        <i class="bi" [ngClass]="call.status === 'hold' ? 'bi-play-fill' : 'bi-pause-fill'"></i>
+        {{ call.status === 'hold' ? 'Resume' : 'Hold' }}
+      </button>
+      <button type="button" class="ctrl" [class.active]="transferOpen()" [disabled]="busy || !controllable" (click)="openTransfer()">
+        <i class="bi bi-arrow-left-right"></i> Transfer
+      </button>
+      <button type="button" class="ctrl" [class.active]="notesOpen()" (click)="toggleNotes()">
+        <i class="bi bi-journal-text"></i> Note
+      </button>
+      <button type="button" class="btn-hangup" [disabled]="busy" (click)="hangup.emit(call)" aria-label="Hang up">
+        <i class="bi bi-telephone-x-fill"></i>
+      </button>
+    </div>
+
+    @if (transferOpen()) {
+      <div class="drawer">
+        <span class="drawer-title">Transfer to an available telecaller</span>
+        @for (agent of transferTargets; track agent.id) {
+          <button type="button" class="drawer-row" (click)="pickTransfer(agent)">
+            <span class="dot status-available"></span>{{ agent.name }}
+            <small>{{ agent.branch?.name }}</small>
+          </button>
+        } @empty {
+          <p class="muted">No other telecaller is available right now.</p>
+        }
+      </div>
+    }
+
+    @if (notesOpen()) {
+      <div class="drawer">
+        <textarea [(ngModel)]="noteText" rows="3" placeholder="What did the customer say?"></textarea>
+        <button type="button" class="btn-save" [disabled]="!noteText.trim()" (click)="saveNote()">Save note</button>
+      </div>
+    }
+  }
+</section>

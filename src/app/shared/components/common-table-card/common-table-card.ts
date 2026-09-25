@@ -4,7 +4,7 @@ import { Component, EventEmitter, Input, Output, ViewChild } from '@angular/core
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSortModule, Sort, SortDirection } from '@angular/material/sort';
 import { MatTable, MatTableModule } from '@angular/material/table';
-import { CallerAvatar, CallerLogEntry, LeadCell, TableColumn, TablePageChangeEvent, TableReorderEvent, TableRow, TableTransferEvent } from '../../models/common-components.model';
+import { CallerAvatar, CallerLogEntry, LeadCell, QuickAction, TableColumn, TablePageChangeEvent, TableReorderEvent, TableRow, TableTransferEvent } from '../../models/common-components.model';
 
 const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue'> = {
   qualified: 'green', active: 'green', completed: 'green', converted: 'green', paid: 'green',
@@ -46,6 +46,7 @@ export class CommonTableCard {
   @Output() bulkActionsClick = new EventEmitter<void>();
   @Output() appointmentClick = new EventEmitter<TableRow>();
   @Output() followUpClick = new EventEmitter<TableRow>();
+  @Output() callClick = new EventEmitter<TableRow>();
   @Output() sendToBranchClick = new EventEmitter<TableRow>();
   @Output() viewCallLogClick = new EventEmitter<TableRow>();
   @Output() editClick = new EventEmitter<TableRow>();
@@ -76,6 +77,10 @@ export class CommonTableCard {
 
   asCallerLog(value: TableRow[string]): CallerLogEntry[] {
     return Array.isArray(value) ? (value as CallerLogEntry[]) : [];
+  }
+
+  asQuickActions(value: TableRow[string]): QuickAction[] {
+    return Array.isArray(value) ? (value as QuickAction[]) : [];
   }
 
   showAvatarTooltip(event: Event, caller: CallerAvatar): void {
