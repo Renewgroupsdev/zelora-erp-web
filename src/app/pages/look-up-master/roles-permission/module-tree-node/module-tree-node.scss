@@ -234,8 +234,56 @@
   color: var(--status-blue-text, #1868b0);
 }
 
+.action-drag {
+  cursor: grab;
+  touch-action: none;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.action-drag:hover {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  transform: none;
+  box-shadow: none;
+}
+
+.action-drag:active {
+  cursor: grabbing;
+  transform: scale(0.92);
+}
+
+.action-drag.hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .node-children {
   background: var(--app-surface-bg);
+}
+
+/* Trello-style lifted row while actively being dragged, matching the Assign Permissions
+   matrix screen's drag styling. cdkDrag applies its own translate3d position, so this
+   rotate/scale is safe to combine with it. */
+.cdk-drag-preview .node-row {
+  border-radius: 10px;
+  background: var(--app-surface-solid);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.24), 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: scale(0.98) rotate(-1deg);
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.4;
+}
+
+.cdk-drag-placeholder .node-row {
+  border: 2px dashed var(--primary-border-strong);
+  background: var(--primary-soft);
+  border-radius: 8px;
+}
+
+.cdk-drop-list-dragging > :not(.cdk-drag-placeholder) {
+  transition: transform 220ms cubic-bezier(0, 0, 0.2, 1);
 }
 
 @media (max-width: 700px) {

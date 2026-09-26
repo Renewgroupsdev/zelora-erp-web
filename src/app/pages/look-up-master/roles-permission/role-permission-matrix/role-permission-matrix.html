@@ -1,0 +1,99 @@
+<div class="permission-matrix-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div class="page-header-text">
+      <button type="button" class="back-link" (click)="goBack()" aria-label="Back to Roles & Permission">
+        <i class="bi bi-arrow-left"></i>
+        <span>Roles &amp; Permission</span>
+      </button>
+      <h6 class="page-title">Assign Permissions</h6>
+    </div>
+  </div>
+
+  <div class="matrix-controls-card">
+    <p class="page-subtitle">Pick a role, tick the modules/actions it should access, save once.</p>
+
+    <div class="matrix-toolbar">
+      <div class="toolbar-row-top d-flex flex-wrap align-items-end">
+        <div class="role-select-wrap">
+          <label>Role</label>
+          <div class="role-select-control">
+            <i class="bi bi-person-badge"></i>
+            <select [(ngModel)]="selectedRoleId">
+              @if (!roles.length) {
+                <option [ngValue]="null">Loading roles...</option>
+              }
+              @for (role of roles; track role.id) {
+                <option [ngValue]="role.id">{{ role.name }}</option>
+              }
+            </select>
+            <i class="bi bi-chevron-down chevron"></i>
+          </div>
+        </div>
+
+        <div class="toolbar-search">
+          <app-common-filter-card
+            searchPlaceholder="Search by module name or slug"
+            [filters]="[]"
+            [showExport]="false"
+            (searchChange)="onSearch($event)"
+          ></app-common-filter-card>
+        </div>
+
+        <div class="toolbar-bulk-actions">
+          <button type="button" class="bulk-btn select-all-btn" [disabled]="!selectedRoleId" (click)="selectAllForRole()">
+            <i class="bi bi-check2-all"></i> Select all
+          </button>
+          <button type="button" class="bulk-btn clear-all-btn" [disabled]="!selectedRoleId" (click)="clearAllForRole()">
+            <i class="bi bi-x-lg"></i> Clear all
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="matrix-tree-card">
+    <div
+      class="matrix-tree-scroll"
+      cdkDropList
+      [cdkDropListDisabled]="!!searchTerm.trim()"
+      (cdkDropListDropped)="onRootDrop($event)">
+      @if (isLoading) {
+        <div class="empty-state">Loading modules...</div>
+      } @else {
+        @for (module of tree; track module.id) {
+          <div class="root-drag-item" cdkDrag [cdkDragDisabled]="!!searchTerm.trim()">
+            <div class="drag-card">
+              <button type="button" class="drag-handle" cdkDragHandle title="Drag to reorder" aria-label="Drag to reorder">
+                <i class="bi bi-grip-vertical"></i>
+              </button>
+              <app-matrix-tree-node
+                class="root-drag-content"
+                [node]="module"
+                [level]="0"
+                [selectedRoleId]="selectedRoleId"
+                [searchTerm]="searchTerm"
+                (toggleModule)="toggleModule($event)"
+                (toggleAction)="onToggleAction($event)">
+              </app-matrix-tree-node>
+            </div>
+          </div>
+        } @empty {
+          <div class="empty-state">No modules found</div>
+        }
+      }
+    </div>
+  </div>
+
+  <div class="matrix-footer">
+    @if (dirtyCount) {
+      <span class="dirty-badge">{{ dirtyCount }} module{{ dirtyCount > 1 ? 's' : '' }} changed</span>
+    }
+    <button type="button" class="cancel-btn" [disabled]="!dirtyCount || isSaving" (click)="discard()">Discard changes</button>
+    <button type="button" class="save-btn" [disabled]="!dirtyCount || isSaving" (click)="save()">
+      <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-floppy]="!isSaving"></i>
+      {{ isSaving ? 'Saving...' : 'Save changes' }}
+    </button>
+  </div>
+
+</div>

@@ -656,6 +656,21 @@
   color: var(--status-blue-text, #2f6fed);
 }
 
+.action-appointment {
+  background: var(--status-orange-bg, #fef0e0);
+  color: var(--status-orange-text, #e07a1f);
+}
+
+.action-followup {
+  background: var(--status-purple-bg, #ede3ff);
+  color: var(--status-purple-text, #7c4fe0);
+}
+
+.action-branch {
+  background: var(--status-green-bg, #e1f7ea);
+  color: var(--status-green-text, #1f9d55);
+}
+
 .quick-actions-cell {
   display: flex;
   align-items: center;

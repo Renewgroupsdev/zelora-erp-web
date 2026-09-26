@@ -2,11 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { IconPicker } from '../../../../../shared/components/icon-picker/icon-picker';
-import { RoleOption } from '../../roles-permission.model';
 import { buildActionGroup, buildModuleGroup, slugify } from '../module-form.util';
 
-/** One module node's form fields (name, slug, role access, actions, sub-modules) - recurses into
- *  itself to render nested sub-modules, mirroring the API's arbitrarily-deep module tree. */
+/** One module node's form fields (name, slug, actions, sub-modules) - recurses into itself to
+ *  render nested sub-modules, mirroring the API's arbitrarily-deep module tree. Role access is
+ *  assigned separately on the Assign Permissions screen, not here. */
 @Component({
   selector: 'app-module-form-node',
   standalone: true,
@@ -16,7 +16,6 @@ import { buildActionGroup, buildModuleGroup, slugify } from '../module-form.util
 })
 export class ModuleFormNode implements OnInit {
   @Input({ required: true }) group!: FormGroup;
-  @Input() roles: RoleOption[] = [];
   @Input() depth = 0;
   @Input() removable = false;
 
@@ -54,22 +53,6 @@ export class ModuleFormNode implements OnInit {
 
   onSlugInput(): void {
     this.slugTouchedManually = true;
-  }
-
-  isRoleSelected(roleId: number): boolean {
-    const selected: number[] = this.group.get('role_ids')?.value ?? [];
-    return selected.includes(roleId);
-  }
-
-  toggleRole(roleId: number): void {
-    const control = this.group.get('role_ids');
-    const current: number[] = control?.value ?? [];
-    const next = current.includes(roleId)
-      ? current.filter((id) => id !== roleId)
-      : [...current, roleId];
-
-    control?.setValue(next);
-    control?.markAsTouched();
   }
 
   addAction(): void {

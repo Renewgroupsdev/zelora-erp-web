@@ -1,0 +1,79 @@
+<div class="trend-card">
+  <div class="trend-card-header">
+    <div class="trend-card-heading">
+      <h3 class="trend-card-title">{{ title }}</h3>
+      @if (subtitle) {
+        <p class="trend-card-subtitle">{{ subtitle }}</p>
+      }
+    </div>
+
+    <div class="trend-granularity-toggle" role="tablist" aria-label="Trend granularity">
+      <button type="button" role="tab" [class.active]="granularity === 'day'" (click)="setGranularity('day')">Day</button>
+      <button type="button" role="tab" [class.active]="granularity === 'week'" (click)="setGranularity('week')">Week</button>
+      <button type="button" role="tab" [class.active]="granularity === 'month'" (click)="setGranularity('month')">Month</button>
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="trend-card-empty">
+      <i class="bi bi-arrow-repeat spin" aria-hidden="true"></i>
+      <p>Loading trend…</p>
+    </div>
+  } @else if (plotted.length < 2) {
+    <div class="trend-card-empty">
+      <i class="bi bi-graph-up" aria-hidden="true"></i>
+      <p>Not enough data yet for a trend line.</p>
+    </div>
+  } @else {
+    <div class="trend-plot-wrap">
+      <svg [attr.viewBox]="'0 0 ' + viewWidth + ' ' + viewHeight" class="trend-svg" preserveAspectRatio="none" role="img" [attr.aria-label]="title">
+        @for (line of gridLines; track line.value) {
+          <line class="trend-gridline" x1="0" [attr.x2]="viewWidth" [attr.y1]="line.y" [attr.y2]="line.y"></line>
+          <text class="trend-gridline-label" x="2" [attr.y]="line.y - 3">{{ line.value | number }}</text>
+        }
+
+        <path class="trend-area" [attr.d]="areaPath"></path>
+        <path class="trend-line" [attr.d]="linePath"></path>
+
+        @if (hovered) {
+          <line class="trend-crosshair" [attr.x1]="hovered.x" [attr.x2]="hovered.x" [attr.y1]="plotTop" [attr.y2]="plotBottom"></line>
+        }
+
+        @for (point of plotted; track point.period; let i = $index) {
+          <circle
+            class="trend-dot"
+            [class.is-end]="i === plotted.length - 1"
+            [class.is-hovered]="hoveredIndex === i"
+            [attr.cx]="point.x" [attr.cy]="point.y" r="4"
+          ></circle>
+          <rect
+            class="trend-hit-area"
+            [attr.x]="point.x - hitWidth / 2" [attr.y]="plotTop"
+            [attr.width]="hitWidth" [attr.height]="plotBottom - plotTop"
+            tabindex="0"
+            (mouseenter)="setHovered(i)"
+            (mouseleave)="setHovered(null)"
+            (focus)="setHovered(i)"
+            (blur)="setHovered(null)"
+          >
+            <title>{{ point.label }}: {{ point.total | number }}</title>
+          </rect>
+          @if (visibleLabelIndexes.has(i)) {
+            <text class="trend-x-label" [attr.x]="point.x" [attr.y]="viewHeight - 8" text-anchor="middle">{{ point.label }}</text>
+          }
+        }
+
+        @if (latest) {
+          <text class="trend-end-value" [attr.x]="latest.x" [attr.y]="latest.y - 10" text-anchor="end">{{ latest.total | number }}</text>
+        }
+      </svg>
+
+      @if (hovered) {
+        <div class="trend-tooltip" [style.left.%]="(hovered.x / viewWidth) * 100">
+          <span class="trend-tooltip-value">{{ hovered.total | number }}</span>
+          <span class="trend-tooltip-label">{{ hovered.label }}</span>
+        </div>
+      }
+    </div>
+  }
+</div>

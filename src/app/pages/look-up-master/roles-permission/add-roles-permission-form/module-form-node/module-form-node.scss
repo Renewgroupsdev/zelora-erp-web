@@ -187,45 +187,6 @@
   font-size: 10px;
 }
 
-.muted-text {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-/* ---- role picker ---- */
-.role-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.role-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border: 1px solid var(--border-soft-strong);
-  border-radius: var(--radius-pill);
-  background: var(--app-surface-solid);
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: var(--fw-medium);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.role-chip input {
-  accent-color: var(--primary);
-  width: 12px;
-  height: 12px;
-}
-
-.role-chip.selected {
-  border-color: var(--primary-border-strong);
-  background: var(--primary-soft);
-  color: var(--primary-dark);
-}
-
 /* ---- section blocks (actions / sub-modules) ---- */
 .section-block {
   border-top: 1px dashed var(--border-soft-strong);

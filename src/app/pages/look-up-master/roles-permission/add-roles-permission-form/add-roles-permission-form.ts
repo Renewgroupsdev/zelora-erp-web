@@ -5,7 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ApiDataService } from '../../../../shared/common-services/api-data.service';
 import { ApiRoutesConstants } from '../../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../../shared/common-services/toast.service';
-import { isSuccessResponse, RoleOption, RolePermissionModule } from '../roles-permission.model';
+import { isSuccessResponse, RolePermissionModule } from '../roles-permission.model';
 import { ModuleFormNode } from './module-form-node/module-form-node';
 import { buildModuleGroup, extractModulePayload } from './module-form.util';
 
@@ -22,7 +22,6 @@ import { buildModuleGroup, extractModulePayload } from './module-form.util';
 })
 export class AddRolesPermissionForm implements OnInit {
   rootGroup: FormGroup | null = null;
-  roles: RoleOption[] = [];
 
   isEdit = false;
   isLoading = false;
@@ -41,8 +40,6 @@ export class AddRolesPermissionForm implements OnInit {
   ) { }
 
   ngOnInit(): void {
-    this.loadRoles();
-
     const idParam = this.route.snapshot.paramMap.get('id');
     this.moduleId = idParam ? Number(idParam) : null;
     this.isEdit = !!this.moduleId;
@@ -56,18 +53,6 @@ export class AddRolesPermissionForm implements OnInit {
     } else {
       this.rootGroup = buildModuleGroup(this.fb);
     }
-  }
-
-  private loadRoles(): void {
-    this.apiDataService.GetAllPages(ApiRoutesConstants.ROLES_GET_List).subscribe({
-      next: (roles: any[]) => {
-        this.roles = roles.map((role) => ({ id: role.id, name: role.name ?? `Role #${role.id}` }));
-      },
-      error: (err: any) => {
-        this.toast.error('Failed to load roles. Please try again.');
-        console.error('Failed to load roles:', err);
-      },
-    });
   }
 
   private loadModule(id: number): void {
@@ -102,7 +87,7 @@ export class AddRolesPermissionForm implements OnInit {
   }
 
   get formSubtitle(): string {
-    return 'Define module access, permissions and nested sub-modules for roles.';
+    return 'Define module actions and nested sub-modules. Assign role access from the Assign Permissions screen.';
   }
 
   save(): void {

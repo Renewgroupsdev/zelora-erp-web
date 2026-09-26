@@ -14,6 +14,11 @@ export interface DetailCardData {
   sparkline?: number[];
 }
 
+export interface ChartDatum {
+  label: string;
+  value: number;
+}
+
 export interface BreadcrumbItem {
   label: string;
   link?: string | unknown[];

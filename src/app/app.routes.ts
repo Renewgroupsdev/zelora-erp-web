@@ -27,6 +27,7 @@ export const routes: Routes = [
       { path: 'masters/roles-and-permission', loadComponent: () => import('./pages/look-up-master/roles-permission/roles-permission').then(m => m.RolesPermission) },
       { path: 'masters/roles-and-permission/add', loadComponent: () => import('./pages/look-up-master/roles-permission/add-roles-permission-form/add-roles-permission-form').then(m => m.AddRolesPermissionForm) },
       { path: 'masters/roles-and-permission/edit/:id', loadComponent: () => import('./pages/look-up-master/roles-permission/add-roles-permission-form/add-roles-permission-form').then(m => m.AddRolesPermissionForm) },
+      { path: 'masters/roles-and-permission/assign', loadComponent: () => import('./pages/look-up-master/roles-permission/role-permission-matrix/role-permission-matrix').then(m => m.RolePermissionMatrix) },
       { path: 'appointments', loadComponent: () => import('./pages/appointment-page/appointment-page').then(m => m.AppointmentPage) },
       { path: 'customers', loadComponent: () => import('./pages/customer-portal-page/customer-portal-page').then(m => m.CustomerPortalPage) },
       { path: 'treatments', loadComponent: () => import('./pages/treatment-management/treatment-management').then(m => m.TreatmentManagement) },

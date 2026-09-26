@@ -54,6 +54,35 @@ app-common-filter-card {
   color: var(--text-muted);
 }
 
+.page-header-actions {
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.assign-permissions-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 25px;
+  padding: 0 8px;
+  background: var(--app-surface-solid);
+  color: var(--primary-dark);
+  border: 1px solid var(--primary-border-strong);
+  border-radius: 10px;
+  font-family: var(--font-family-base);
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.assign-permissions-btn:hover {
+  background: var(--primary-soft);
+}
+
 .add-lead-btn {
   flex: 0 0 auto;
   display: inline-flex;
@@ -71,8 +100,6 @@ app-common-filter-card {
   font-weight: var(--fw-medium);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-  position: relative;
-  z-index: 1;
 
   i {
     font-size: 11px;

@@ -56,6 +56,16 @@
     </div>
 
     <div class="row-actions">
+      <button
+        type="button"
+        class="row-action-btn action-drag"
+        [class.hidden]="searchActive"
+        cdkDragHandle
+        (click)="$event.stopPropagation()"
+        title="Drag to reorder"
+        aria-label="Drag to reorder">
+        <i class="bi bi-grip-vertical"></i>
+      </button>
       @if (node.url) {
         <button type="button" class="row-action-btn action-link" title="Open page" aria-label="Open linked page" (click)="onOpenUrl($event)">
           <i class="bi bi-box-arrow-up-right"></i>
@@ -74,15 +84,23 @@
   </div>
 
   @if (node.expanded && node.sub_modules.length) {
-    <div class="node-children">
+    <div
+      class="node-children"
+      cdkDropList
+      [cdkDropListDisabled]="searchActive"
+      (cdkDropListDropped)="onChildrenDrop($event)">
       @for (child of node.sub_modules; track child.id) {
         <app-module-tree-node
+          cdkDrag
+          [cdkDragDisabled]="searchActive"
           [node]="child"
           [level]="level + 1"
+          [searchActive]="searchActive"
           (editNode)="editNode.emit($event)"
           (addChildNode)="addChildNode.emit($event)"
           (deleteNode)="deleteNode.emit($event)"
-          (openUrl)="openUrl.emit($event)">
+          (openUrl)="openUrl.emit($event)"
+          (reorderChildren)="reorderChildren.emit($event)">
         </app-module-tree-node>
       }
     </div>

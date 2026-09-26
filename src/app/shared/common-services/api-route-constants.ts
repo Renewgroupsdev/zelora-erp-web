@@ -45,5 +45,21 @@ export class ApiRoutesConstants {
    public static ROLES_PERMISSION_GET_List = "module-with-actions";
    public static ROLES_PERMISSION_ADD = "module-with-actions";
    public static ROLES_PERMISSION_DELETE = "module-with-actions";
+   public static ROLES_PERMISSION_BULK_UPDATE = "module-with-actions/bulk-update";
+   public static ROLES_PERMISSION_REORDER = "module-with-actions/reorder";
+
+   //Lead Appointment (CURD)
+   public static LEAD_APPOINTMENT_ADD = "appointments";
+
+   //Lead Follow-up (CURD)
+   public static LEAD_FOLLOWUP_ADD = "follow-ups";
+
+   //Reports
+   public static REPORT_CUSTOMER_SOURCE = "reports/customer-source";
+   public static REPORT_CUSTOMER_SOURCE_SUMMARY = "reports/customer-source/summary";
+   public static REPORT_CUSTOMER_SOURCE_PERFORMANCE = "reports/customer-source/performance";
+   public static REPORT_CUSTOMER_SOURCE_TREND = "reports/customer-source/trend";
+   public static REPORT_CUSTOMER_SOURCE_COMPARISON = "reports/customer-source/comparison";
+   public static REPORT_CUSTOMER_SOURCE_EXPORT = "reports/customer-source/export";
 
 }

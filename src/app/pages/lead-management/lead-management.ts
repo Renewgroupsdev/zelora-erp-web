@@ -17,6 +17,8 @@ import {
   TableTransferEvent,
 } from '../../shared/models/common-components.model';
 import { AddLeadForm } from './add-lead-form/add-lead-form';
+import { AppointmentForm } from './appointment-form/appointment-form';
+import { FollowUpForm } from './follow-up-form/follow-up-form';
 import { Router } from '@angular/router';
 import { FOLLOW_UP_SEEDS } from '../followups/followups';
 import { ApiDataService } from '../../shared/common-services/api-data.service';
@@ -325,7 +327,23 @@ export class LeadManagement implements OnInit {
   }
 
   openFollowUp(row: TableRow): void {
-    this.moveLeadToFollowUp(row);
+    const lead = row['lead'] as LeadCell;
+
+    const dialogRef = this.dialog.open(FollowUpForm, {
+      width: '480px',
+      maxWidth: 'calc(100vw - 32px)',
+      maxHeight: '92vh',
+      autoFocus: false,
+      restoreFocus: true,
+      disableClose: true,
+      panelClass: 'add-lead-dialog',
+      data: { id: row['id'], name: lead?.name, contact: row['contact'] },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (!result) return;
+      this.moveLeadToFollowUp(row);
+    });
   }
 
   private moveLeadToFollowUp(row: TableRow, targetIndex: number = this.followUpRows.length): void {
@@ -483,7 +501,23 @@ export class LeadManagement implements OnInit {
   }
 
   openAppointment(row: TableRow): void {
-    console.log('Appointment:', row);
+    const lead = row['lead'] as LeadCell;
+
+    const dialogRef = this.dialog.open(AppointmentForm, {
+      width: '480px',
+      maxWidth: 'calc(100vw - 32px)',
+      maxHeight: '92vh',
+      autoFocus: false,
+      restoreFocus: true,
+      disableClose: true,
+      panelClass: 'add-lead-dialog',
+      data: { id: row['id'], name: lead?.name, contact: row['contact'] },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (!result) return;
+      this.loadLeadData();
+    });
   }
 
   sendToBranch(row: TableRow): void {

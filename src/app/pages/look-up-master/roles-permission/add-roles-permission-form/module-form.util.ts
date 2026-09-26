@@ -23,11 +23,13 @@ export function parseRoleIds(roleIds?: string | null): number[] {
 export function buildActionGroup(fb: FormBuilder, action?: RolePermissionAction): FormGroup {
   const group = fb.group({
     id: [action?.id ?? null],
+    permission_id: [action?.permission_id ?? null],
     action_name: [action?.action_name ?? '', [Validators.required, Validators.maxLength(100)]],
     slug_name: [{ value: action?.slug_name ?? '', disabled: true }, Validators.maxLength(100)],
     url: [action?.url ?? '', Validators.maxLength(255)],
     logo: [action?.logo ?? '', Validators.maxLength(100)],
     permission: [action?.permission ?? 1, Validators.required],
+    role_ids: [parseRoleIds(action?.role_ids)],
   });
 
   group.get('action_name')?.valueChanges.subscribe((name: string | null) => {
@@ -38,14 +40,16 @@ export function buildActionGroup(fb: FormBuilder, action?: RolePermissionAction)
 }
 
 /** Builds one module node's FormGroup, recursing into sub_modules so the whole nested tree
- *  (module -> actions + sub_modules -> actions + sub_modules -> ...) is a single reactive form. */
+ *  (module -> actions + sub_modules -> actions + sub_modules -> ...) is a single reactive form.
+ *  role_ids has no UI here (and so no validator) - it's carried through unchanged from whatever
+ *  the Assign Permissions screen last set it to, since role access is assigned there, not here. */
 export function buildModuleGroup(fb: FormBuilder, module?: RolePermissionModule): FormGroup {
   return fb.group({
     id: [module?.id ?? null],
     module_name: [module?.module_name ?? '', [Validators.required, Validators.maxLength(150)]],
     slug_name: [module?.slug_name ?? '', [Validators.required, Validators.maxLength(150)]],
     url: [module?.url ?? '', Validators.maxLength(255)],
-    role_ids: [parseRoleIds(module?.role_ids), Validators.required],
+    role_ids: [parseRoleIds(module?.role_ids)],
     actions: fb.array((module?.actions ?? []).map((action) => buildActionGroup(fb, action))),
     sub_modules: fb.array((module?.sub_modules ?? []).map((sub) => buildModuleGroup(fb, sub))),
   });
@@ -68,11 +72,13 @@ export function extractModulePayload(group: FormGroup): any {
       const actionValue = control.getRawValue();
       return {
         ...(actionValue.id ? { id: actionValue.id } : {}),
+        permission_id: actionValue.permission_id ?? null,
         action_name: actionValue.action_name,
         slug_name: actionValue.slug_name,
         url: actionValue.url ? actionValue.url.trim() : null,
         logo: actionValue.logo ? actionValue.logo.trim() : null,
         permission: Number(actionValue.permission),
+        role_ids: (actionValue.role_ids ?? []).join(','),
       };
     }),
     sub_modules: subModulesArray.controls.map((control) => extractModulePayload(control as FormGroup)),

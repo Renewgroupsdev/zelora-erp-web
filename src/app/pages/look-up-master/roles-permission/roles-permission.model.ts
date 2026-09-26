@@ -1,5 +1,8 @@
 export interface RolePermissionAction {
   id?: number;
+  /** FK back to the owning module/sub-module row - not user-editable, but must round-trip
+   *  unchanged on save or the backend loses track of which module this action belongs to. */
+  permission_id?: number | null;
   action_name: string;
   slug_name: string;
   url?: string | null;
@@ -7,11 +10,17 @@ export interface RolePermissionAction {
    *  action wherever it shows up as a clickable action. */
   logo?: string | null;
   permission: number;
+  /** Comma-separated role ids this action is scoped to. Empty/missing means the action inherits
+   *  its parent module's role_ids rather than being hidden from everyone. */
+  role_ids?: string | null;
 }
 
 export interface RolePermissionModule {
   id?: number;
   parent_id?: number | null;
+  /** Sort order among sibling modules (same parent_id) - lower shows first. Maintained by
+   *  dragging modules to reorder them on the Assign Permissions screen. */
+  position?: number;
   role_ids: string;
   module_name: string;
   slug_name: string;
@@ -22,10 +31,7 @@ export interface RolePermissionModule {
   updated_at?: string;
 }
 
-export interface RoleOption {
-  id: number;
-  name: string;
-}
+export type { RoleOption } from '../../../shared/models/role-option.model';
 
 /** A module node enriched with UI-only state (expand/collapse, resolved role names, descendant
  *  count) for the tree view - built once from the raw API tree in roles-permission.ts. */

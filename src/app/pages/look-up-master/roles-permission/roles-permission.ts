@@ -1,19 +1,20 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonFilterState, FilterOption } from '../../../shared/models/common-components.model';
 import { ApiDataService } from '../../../shared/common-services/api-data.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
-import { ModuleTreeNode } from './module-tree-node/module-tree-node';
+import { ModuleReorderEvent, ModuleTreeNode } from './module-tree-node/module-tree-node';
+import { fetchFullModuleTree } from './roles-permission-data.util';
 import { DisplayModuleNode, isSuccessResponse, RolePermissionModule } from './roles-permission.model';
 
 @Component({
   selector: 'app-roles-permission',
   standalone: true,
-  imports: [CommonModule, CommonFilterCard, ModuleTreeNode],
+  imports: [CommonModule, DragDropModule, CommonFilterCard, ModuleTreeNode],
   templateUrl: './roles-permission.html',
   styleUrl: './roles-permission.scss',
 })
@@ -47,7 +48,9 @@ export class RolesPermission implements OnInit {
   /** role id -> role name, used to render human-readable role chips from each node's
    *  comma-separated role_ids string. */
   private rolesById = new Map<number, string>();
-  private searchTerm = '';
+  /** Public so the template can disable drag-reordering while a search filter narrows the
+   *  visible list - filteredModules would no longer reflect real sibling positions then. */
+  searchTerm = '';
 
   ngOnInit(): void {
     this.loadRoles(() => this.loadModules());
@@ -70,9 +73,7 @@ export class RolesPermission implements OnInit {
   loadModules(): void {
     this.isLoading = true;
 
-    // The API already nests sub_modules under each parent per page, so unlike a flat parent_id
-    // list, no client-side tree reconstruction is needed here - just walk every page and map.
-    this.fetchAllModulePages(ApiRoutesConstants.ROLES_PERMISSION_GET_List).subscribe({
+    fetchFullModuleTree(this.apiDataService, ApiRoutesConstants.ROLES_PERMISSION_GET_List).subscribe({
       next: (modules: RolePermissionModule[]) => {
         this.isLoading = false;
         this.modules = modules.map((module) => this.toDisplayNode(module));
@@ -85,38 +86,6 @@ export class RolesPermission implements OnInit {
         console.error('Failed to load modules:', err);
       },
     });
-  }
-
-  /** Same page-walking behavior as ApiDataService.GetAllPages, but checking this endpoint's
-   *  actual `status: "success"` field instead of the boolean `success` flag GetAllPages expects -
-   *  module-with-actions doesn't follow the same response convention as the other lookup-master
-   *  endpoints, so the shared helper always saw it as a failure and returned an empty list. */
-  private fetchAllModulePages(path: string): Observable<any[]> {
-    return this.apiDataService.GET(path).pipe(
-      switchMap((firstResponse: any) => {
-        const firstPage = firstResponse?.data;
-        const rows: any[] = firstPage?.data ?? [];
-
-        if (!isSuccessResponse(firstResponse) || !Array.isArray(firstPage?.data)) {
-          return of([]);
-        }
-
-        const lastPage = Number(firstPage?.last_page ?? 1);
-        if (lastPage <= 1) {
-          return of(rows);
-        }
-
-        const remainingPages = Array.from({ length: lastPage - 1 }, (_, index) => index + 2);
-        return forkJoin(
-          remainingPages.map((pageNumber) => this.apiDataService.GET(`${path}?page=${pageNumber}`))
-        ).pipe(
-          map((responses: any[]) => [
-            ...rows,
-            ...responses.flatMap((response: any) => response?.data?.data ?? []),
-          ])
-        );
-      })
-    );
   }
 
   private toDisplayNode(module: RolePermissionModule): DisplayModuleNode {
@@ -219,6 +188,10 @@ export class RolesPermission implements OnInit {
     this.router.navigate(['/app/masters/roles-and-permission/add']);
   }
 
+  onAssignPermissions(): void {
+    this.router.navigate(['/app/masters/roles-and-permission/assign']);
+  }
+
   onAddChildModule(node: DisplayModuleNode): void {
     this.router.navigate(['/app/masters/roles-and-permission/add'], {
       queryParams: { parentId: node.id, parentName: node.module_name },
@@ -238,6 +211,41 @@ export class RolesPermission implements OnInit {
     } else {
       this.router.navigateByUrl(url);
     }
+  }
+
+  /** Root modules reorder directly against filteredModules - when no search is active it's the
+   *  exact same array reference as `modules` (filterTree() returns it unchanged), so mutating
+   *  it here also reorders the underlying data with no separate sync step needed. */
+  onRootDrop(event: CdkDragDrop<DisplayModuleNode[]>): void {
+    if (event.previousIndex === event.currentIndex) return;
+
+    moveItemInArray(this.filteredModules, event.previousIndex, event.currentIndex);
+    const items = this.filteredModules.map((node, index) => ({ id: node.id!, position: index }));
+    this.persistReorder(items, 'Module order updated.', 'Failed to update module order.');
+  }
+
+  /** Bubbled up from module-tree-node once it has already reordered a parent's sub_modules
+   *  locally - this just persists the resulting positions. */
+  onChildrenReordered(event: ModuleReorderEvent): void {
+    this.persistReorder(event.items, 'Sub-module order updated.', 'Failed to update sub-module order.');
+  }
+
+  private persistReorder(items: { id: number; position: number }[], successMessage: string, failMessage: string): void {
+    this.apiDataService.PUT(ApiRoutesConstants.ROLES_PERMISSION_REORDER, { items }).subscribe({
+      next: (response: any) => {
+        if (isSuccessResponse(response)) {
+          this.toast.success(successMessage);
+        } else {
+          this.toast.error(response?.message || failMessage);
+          this.loadModules();
+        }
+      },
+      error: (err: any) => {
+        this.toast.error(err?.error?.message || failMessage);
+        console.error(failMessage, err);
+        this.loadModules();
+      },
+    });
   }
 
   async onDeleteModule(node: DisplayModuleNode): Promise<void> {

@@ -71,22 +71,6 @@
           }
         </div>
 
-        <div class="form-field full-width">
-          <label>Role Access <span>*</span></label>
-          <div class="role-picker">
-            @for (role of roles; track role.id) {
-              <label class="role-chip" [class.selected]="isRoleSelected(role.id)">
-                <input type="checkbox" [checked]="isRoleSelected(role.id)" (change)="toggleRole(role.id)" />
-                {{ role.name }}
-              </label>
-            } @empty {
-              <span class="muted-text">Loading roles...</span>
-            }
-          </div>
-          @if (isInvalid('role_ids')) {
-            <small class="error-text">Select at least one role.</small>
-          }
-        </div>
       </div>
 
       <div class="section-block">
@@ -153,7 +137,6 @@
           <div class="sub-module-wrap">
             <app-module-form-node
               [group]="asFormGroup(subGroup)"
-              [roles]="roles"
               [depth]="depth + 1"
               [removable]="true"
               (removeRequested)="removeSubModule(i)">

@@ -6,10 +6,16 @@
       <p class="page-subtitle">Control which roles can access every module, sub-module and action.</p>
     </div>
 
-    <button type="button" class="add-lead-btn" (click)="onAddModule()">
-      <i class="bi bi-plus-lg"></i>
-      Add Module
-    </button>
+    <div class="page-header-actions d-flex">
+      <button type="button" class="assign-permissions-btn" (click)="onAssignPermissions()">
+        <i class="bi bi-shield-check"></i>
+        Assign Permissions
+      </button>
+      <button type="button" class="add-lead-btn" (click)="onAddModule()">
+        <i class="bi bi-plus-lg"></i>
+        Add Module
+      </button>
+    </div>
   </div>
 
   <div class="summary-row d-flex">
@@ -52,15 +58,23 @@
       <span class="record-count">{{ recordCountText }}</span>
     </div>
 
-    <div class="module-tree-scroll">
+    <div
+      class="module-tree-scroll"
+      cdkDropList
+      [cdkDropListDisabled]="!!searchTerm"
+      (cdkDropListDropped)="onRootDrop($event)">
       @for (module of filteredModules; track module.id) {
         <app-module-tree-node
+          cdkDrag
+          [cdkDragDisabled]="!!searchTerm"
           [node]="module"
           [level]="0"
+          [searchActive]="!!searchTerm"
           (editNode)="onEditModule($event)"
           (addChildNode)="onAddChildModule($event)"
           (deleteNode)="onDeleteModule($event)"
-          (openUrl)="onOpenModuleUrl($event)">
+          (openUrl)="onOpenModuleUrl($event)"
+          (reorderChildren)="onChildrenReordered($event)">
         </app-module-tree-node>
       } @empty {
         <div class="empty-state">

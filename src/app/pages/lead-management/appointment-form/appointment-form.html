@@ -1,0 +1,93 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-calendar2-check-fill"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>Book Appointment</h2>
+        <p>{{ data?.name ? 'For ' + data.name : 'Schedule an appointment for this lead' }}</p>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="modal-close-btn"
+      aria-label="Close"
+      (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="appointmentForm" (ngSubmit)="saveAppointment()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-calendar-event"></i>
+        Appointment Details
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field">
+          <label for="appointment-date">Date <span class="required-asterisk">*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-calendar3"></i>
+            <input
+              id="appointment-date"
+              type="date"
+              formControlName="appointment_date"
+              [class.is-invalid]="isInvalid('appointment_date')" />
+          </div>
+          @if (isInvalid('appointment_date')) {
+            <small class="error-text">Appointment date is required.</small>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="appointment-time">Time <span class="required-asterisk">*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-clock"></i>
+            <input
+              id="appointment-time"
+              type="time"
+              formControlName="appointment_time"
+              [class.is-invalid]="isInvalid('appointment_time')" />
+          </div>
+          @if (isInvalid('appointment_time')) {
+            <small class="error-text">Appointment time is required.</small>
+          }
+        </div>
+
+        <div class="form-field full-width">
+          <label for="appointment-notes">Notes</label>
+          <div class="textarea-wrap">
+            <i class="bi bi-chat-left-text"></i>
+            <textarea
+              id="appointment-notes"
+              formControlName="notes"
+              rows="3"
+              placeholder="Enter any additional notes"></textarea>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button
+        type="submit"
+        class="save-btn"
+        [disabled]="isSaving"
+        title="Book Appointment">
+        <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-calendar2-check]="!isSaving"></i>
+        {{ isSaving ? 'Saving...' : 'Book Appointment' }}
+      </button>
+    </div>
+
+  </form>
+</div>

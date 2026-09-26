@@ -1,0 +1,479 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.permission-matrix-page {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.page-header {
+  gap: 5px;
+  padding: 7px;
+}
+
+.page-header-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.back-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  padding: 3px 6px 3px 4px;
+  margin-left: -4px;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--primary-dark);
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  i {
+    font-size: 12px;
+  }
+}
+
+.back-link:hover {
+  background: var(--primary-soft);
+}
+
+.page-title {
+  margin: 0;
+  font-family: var(--font-family-display);
+  font-size: clamp(17px, 1.4vw, 20px);
+  line-height: var(--lh-tight);
+  font-weight: 600;
+  color: var(--text-dark);
+  letter-spacing: -0.3px;
+}
+
+/* ---- unified controls card (role + search + bulk actions) ---- */
+.matrix-controls-card {
+  margin: 0 7px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--app-surface-solid);
+  border: 1px solid var(--table-border, var(--border-soft-strong));
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 20px rgba(15, 23, 42, 0.03);
+}
+
+.page-subtitle {
+  margin: 0 0 2px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--table-border, var(--border-soft-strong));
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.matrix-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.toolbar-row-top {
+  gap: 14px;
+}
+
+.role-select-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.role-select-wrap label {
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.role-select-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 34px;
+  min-width: 180px;
+  border: 1px solid var(--border-soft-strong);
+  border-radius: 9px;
+  background: var(--input-bg);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  i {
+    flex: 0 0 auto;
+    font-size: 13px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  i:first-child {
+    margin-left: 10px;
+  }
+
+  .chevron {
+    font-size: 10px;
+    margin-right: 10px;
+  }
+
+  &:focus-within {
+    border-color: var(--primary-border-strong);
+    box-shadow: 0 0 0 3px var(--primary-soft);
+  }
+}
+
+.role-select-control select {
+  flex: 1 1 auto;
+  height: 100%;
+  min-width: 0;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text-dark);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  appearance: none;
+  outline: none;
+}
+
+/* Search bar shares the toolbar's top row with the role picker and bulk-action buttons,
+   so it fills the space between them instead of dropping to its own row. */
+.toolbar-search {
+  flex: 1 1 auto;
+  min-width: 160px;
+  display: flex;
+}
+
+/* app-common-filter-card's own :host is `display:block` with no flex-grow, so as a flex item
+   here it was shrinking to fit its content instead of filling the row - force it to expand. */
+.toolbar-search app-common-filter-card {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.toolbar-search ::ng-deep .filter-card {
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border-color: var(--border-soft-strong);
+}
+
+.toolbar-search ::ng-deep .search-box {
+  flex: 1 1 auto;
+  height: 100%;
+  border-bottom: 0;
+  gap: 10px;
+}
+
+/* This card has no filters/export, so the spacer that normally pushes those to the right
+   has nothing to push - left unchecked it still claims flex-grow, splitting the row with the
+   search box roughly in half instead of letting the input use the full width. */
+.toolbar-search ::ng-deep .filter-spacer {
+  flex: 0 0 0;
+  width: 0;
+}
+
+.toolbar-search ::ng-deep .search-box i {
+  font-size: 14px;
+}
+
+.toolbar-search ::ng-deep .search-box input {
+  font-size: 12.5px;
+}
+
+.toolbar-bulk-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding-left: 14px;
+  border-left: 1px solid var(--table-border, var(--border-soft-strong));
+}
+
+.bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+
+  i {
+    font-size: 12px;
+  }
+}
+
+.select-all-btn {
+  border: 1px solid var(--primary-border-strong);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+
+.select-all-btn:hover:not(:disabled) {
+  background: var(--primary-border);
+  transform: translateY(-1px);
+}
+
+.clear-all-btn {
+  border: 1px solid var(--border-soft-strong);
+  background: var(--app-surface-solid);
+  color: var(--text-muted);
+}
+
+.clear-all-btn:hover:not(:disabled) {
+  color: var(--status-red-text, #b3261e);
+  border-color: var(--status-red-text, #b3261e);
+  background: var(--status-red-bg, #fdecea);
+}
+
+.bulk-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ---- tree card (mirrors roles-permission.scss's module-tree-card) ---- */
+.matrix-tree-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 7px;
+  background: var(--app-surface-solid);
+  border: 1px solid var(--table-border, var(--border-soft-strong));
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.matrix-tree-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-color: var(--primary) var(--table-scrollbar-track);
+}
+
+.matrix-tree-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.matrix-tree-scroll::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 99px;
+}
+
+.empty-state {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---- drag-and-drop reordering (root modules) ---- */
+.root-drag-item {
+  border-bottom: 1px solid var(--table-border, var(--border-soft-strong));
+}
+
+.root-drag-item:last-child {
+  border-bottom: 0;
+}
+
+.drag-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  background: var(--app-surface-solid);
+  border: 1px solid transparent;
+  border-radius: 0;
+  transition: box-shadow 0.18s ease, transform 0.18s ease, border-radius 0.18s ease, border-color 0.18s ease;
+}
+
+.root-drag-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Bigger, more visible grab zone in the row's top-left corner instead of a thin edge strip. */
+.drag-handle {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  align-self: flex-start;
+  margin-top: 4px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-soft-strong);
+  border-radius: 9px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  cursor: grab;
+  touch-action: none;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.drag-handle:hover {
+  background: var(--primary-border);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  transform: scale(0.92);
+}
+
+.drag-handle i {
+  font-size: 15px;
+}
+
+/* Trello-style lifted card while actively being dragged: the preview detaches from the row
+   grid entirely, so this rotate/scale is safe to combine with cdk's own translate3d position. */
+.cdk-drag-preview .drag-card {
+  border-color: var(--primary-border-strong);
+  border-radius: 14px;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.24), 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: scale(0.97) rotate(-1.5deg);
+}
+
+.cdk-drag-placeholder .drag-card {
+  border: 2px dashed var(--primary-border-strong);
+  background: var(--primary-soft);
+  border-radius: 12px;
+  opacity: 0.6;
+}
+
+.cdk-drop-list-dragging .root-drag-item:not(.cdk-drag-placeholder) .drag-card {
+  transition: transform 220ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* ---- footer ---- */
+.matrix-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 9px 4px;
+  position: sticky;
+  bottom: 0;
+  background: var(--app-surface-bg);
+}
+
+.dirty-badge {
+  margin-right: auto;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--status-purple-bg);
+  color: var(--status-purple-text);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+}
+
+.cancel-btn,
+.save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.cancel-btn {
+  border: 1px solid var(--border-soft-strong);
+  background: var(--app-surface-solid);
+  color: var(--text-muted);
+}
+
+.cancel-btn:hover:not(:disabled) {
+  color: var(--primary-dark);
+  border-color: var(--primary-border-strong);
+  background: var(--primary-soft);
+}
+
+.cancel-btn:disabled,
+.save-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.save-btn {
+  border: 0;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  box-shadow: 0 5px 12px var(--primary-shadow);
+}
+
+.save-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px var(--primary-shadow);
+}
+
+.save-btn .bi-arrow-repeat {
+  animation: permission-matrix-spin 0.8s linear infinite;
+}
+
+@keyframes permission-matrix-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 700px) {
+  .role-select-control {
+    min-width: 140px;
+  }
+
+  .toolbar-search {
+    order: 3;
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .toolbar-bulk-actions {
+    order: 4;
+    width: 100%;
+    justify-content: flex-end;
+    padding-left: 0;
+    margin-left: 0;
+    border-left: 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--table-border, var(--border-soft-strong));
+  }
+}

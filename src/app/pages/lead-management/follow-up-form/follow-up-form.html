@@ -1,0 +1,78 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-arrow-repeat"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>Schedule Follow-up</h2>
+        <p>{{ data?.name ? 'For ' + data.name : 'Schedule a follow-up for this lead' }}</p>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="modal-close-btn"
+      aria-label="Close"
+      (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="followUpForm" (ngSubmit)="saveFollowUp()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-calendar-event"></i>
+        Follow-up Details
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field full-width">
+          <label for="followup-date">Follow-up Date <span class="required-asterisk">*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-calendar3"></i>
+            <input
+              id="followup-date"
+              type="date"
+              formControlName="follow_up_date"
+              [class.is-invalid]="isInvalid('follow_up_date')" />
+          </div>
+          @if (isInvalid('follow_up_date')) {
+            <small class="error-text">Follow-up date is required.</small>
+          }
+        </div>
+
+        <div class="form-field full-width">
+          <label for="followup-notes">Notes</label>
+          <div class="textarea-wrap">
+            <i class="bi bi-chat-left-text"></i>
+            <textarea
+              id="followup-notes"
+              formControlName="notes"
+              rows="3"
+              placeholder="Enter follow-up notes"></textarea>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button
+        type="submit"
+        class="save-btn"
+        [disabled]="isSaving"
+        title="Schedule Follow-up">
+        <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-check2-circle]="!isSaving"></i>
+        {{ isSaving ? 'Saving...' : 'Schedule Follow-up' }}
+      </button>
+    </div>
+
+  </form>
+</div>
