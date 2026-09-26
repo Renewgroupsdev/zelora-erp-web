@@ -1,0 +1,21 @@
+<section class="call-center">
+  <header class="cc-header">
+    <h6 class="cc-title"><i class="bi bi-headset"></i> Call Center</h6>
+
+    <!-- <app-dialer (called)="refreshAlertCount()"></app-dialer> -->
+  </header>
+
+  <nav class="tabs">
+    <a routerLink="." routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Overview</a>
+    <a routerLink="history" routerLinkActive="active">Call History</a>
+    @if (isBranchHeadView()) {
+      <a routerLink="missed" routerLinkActive="active">
+        Branch Alerts
+        @if (unreadAlerts()) { <span class="count">{{ unreadAlerts() }}</span> }
+      </a>
+      <a routerLink="telecallers" routerLinkActive="active">Telecallers</a>
+    }
+  </nav>
+
+  <router-outlet></router-outlet>
+</section>

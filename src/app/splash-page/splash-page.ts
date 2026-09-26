@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { AuthService } from '../core/service/auth.service';
+import { AuthService } from '../core/auth/auth.service';
 import { AuthBackground } from '../shared/components/auth-background/auth-background';
 
 @Component({

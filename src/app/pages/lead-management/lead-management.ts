@@ -20,10 +20,16 @@ import { AddLeadForm } from './add-lead-form/add-lead-form';
 import { AppointmentForm } from './appointment-form/appointment-form';
 import { FollowUpForm } from './follow-up-form/follow-up-form';
 import { Router } from '@angular/router';
-import { FOLLOW_UP_SEEDS } from '../followups/followups';
-import { ApiDataService } from '../../shared/common-services/api-data.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { ToastService } from '../../shared/common-services/toast.service';
+import { TelephonyService } from '../../core/telephony/telephony.service';
+import { CallReportSummary, LeadWorkStats } from '../../core/telephony/telephony.models';
+import { CrmFlowService, FlowAppointment, FlowLead } from '../../shared/common-services/crm-flow.service';
+import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
+import { AuthService } from '../../core/auth/auth.service';
+import { COMBO_OFFERS, TREATMENTS } from '../../shared/data/treatment-catalog';
 
 @Component({
   selector: 'app-lead-management',
@@ -34,15 +40,31 @@ import { ToastService } from '../../shared/common-services/toast.service';
 })
 export class LeadManagement implements OnInit {
 
-  constructor(private dialog: MatDialog, private router: Router, private ApiDataService: ApiDataService, private toast: ToastService) { }
+  constructor(
+    private dialog: MatDialog,
+    private router: Router,
+    private ApiDataService: ApiDataService,
+    private toast: ToastService,
+    private telephony: TelephonyService,
+    private crmFlow: CrmFlowService,
+    private auth: AuthService,
+  ) {
+    // A saved call outcome changes the lead's status / next follow-up - reload the list.
+    this.telephony.outcomeSaved$.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.loadLeadData();
+      this.loadStats();
+    });
+  }
 
+  readonly staffOptions = ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S', 'Meera Nair'];
+
+  /** Filled from GET telephony/leads/stats and telephony/reports (scoped to the logged-in user). */
   stats: DetailCardData[] = [
-    { label: 'Total Leads', value: '1,284', trendText: '8.4% this month', trendDirection: 'up', icon: 'bi-person-lines-fill', iconVariant: 'primary' },
-    { label: 'Total Follow-Ups', value: FOLLOW_UP_SEEDS.length, trendText: 'Across all telecallers', trendDirection: 'neutral', icon: 'bi-arrow-repeat', iconVariant: 'blue' },
-    // { label: 'Due Today', value: 2, trendText: 'Needs attention', trendDirection: 'up' },
-    { label: 'Completed', value: 3, trendText: 'Follow-up closed', trendDirection: 'up', icon: 'bi-check-circle', iconVariant: 'green' },
-    { label: 'Appointment', value: 12, trendText: 'Confirmed appointments', trendDirection: 'up', icon: 'bi-calendar-check', iconVariant: 'orange' },
-    { label: 'Conversion Rate', value: '30.2%', trendText: '3.1% vs last month', trendDirection: 'up', icon: 'bi-graph-up-arrow', iconVariant: 'purple' },
+    { label: 'Total Leads', value: '1,284', trendText: 'Visible to you', trendDirection: 'neutral', icon: 'bi-person-lines-fill', iconVariant: 'primary' },
+    { label: 'Follow-ups Today', value: '2', trendText: 'Due today', trendDirection: 'neutral', icon: 'bi-arrow-repeat', iconVariant: 'blue' },
+    { label: 'Overdue', value: '3', trendText: 'Missed follow-ups', trendDirection: 'neutral', icon: 'bi-exclamation-circle', iconVariant: 'orange' },
+    { label: 'Not Contacted', value: '4', trendText: 'Never called', trendDirection: 'neutral', icon: 'bi-telephone-x', iconVariant: 'green' },
+    { label: 'Conversion Rate', value: '3%', trendText: 'Answered calls, last 30 days', trendDirection: 'neutral', icon: 'bi-graph-up-arrow', iconVariant: 'purple' },
   ];
 
   filters: FilterOption[] = [
@@ -63,16 +85,17 @@ export class LeadManagement implements OnInit {
   };
 
   columns: TableColumn[] = [
-    { key: 'lead', header: 'Name', type: 'lead', width: '15%' },
+    { key: 'lead', header: 'Name', type: 'lead', width: '13%' },
     { key: 'contact', header: 'Contact', type: 'text', width: '9%' },
-    { key: 'gender', header: 'Gender', type: 'text', width: '6%' },
-    { key: 'source', header: 'Source', type: 'text', width: '8%' },
-    { key: 'service_category', header: 'Service Category', type: 'text', width: '10%' },
-    { key: 'service_request', header: 'Service Request', type: 'text', width: '11%' },
-    { key: 'branch', header: 'Branch', type: 'branch', width: '10%' },
+    { key: 'gender', header: 'Gender', type: 'text', width: '5%' },
+    { key: 'source', header: 'Source', type: 'text', width: '7%' },
+    { key: 'service_category', header: 'Service Category', type: 'text', width: '9%' },
+    { key: 'service_request', header: 'Service Request', type: 'text', width: '9%' },
+    { key: 'branch', header: 'Branch', type: 'branch', width: '9%' },
+    { key: 'telecaller', header: 'Telecaller', type: 'text', width: '8%' },
     { key: 'status', header: 'Status', type: 'badge', width: '8%' },
-    { key: 'created_at', header: 'Lead Date', type: 'text', width: '7%' },
-    { key: 'action', header: 'Action', type: 'action', width: '13%', sortable: false },
+    { key: 'next_follow_up', header: 'Next Follow-up', type: 'text', width: '8%' },
+    { key: 'action', header: 'Action', type: 'action', width: '15%', sortable: false },
   ];
 
   readonly pageSizeOptions = [10, 30, 50, 100];
@@ -108,29 +131,22 @@ export class LeadManagement implements OnInit {
   followUpRows: TableRow[] = [];
 
   ngOnInit(): void {
-    // this.refreshRows();
     this.loadLeadData();
-     this.allRows = this.allRows.map((lead: any) => this.mapLeadToRow(lead));
-     this.currentPage = 1;
-     this.refreshRows();
+    this.loadStats();
   }
 
+  /** The API already limits the list: telecallers get only their assigned leads, branch
+   *  managers their branch, admins everything. Every page is fetched because the table
+   *  filters/sorts client-side. */
   loadLeadData(): void {
-    const path = ApiRoutesConstants.LEAD_GET_List;
     this.isLoading = true;
 
-    this.ApiDataService.GET(path).subscribe({
-      next: (response: any) => {
+    this.ApiDataService.GetAllPages(ApiRoutesConstants.LEAD_GET_List).subscribe({
+      next: (leads: any[]) => {
         this.isLoading = false;
-
-        // API shape: { success, data: { data: [...leads], current_page, total, per_page, ... } }
-        const leads = response?.data?.data ?? [];
-
-        if (response?.success && Array.isArray(leads)) {
-          this.allRows = leads.map((lead: any) => this.mapLeadToRow(lead));
-          this.currentPage = 1;
-          this.refreshRows();
-        }
+        this.leadsById.clear();
+        this.allRows = leads.map((lead: any) => this.mapLeadToRow(lead));
+        this.refreshRows();
       },
       error: (err: any) => {
         this.isLoading = false;
@@ -159,10 +175,37 @@ export class LeadManagement implements OnInit {
       status: lead.status_name || this.formatStatus(lead.status),
       created_at: this.formatDate(lead.created_at),
       gender: lead.gender ?? '',
-      telecaller: this.formatPerson(lead.creator),
+      telecaller: lead.assigned_to_name || 'Unassigned',
+      next_follow_up: lead.next_follow_up_at ? this.formatDate(lead.next_follow_up_at) : '-',
       action: 'menu',
       id: lead.id,
     };
+  }
+
+  private loadStats(): void {
+    this.ApiDataService.GET(ApiRoutesConstants.LEAD_WORK_STATS).subscribe({
+      next: (res: any) => {
+        const s: LeadWorkStats | undefined = res?.data;
+        if (!s) return;
+        this.setStat('Total Leads', s.assigned.toLocaleString());
+        this.setStat('Follow-ups Today', s.follow_ups_today);
+        this.setStat('Overdue', s.follow_ups_overdue);
+        this.setStat('Not Contacted', s.never_contacted);
+      },
+      error: () => undefined,
+    });
+
+    this.ApiDataService.GET(ApiRoutesConstants.CALL_REPORTS).subscribe({
+      next: (res: any) => {
+        const r: CallReportSummary | undefined = res?.data;
+        if (r) this.setStat('Conversion Rate', `${r.conversion_rate}%`);
+      },
+      error: () => undefined,
+    });
+  }
+
+  private setStat(label: string, value: string | number): void {
+    this.stats = this.stats.map(stat => (stat.label === label ? { ...stat, value } : stat));
   }
 
   /** Fallback map for the numeric source id, used only when the API doesn't return source_name. */
@@ -327,23 +370,94 @@ export class LeadManagement implements OnInit {
   }
 
   openFollowUp(row: TableRow): void {
-    const lead = row['lead'] as LeadCell;
+    this.openLeadProfile(row, 'lead');
+  }
 
-    const dialogRef = this.dialog.open(FollowUpForm, {
-      width: '480px',
-      maxWidth: 'calc(100vw - 32px)',
+  /** The "Call" row action. The telephony dock takes over from here: live call bar
+   *  (hold / transfer / notes / hang up), then the call outcome form, which saves the
+   *  follow-up, appointment or conversion against this lead on the backend. */
+  onCallLead(row: TableRow): void {
+    if (this.telephony.onCall()) {
+      this.toast.warning('You are already on a call.');
+      return;
+    }
+    if (!String(row['contact'] ?? '').trim()) {
+      this.toast.error('This lead has no phone number on file.');
+      return;
+    }
+
+    this.telephony.dial({ lead_id: Number(row['id']) }).subscribe({
+      error: (err: any) => this.toast.error(err?.error?.message || 'Unable to start the call.'),
+    });
+  }
+
+  private openLeadProfile(row: TableRow, stage: 'lead' | 'appointment'): void {
+    const dialogRef = this.dialog.open(LeadProfileDialog, {
+      width: '600px',
+      maxWidth: 'calc(100vw - 24px)',
       maxHeight: '92vh',
       autoFocus: false,
-      restoreFocus: true,
-      disableClose: true,
-      panelClass: 'add-lead-dialog',
-      data: { id: row['id'], name: lead?.name, contact: row['contact'] },
+      panelClass: 'lead-profile-dialog',
+      data: {
+        lead: this.toFlowLead(row),
+        stage,
+        telecallers: this.staffOptions,
+        isNewBooking: stage === 'appointment',
+        treatments: TREATMENTS,
+        combos: COMBO_OFFERS,
+      },
     });
 
-    dialogRef.afterClosed().subscribe((result) => {
-      if (!result) return;
-      this.moveLeadToFollowUp(row);
+    dialogRef.afterClosed().subscribe((result: LeadProfileDialogResult | undefined) => {
+      if (!result || result.action === 'close') return;
+      this.handleLeadProfileResult(row, result);
     });
+  }
+
+  private handleLeadProfileResult(row: TableRow, result: LeadProfileDialogResult): void {
+    if (result.action === 'followup') {
+      this.crmFlow.addFollowUp(result.lead);
+      this.removeLeadRow(row);
+      this.toast.success('Follow-up logged', `${result.lead.name} moved to Follow-Ups.`);
+      this.router.navigate(['/app/follow-ups']);
+      return;
+    }
+
+    if (result.action === 'appointment' || result.action === 'book-appointment') {
+      const appointment: FlowAppointment = result.appointment ?? {
+        ...result.lead,
+        service: '', date: result.scheduledDate ?? '', startTime: result.scheduledTime ?? '',
+        staff: result.lead.telecaller, total: 0, paymentMethod: '', paymentStatus: 'Pending', status: 'Appointment',
+      };
+
+      this.crmFlow.addAppointment(appointment);
+      this.removeLeadRow(row);
+      this.toast.success('Appointment booked', `${appointment.name} moved to Appointments.`);
+      this.router.navigate(['/app/appointments']);
+    }
+  }
+
+  private removeLeadRow(row: TableRow): void {
+    this.allRows = this.allRows.filter(item => item !== row);
+    this.refreshRows();
+  }
+
+  private toFlowLead(row: TableRow): FlowLead {
+    const lead = row['lead'] as LeadCell;
+    return {
+      id: String(row['id'] ?? lead.subtitle ?? lead.name),
+      name: lead.name,
+      phone: String(row['contact'] ?? ''),
+      gender: String(row['gender'] ?? ''),
+      source: String(row['source'] ?? ''),
+      category: String(row['service_category'] ?? ''),
+      request: String(row['service_request'] ?? ''),
+      branch: String(row['branch'] ?? ''),
+      telecaller: this.auth.currentUser()?.name ?? String(row['telecaller'] ?? ''),
+      notes: '',
+      followUpDate: '',
+      status: 'Valid',
+    };
   }
 
   private moveLeadToFollowUp(row: TableRow, targetIndex: number = this.followUpRows.length): void {
@@ -501,23 +615,7 @@ export class LeadManagement implements OnInit {
   }
 
   openAppointment(row: TableRow): void {
-    const lead = row['lead'] as LeadCell;
-
-    const dialogRef = this.dialog.open(AppointmentForm, {
-      width: '480px',
-      maxWidth: 'calc(100vw - 32px)',
-      maxHeight: '92vh',
-      autoFocus: false,
-      restoreFocus: true,
-      disableClose: true,
-      panelClass: 'add-lead-dialog',
-      data: { id: row['id'], name: lead?.name, contact: row['contact'] },
-    });
-
-    dialogRef.afterClosed().subscribe((result) => {
-      if (!result) return;
-      this.loadLeadData();
-    });
+    this.openLeadProfile(row, 'appointment');
   }
 
   sendToBranch(row: TableRow): void {

@@ -22,9 +22,13 @@ import { ToastService } from '../../shared/common-services/toast.service';
 import { Router } from '@angular/router';
 import { CrmFlowService, FlowAppointment, FlowLead, FollowUpEntry } from '../../shared/common-services/crm-flow.service';
 import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
+import { TelephonyService } from '../../core/telephony/telephony.service';
+import { AuthService } from '../../core/auth/auth.service';
+import { isAdmin } from '../../core/auth/auth.model';
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { key: 'appointment', icon: 'bi-calendar2-check', label: 'Book Appointment', variant: 'primary' },
+  { key: 'call', icon: 'bi-telephone-outbound', label: 'Call Lead', variant: 'primary' },
+  { key: 'appointment', icon: 'bi-calendar2-check', label: 'Book Appointment', variant: 'default' },
   { key: 'call-log', icon: 'bi-clock-history', label: 'View Call Log', variant: 'default' },
 ];
 
@@ -155,7 +159,10 @@ export class Followups implements OnInit {
     private toast: ToastService,
     private router: Router,
     private crmFlow: CrmFlowService,
+    private telephony: TelephonyService,
+    private auth: AuthService,
   ) { }
+
 
   readonly staffOptions = ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S', 'Meera Nair'];
 
@@ -231,7 +238,21 @@ export class Followups implements OnInit {
   ngOnInit(): void {
     const imported = this.crmFlow.getFollowUps().map((lead, index) => this.flowLeadToRow(lead, index));
     this.allRows = [...imported, ...this.allRows.filter(row => !imported.some(item => item['id'] === row['id']))];
+    this.allRows = this.scopeToCurrentTelecaller(this.allRows);
     this.refreshRows();
+  }
+
+  /** Non-admins only see follow-ups assigned to them. There's no real user-account link for
+   *  telecaller assignment yet (it's a free-text name picked in the lead profile dialog), so
+   *  this matches on the logged-in user's display name against the assigned caller(s). */
+  private scopeToCurrentTelecaller(rows: TableRow[]): TableRow[] {
+    const user = this.auth.currentUser();
+    if (!user || isAdmin(user.role_id)) return rows;
+
+    return rows.filter((row) => {
+      const callers = (row['telecaller'] as CallerAvatar[]) ?? [];
+      return callers.some(c => c.name === user.name);
+    });
   }
 
   onSearch(term: string): void {
@@ -288,6 +309,27 @@ export class Followups implements OnInit {
   onQuickAction({ row, action }: { row: TableRow; action: string }): void {
     if (action === 'appointment') this.openFollowUpProfile(row);
     else if (action === 'call-log') this.viewCallLog(row);
+    else if (action === 'call') this.callLead(row);
+  }
+
+  /** Dials over the telephony backend (the number is matched to its CRM lead there). The
+   *  telephony dock then shows the live call and asks for the outcome - follow-up,
+   *  appointment or conversion - which is saved against the lead on the backend. */
+  private callLead(row: TableRow): void {
+    const phone = String(row['contact'] ?? '').trim();
+
+    if (!phone) {
+      this.toast.error('This lead has no phone number on file.');
+      return;
+    }
+    if (this.telephony.onCall()) {
+      this.toast.warning('You are already on a call.');
+      return;
+    }
+
+    this.telephony.dial({ phone_number: phone }).subscribe({
+      error: (err: any) => this.toast.error(err?.error?.message || 'Unable to start the call.'),
+    });
   }
 
   viewCallLog(row: TableRow): void {

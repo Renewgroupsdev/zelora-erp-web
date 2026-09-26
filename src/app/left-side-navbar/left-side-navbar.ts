@@ -6,7 +6,6 @@ interface NavLink {
   label: string;
   icon: string;
   path: string;
-  color?: 'blue' | 'green' | 'purple' | 'orange' | 'pink' | 'gray';
   children?: NavLink[];
   /** True when this item has no page of its own yet - a parent with this set only
    *  expands/collapses its children, and a leaf with this set never navigates. Either way
@@ -24,8 +23,9 @@ interface NavLink {
 })
 export class LeftSideNavbar {
 
-  readonly leadChildrenExpanded = signal(true);
-  readonly treatmentChildrenExpanded = signal(true);
+  /** Path of the one parent module whose submenu is expanded, or null when all are collapsed.
+   *  Only one parent can be open at a time - opening another closes whichever was open. */
+  readonly expandedParent = signal<string | null>(null);
 
   readonly openHorizontalSubmenu = signal<string | null>(null);
 
@@ -37,7 +37,6 @@ export class LeftSideNavbar {
       label: 'Lead Management',
       icon: 'bi-person-lines-fill',
       path: '/app/lead-management',
-      color: 'green',
       children: [
         { label: 'Follow-up', icon: 'bi-arrow-repeat', path: '/app/follow-ups' },
       ],
@@ -52,6 +51,7 @@ export class LeftSideNavbar {
       //   { label: 'Create Treatment', icon: 'bi-heart-pulse', path: '/app/treatments/create' },
       // ],
     },
+    { label: 'Tele Caller', icon: 'bi-telephone-inbound-fill', path: '/app/call-center' },
     { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings', 
       
       children: [
@@ -62,19 +62,17 @@ export class LeftSideNavbar {
           { label: 'Roles-&-permssions', icon: 'bi-shield-lock-fill', path: '/app/masters/roles-and-permission'},
         ],
     },
-    { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings' },
     { label: 'Reports', icon: 'bi-bar-chart-fill', path: '/app/reports' },
   ];
 
   constructor(public navLayout: NavLayoutService) { }
 
   childrenExpanded(path: string): boolean {
-    return path === '/app/lead-management' ? this.leadChildrenExpanded() : this.treatmentChildrenExpanded();
+    return this.expandedParent() === path;
   }
 
   setChildrenExpanded(path: string, expanded: boolean): void {
-    if (path === '/app/lead-management') this.leadChildrenExpanded.set(expanded);
-    if (path === '/app/treatments') this.treatmentChildrenExpanded.set(expanded);
+    this.expandedParent.set(expanded ? path : null);
   }
 
   toggleChildren(path: string): void {
@@ -82,15 +80,11 @@ export class LeftSideNavbar {
   }
 
   showVerticalSubmenu(link: NavLink): void {
-    if (!link.children?.length) {
+    if (!link.children?.length || this.navLayout.sidebarVisible()) {
       return;
     }
 
-    if (this.navLayout.sidebarVisible()) {
-      this.setChildrenExpanded(link.path, true);
-    } else {
-      this.openCompactSubmenu.set(link.path);
-    }
+    this.openCompactSubmenu.set(link.path);
   }
 
   onNavLinkClick(link: NavLink, event: MouseEvent): void {

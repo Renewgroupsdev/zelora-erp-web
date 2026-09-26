@@ -1,0 +1,35 @@
+@use '../call-card' as *;
+
+.dock-card.incoming { border: 2px solid var(--dock-green); }
+
+.pulse { animation: ring-pulse 1.2s ease-out infinite; }
+
+.caller-card {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bg-light-green-soft, #f6fbf9);
+}
+
+.btn-answer {
+  background: var(--dock-green);
+  color: #fff;
+
+  &:hover:not(:disabled) { background: var(--dock-green-dark); }
+}
+
+.btn-reject {
+  background: #fde6e6;
+  color: var(--dock-red);
+
+  &:hover:not(:disabled) { background: var(--dock-red); color: #fff; }
+}
+
+@keyframes ring-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(25, 184, 117, 0.55); }
+  100% { box-shadow: 0 0 0 16px rgba(25, 184, 117, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse { animation: none; }
+}

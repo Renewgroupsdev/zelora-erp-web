@@ -1,0 +1,5 @@
+<div class="dialer">
+  <i class="bi bi-telephone-fill"></i>
+  <input [(ngModel)]="phoneNumber" placeholder="Customer number" (keyup.enter)="dial()" aria-label="Customer number" />
+  <button type="button" (click)="dial()" [disabled]="onCall()">Call</button>
+</div>

@@ -62,4 +62,17 @@ export class ApiRoutesConstants {
    public static REPORT_CUSTOMER_SOURCE_COMPARISON = "reports/customer-source/comparison";
    public static REPORT_CUSTOMER_SOURCE_EXPORT = "reports/customer-source/export";
 
+   // CRM / Telephony
+   public static CALL_LIST = "telephony/calls";
+   public static CALL_OUTBOUND = "telephony/outbound";
+   public static CALL_ALERT_LIST = "telephony/alerts";
+   public static CALL_AGENT_LIST = "telephony/agents";
+   public static CALL_AGENT_ME = "telephony/agents/me";
+   public static CALL_AGENT_STATUS = "telephony/agents/status";
+   public static CALL_DISPOSITIONS = "telephony/dispositions";
+   public static CALL_REPORTS = "telephony/reports";
+   public static LEAD_ASSIGN = "telephony/leads/assign";
+   public static LEAD_WORK_STATS = "telephony/leads/stats";
+   public static USER_LIST = "users";
+
 }

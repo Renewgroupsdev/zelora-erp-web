@@ -1,0 +1,23 @@
+.page-loader-backdrop {
+  position: fixed;
+  inset: 0;
+  // Above header/sidebar/dialogs (1000), below SweetAlert modals (1060) so their OK stays clickable.
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--app-surface-solid) 35%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: page-loader-fade-in 0.15s ease-out;
+}
+
+.table-heartbeat {
+  width: 96px;
+  height: 36px;
+}
+
+@keyframes page-loader-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

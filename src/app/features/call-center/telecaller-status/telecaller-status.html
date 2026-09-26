@@ -1,0 +1,32 @@
+<section class="panel">
+  <div class="panel-title">
+    <div>
+      <div class="heading-line">
+        <h2>Telecallers</h2>
+        <span class="record-count">{{ agents.length }} agent{{ agents.length === 1 ? '' : 's' }}</span>
+      </div>
+      <span>Live presence and current calls.</span>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Telecaller</th><th>Branch</th><th>Status</th><th>Current call</th><th>Assigned leads</th></tr>
+      </thead>
+      <tbody>
+        @for (agent of agents; track agent.id) {
+          <tr>
+            <td><strong>{{ agent.name }}</strong><small>{{ agent.phone_no }}</small></td>
+            <td>{{ agent.branch?.name || '—' }}</td>
+            <td><span class="status" [class]="statusClass(agent.status)">{{ statusLabels[agent.status] }}</span></td>
+            <td>{{ agent.current_call ? customerNumber(agent.current_call) : '—' }}</td>
+            <td>{{ agent.assigned_leads_count }}</td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5" class="empty">{{ loading ? 'Loading…' : 'No telecallers found.' }}</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

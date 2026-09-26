@@ -1,0 +1,147 @@
+/* Dock shell: positioning + the presence pill. The call cards style themselves. */
+
+:host {
+  --dock-green: var(--brand-green, #19b875);
+  --dock-amber: #e6a23c;
+  --dock-ink: var(--text-dark, #163b35);
+  --dock-muted: var(--text-muted, #6a837d);
+  --dock-border: var(--border-soft, rgba(17, 95, 78, 0.12));
+}
+
+.telephony-dock {
+  position: fixed;
+  right: 20px;
+  bottom: 55px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+
+  > * { pointer-events: auto; width: 100%; }
+}
+
+.presence { position: relative; width: auto !important; }
+
+.presence-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 45px;
+  padding: 0;
+  width: 45px;
+  justify-content: center;
+  overflow: visible;
+  border-radius: 999px;
+  border: 1px solid var(--dock-border);
+  background: var(--app-surface-solid, #fff);
+  color: var(--dock-ink);
+  font-weight: 600;
+  font-size: 15px;
+  box-shadow: 0 10px 28px -14px rgba(15, 60, 50, 0.5);
+  cursor: grab;
+  touch-action: none;
+  transition: width .22s ease, padding .22s ease, gap .22s ease, box-shadow .2s ease;
+
+  .caret { font-size: 11px; color: var(--dock-muted); }
+  &:disabled { cursor: default; }
+  &:active { cursor: grabbing; }
+}
+
+.presence-icon {
+  font-size: 15px;
+  flex: 0 0 auto;
+}
+
+.presence-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 0;
+  opacity: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: max-width .22s ease, opacity .16s ease;
+}
+
+.presence:hover .presence-pill,
+.presence:focus-within .presence-pill,
+.presence.pinned-open .presence-pill {
+  width: auto;
+  padding: 8px;
+  gap: 8px;
+}
+
+.presence:hover .presence-label,
+.presence:focus-within .presence-label,
+.presence.pinned-open .presence-label {
+  max-width: 160px;
+  opacity: 1;
+}
+
+.status-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  min-width: 180px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--app-surface-solid, #fff);
+  border: 1px solid var(--dock-border);
+  box-shadow: 0 18px 40px -18px rgba(15, 60, 50, 0.45);
+
+  button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    background: transparent;
+    padding: 8px;
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--dock-ink);
+    cursor: pointer;
+    text-align: left;
+
+    &:hover, &.selected { background: var(--bg-light-green-soft, #f6fbf9); }
+    &.selected { font-weight: 600; }
+  }
+}
+
+.dot {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: 0 0 9px;
+  background: #9aa9a5;
+}
+
+.dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: dot-blink 1.6s ease-out infinite;
+}
+
+.dot.status-offline::before { animation: none; }
+
+.dot.status-available { background: var(--dock-green); }
+.dot.status-ringing, .dot.status-on-call { background: var(--brand-blue, #0878b8); }
+.dot.status-wrap-up, .dot.status-busy { background: var(--dock-amber); }
+
+@keyframes dot-blink {
+  0% { transform: scale(1); opacity: .7; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.dot.status-break, .dot.status-away { background: #c98a2d; }
+.dot.status-offline { background: #9aa9a5; }
+
+@media (max-width: 575px) {
+  .telephony-dock { right: 16px; bottom: 16px; }
+}

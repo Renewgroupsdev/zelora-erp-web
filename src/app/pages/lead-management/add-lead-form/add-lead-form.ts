@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, inject } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -12,9 +12,11 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import { ToastService } from '../../../shared/common-services/toast.service';
-import { ApiDataService } from '../../../shared/common-services/api-data.service';
+import { ApiDataService } from '../../../core/http/api.service';
 import { forkJoin } from 'rxjs/internal/observable/forkJoin';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
+import { TelephonyService } from '../../../core/telephony/telephony.service';
+import { TelecallerRow } from '../../../core/telephony/telephony.models';
 
 @Component({
   selector: 'app-add-lead-form',
@@ -51,6 +53,10 @@ export class AddLeadForm implements OnInit{
 
    statusOptions: any = [];
 
+   telecallerOptions: TelecallerRow[] = [];
+
+  private readonly telephony = inject(TelephonyService);
+
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<AddLeadForm>,
@@ -60,7 +66,7 @@ export class AddLeadForm implements OnInit{
   ) {
     this.leadForm = this.fb.group({
       name: [data?.name ?? '', [Validators.required, Validators.maxLength(100)]],
-      mobile_no: [data?.mobile_no ?? '',[Validators.required, Validators.pattern(/^[0-9+\-\s()]{8,20}$/)],],
+      mobile_no: [data?.mobile_no ?? '',[Validators.required, Validators.maxLength(12), Validators.pattern(/^[0-9]{10}$/)],],
       location: [data?.location ?? '', Validators.maxLength(250)],
       pincode: [data?.pincode ?? '', Validators.maxLength(100)],
       source: [data?.source_id ?? '', Validators.required],
@@ -69,15 +75,30 @@ export class AddLeadForm implements OnInit{
       status: [data?.status_id ?? '', Validators.required],
       reason: [data?.reason ?? '', Validators.maxLength(250)],
       organization_id: ['1'],
+      assigned_to: [data?.assigned_to ?? null],
     })
   }
 
   ngOnInit(): void {
     this.loadScheduleData();
+    this.loadTelecallers();
   }
 
+  /** `data` may also be a prefill for a new lead (e.g. { mobile_no } from an unknown caller). */
   get isEdit(): boolean {
-    return !!this.data;
+    return !!this.data?.id;
+  }
+
+  /** Supervisors pick the owning telecaller; telecallers never see this field. */
+  get showAssign(): boolean {
+    return !this.telephony.isTelecaller() && this.telecallerOptions.length > 0;
+  }
+
+  private loadTelecallers(): void {
+    this.telephony.telecallers().subscribe({
+      next: rows => (this.telecallerOptions = rows),
+      error: () => (this.telecallerOptions = []),
+    });
   }
 
   loadScheduleData(): void {

@@ -59,7 +59,7 @@
               formControlName="mobile_no"
               placeholder="Enter phone number"
               autocomplete="tel"
-              [class.is-invalid]="isInvalid('mobile_no')"  maxlength="10"/>
+              [class.is-invalid]="isInvalid('mobile_no')"  maxlength="12"/>
           </div>
           @if (isInvalid('mobile_no')) {
             <small class="error-text">Enter a valid phone number.</small>
@@ -152,7 +152,23 @@
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
         </div>
-        
+
+        @if (showAssign) {
+          <div class="form-field">
+            <label for="lead-assigned-to">Assign Telecaller</label>
+            <div class="input-wrap select-wrap">
+              <i class="bi bi-headset"></i>
+              <select id="lead-assigned-to" formControlName="assigned_to">
+                <option [ngValue]="null">Unassigned</option>
+                @for (telecaller of telecallerOptions; track telecaller.id) {
+                  <option [ngValue]="telecaller.id">{{ telecaller.name }}{{ telecaller.branch ? ' · ' + telecaller.branch.name : '' }}</option>
+                }
+              </select>
+              <i class="bi bi-chevron-down select-arrow"></i>
+            </div>
+          </div>
+        }
+
 
         <div class="form-field full-width">
           <label for="lead-address">Address</label>

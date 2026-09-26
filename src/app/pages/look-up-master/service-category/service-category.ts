@@ -3,7 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonFilterState, FilterOption } from '../../../shared/models/common-components.model';
-import { ApiDataService } from '../../../shared/common-services/api-data.service';
+import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AddServiceCategoryForm } from './add-service-category-form/add-service-category-form';

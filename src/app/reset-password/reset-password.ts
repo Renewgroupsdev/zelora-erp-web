@@ -4,7 +4,7 @@ import { AbstractControl, FormBuilder, FormGroup, FormsModule, ReactiveFormsModu
 import { ActivatedRoute, Router } from '@angular/router';
 import { Preloader } from '../preloader/preloader';
 import { AuthBackground } from '../shared/components/auth-background/auth-background';
-import { AuthService } from '../core/service/auth.service';
+import { AuthService } from '../core/auth/auth.service';
 
 /** Flags the group invalid (via a `mismatch` error) whenever the two password fields differ. */
 function passwordsMatchValidator(group: AbstractControl): ValidationErrors | null {

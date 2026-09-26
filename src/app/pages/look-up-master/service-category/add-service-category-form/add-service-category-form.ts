@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, Inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { ApiDataService } from '../../../../shared/common-services/api-data.service';
+import { ApiDataService } from '../../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../../shared/common-services/toast.service';
 

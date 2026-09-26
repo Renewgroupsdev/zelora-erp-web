@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { Router } from '@angular/router';
 import { Preloader } from '../preloader/preloader';
 import { AuthBackground } from '../shared/components/auth-background/auth-background';
-import { AuthService } from '../core/service/auth.service';
+import { AuthService } from '../core/auth/auth.service';
 
 @Component({
   selector: 'app-forgot-password',

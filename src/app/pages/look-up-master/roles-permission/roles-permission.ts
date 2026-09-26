@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonFilterState, FilterOption } from '../../../shared/models/common-components.model';
-import { ApiDataService } from '../../../shared/common-services/api-data.service';
+import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { ModuleReorderEvent, ModuleTreeNode } from './module-tree-node/module-tree-node';
