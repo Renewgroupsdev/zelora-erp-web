@@ -2,12 +2,14 @@ import { CommonModule } from '@angular/common';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Component, OnInit } from '@angular/core';
 import { Sort, SortDirection } from '@angular/material/sort';
+import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap, tap } from 'rxjs';
 import { CommonDetailCard } from '../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../shared/components/common-table-card/common-table-card';
 import {
   CommonFilterState,
   DetailCardData,
+  ExportFormat,
   FilterOption,
   LeadCell,
   TableColumn,
@@ -40,6 +42,14 @@ import { COMBO_OFFERS, TREATMENTS } from '../../shared/data/treatment-catalog';
 })
 export class LeadManagement implements OnInit {
 
+  /** Every filter/sort/page change pushes here; switchMap cancels whatever request is still
+   *  in flight so a burst of changes (or a slow response) never lands more than one active
+   *  DB hit at a time - the last change made always wins. */
+  private readonly reload$ = new Subject<void>();
+  /** Free-text search is debounced separately before it ever reaches reload$, so typing
+   *  doesn't fire a request per keystroke. */
+  private readonly searchInput$ = new Subject<string>();
+
   constructor(
     private dialog: MatDialog,
     private router: Router,
@@ -54,6 +64,21 @@ export class LeadManagement implements OnInit {
       this.loadLeadData();
       this.loadStats();
     });
+
+    this.searchInput$.pipe(
+      debounceTime(400),
+      distinctUntilChanged(),
+      takeUntilDestroyed(),
+    ).subscribe((term) => {
+      this.searchTerm = term.trim();
+      this.currentPage = 1;
+      this.reload$.next();
+    });
+
+    this.reload$.pipe(
+      switchMap(() => this.fetchLeads()),
+      takeUntilDestroyed(),
+    ).subscribe();
   }
 
   readonly staffOptions = ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S', 'Meera Nair'];
@@ -100,7 +125,6 @@ export class LeadManagement implements OnInit {
 
   readonly pageSizeOptions = [10, 30, 50, 100];
   isLoading = false;
-  allRows: TableRow[] = [];
   /** Raw lead records from the API, keyed by id, so the edit form can be pre-filled with fields
    *  (mobile_no, address, type, reason, ...) that the table row doesn't carry. */
   private leadsById = new Map<number, any>();
@@ -135,24 +159,66 @@ export class LeadManagement implements OnInit {
     this.loadStats();
   }
 
-  /** The API already limits the list: telecallers get only their assigned leads, branch
-   *  managers their branch, admins everything. Every page is fetched because the table
-   *  filters/sorts client-side. */
+  /** Re-runs the current search/filters/sort/page against the API. Safe to call as often as
+   *  needed - reload$'s switchMap cancels whatever request is already in flight, so this never
+   *  stacks up parallel DB hits. */
   loadLeadData(): void {
+    this.reload$.next();
+  }
+
+  /** The list, its filtering, sorting and pagination all happen server-side now: the API
+   *  already scopes visibility (telecallers get only their assigned leads, branch managers
+   *  their branch, admins everything), so only the current page is ever fetched. */
+  private fetchLeads() {
     this.isLoading = true;
 
-    this.ApiDataService.GetAllPages(ApiRoutesConstants.LEAD_GET_List).subscribe({
-      next: (leads: any[]) => {
+    const params = [
+      `page=${this.currentPage}`,
+      `per_page=${this.pageSize}`,
+      `sort_by=${encodeURIComponent(this.sortActive)}`,
+      `sort_dir=${this.sortDirection || 'asc'}`,
+      ...this.buildFilterParams(),
+    ];
+
+    return this.ApiDataService.GET(`${ApiRoutesConstants.LEAD_GET_List}?${params.join('&')}`).pipe(
+      tap((response: any) => {
         this.isLoading = false;
+
+        if (!response?.success) {
+          this.toast.error(response?.message || 'Failed to load leads. Please try again.');
+          return;
+        }
+
+        const page = response.data;
+        const leads: any[] = page?.data ?? [];
+
         this.leadsById.clear();
-        this.allRows = leads.map((lead: any) => this.mapLeadToRow(lead));
-        this.refreshRows();
-      },
-      error: (err: any) => {
+        this.rows = leads.map((lead: any) => this.mapLeadToRow(lead));
+        this.totalRecords = Number(page?.total ?? this.rows.length);
+      }),
+      catchError((err: any) => {
         this.isLoading = false;
-        this.toast.error(err.message);
-      },
-    });
+        this.toast.error(err?.error?.message || 'Failed to load leads. Please try again.');
+        console.error('Failed to load leads:', err);
+        return of(null);
+      }),
+    );
+  }
+
+  /** Builds the shared query-string filters sent to both the list endpoint and the export
+   *  endpoint, so what's on screen and what gets downloaded can never drift apart. */
+  private buildFilterParams(): string[] {
+    const params: string[] = [];
+
+    if (this.searchTerm) params.push(`search=${encodeURIComponent(this.searchTerm)}`);
+    if (this.filterState.status) params.push(`status=${encodeURIComponent(this.filterState.status)}`);
+    if (this.filterState.source) params.push(`source=${encodeURIComponent(this.filterState.source)}`);
+    this.filterState.branch.forEach((branch) => params.push(`branch[]=${encodeURIComponent(branch)}`));
+    if (this.filterState.telecaller) params.push(`telecaller=${encodeURIComponent(this.filterState.telecaller)}`);
+    if (this.filterState.dateFrom) params.push(`date_from=${this.filterState.dateFrom}`);
+    if (this.filterState.dateTo) params.push(`date_to=${this.filterState.dateTo}`);
+
+    return params;
   }
 
   /** Maps one lead record from the API's paginated payload into the row shape the table expects.
@@ -254,9 +320,9 @@ export class LeadManagement implements OnInit {
   }
 
   onSearch(term: string) {
-    this.searchTerm = term.trim().toLowerCase();
-    this.currentPage = 1;
-    this.refreshRows();
+    // Debounced by searchInput$ - only the last term typed within the window actually
+    // triggers a request, instead of one per keystroke.
+    this.searchInput$.next(term);
   }
 
   onFilterClick(key: string): void {
@@ -267,11 +333,34 @@ export class LeadManagement implements OnInit {
   onFiltersChange(filters: CommonFilterState): void {
     this.filterState = { ...filters, branch: [...filters.branch] };
     this.currentPage = 1;
-    this.refreshRows();
+    this.reload$.next();
   }
 
-  onExport() {
-    // Trigger export as needed.
+  onExport(format: ExportFormat): void {
+    const params = [...this.buildFilterParams(), `format=${format}`];
+
+    this.ApiDataService.GET_BLOB(`${ApiRoutesConstants.LEAD_EXPORT}?${params.join('&')}`).subscribe({
+      next: (blob: Blob) => this.downloadBlob(blob, `leads-${this.timestampForFilename()}.${format}`),
+      error: (err: any) => {
+        this.toast.error(err?.error?.message || 'Failed to export leads. Please try again.');
+        console.error('Failed to export leads:', err);
+      },
+    });
+  }
+
+  private downloadBlob(blob: Blob, filename: string): void {
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+  }
+
+  private timestampForFilename(): string {
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
   }
 
   get recordCountText(): string {
@@ -291,14 +380,14 @@ export class LeadManagement implements OnInit {
   onPageChange(event: TablePageChangeEvent) {
     this.currentPage = event.page;
     this.pageSize = event.pageSize;
-    this.refreshRows();
+    this.reload$.next();
   }
 
   onSortChange(sort: Sort) {
     this.sortActive = sort.active;
     this.sortDirection = sort.direction || 'asc';
     this.currentPage = 1;
-    this.refreshRows();
+    this.reload$.next();
   }
 
   onRowAction(row: TableRow) {
@@ -417,7 +506,7 @@ export class LeadManagement implements OnInit {
   private handleLeadProfileResult(row: TableRow, result: LeadProfileDialogResult): void {
     if (result.action === 'followup') {
       this.crmFlow.addFollowUp(result.lead);
-      this.removeLeadRow(row);
+      this.removeLeadRow();
       this.toast.success('Follow-up logged', `${result.lead.name} moved to Follow-Ups.`);
       this.router.navigate(['/app/follow-ups']);
       return;
@@ -431,15 +520,16 @@ export class LeadManagement implements OnInit {
       };
 
       this.crmFlow.addAppointment(appointment);
-      this.removeLeadRow(row);
+      this.removeLeadRow();
       this.toast.success('Appointment booked', `${appointment.name} moved to Appointments.`);
       this.router.navigate(['/app/appointments']);
     }
   }
 
-  private removeLeadRow(row: TableRow): void {
-    this.allRows = this.allRows.filter(item => item !== row);
-    this.refreshRows();
+  private removeLeadRow(): void {
+    // The row was already moved into a follow-up/appointment on the backend - refetch the
+    // current page instead of patching locally now that the list is server-paginated.
+    this.loadLeadData();
   }
 
   private toFlowLead(row: TableRow): FlowLead {
@@ -525,93 +615,6 @@ export class LeadManagement implements OnInit {
       // patching locally so edits replace the existing row instead of duplicating it.
       this.loadLeadData();
     });
-  }
-
-  private refreshRows(): void {
-    const filteredRows = this.getFilteredRows();
-    const sortedRows = this.getSortedRows(filteredRows);
-
-    this.totalRecords = sortedRows.length;
-
-    const totalPages = Math.max(1, Math.ceil(this.totalRecords / this.pageSize));
-    if (this.currentPage > totalPages) {
-      this.currentPage = totalPages;
-    }
-
-    const startIndex = (this.currentPage - 1) * this.pageSize;
-    const endIndex = startIndex + this.pageSize;
-    this.rows = sortedRows.slice(startIndex, endIndex);
-  }
-
-  private getFilteredRows(): TableRow[] {
-    return this.allRows.filter((row) => {
-      const lead = row['lead'] as LeadCell;
-      const haystack = [lead.name, lead.subtitle ?? '', row['contact']].join(' ').toLowerCase();
-
-      if (this.searchTerm && !haystack.includes(this.searchTerm)) return false;
-      if (this.filterState.status && row['status'] !== this.filterState.status) return false;
-      if (this.filterState.source && row['source'] !== this.filterState.source) return false;
-      if (this.filterState.branch.length > 0 && !this.filterState.branch.includes(String(row['branch']))) return false;
-      if (this.filterState.telecaller && row['telecaller'] !== this.filterState.telecaller) return false;
-
-      const leadDate = this.parseLeadDate(String(row['created_at']));
-      if (this.filterState.dateFrom && leadDate < this.filterState.dateFrom) return false;
-      if (this.filterState.dateTo && leadDate > this.filterState.dateTo) return false;
-
-      return true;
-    });
-  }
-
-  private parseLeadDate(value: string): string {
-    const parsed = new Date(value);
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed.toISOString().slice(0, 10);
-    }
-
-    const match = value.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-    if (!match) return '';
-
-    const months: Record<string, string> = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
-    const month = months[match[2].toLowerCase()];
-    if (!month) return '';
-    return `${match[3]}-${month}-${match[1].padStart(2, '0')}`;
-  }
-
-  private getSortedRows(rows: TableRow[]): TableRow[] {
-    if (!this.sortActive || !this.sortDirection) {
-      return rows;
-    }
-
-    const direction = this.sortDirection === 'asc' ? 1 : -1;
-
-    return [...rows].sort((left, right) => {
-      const leftValue = this.getSortableValue(left, this.sortActive);
-      const rightValue = this.getSortableValue(right, this.sortActive);
-
-      if (leftValue < rightValue) {
-        return -1 * direction;
-      }
-
-      if (leftValue > rightValue) {
-        return 1 * direction;
-      }
-
-      return 0;
-    });
-  }
-
-  private getSortableValue(row: TableRow, key: string): string | number {
-    const value = row[key];
-
-    if (key === 'lead') {
-      return ((value as LeadCell)?.name ?? '').toLowerCase();
-    }
-
-    if (typeof value === 'number') {
-      return value;
-    }
-
-    return String(value ?? '').toLowerCase();
   }
 
   openAppointment(row: TableRow): void {

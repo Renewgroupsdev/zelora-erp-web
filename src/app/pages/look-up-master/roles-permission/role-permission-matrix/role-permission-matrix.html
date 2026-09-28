@@ -61,12 +61,9 @@
       @if (isLoading) {
         <div class="empty-state">Loading modules...</div>
       } @else {
-        @for (module of tree; track module.id) {
+        @for (module of visibleTree; track module.id) {
           <div class="root-drag-item" cdkDrag [cdkDragDisabled]="!!searchTerm.trim()">
             <div class="drag-card">
-              <button type="button" class="drag-handle" cdkDragHandle title="Drag to reorder" aria-label="Drag to reorder">
-                <i class="bi bi-grip-vertical"></i>
-              </button>
               <app-matrix-tree-node
                 class="root-drag-content"
                 [node]="module"
@@ -74,7 +71,8 @@
                 [selectedRoleId]="selectedRoleId"
                 [searchTerm]="searchTerm"
                 (toggleModule)="toggleModule($event)"
-                (toggleAction)="onToggleAction($event)">
+                (toggleAction)="onToggleAction($event)"
+                (reorderChildren)="onChildrenReordered($event)">
               </app-matrix-tree-node>
             </div>
           </div>

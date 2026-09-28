@@ -41,6 +41,10 @@ export interface CommonFilterState {
   dateTo: string | null;
 }
 
+/** Emitted by CommonFilterCard's export button - which file type the backend export
+ *  endpoint should generate. */
+export type ExportFormat = 'csv' | 'xlsx' | 'pdf';
+
 export type TableColumnType = 'text' | 'lead' | 'branch' | 'badge' | 'action' | 'rowActions' | 'avatarGroup' | 'callLog' | 'quickActions';
 
 export interface QuickAction {

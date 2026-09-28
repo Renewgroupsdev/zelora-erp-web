@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CommonFilterState, FilterOption } from '../../models/common-components.model';
+import { CommonFilterState, ExportFormat, FilterOption } from '../../models/common-components.model';
 
 @Component({
   selector: 'app-common-filter-card',
@@ -17,10 +17,18 @@ export class CommonFilterCard {
   @Output() searchChange = new EventEmitter<string>();
   @Output() filtersChange = new EventEmitter<CommonFilterState>();
   @Output() filterClick = new EventEmitter<string>();
-  @Output() exportClick = new EventEmitter<void>();
+  /** Emits which file format the caller should ask the backend to generate. */
+  @Output() exportClick = new EventEmitter<ExportFormat>();
+
+  readonly exportOptions: { format: ExportFormat; label: string; icon: string }[] = [
+    { format: 'csv', label: 'CSV', icon: 'bi-filetype-csv' },
+    { format: 'xlsx', label: 'Excel', icon: 'bi-filetype-xlsx' },
+    { format: 'pdf', label: 'PDF', icon: 'bi-filetype-pdf' },
+  ];
 
   searchValue = '';
   openFilterKey: string | null = null;
+  isExportMenuOpen = false;
 
   filterValues: CommonFilterState = this.emptyState();
   draftValues: CommonFilterState = this.emptyState();
@@ -116,11 +124,23 @@ export class CommonFilterCard {
     return !!this.getSingleValueFromState(this.filterValues, key);
   }
 
+  toggleExportMenu(): void {
+    this.isExportMenuOpen = !this.isExportMenuOpen;
+  }
+
+  selectExport(format: ExportFormat): void {
+    this.isExportMenuOpen = false;
+    this.exportClick.emit(format);
+  }
+
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;
     if (!target.closest('.filter-card')) {
       this.openFilterKey = null;
+    }
+    if (!target.closest('.export-wrapper')) {
+      this.isExportMenuOpen = false;
     }
   }
 

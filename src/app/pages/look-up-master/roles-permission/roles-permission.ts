@@ -22,7 +22,7 @@ export class RolesPermission implements OnInit {
 
   constructor(
     private router: Router,
-    private apiDataService: ApiDataService,
+    public apiDataService: ApiDataService,
     private toast: ToastService,
   ) { }
 

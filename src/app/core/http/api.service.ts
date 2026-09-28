@@ -50,6 +50,13 @@ export class ApiDataService {
     );
   }
 
+  /** File-download endpoints (exports) return a binary body, not JSON, so this bypasses
+   *  the `map()` used above and returns the raw Blob for the caller to save. */
+  GET_BLOB(path: string): any {
+    this.APIURL = `${environment.apiBaseUrl}${path}`;
+    return this.http.get(this.APIURL, { responseType: 'blob' });
+  }
+
   POST(path:string,json:any):any{
     this.APIURL=`${environment.apiBaseUrl}${path}`;
     return this.http.post<any>(this.APIURL, json).pipe(map(result => {

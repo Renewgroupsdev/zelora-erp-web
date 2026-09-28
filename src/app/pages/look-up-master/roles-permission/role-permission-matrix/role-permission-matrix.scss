@@ -313,7 +313,6 @@
 .drag-card {
   display: flex;
   align-items: center;
-  gap: 8px;
   padding: 4px 6px;
   background: var(--app-surface-solid);
   border: 1px solid transparent;
@@ -324,37 +323,6 @@
 .root-drag-content {
   flex: 1 1 auto;
   min-width: 0;
-}
-
-/* Bigger, more visible grab zone in the row's top-left corner instead of a thin edge strip. */
-.drag-handle {
-  flex: 0 0 32px;
-  width: 32px;
-  height: 32px;
-  align-self: flex-start;
-  margin-top: 4px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border-soft-strong);
-  border-radius: 9px;
-  background: var(--primary-soft);
-  color: var(--primary-dark);
-  cursor: grab;
-  touch-action: none;
-  transition: background 0.15s ease, transform 0.1s ease;
-}
-
-.drag-handle:hover {
-  background: var(--primary-border);
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-  transform: scale(0.92);
-}
-
-.drag-handle i {
-  font-size: 15px;
 }
 
 /* Trello-style lifted card while actively being dragged: the preview detaches from the row

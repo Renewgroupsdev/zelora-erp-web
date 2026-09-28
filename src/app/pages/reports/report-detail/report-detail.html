@@ -21,6 +21,12 @@
 
       @if (report.id === 'lead-source') {
         <app-lead-report></app-lead-report>
+      } @else if (report.id === 'lead-conversion') {
+        <app-lead-conversion-report></app-lead-conversion-report>
+      } @else if (report.id === 'lead-status') {
+        <app-lead-status-report></app-lead-status-report>
+      } @else if (report.id === 'follow-up') {
+        <app-follow-up-report></app-follow-up-report>
       } @else {
         <div class="report-panel-body">
           <i class="bi bi-bar-chart-line report-panel-body-icon" aria-hidden="true"></i>

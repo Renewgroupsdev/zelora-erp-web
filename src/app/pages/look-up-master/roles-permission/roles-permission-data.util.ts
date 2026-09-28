@@ -11,7 +11,7 @@ import { isSuccessResponse, RolePermissionModule } from './roles-permission.mode
  *  flag ApiDataService.GetAllPages expects - module-with-actions doesn't follow the same response
  *  convention as the other lookup-master endpoints, so the shared helper always saw it as a
  *  failure and returned an empty list. */
-export function fetchFullModuleTree(api: ApiDataService, path: string): Observable<RolePermissionModule[]> {
+export function fetchFullModuleTree(api: any, path: string): Observable<RolePermissionModule[]> {
   return api.GET(path).pipe(
     switchMap((firstResponse: any) => {
       const firstPage = firstResponse?.data;

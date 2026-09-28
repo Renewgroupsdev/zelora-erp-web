@@ -8,13 +8,14 @@ import { RoleOption } from '../../../../shared/models/role-option.model';
 import { ApiDataService } from '../../../../shared/common-services/api-data.service';
 import { ApiRoutesConstants } from '../../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../../shared/common-services/toast.service';
-import { ActionToggleEvent, MatrixTreeNode } from './matrix-tree-node/matrix-tree-node';
+import { ActionToggleEvent, MatrixReorderEvent, MatrixTreeNode } from './matrix-tree-node/matrix-tree-node';
 import {
   buildModulePayloadFromNode,
   cascadeSetRole,
   fetchFullModuleTree,
   hasRole,
   MatrixModuleNode,
+  nodeMatchesSearch,
   setRole,
   toMatrixNode,
 } from '../roles-permission-data.util';
@@ -86,6 +87,15 @@ export class RolePermissionMatrix implements OnInit {
 
   onSearch(term: string): void {
     this.searchTerm = term;
+  }
+
+  /** Root modules that don't match the active search are filtered out entirely, instead of
+   *  leaving behind an empty drag-card row - app-matrix-tree-node only hides its own content
+   *  when it doesn't match, so the surrounding drag handle would otherwise still render. */
+  get visibleTree(): MatrixModuleNode[] {
+    const term = this.searchTerm.trim().toLowerCase();
+    if (!term) return this.tree;
+    return this.tree.filter((node) => nodeMatchesSearch(node, term));
   }
 
   toggleModule(node: MatrixModuleNode): void {
@@ -178,19 +188,28 @@ export class RolePermissionMatrix implements OnInit {
     moveItemInArray(this.snapshot, event.previousIndex, event.currentIndex);
 
     const items = this.tree.map((node, index) => ({ id: node.id!, position: index }));
+    this.persistReorder(items, 'Module order updated.', 'Failed to update module order.');
+  }
 
+  /** Bubbled up from matrix-tree-node once it has already reordered a parent's sub_modules
+   *  locally - this just persists the resulting positions. */
+  onChildrenReordered(event: MatrixReorderEvent): void {
+    this.persistReorder(event.items, 'Sub-module order updated.', 'Failed to update sub-module order.');
+  }
+
+  private persistReorder(items: { id: number; position: number }[], successMessage: string, failMessage: string): void {
     this.apiDataService.PUT(ApiRoutesConstants.ROLES_PERMISSION_REORDER, { items }).subscribe({
       next: (response: any) => {
         if (isSuccessResponse(response)) {
-          this.toast.success('Module order updated.');
+          this.toast.success(successMessage);
         } else {
-          this.toast.error(response?.message || 'Failed to update module order.');
+          this.toast.error(response?.message || failMessage);
           this.loadTree();
         }
       },
       error: (err: any) => {
-        this.toast.error(err?.error?.message || 'Failed to update module order.');
-        console.error('Failed to reorder modules:', err);
+        this.toast.error(err?.error?.message || failMessage);
+        console.error(failMessage, err);
         this.loadTree();
       },
     });
