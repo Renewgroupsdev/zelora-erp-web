@@ -246,6 +246,17 @@
   color: var(--text-dark);
 }
 
+.lead-name-link {
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--brand-green, #19b875);
+    text-decoration: underline;
+  }
+}
+
 .lead-subtitle {
   font-size: 12px;
   line-height: var(--lh-tight);

@@ -1,17 +1,14 @@
-import { Component, HostListener, computed, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NavLayoutService } from '../services/nav-layout.service';
 import { AuthService } from '../core/auth/auth.service';
+import { SidebarModule } from '../shared/models/permission.model';
 
 interface NavLink {
   label: string;
   icon: string;
   path: string;
   children?: NavLink[];
-  /** True when this item has no page of its own yet - a parent with this set only
-   *  expands/collapses its children, and a leaf with this set never navigates. Either way
-   *  it never shows as the active route. Also keeps every item's `path` unique, which
-   *  Angular's `@for track` needs to render each row independently. */
   groupOnly?: boolean;
   /** Matches this item to a `slug_name` in the Roles & Permissions module tree. When set,
    *  the item is only shown if the logged-in user's role is granted that module (via
@@ -29,64 +26,66 @@ interface NavLink {
 })
 export class LeftSideNavbar {
 
-  /** Path of the one parent module whose submenu is expanded, or null when all are collapsed.
-   *  Only one parent can be open at a time - opening another closes whichever was open. */
   readonly expandedParent = signal<string | null>(null);
-
   readonly openHorizontalSubmenu = signal<string | null>(null);
-
   readonly openCompactSubmenu = signal<string | null>(null);
+  private readonly auth = inject(AuthService);
 
-  /** Full menu, unfiltered - `navLinks` below filters this down by the logged-in user's role. */
-  private readonly allNavLinks: NavLink[] = [
-    { label: 'Dashboard', icon: 'bi-house-fill', path: '/app/dashboard', permissionSlug: 'dashboard' },
-    {
-      label: 'Lead Management',
-      icon: 'bi-person-lines-fill',
-      path: '/app/lead-management',
-      permissionSlug: 'lead-management',
-      children: [
-        { label: 'Follow-up', icon: 'bi-arrow-repeat', path: '/app/follow-ups', permissionSlug: 'follow-up' },
-      ],
-    },
-    { label: 'Appointments', icon: 'bi-calendar2-check-fill', path: '/app/appointments', permissionSlug: 'appoinment' },
-    { label: 'Customer Management', icon: 'bi-person-fill', path: '/app/customers', permissionSlug: 'customer-management' },
-    {
-      label: 'Treatment Management',
-      icon: 'bi-heart-pulse-fill',
-      path: '/app/treatments',
-      permissionSlug: 'treatment-management',
-      // children: [
-      //   { label: 'Create Treatment', icon: 'bi-heart-pulse', path: '/app/treatments/create' },
-      // ],
-    },
-    { label: 'Tele Caller', icon: 'bi-telephone-inbound-fill', path: '/app/call-center' },
-    { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings', permissionSlug: 'settings',
+  private readonly ICON_BY_SLUG: Record<string, string> = {
+    'dashboard': 'bi-house-fill',
+    'lead-management': 'bi-person-lines-fill',
+    'follow-up': 'bi-arrow-repeat',
+    'follow-ups': 'bi-arrow-repeat',
+    'appointments': 'bi-calendar2-check-fill',
+    'appoinment': 'bi-calendar2-check-fill',
+    'customer-management': 'bi-person-fill',
+    'treatment-management': 'bi-heart-pulse-fill',
+    'call-center': 'bi-telephone-inbound-fill',
+    'tele-caller': 'bi-telephone-inbound-fill',
+    'settings': 'bi-gear-fill',
+    'service-category': 'bi-tags-fill',
+    'source': 'bi-signpost-2-fill',
+    'lead-status': 'bi-flag-fill',
+    'roles': 'bi-shield-lock-fill',
+    'roles-permissions': 'bi-shield-lock-fill',
+    'reports': 'bi-bar-chart-fill',
+  };
+  private readonly DEFAULT_ICON = 'bi-dot';
 
-      children: [
-          { label: 'Service-Category', icon: 'bi-tags-fill', path: '/app/masters/service-category', permissionSlug: 'service-category'},
-          { label: 'Source', icon: 'bi-signpost-2-fill', path: '/app/masters/source', permissionSlug: 'source'},
-          { label: 'Lead-Status', icon: 'bi-flag-fill', path: '/app/masters/lead-status', permissionSlug: 'lead-status'},
-          { label: 'Roles', icon: 'bi-shield-lock-fill', path: '/app/masters/roles', permissionSlug: 'roles'},
-          { label: 'Roles-&-permssions', icon: 'bi-shield-lock-fill', path: '/app/masters/roles-and-permission', permissionSlug: 'roles-permissions'},
-        ],
-    },
-    { label: 'Reports', icon: 'bi-bar-chart-fill', path: '/app/reports', permissionSlug: 'reports' },
-  ];
+  readonly navLinks = computed<NavLink[]>(() => {
+    const menus = this.auth.menus();
+    return menus.length ? menus.map(menu => this.toNavLink(menu)) : [];
+  });
+
+  private toNavLink(menu: SidebarModule): NavLink {
+    const children = (menu.sub_modules ?? []).map(sub => this.toNavLink(sub));
+
+    return {
+      label: menu.module_name,
+      icon: this.ICON_BY_SLUG[menu.slug_name] ?? this.DEFAULT_ICON,
+      path: this.normalizePath(menu.url) ?? `#${menu.slug_name}`,
+      ...(children.length ? { children } : {}),
+    };
+  }
+
+  private normalizePath(url: string | null | undefined): string | null {
+    if (!url) return null;
+    return url.startsWith('/') ? url : `/${url}`;
+  }
 
   /** `allNavLinks` filtered to what the logged-in user's role is granted. An item with no
    *  `permissionSlug` (not yet managed by Roles & Permissions) always stays visible. */
-  readonly navLinks = computed<NavLink[]>(() => {
-    // Reading the signal here (rather than calling hasModuleAccess per item without it) is what
-    // makes this recompute whenever permissions load/change.
-    this.authService.permissions();
-    const visible = (link: NavLink): boolean =>
-      !link.permissionSlug || this.authService.hasModuleAccess(link.permissionSlug);
+  // readonly navLinks = computed<NavLink[]>(() => {
+  //   // Reading the signal here (rather than calling hasModuleAccess per item without it) is what
+  //   // makes this recompute whenever permissions load/change.
+  //   this.authService.permissions();
+  //   const visible = (link: NavLink): boolean =>
+  //     !link.permissionSlug || this.authService.hasModuleAccess(link.permissionSlug);
 
-    return this.allNavLinks
-      .filter(visible)
-      .map((link) => (link.children ? { ...link, children: link.children.filter(visible) } : link));
-  });
+  //   return this.allNavLinks
+  //     .filter(visible)
+  //     .map((link) => (link.children ? { ...link, children: link.children.filter(visible) } : link));
+  // });
 
   constructor(public navLayout: NavLayoutService, private authService: AuthService) { }
 
@@ -123,10 +122,6 @@ export class LeftSideNavbar {
       return;
     }
 
-    // Navigating straight to a leaf item (e.g. Appointments) - whatever group was expanded is
-    // no longer relevant to the page you're on, so close it instead of leaving it open behind
-    // the new active item.
-    // this.expandedSubmenu.set(null);
     this.navLayout.closeMobileSidebar();
   }
 

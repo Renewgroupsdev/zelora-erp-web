@@ -13,6 +13,11 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 const TOKEN_TYPE_KEY = 'token_type';
 const TOKEN_EXPIRES_AT_KEY = 'token_expires_at';
 const AUTH_USER_KEY = 'auth_user';
+/** `menus` and `permissions` are the same role-scoped module tree (`SidebarModule[]`) -
+ *  `menus` backs the left sidebar's nav links, `permissions` backs `hasModuleAccess()`. Both are
+ *  populated from the same source (login()/me()'s `Menus`, or a manual `loadPermissions()` re-fetch
+ *  from `/side-bar`), so they're always kept in sync from one place: `persistSession()`. */
+const MENUS_KEY = 'auth_menus';
 const AUTH_PERMISSIONS_KEY = 'auth_permissions';
 
 @Injectable({
@@ -21,8 +26,9 @@ const AUTH_PERMISSIONS_KEY = 'auth_permissions';
 export class AuthService {
   readonly currentUser = signal<AuthUser | null>(this.readUser());
   readonly isAuthenticated = signal<boolean>(!!this.readAccessToken());
-  /** The logged-in user's role-scoped modules/actions, as returned by `/side-bar` -
-   *  already filtered server-side to whatever their role is granted. */
+  /** Left-sidebar modules for the logged-in user's role, from login()/me()'s `Menus`. */
+  readonly menus = signal<SidebarModule[]>(this.readMenus());
+  /** Same data as `menus`, kept for `hasModuleAccess()` role-gating checks. */
   readonly permissions = signal<SidebarModule[]>(this.readPermissions());
 
   constructor(
@@ -32,6 +38,8 @@ export class AuthService {
   ) {
     if (this.isAuthenticated()) {
       this.idleService.start(() => this.logout());
+      // Existing sessions logged in before this feature shipped have no cached menus yet.
+      if (this.menus().length === 0) this.refreshMenus();
     }
   }
 
@@ -86,10 +94,12 @@ export class AuthService {
     localStorage.removeItem(TOKEN_TYPE_KEY);
     localStorage.removeItem(TOKEN_EXPIRES_AT_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(MENUS_KEY);
     localStorage.removeItem(AUTH_PERMISSIONS_KEY);
     this.currentUser.set(null);
-    this.isAuthenticated.set(false);
+    this.menus.set([]);
     this.permissions.set([]);
+    this.isAuthenticated.set(false);
 
     if (navigateToLogin) {
       this.router.navigate(['/login']);
@@ -154,14 +164,17 @@ export class AuthService {
       this.currentUser.set(data.user);
     }
 
-    this.isAuthenticated.set(true);
-    this.idleService.start(() => this.logout());
-
-    // Login returns the role-scoped menu tree inline as `Menus`; a token refresh doesn't,
-    // so this simply leaves the previously cached permissions in place in that case.
+    // Likewise, a refresh response has no `Menus` - keep whatever the last login()/me() gave us.
+    // Login returns the role-scoped module tree inline as `Menus`; it backs both the sidebar
+    // (`menus`) and role-gating (`permissions`) - they're always the same data.
     if (menus) {
+      localStorage.setItem(MENUS_KEY, JSON.stringify(menus));
+      this.menus.set(menus);
       this.applyPermissions(menus);
     }
+
+    this.isAuthenticated.set(true);
+    this.idleService.start(() => this.logout());
   }
 
   private readAccessToken(): string | null {
@@ -186,11 +199,34 @@ export class AuthService {
     }
   }
 
+  private readMenus(): SidebarModule[] {
+    try {
+      return JSON.parse(localStorage.getItem(MENUS_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  }
+
   private readPermissions(): SidebarModule[] {
     try {
       return JSON.parse(localStorage.getItem(AUTH_PERMISSIONS_KEY) || '[]');
     } catch {
       return [];
     }
+  }
+
+  /** `me()` also returns `Menus` (see AuthController::me) - refetch and re-cache them without a
+   *  full re-login, e.g. after a hard page reload where login() never ran this session. */
+  refreshMenus(): void {
+    this.api.GET(ApiRoutesConstants.AUTH_ME).subscribe({
+      next: (res: ApiResponse<AuthUser> & { Menus?: SidebarModule[] }) => {
+        if (res?.Menus) {
+          localStorage.setItem(MENUS_KEY, JSON.stringify(res.Menus));
+          this.menus.set(res.Menus);
+          this.applyPermissions(res.Menus);
+        }
+      },
+      error: () => undefined,
+    });
   }
 }

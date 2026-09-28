@@ -305,8 +305,30 @@ export class LeadManagement implements OnInit {
     this.loadLeadData();
   }
 
-  onExport() {
-    // Trigger export as needed.
+  onExport(format: ExportFormat): void {
+    const qs = this.buildQueryParams();
+    this.ApiDataService.GET_BLOB(`${ApiRoutesConstants.LEAD_EXPORT}?${qs}&format=${format}`).subscribe({
+      next: (blob: Blob) => this.downloadBlob(blob, `leads-${this.timestampForFilename()}.${format}`),
+      error: (err: any) => {
+        this.toast.error('Failed to export leads. Please try again.');
+        console.error('Failed to export leads:', err);
+      },
+    });
+  }
+
+  private downloadBlob(blob: Blob, filename: string): void {
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+  }
+
+  private timestampForFilename(): string {
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
   }
 
   get recordCountText(): string {

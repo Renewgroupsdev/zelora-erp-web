@@ -1,5 +1,7 @@
 import { SidebarModule } from '../../shared/models/permission.model';
 
+export type { SidebarModule };
+
 export interface AuthUserRole {
   id: number;
   name: string;
@@ -39,12 +41,10 @@ export interface ApiResponse<T> {
   data: T | null;
 }
 
-/** The login endpoint additionally returns the role-scoped sidebar tree as a top-level
- *  `Menus` field (sibling to `data`, not nested inside it) - always an array, even on a
- *  failed login or when the role has no menus, so callers never need to null-check it. */
-export interface LoginResponse extends ApiResponse<LoginResponseData> {
-  Menus?: SidebarModule[];
-}
+/** login()/me() return `Menus` as a sibling of `data`, not nested inside it - the same
+ *  role-scoped module tree (`SidebarModule[]`) the dedicated `/side-bar` endpoint returns,
+ *  both backed by `SidebarMenuService::forRole()`. */
+export type LoginResponse = ApiResponse<LoginResponseData> & { Menus?: SidebarModule[] };
 
 export const ROLE_LABELS: Record<number, string> = {
   1: 'Administrator',

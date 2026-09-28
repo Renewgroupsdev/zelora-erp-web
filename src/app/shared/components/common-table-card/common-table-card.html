@@ -101,7 +101,10 @@
                   {{ initials(asLeadCell(row[col.key]).name) }}
                 </span>
                 <span class="lead-text">
-                  <span class="lead-name" [title]="asLeadCell(row[col.key]).name">{{ asLeadCell(row[col.key]).name }}</span>
+                  <a class="lead-name lead-name-link" href="javascript:void(0)" role="button"
+                     [title]="asLeadCell(row[col.key]).name"
+                     (click)="profileClick.emit(row)"
+                     (keydown.enter)="profileClick.emit(row)">{{ asLeadCell(row[col.key]).name }}</a>
                   @if (asLeadCell(row[col.key]).subtitle) {
                     <span class="lead-subtitle">{{ asLeadCell(row[col.key]).subtitle }}</span>
                   }
