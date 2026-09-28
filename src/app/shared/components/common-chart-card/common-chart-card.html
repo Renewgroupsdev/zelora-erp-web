@@ -1,0 +1,104 @@
+<div class="chart-card">
+  <div class="chart-card-header">
+    <div class="chart-card-heading">
+      <h3 class="chart-card-title">{{ title }}</h3>
+      @if (subtitle) {
+        <p class="chart-card-subtitle">{{ subtitle }}</p>
+      }
+    </div>
+
+    @if (chartTypes.length > 1) {
+      <div class="chart-type-toggle" role="tablist" aria-label="Chart type">
+        @if (chartTypes.includes('donut')) {
+          <button type="button" role="tab" [attr.aria-selected]="chartType === 'donut'" [class.active]="chartType === 'donut'" title="Donut chart" (click)="setChartType('donut')">
+            <i class="bi bi-pie-chart-fill"></i>
+          </button>
+        }
+        @if (chartTypes.includes('bar')) {
+          <button type="button" role="tab" [attr.aria-selected]="chartType === 'bar'" [class.active]="chartType === 'bar'" title="Bar chart" (click)="setChartType('bar')">
+            <i class="bi bi-bar-chart-line-fill"></i>
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  @if (loading) {
+    <div class="chart-card-empty">
+      <i class="bi bi-arrow-repeat spin" aria-hidden="true"></i>
+      <p>Loading chart…</p>
+    </div>
+  } @else if (!series.length || total === 0) {
+    <div class="chart-card-empty">
+      <i class="bi bi-pie-chart" aria-hidden="true"></i>
+      <p>No data for the selected period.</p>
+    </div>
+  } @else if (chartType === 'donut') {
+    <div class="donut-layout">
+      <div class="donut-wrap">
+        <svg viewBox="0 0 200 200" class="donut-svg" role="img" [attr.aria-label]="title">
+          <circle class="donut-track" cx="100" cy="100" [attr.r]="radius"></circle>
+          @for (slice of donutSlices; track slice.label) {
+            <circle
+              class="donut-slice"
+              [class.is-dimmed]="hoveredLabel !== null && hoveredLabel !== slice.label"
+              cx="100" cy="100" [attr.r]="radius"
+              tabindex="0"
+              [style.stroke]="colorVar(slice)"
+              [attr.stroke-dasharray]="slice.dashArray"
+              [attr.stroke-dashoffset]="slice.dashOffset"
+              (mouseenter)="setHovered(slice.label)"
+              (mouseleave)="setHovered(null)"
+              (focus)="setHovered(slice.label)"
+              (blur)="setHovered(null)"
+            >
+              <title>{{ tooltipText(slice, slice.percent) }}</title>
+            </circle>
+          }
+        </svg>
+
+        <div class="donut-center">
+          <span class="donut-center-value">{{ centerValue }}</span>
+          <span class="donut-center-label">{{ centerLabel }}</span>
+          @if (centerPercent) {
+            <span class="donut-center-percent">{{ centerPercent }}</span>
+          }
+        </div>
+      </div>
+
+      <ul class="chart-legend">
+        @for (slice of donutSlices; track slice.label) {
+          <li
+            class="chart-legend-item"
+            [class.is-active]="hoveredLabel === slice.label"
+            (mouseenter)="setHovered(slice.label)"
+            (mouseleave)="setHovered(null)"
+          >
+            <span class="legend-dot" [style.background]="colorVar(slice)"></span>
+            <span class="legend-label">{{ slice.label }}</span>
+            <span class="legend-value">{{ slice.value | number }}</span>
+            <span class="legend-percent">{{ slice.percent | number: '1.0-1' }}%</span>
+          </li>
+        }
+      </ul>
+    </div>
+  } @else {
+    <div class="bar-layout">
+      @for (bar of barSlices; track bar.label) {
+        <div
+          class="bar-row"
+          [class.is-active]="hoveredLabel === bar.label"
+          [title]="tooltipText(bar, bar.percent)"
+          (mouseenter)="setHovered(bar.label)"
+          (mouseleave)="setHovered(null)"
+        >
+          <span class="bar-label">{{ bar.label }}</span>
+          <span class="bar-track">
+            <span class="bar-fill" [style.width.%]="bar.widthPercent" [style.background]="colorVar(bar)"></span>
+          </span>
+          <span class="bar-value">{{ bar.value | number }}</span>
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -14,6 +14,11 @@ export interface DetailCardData {
   sparkline?: number[];
 }
 
+export interface ChartDatum {
+  label: string;
+  value: number;
+}
+
 export interface BreadcrumbItem {
   label: string;
   link?: string | unknown[];
@@ -37,6 +42,10 @@ export interface CommonFilterState {
   /** Follow-up temperature (General/Cool/Hot) - only used by pages that declare a `type` filter. */
   type?: string | null;
 }
+
+/** Emitted by CommonFilterCard's export button - which file type the backend export
+ *  endpoint should generate. */
+export type ExportFormat = 'csv' | 'xlsx' | 'pdf';
 
 export type TableColumnType = 'text' | 'lead' | 'branch' | 'badge' | 'action' | 'rowActions' | 'avatarGroup' | 'callLog' | 'quickActions';
 

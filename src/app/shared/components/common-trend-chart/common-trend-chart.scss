@@ -1,0 +1,189 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.trend-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-width: 0;
+  padding: 16px;
+  background: var(--app-surface-solid);
+  border: 1px solid var(--border-soft-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.trend-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trend-card-title {
+  margin: 0;
+  font-family: var(--font-family-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.trend-card-subtitle {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.trend-granularity-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-light-green-soft);
+  border: 1px solid var(--border-soft-strong);
+  border-radius: var(--radius-md);
+}
+
+.trend-granularity-toggle button {
+  height: 26px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font: 600 11.5px var(--font-family-base);
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.trend-granularity-toggle button:hover {
+  color: var(--primary-dark);
+}
+
+.trend-granularity-toggle button.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.trend-card-empty {
+  flex: 1 1 auto;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-muted);
+
+  i { font-size: 28px; opacity: 0.5; }
+  p { margin: 0; font-size: 12px; }
+  .spin { animation: trend-card-spin 1s linear infinite; }
+}
+
+@keyframes trend-card-spin {
+  to { transform: rotate(360deg); }
+}
+
+.trend-plot-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.trend-svg {
+  display: block;
+  width: 100%;
+  height: clamp(160px, 22vw, 220px);
+  overflow: visible;
+}
+
+.trend-gridline {
+  stroke: var(--border-soft);
+  stroke-width: 1;
+}
+
+.trend-gridline-label {
+  fill: var(--text-muted);
+  font-size: 9px;
+}
+
+.trend-area {
+  fill: var(--primary);
+  opacity: 0.1;
+  stroke: none;
+}
+
+.trend-line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trend-crosshair {
+  stroke: var(--primary);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.6;
+}
+
+.trend-dot {
+  fill: var(--app-surface-solid);
+  stroke: var(--primary);
+  stroke-width: 2;
+}
+
+.trend-dot.is-end {
+  fill: var(--primary);
+}
+
+.trend-dot.is-hovered {
+  r: 5.5;
+  fill: var(--primary);
+}
+
+.trend-hit-area {
+  fill: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+.trend-x-label {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+}
+
+.trend-end-value {
+  fill: var(--primary-dark);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.trend-tooltip {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5px 9px;
+  background: var(--text-dark);
+  border-radius: 8px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.trend-tooltip-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--app-surface-solid);
+}
+
+.trend-tooltip-label {
+  font-size: 10px;
+  color: var(--app-surface-solid);
+  opacity: 0.75;
+}

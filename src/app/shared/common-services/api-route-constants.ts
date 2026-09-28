@@ -7,7 +7,7 @@ export class ApiRoutesConstants {
   public static AUTH_FORGOT_PASSWORD = "forgot-password";
   public static AUTH_RESET_PASSWORD = "reset-password";
   public static AUTH_ME = "me";
-  public static USER_ROLE_ACCESS = "";
+  public static USER_ROLE_ACCESS = "side-bar";
   public static ROLE_GET_ACCESS = "";
 
 
@@ -15,6 +15,7 @@ export class ApiRoutesConstants {
    public static LEAD_GET_List = "customer-leads";
    public static LEAD_ADD = "customer-leads";
    public static LEAD_DELETE = "customer-leads";
+   public static LEAD_EXPORT = "customer-leads/export";
 
    //Lookup Data
    public static Source_List_Options ='sources';
@@ -46,6 +47,42 @@ export class ApiRoutesConstants {
    public static ROLES_PERMISSION_GET_List = "module-with-actions";
    public static ROLES_PERMISSION_ADD = "module-with-actions";
    public static ROLES_PERMISSION_DELETE = "module-with-actions";
+   public static ROLES_PERMISSION_BULK_UPDATE = "module-with-actions/bulk-update";
+   public static ROLES_PERMISSION_REORDER = "module-with-actions/reorder";
+
+   //Lead Appointment (CURD)
+   public static LEAD_APPOINTMENT_ADD = "appointments";
+
+   //Lead Follow-up (CURD)
+   public static LEAD_FOLLOWUP_ADD = "follow-ups";
+
+   //Reports
+   public static REPORT_CUSTOMER_SOURCE = "reports/customer-source";
+   public static REPORT_CUSTOMER_SOURCE_SUMMARY = "reports/customer-source/summary";
+   public static REPORT_CUSTOMER_SOURCE_PERFORMANCE = "reports/customer-source/performance";
+   public static REPORT_CUSTOMER_SOURCE_TREND = "reports/customer-source/trend";
+   public static REPORT_CUSTOMER_SOURCE_COMPARISON = "reports/customer-source/comparison";
+   public static REPORT_CUSTOMER_SOURCE_EXPORT = "reports/customer-source/export";
+
+   public static REPORT_LEAD_CONVERSION_FUNNEL = "reports/lead-conversion/funnel";
+   public static REPORT_LEAD_CONVERSION_SUMMARY = "reports/lead-conversion/summary";
+   public static REPORT_LEAD_CONVERSION_TREND = "reports/lead-conversion/trend";
+   public static REPORT_LEAD_CONVERSION_COMPARISON = "reports/lead-conversion/comparison";
+   public static REPORT_LEAD_CONVERSION_EXPORT = "reports/lead-conversion/export";
+
+   public static REPORT_LEAD_STATUS = "reports/lead-status";
+   public static REPORT_LEAD_STATUS_SUMMARY = "reports/lead-status/summary";
+   public static REPORT_LEAD_STATUS_PERFORMANCE = "reports/lead-status/performance";
+   public static REPORT_LEAD_STATUS_TREND = "reports/lead-status/trend";
+   public static REPORT_LEAD_STATUS_COMPARISON = "reports/lead-status/comparison";
+   public static REPORT_LEAD_STATUS_EXPORT = "reports/lead-status/export";
+
+   public static REPORT_FOLLOW_UP = "reports/follow-up";
+   public static REPORT_FOLLOW_UP_SUMMARY = "reports/follow-up/summary";
+   public static REPORT_FOLLOW_UP_PERFORMANCE = "reports/follow-up/performance";
+   public static REPORT_FOLLOW_UP_TREND = "reports/follow-up/trend";
+   public static REPORT_FOLLOW_UP_COMPARISON = "reports/follow-up/comparison";
+   public static REPORT_FOLLOW_UP_EXPORT = "reports/follow-up/export";
 
    // CRM / Telephony
    public static CALL_LIST = "telephony/calls";

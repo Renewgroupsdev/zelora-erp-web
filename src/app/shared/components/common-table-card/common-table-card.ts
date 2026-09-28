@@ -8,11 +8,11 @@ import { PageLoader } from '../page-loader/page-loader';
 import { CallerAvatar, CallerLogEntry, LeadCell, QuickAction, TableColumn, TablePageChangeEvent, TableReorderEvent, TableRow, TableTransferEvent } from '../../models/common-components.model';
 
 const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue'> = {
-  qualified: 'green', active: 'green', completed: 'green', converted: 'green', paid: 'green',
-  contacted: 'orange', pending: 'orange', 'in progress': 'orange', due: 'orange',
+  qualified: 'green', active: 'green', completed: 'green', converted: 'green', paid: 'green', 'on time': 'green',
+  contacted: 'orange', pending: 'orange', 'in progress': 'orange', due: 'orange', late: 'orange',
   lost: 'red', cancelled: 'red', failed: 'red', overdue: 'red',
   new: 'gray', draft: 'gray', inactive: 'gray',
-  scheduled: 'blue', follow: 'blue',
+  scheduled: 'blue', follow: 'blue', upcoming: 'blue',
 };
 
 const AVATAR_PALETTE_SIZE = 5;

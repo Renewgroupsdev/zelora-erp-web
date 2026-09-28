@@ -1,3 +1,5 @@
+import { SidebarModule } from '../../shared/models/permission.model';
+
 export interface AuthUserRole {
   id: number;
   name: string;

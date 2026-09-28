@@ -1,0 +1,229 @@
+<div class="lead-report d-flex flex-column">
+
+  <div class="report-toolbar d-flex flex-wrap align-items-center justify-content-between">
+    <div class="view-switch" role="tablist" aria-label="Report view">
+      <button type="button" role="tab" [attr.aria-selected]="viewMode === 'analytics'" [class.active]="viewMode === 'analytics'" (click)="viewMode = 'analytics'">
+        <i class="bi bi-graph-up-arrow"></i> Analytics
+      </button>
+      <button type="button" role="tab" [attr.aria-selected]="viewMode === 'records'" [class.active]="viewMode === 'records'" (click)="viewMode = 'records'">
+        <i class="bi bi-list-ul"></i> Records
+      </button>
+    </div>
+
+    <div class="toolbar-actions d-flex flex-wrap align-items-center">
+      <div class="export-menu">
+        <button type="button" class="export-btn" [disabled]="isExporting" (click)="toggleExportMenu($event)">
+          <i class="bi" [ngClass]="isExporting ? 'bi-arrow-repeat spin' : 'bi-box-arrow-down'"></i>
+          Export
+          <i class="bi bi-chevron-down"></i>
+        </button>
+
+        @if (isExportMenuOpen) {
+          <div class="export-panel" [style.top.px]="exportMenuPosition.top" [style.left.px]="exportMenuPosition.left">
+            <button type="button" (click)="exportReport('csv')"><i class="bi bi-filetype-csv"></i> CSV</button>
+            <button type="button" (click)="exportReport('xlsx')"><i class="bi bi-filetype-xlsx"></i> Excel</button>
+            <button type="button" (click)="exportReport('pdf')"><i class="bi bi-filetype-pdf"></i> PDF</button>
+          </div>
+        }
+      </div>
+
+      <div class="date-range" (click)="$event.stopPropagation()">
+        <button type="button" class="date-range-btn" [class.active]="isDatePanelOpen || activePreset !== 'all'" (click)="toggleDatePanel($event)">
+          <i class="bi bi-calendar3"></i>
+          <span>{{ dateRangeLabel }}</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+
+        @if (isDatePanelOpen) {
+          <div class="date-range-panel" [style.top.px]="datePanelPosition.top" [style.left.px]="datePanelPosition.left">
+            <ul class="preset-list">
+              @for (preset of datePresets; track preset.key) {
+                <li>
+                  <button type="button" class="preset-row" [class.selected]="activePreset === preset.key" (click)="selectPreset(preset.key)">
+                    <span>{{ preset.label }}</span>
+                    @if (activePreset === preset.key) {
+                      <i class="bi bi-check-lg"></i>
+                    }
+                  </button>
+                </li>
+              }
+            </ul>
+
+            <div class="custom-range">
+              <div class="custom-range-title">Custom range</div>
+              <div class="custom-range-grid">
+                <label>From date<input type="date" [ngModel]="draftDateFrom" (ngModelChange)="draftDateFrom = $event"></label>
+                <label>To date<input type="date" [ngModel]="draftDateTo" (ngModelChange)="draftDateTo = $event"></label>
+              </div>
+              <div class="custom-range-actions">
+                <button type="button" class="reset-btn" (click)="resetDateRange()">Reset</button>
+                <button type="button" class="apply-btn" (click)="applyCustomRange()">Apply</button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="filter-row d-flex flex-wrap align-items-center">
+    <div class="search-box">
+      <i class="bi bi-search"></i>
+      <input type="text" placeholder="Search by name or mobile" [(ngModel)]="search" (keyup.enter)="onSearchSubmit()">
+    </div>
+
+    <select class="filter-select" [ngModel]="sourceId" (ngModelChange)="sourceId = $event; onSourceFilterChange()">
+      <option [ngValue]="null">All Sources</option>
+      @for (opt of sourceOptions; track opt.id) {
+        <option [ngValue]="opt.id">{{ opt.name }}</option>
+      }
+    </select>
+
+    <select class="filter-select" [ngModel]="statusId" (ngModelChange)="statusId = $event; onStatusFilterChange()">
+      <option [ngValue]="null">All Statuses</option>
+      @for (opt of statusOptions; track opt.id) {
+        <option [ngValue]="opt.id">{{ opt.name }}</option>
+      }
+    </select>
+
+    @if (hasActiveFilters) {
+      <button type="button" class="clear-filters-btn" (click)="clearAllFilters()">
+        <i class="bi bi-x-circle"></i> Clear filters
+      </button>
+    }
+  </div>
+
+  @if (metricsStrip.length) {
+    <div class="metrics-strip" [class.is-refreshing]="isSummaryLoading || isComparisonLoading" [title]="comparisonPeriodLabel ?? ''">
+      @for (metric of metricsStrip; track metric.label) {
+        <div class="metric-chip">
+          <span class="metric-icon"><i class="bi" [ngClass]="metric.icon"></i></span>
+          <div class="metric-body">
+            <span class="metric-label">{{ metric.label }}</span>
+            <span class="metric-value">
+              {{ metric.value }}
+              @if (metric.deltaText) {
+                <span class="metric-delta" [ngClass]="'delta-' + (metric.deltaDirection ?? 'neutral')">{{ metric.deltaText }}</span>
+              }
+            </span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (viewMode === 'analytics') {
+    <div class="analytics-panel d-flex flex-column">
+      @if (topSourceInsight) {
+        <div class="insight-banner">
+          <i class="bi bi-stars"></i>
+          <span>{{ topSourceInsight }}</span>
+        </div>
+      }
+
+      <div class="chart-row">
+        <app-common-chart-card
+          class="chart-col"
+          title="Leads by Source"
+          subtitle="Where your leads are coming from"
+          totalLabel="Total Leads"
+          [data]="sourceChartData"
+          [loading]="isLoading"
+        ></app-common-chart-card>
+
+        <app-common-trend-chart
+          class="chart-col"
+          title="Lead Generation Trend"
+          subtitle="Leads created over time"
+          [points]="trendPoints"
+          [loading]="isTrendLoading"
+          [granularity]="trendGranularity"
+          (granularityChange)="onTrendGranularityChange($event)"
+        ></app-common-trend-chart>
+      </div>
+
+      <div class="performance-card">
+        <div class="performance-card-header">
+          <div class="performance-card-heading">
+            <h3 class="performance-card-title">Source Performance</h3>
+            <p class="performance-card-subtitle">Total, converted, lost and pending leads per channel</p>
+          </div>
+        </div>
+
+        @if (isPerformanceLoading) {
+          <div class="performance-empty">
+            <i class="bi bi-arrow-repeat spin" aria-hidden="true"></i>
+            <p>Loading performance…</p>
+          </div>
+        } @else if (!performanceRows.length) {
+          <div class="performance-empty">
+            <i class="bi bi-bar-chart" aria-hidden="true"></i>
+            <p>No data for the selected period.</p>
+          </div>
+        } @else {
+          <div class="performance-table-wrap">
+            <table class="performance-table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th class="sortable" (click)="setPerformanceSort('total')">
+                    Total
+                    <i class="bi" [ngClass]="performanceSortBy === 'total' ? (performanceSortDir === 'asc' ? 'bi-sort-up' : 'bi-sort-down') : 'bi-arrow-down-up'"></i>
+                  </th>
+                  <th>Converted</th>
+                  <th>Lost</th>
+                  <th>Pending</th>
+                  <th class="sortable" (click)="setPerformanceSort('conversion_rate')">
+                    Conv. Rate
+                    <i class="bi" [ngClass]="performanceSortBy === 'conversion_rate' ? (performanceSortDir === 'asc' ? 'bi-sort-up' : 'bi-sort-down') : 'bi-arrow-down-up'"></i>
+                  </th>
+                  <th>Trend</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of performanceRows; track row.source_id) {
+                  <tr>
+                    <td class="source-cell">{{ row.source_name }}</td>
+                    <td>{{ row.total | number }}</td>
+                    <td>{{ row.converted === null ? '—' : (row.converted | number) }}</td>
+                    <td>{{ row.lost === null ? '—' : (row.lost | number) }}</td>
+                    <td>{{ row.pending | number }}</td>
+                    <td>{{ row.conversion_rate === null ? '—' : (row.conversion_rate + '%') }}</td>
+                    <td>
+                      @if (row.trend_vs_previous_period === null) {
+                        <span class="trend-flat">—</span>
+                      } @else if (row.trend_vs_previous_period > 0) {
+                        <span class="trend-pos"><i class="bi bi-arrow-up-short"></i>{{ formatTrendValue(row.trend_vs_previous_period) }}</span>
+                      } @else if (row.trend_vs_previous_period < 0) {
+                        <span class="trend-neg"><i class="bi bi-arrow-down-short"></i>{{ formatTrendValue(row.trend_vs_previous_period) }}</span>
+                      } @else {
+                        <span class="trend-flat">0%</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  } @else {
+    <app-common-table-card
+      title="Leads"
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+    ></app-common-table-card>
+  }
+
+</div>

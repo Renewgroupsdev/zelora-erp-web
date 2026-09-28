@@ -16,7 +16,7 @@
     <div class="form-loading">Loading module details...</div>
   } @else if (rootGroup) {
     <form [formGroup]="rootGroup" (ngSubmit)="save()" novalidate class="form-scroll">
-      <app-module-form-node [group]="rootGroup" [roles]="roles" [depth]="0" [removable]="false"></app-module-form-node>
+      <app-module-form-node [group]="rootGroup" [depth]="0" [removable]="false"></app-module-form-node>
 
       <div class="form-footer">
         <button type="button" class="cancel-btn" (click)="goBack()">Cancel</button>

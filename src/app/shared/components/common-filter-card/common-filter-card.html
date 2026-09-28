@@ -59,6 +59,24 @@
   <div class="filter-spacer"></div>
 
   @if (showExport) {
-    <button type="button" class="export-btn" (click)="exportClick.emit()">Export <i class="bi bi-box-arrow-down"></i></button>
+    <div class="export-wrapper">
+      <button type="button" class="export-btn" [class.active]="isExportMenuOpen" (click)="toggleExportMenu()">
+        Export <i class="bi bi-box-arrow-down"></i>
+      </button>
+
+      @if (isExportMenuOpen) {
+        <div class="filter-menu export-menu" (click)="$event.stopPropagation()">
+          <div class="filter-menu-title">Export as</div>
+          <div class="option-list">
+            @for (option of exportOptions; track option.format) {
+              <button type="button" class="option-btn" (click)="selectExport(option.format)">
+                <i class="bi" [ngClass]="option.icon"></i>
+                {{ option.label }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
   }
 </div>
