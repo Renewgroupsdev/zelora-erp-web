@@ -4,7 +4,7 @@ import { Observable, catchError, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiDataService } from '../http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
-import { ApiResponse, AuthUser, LoginResponse, LoginResponseData, MenuItem, ResetPasswordPayload } from './auth.model';
+import { ApiResponse, AuthUser, LoginResponse, LoginResponseData, ResetPasswordPayload } from './auth.model';
 import { IdleService } from '../idle-service/idle.service';
 import { SidebarModule, flattenModuleSlugs } from '../../shared/models/permission.model';
 
@@ -13,7 +13,12 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 const TOKEN_TYPE_KEY = 'token_type';
 const TOKEN_EXPIRES_AT_KEY = 'token_expires_at';
 const AUTH_USER_KEY = 'auth_user';
+/** `menus` and `permissions` are the same role-scoped module tree (`SidebarModule[]`) -
+ *  `menus` backs the left sidebar's nav links, `permissions` backs `hasModuleAccess()`. Both are
+ *  populated from the same source (login()/me()'s `Menus`, or a manual `loadPermissions()` re-fetch
+ *  from `/side-bar`), so they're always kept in sync from one place: `persistSession()`. */
 const MENUS_KEY = 'auth_menus';
+const AUTH_PERMISSIONS_KEY = 'auth_permissions';
 
 @Injectable({
   providedIn: 'root',
@@ -22,7 +27,9 @@ export class AuthService {
   readonly currentUser = signal<AuthUser | null>(this.readUser());
   readonly isAuthenticated = signal<boolean>(!!this.readAccessToken());
   /** Left-sidebar modules for the logged-in user's role, from login()/me()'s `Menus`. */
-  readonly menus = signal<MenuItem[]>(this.readMenus());
+  readonly menus = signal<SidebarModule[]>(this.readMenus());
+  /** Same data as `menus`, kept for `hasModuleAccess()` role-gating checks. */
+  readonly permissions = signal<SidebarModule[]>(this.readPermissions());
 
   constructor(
     private api: ApiDataService,
@@ -88,10 +95,11 @@ export class AuthService {
     localStorage.removeItem(TOKEN_EXPIRES_AT_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
     localStorage.removeItem(MENUS_KEY);
+    localStorage.removeItem(AUTH_PERMISSIONS_KEY);
     this.currentUser.set(null);
     this.menus.set([]);
-    this.isAuthenticated.set(false);
     this.permissions.set([]);
+    this.isAuthenticated.set(false);
 
     if (navigateToLogin) {
       this.router.navigate(['/login']);
@@ -137,11 +145,10 @@ export class AuthService {
         throw new Error('Auth response is missing access_token / refresh_token.');
       }
       this.persistSession(response.data, response.Menus);
-      this.persistSession(response.data, response.Menus);
     }
   }
 
-  private persistSession(data: LoginResponseData, menus?: MenuItem[]): void {
+  private persistSession(data: LoginResponseData, menus?: SidebarModule[]): void {
     localStorage.setItem(ACCESS_TOKEN_KEY, data.token);
     localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
     localStorage.setItem(TOKEN_TYPE_KEY, data.token_type || 'Bearer');
@@ -158,19 +165,16 @@ export class AuthService {
     }
 
     // Likewise, a refresh response has no `Menus` - keep whatever the last login()/me() gave us.
+    // Login returns the role-scoped module tree inline as `Menus`; it backs both the sidebar
+    // (`menus`) and role-gating (`permissions`) - they're always the same data.
     if (menus) {
       localStorage.setItem(MENUS_KEY, JSON.stringify(menus));
       this.menus.set(menus);
+      this.applyPermissions(menus);
     }
 
     this.isAuthenticated.set(true);
     this.idleService.start(() => this.logout());
-
-    // Login returns the role-scoped menu tree inline as `Menus`; a token refresh doesn't,
-    // so this simply leaves the previously cached permissions in place in that case.
-    if (menus) {
-      this.applyPermissions(menus);
-    }
   }
 
   private readAccessToken(): string | null {
@@ -195,9 +199,17 @@ export class AuthService {
     }
   }
 
-  private readMenus(): MenuItem[] {
+  private readMenus(): SidebarModule[] {
     try {
       return JSON.parse(localStorage.getItem(MENUS_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  private readPermissions(): SidebarModule[] {
+    try {
+      return JSON.parse(localStorage.getItem(AUTH_PERMISSIONS_KEY) || '[]');
     } catch {
       return [];
     }
@@ -207,10 +219,11 @@ export class AuthService {
    *  full re-login, e.g. after a hard page reload where login() never ran this session. */
   refreshMenus(): void {
     this.api.GET(ApiRoutesConstants.AUTH_ME).subscribe({
-      next: (res: ApiResponse<AuthUser> & { Menus?: MenuItem[] }) => {
+      next: (res: ApiResponse<AuthUser> & { Menus?: SidebarModule[] }) => {
         if (res?.Menus) {
           localStorage.setItem(MENUS_KEY, JSON.stringify(res.Menus));
           this.menus.set(res.Menus);
+          this.applyPermissions(res.Menus);
         }
       },
       error: () => undefined,

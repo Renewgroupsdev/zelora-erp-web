@@ -2,7 +2,7 @@ import { Component, HostListener, computed, inject, signal } from '@angular/core
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NavLayoutService } from '../services/nav-layout.service';
 import { AuthService } from '../core/auth/auth.service';
-import { MenuItem } from '../core/auth/auth.model';
+import { SidebarModule } from '../shared/models/permission.model';
 
 interface NavLink {
   label: string;
@@ -57,7 +57,7 @@ export class LeftSideNavbar {
     return menus.length ? menus.map(menu => this.toNavLink(menu)) : [];
   });
 
-  private toNavLink(menu: MenuItem): NavLink {
+  private toNavLink(menu: SidebarModule): NavLink {
     const children = (menu.sub_modules ?? []).map(sub => this.toNavLink(sub));
 
     return {
@@ -68,24 +68,24 @@ export class LeftSideNavbar {
     };
   }
 
-  private normalizePath(url: string | null): string | null {
+  private normalizePath(url: string | null | undefined): string | null {
     if (!url) return null;
     return url.startsWith('/') ? url : `/${url}`;
   }
 
   /** `allNavLinks` filtered to what the logged-in user's role is granted. An item with no
    *  `permissionSlug` (not yet managed by Roles & Permissions) always stays visible. */
-  readonly navLinks = computed<NavLink[]>(() => {
-    // Reading the signal here (rather than calling hasModuleAccess per item without it) is what
-    // makes this recompute whenever permissions load/change.
-    this.authService.permissions();
-    const visible = (link: NavLink): boolean =>
-      !link.permissionSlug || this.authService.hasModuleAccess(link.permissionSlug);
+  // readonly navLinks = computed<NavLink[]>(() => {
+  //   // Reading the signal here (rather than calling hasModuleAccess per item without it) is what
+  //   // makes this recompute whenever permissions load/change.
+  //   this.authService.permissions();
+  //   const visible = (link: NavLink): boolean =>
+  //     !link.permissionSlug || this.authService.hasModuleAccess(link.permissionSlug);
 
-    return this.allNavLinks
-      .filter(visible)
-      .map((link) => (link.children ? { ...link, children: link.children.filter(visible) } : link));
-  });
+  //   return this.allNavLinks
+  //     .filter(visible)
+  //     .map((link) => (link.children ? { ...link, children: link.children.filter(visible) } : link));
+  // });
 
   constructor(public navLayout: NavLayoutService, private authService: AuthService) { }
 
