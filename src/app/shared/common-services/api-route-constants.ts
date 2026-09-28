@@ -49,6 +49,7 @@ export class ApiRoutesConstants {
    public static ROLES_PERMISSION_DELETE = "module-with-actions";
    public static ROLES_PERMISSION_BULK_UPDATE = "module-with-actions/bulk-update";
    public static ROLES_PERMISSION_REORDER = "module-with-actions/reorder";
+   public static ROLES_PERMISSION_SIDEBAR = 'side-bar';
 
    //Lead Appointment (CURD)
    public static LEAD_APPOINTMENT_ADD = "appointments";

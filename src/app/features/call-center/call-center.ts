@@ -8,7 +8,6 @@ import { AuthService } from '../../core/auth/auth.service';
 import { isTelecallerRole } from '../../core/auth/auth.model';
 import { Dialer } from './dialer/dialer';
 
-/** Call-center shell: header, manual dialer and the tab nav over the child pages. */
 @Component({
   selector: 'app-call-center',
   standalone: true,
@@ -22,8 +21,6 @@ export class CallCenter implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
 
   readonly unreadAlerts = signal(0);
-  /** Plain telecallers only see their own calls - branch-wide alerts and the telecaller
-   *  roster are a branch head / supervisor view. */
   readonly isBranchHeadView = computed(() => !isTelecallerRole(this.auth.currentUser()));
   private subs = new Subscription();
 

@@ -28,7 +28,6 @@ export const routes: Routes = [
           { path: 'telecallers', canActivate: [branchHeadGuard], loadComponent: () => import('./features/call-center/telecaller-status/telecaller-status').then(m => m.TelecallerStatus) },
         ],
       },
-      { path: 'crm', pathMatch: 'full', redirectTo: 'call-center' },
       { path: 'lead-management', loadComponent: () => import('./pages/lead-management/lead-management').then(m => m.LeadManagement) },
       { path: 'follow-ups', loadComponent: () => import('./pages/followups/followups').then(m => m.Followups) },
       { path: 'masters/service-category', loadComponent: () => import('./pages/look-up-master/service-category/service-category').then(m => m.ServiceCategory) },

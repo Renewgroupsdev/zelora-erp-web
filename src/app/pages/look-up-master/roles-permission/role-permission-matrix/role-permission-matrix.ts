@@ -20,6 +20,7 @@ import {
   toMatrixNode,
 } from '../roles-permission-data.util';
 import { isSuccessResponse } from '../roles-permission.model';
+import { AuthService } from '../../../../core/auth/auth.service';
 
 /** One screen to grant a single role access across the entire existing module/sub-module/action
  *  tree in one pass, instead of reopening "Add Module & Permissions" per module - checking a
@@ -46,6 +47,7 @@ export class RolePermissionMatrix implements OnInit {
     private router: Router,
     private apiDataService: ApiDataService,
     private toast: ToastService,
+    private authService: AuthService,
   ) { }
 
   ngOnInit(): void {
@@ -159,6 +161,9 @@ export class RolePermissionMatrix implements OnInit {
 
         if (isSuccessResponse(response)) {
           this.toast.success(`Updated permissions for ${dirty.length} module${dirty.length > 1 ? 's' : ''}.`);
+          // Role assignments are exactly what the sidebar's Menus filter on - refresh so the
+          // change is visible immediately for whoever's logged in as (or as) this role.
+          this.authService.refreshMenus();
         } else {
           this.toast.error(response?.message || 'Failed to save permissions. Please try again.');
         }
@@ -202,6 +207,7 @@ export class RolePermissionMatrix implements OnInit {
       next: (response: any) => {
         if (isSuccessResponse(response)) {
           this.toast.success(successMessage);
+          this.authService.refreshMenus();
         } else {
           this.toast.error(response?.message || failMessage);
           this.loadTree();

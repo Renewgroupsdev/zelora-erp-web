@@ -32,7 +32,11 @@ export class AuthService {
   ) {
     if (this.isAuthenticated()) {
       this.idleService.start(() => this.logout());
-      if (this.menus().length === 0) this.refreshMenus();
+      // Always re-fetch on load (not just when the cache is empty) - an admin adding a module
+      // in Roles & Permissions should see it appear on their next reload, not only after a
+      // fresh login. The cached copy from readMenus() is still shown immediately in the
+      // meantime so the sidebar isn't empty while this request is in flight.
+      this.refreshMenus();
     }
   }
 
@@ -193,8 +197,9 @@ export class AuthService {
   }
 
   refreshMenus(): void {
-    this.api.GET(ApiRoutesConstants.AUTH_ME).subscribe({
+    this.api.GET(ApiRoutesConstants.ROLES_PERMISSION_SIDEBAR).subscribe({
       next: (res: ApiResponse<AuthUser> & { Menus?: SidebarModule[] }) => {
+        
         if (res?.Menus) {
           localStorage.setItem(MENUS_KEY, JSON.stringify(res.Menus));
           this.menus.set(res.Menus);

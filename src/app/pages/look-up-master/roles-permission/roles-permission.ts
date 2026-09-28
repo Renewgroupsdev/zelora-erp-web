@@ -10,6 +10,7 @@ import { ToastService } from '../../../shared/common-services/toast.service';
 import { ModuleReorderEvent, ModuleTreeNode } from './module-tree-node/module-tree-node';
 import { fetchFullModuleTree } from './roles-permission-data.util';
 import { DisplayModuleNode, isSuccessResponse, RolePermissionModule } from './roles-permission.model';
+import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-roles-permission',
@@ -24,6 +25,7 @@ export class RolesPermission implements OnInit {
     private router: Router,
     public apiDataService: ApiDataService,
     private toast: ToastService,
+    private authService: AuthService,
   ) { }
 
   filters: FilterOption[] = [];
@@ -45,11 +47,7 @@ export class RolesPermission implements OnInit {
   modules: DisplayModuleNode[] = [];
   filteredModules: DisplayModuleNode[] = [];
 
-  /** role id -> role name, used to render human-readable role chips from each node's
-   *  comma-separated role_ids string. */
   private rolesById = new Map<number, string>();
-  /** Public so the template can disable drag-reordering while a search filter narrows the
-   *  visible list - filteredModules would no longer reflect real sibling positions then. */
   searchTerm = '';
 
   ngOnInit(): void {
@@ -156,8 +154,6 @@ export class RolesPermission implements OnInit {
     return `${this.totalModules.toLocaleString()} modules`;
   }
 
-  /** A module matching the search term keeps all of its sub-modules; otherwise only the
-   *  matching descendants survive - and if any did, the module is force-expanded to reveal them. */
   private applyFilters(): void {
     this.filteredModules = this.filterTree(this.modules, this.searchTerm);
   }
@@ -213,9 +209,6 @@ export class RolesPermission implements OnInit {
     }
   }
 
-  /** Root modules reorder directly against filteredModules - when no search is active it's the
-   *  exact same array reference as `modules` (filterTree() returns it unchanged), so mutating
-   *  it here also reorders the underlying data with no separate sync step needed. */
   onRootDrop(event: CdkDragDrop<DisplayModuleNode[]>): void {
     if (event.previousIndex === event.currentIndex) return;
 
@@ -224,8 +217,6 @@ export class RolesPermission implements OnInit {
     this.persistReorder(items, 'Module order updated.', 'Failed to update module order.');
   }
 
-  /** Bubbled up from module-tree-node once it has already reordered a parent's sub_modules
-   *  locally - this just persists the resulting positions. */
   onChildrenReordered(event: ModuleReorderEvent): void {
     this.persistReorder(event.items, 'Sub-module order updated.', 'Failed to update sub-module order.');
   }
@@ -235,6 +226,7 @@ export class RolesPermission implements OnInit {
       next: (response: any) => {
         if (isSuccessResponse(response)) {
           this.toast.success(successMessage);
+          this.authService.refreshMenus();
         } else {
           this.toast.error(response?.message || failMessage);
           this.loadModules();
@@ -265,6 +257,7 @@ export class RolesPermission implements OnInit {
       next: (response: any) => {
         if (isSuccessResponse(response)) {
           this.toast.success('Module deleted successfully');
+          this.authService.refreshMenus();
           this.loadModules();
         } else {
           this.toast.error(response?.message || 'Failed to delete module. Please try again.');

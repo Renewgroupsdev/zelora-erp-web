@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ApiDataService } from '../../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../../shared/common-services/toast.service';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { isSuccessResponse, RolePermissionModule } from '../roles-permission.model';
 import { ModuleFormNode } from './module-form-node/module-form-node';
 import { buildModuleGroup, extractModulePayload } from './module-form.util';
@@ -37,6 +38,7 @@ export class AddRolesPermissionForm implements OnInit {
     private router: Router,
     private apiDataService: ApiDataService,
     private toast: ToastService,
+    private authService: AuthService,
   ) { }
 
   ngOnInit(): void {
@@ -116,6 +118,9 @@ export class AddRolesPermissionForm implements OnInit {
 
         if (isSuccessResponse(response)) {
           this.toast.success(this.isEdit ? 'Module updated successfully' : 'Module saved successfully');
+          // Re-fetch the sidebar's Menus so this change (or a brand-new module for Super
+          // Admin, who now always sees everything) shows up without a full logout/login.
+          this.authService.refreshMenus();
           this.goBack();
         } else {
           this.toast.error(response?.message || 'Failed to save module. Please try again.');

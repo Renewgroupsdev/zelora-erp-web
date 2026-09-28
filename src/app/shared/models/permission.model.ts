@@ -13,8 +13,6 @@ export interface SidebarModule {
   module_name: string;
   slug_name: string;
   url?: string | null;
-  /** Icon class name (e.g. a Bootstrap Icon class like "bi-gear-fill") configured for this
-   *  module/sub-module on the Roles & Permissions screen - used for its sidebar nav icon. */
   icon?: string | null;
   actions: SidebarAction[];
   sub_modules: SidebarModule[];
