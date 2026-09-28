@@ -4,7 +4,7 @@ import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiDataService } from '../http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
-import { ApiResponse, AuthUser, LoginResponse, LoginResponseData, ResetPasswordPayload } from './auth.model';
+import { ApiResponse, AuthUser, LoginResponse, LoginResponseData, MenuItem, ResetPasswordPayload } from './auth.model';
 import { IdleService } from '../idle-service/idle.service';
 
 const ACCESS_TOKEN_KEY = 'token';
@@ -12,6 +12,7 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 const TOKEN_TYPE_KEY = 'token_type';
 const TOKEN_EXPIRES_AT_KEY = 'token_expires_at';
 const AUTH_USER_KEY = 'auth_user';
+const MENUS_KEY = 'auth_menus';
 
 @Injectable({
   providedIn: 'root',
@@ -19,6 +20,8 @@ const AUTH_USER_KEY = 'auth_user';
 export class AuthService {
   readonly currentUser = signal<AuthUser | null>(this.readUser());
   readonly isAuthenticated = signal<boolean>(!!this.readAccessToken());
+  /** Left-sidebar modules for the logged-in user's role, from login()/me()'s `Menus`. */
+  readonly menus = signal<MenuItem[]>(this.readMenus());
 
   constructor(
     private api: ApiDataService,
@@ -27,6 +30,8 @@ export class AuthService {
   ) {
     if (this.isAuthenticated()) {
       this.idleService.start(() => this.logout());
+      // Existing sessions logged in before this feature shipped have no cached menus yet.
+      if (this.menus().length === 0) this.refreshMenus();
     }
   }
 
@@ -58,7 +63,9 @@ export class AuthService {
     localStorage.removeItem(TOKEN_TYPE_KEY);
     localStorage.removeItem(TOKEN_EXPIRES_AT_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(MENUS_KEY);
     this.currentUser.set(null);
+    this.menus.set([]);
     this.isAuthenticated.set(false);
 
     if (navigateToLogin) {
@@ -104,11 +111,11 @@ export class AuthService {
       if (!response.data.token || !response.data.refresh_token) {
         throw new Error('Auth response is missing access_token / refresh_token.');
       }
-      this.persistSession(response.data);
+      this.persistSession(response.data, response.Menus);
     }
   }
 
-  private persistSession(data: LoginResponseData): void {
+  private persistSession(data: LoginResponseData, menus?: MenuItem[]): void {
     localStorage.setItem(ACCESS_TOKEN_KEY, data.token);
     localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
     localStorage.setItem(TOKEN_TYPE_KEY, data.token_type || 'Bearer');
@@ -122,6 +129,12 @@ export class AuthService {
     if (data.user) {
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
       this.currentUser.set(data.user);
+    }
+
+    // Likewise, a refresh response has no `Menus` - keep whatever the last login()/me() gave us.
+    if (menus) {
+      localStorage.setItem(MENUS_KEY, JSON.stringify(menus));
+      this.menus.set(menus);
     }
 
     this.isAuthenticated.set(true);
@@ -148,5 +161,27 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  private readMenus(): MenuItem[] {
+    try {
+      return JSON.parse(localStorage.getItem(MENUS_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  /** `me()` also returns `Menus` (see AuthController::me) - refetch and re-cache them without a
+   *  full re-login, e.g. after a hard page reload where login() never ran this session. */
+  refreshMenus(): void {
+    this.api.GET(ApiRoutesConstants.AUTH_ME).subscribe({
+      next: (res: ApiResponse<AuthUser> & { Menus?: MenuItem[] }) => {
+        if (res?.Menus) {
+          localStorage.setItem(MENUS_KEY, JSON.stringify(res.Menus));
+          this.menus.set(res.Menus);
+        }
+      },
+      error: () => undefined,
+    });
   }
 }

@@ -82,7 +82,7 @@ export class LeadManagement implements OnInit {
   };
 
   columns: TableColumn[] = [
-    { key: 'lead', header: 'Name', type: 'lead', width: '13%' },
+    { key: 'lead', header: 'Name', type: 'lead', width: '14%' },
     { key: 'contact', header: 'Contact', type: 'text', width: '9%' },
     { key: 'gender', header: 'Gender', type: 'text', width: '5%' },
     { key: 'source', header: 'Source', type: 'text', width: '7%' },

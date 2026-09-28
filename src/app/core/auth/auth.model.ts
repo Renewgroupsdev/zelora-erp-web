@@ -37,7 +37,22 @@ export interface ApiResponse<T> {
   data: T | null;
 }
 
-export type LoginResponse = ApiResponse<LoginResponseData>;
+/** A left-sidebar module (or sub-module), as returned by the backend's `Menus` list -
+ *  already filtered there to the ones the logged-in user's role can see. */
+export interface MenuItem {
+  id: number;
+  parent_id: number | null;
+  role_ids: string;
+  module_name: string;
+  slug_name: string;
+  url: string | null;
+  position?: number;
+  actions: unknown[];
+  sub_modules: MenuItem[];
+}
+
+/** login()/me() return `Menus` as a sibling of `data`, not nested inside it. */
+export type LoginResponse = ApiResponse<LoginResponseData> & { Menus?: MenuItem[] };
 
 export const ROLE_LABELS: Record<number, string> = {
   1: 'Administrator',

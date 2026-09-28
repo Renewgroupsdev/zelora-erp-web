@@ -1,16 +1,14 @@
-import { Component, HostListener, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NavLayoutService } from '../services/nav-layout.service';
+import { AuthService } from '../core/auth/auth.service';
+import { MenuItem } from '../core/auth/auth.model';
 
 interface NavLink {
   label: string;
   icon: string;
   path: string;
   children?: NavLink[];
-  /** True when this item has no page of its own yet - a parent with this set only
-   *  expands/collapses its children, and a leaf with this set never navigates. Either way
-   *  it never shows as the active route. Also keeps every item's `path` unique, which
-   *  Angular's `@for track` needs to render each row independently. */
   groupOnly?: boolean;
 }
 
@@ -23,47 +21,52 @@ interface NavLink {
 })
 export class LeftSideNavbar {
 
-  /** Path of the one parent module whose submenu is expanded, or null when all are collapsed.
-   *  Only one parent can be open at a time - opening another closes whichever was open. */
   readonly expandedParent = signal<string | null>(null);
-
   readonly openHorizontalSubmenu = signal<string | null>(null);
-
   readonly openCompactSubmenu = signal<string | null>(null);
+  private readonly auth = inject(AuthService);
 
-  readonly navLinks: NavLink[] = [
-    { label: 'Dashboard', icon: 'bi-house-fill', path: '/app/dashboard' },
-    {
-      label: 'Lead Management',
-      icon: 'bi-person-lines-fill',
-      path: '/app/lead-management',
-      children: [
-        { label: 'Follow-up', icon: 'bi-arrow-repeat', path: '/app/follow-ups' },
-      ],
-    },
-    { label: 'Appointments', icon: 'bi-calendar2-check-fill', path: '/app/appointments' },
-    { label: 'Customer Management', icon: 'bi-person-fill', path: '/app/customers' },
-    {
-      label: 'Treatment Management',
-      icon: 'bi-heart-pulse-fill',
-      path: '/app/treatments',
-      // children: [
-      //   { label: 'Create Treatment', icon: 'bi-heart-pulse', path: '/app/treatments/create' },
-      // ],
-    },
-    { label: 'Tele Caller', icon: 'bi-telephone-inbound-fill', path: '/app/call-center' },
-    { label: 'Settings', icon: 'bi-gear-fill', path: '/app/settings', 
-      
-      children: [
-          { label: 'Service-Category', icon: 'bi-tags-fill', path: '/app/masters/service-category'},
-          { label: 'Source', icon: 'bi-signpost-2-fill', path: '/app/masters/source'},
-          { label: 'Lead-Status', icon: 'bi-flag-fill', path: '/app/masters/lead-status'},
-          { label: 'Roles', icon: 'bi-shield-lock-fill', path: '/app/masters/roles'},
-          { label: 'Roles-&-permssions', icon: 'bi-shield-lock-fill', path: '/app/masters/roles-and-permission'},
-        ],
-    },
-    { label: 'Reports', icon: 'bi-bar-chart-fill', path: '/app/reports' },
-  ];
+  private readonly ICON_BY_SLUG: Record<string, string> = {
+    'dashboard': 'bi-house-fill',
+    'lead-management': 'bi-person-lines-fill',
+    'follow-up': 'bi-arrow-repeat',
+    'follow-ups': 'bi-arrow-repeat',
+    'appointments': 'bi-calendar2-check-fill',
+    'appoinment': 'bi-calendar2-check-fill',
+    'customer-management': 'bi-person-fill',
+    'treatment-management': 'bi-heart-pulse-fill',
+    'call-center': 'bi-telephone-inbound-fill',
+    'tele-caller': 'bi-telephone-inbound-fill',
+    'settings': 'bi-gear-fill',
+    'service-category': 'bi-tags-fill',
+    'source': 'bi-signpost-2-fill',
+    'lead-status': 'bi-flag-fill',
+    'roles': 'bi-shield-lock-fill',
+    'roles-permissions': 'bi-shield-lock-fill',
+    'reports': 'bi-bar-chart-fill',
+  };
+  private readonly DEFAULT_ICON = 'bi-dot';
+
+  readonly navLinks = computed<NavLink[]>(() => {
+    const menus = this.auth.menus();
+    return menus.length ? menus.map(menu => this.toNavLink(menu)) : [];
+  });
+
+  private toNavLink(menu: MenuItem): NavLink {
+    const children = (menu.sub_modules ?? []).map(sub => this.toNavLink(sub));
+
+    return {
+      label: menu.module_name,
+      icon: this.ICON_BY_SLUG[menu.slug_name] ?? this.DEFAULT_ICON,
+      path: this.normalizePath(menu.url) ?? `#${menu.slug_name}`,
+      ...(children.length ? { children } : {}),
+    };
+  }
+
+  private normalizePath(url: string | null): string | null {
+    if (!url) return null;
+    return url.startsWith('/') ? url : `/${url}`;
+  }
 
   constructor(public navLayout: NavLayoutService) { }
 
@@ -100,10 +103,6 @@ export class LeftSideNavbar {
       return;
     }
 
-    // Navigating straight to a leaf item (e.g. Appointments) - whatever group was expanded is
-    // no longer relevant to the page you're on, so close it instead of leaving it open behind
-    // the new active item.
-    // this.expandedSubmenu.set(null);
     this.navLayout.closeMobileSidebar();
   }
 

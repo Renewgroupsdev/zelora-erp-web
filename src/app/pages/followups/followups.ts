@@ -85,7 +85,7 @@ export class Followups implements OnInit {
   private readonly FOLLOW_UP_TYPE_LABELS = ['General', 'Cool', 'Hot'];
 
   columns: TableColumn[] = [
-    { key: 'lead', header: 'Name', type: 'lead' },
+    { key: 'lead', header: 'Name', type: 'lead',width: '14%' },
     { key: 'contact', header: 'Contact', type: 'text' },
     { key: 'gender', header: 'Gender', type: 'text' },
     { key: 'source', header: 'Source', type: 'text' },
