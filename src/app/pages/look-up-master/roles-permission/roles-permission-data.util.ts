@@ -49,6 +49,7 @@ export function buildModulePayloadFromNode(node: RolePermissionModule): any {
     module_name: node.module_name,
     slug_name: node.slug_name,
     url: node.url ?? null,
+    icon: node.icon ?? null,
     role_ids: node.role_ids ?? '',
     actions: (node.actions ?? []).map((action) => ({
       id: action.id,

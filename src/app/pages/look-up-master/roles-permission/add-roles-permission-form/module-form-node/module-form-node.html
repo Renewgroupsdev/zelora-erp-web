@@ -56,7 +56,7 @@
           }
         </div>
 
-        <div class="form-field full-width">
+        <div class="form-field">
           <label>Page URL</label>
           <div class="input-wrap">
             <i class="bi bi-link-45deg"></i>
@@ -68,6 +68,14 @@
           </div>
           @if (isInvalid('url')) {
             <small class="error-text">URL is too long.</small>
+          }
+        </div>
+
+        <div class="form-field icon-field">
+          <label>Icon</label>
+          <app-icon-picker formControlName="icon" placeholder="Choose icon"></app-icon-picker>
+          @if (isInvalid('icon')) {
+            <small class="error-text">Icon is too long.</small>
           }
         </div>
 
@@ -87,7 +95,7 @@
               <span>Action Name</span>
               <span>Slug</span>
               <span>URL</span>
-              <span>Logo</span>
+              <span>ICON</span>
               <span>Permission</span>
               <span></span>
             </div>

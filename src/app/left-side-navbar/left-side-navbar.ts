@@ -62,7 +62,7 @@ export class LeftSideNavbar {
 
     return {
       label: menu.module_name,
-      icon: this.ICON_BY_SLUG[menu.slug_name] ?? this.DEFAULT_ICON,
+      icon: menu.icon || this.ICON_BY_SLUG[menu.slug_name] || this.DEFAULT_ICON,
       path: this.normalizePath(menu.url) ?? `#${menu.slug_name}`,
       ...(children.length ? { children } : {}),
     };

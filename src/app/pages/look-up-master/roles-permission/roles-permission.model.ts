@@ -25,6 +25,9 @@ export interface RolePermissionModule {
   module_name: string;
   slug_name: string;
   url?: string | null;
+  /** Icon class name (e.g. a Bootstrap Icon class like "bi-folder2-open") shown next to this
+   *  module/sub-module wherever it appears - sidebar navigation, the module tree, etc. */
+  icon?: string | null;
   actions: RolePermissionAction[];
   sub_modules: RolePermissionModule[];
   created_at?: string;
