@@ -49,6 +49,7 @@ export function buildModuleGroup(fb: FormBuilder, module?: RolePermissionModule)
     module_name: [module?.module_name ?? '', [Validators.required, Validators.maxLength(150)]],
     slug_name: [module?.slug_name ?? '', [Validators.required, Validators.maxLength(150)]],
     url: [module?.url ?? '', Validators.maxLength(255)],
+    icon: [module?.icon ?? '', Validators.maxLength(255)],
     role_ids: [parseRoleIds(module?.role_ids)],
     actions: fb.array((module?.actions ?? []).map((action) => buildActionGroup(fb, action))),
     sub_modules: fb.array((module?.sub_modules ?? []).map((sub) => buildModuleGroup(fb, sub))),
@@ -67,6 +68,7 @@ export function extractModulePayload(group: FormGroup): any {
     module_name: raw.module_name,
     slug_name: raw.slug_name,
     url: raw.url ? raw.url.trim() : null,
+    icon: raw.icon ? raw.icon.trim() : null,
     role_ids: (raw.role_ids ?? []).join(','),
     actions: actionsArray.controls.map((control) => {
       const actionValue = control.getRawValue();

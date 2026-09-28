@@ -15,7 +15,11 @@
     </button>
 
     <div class="node-icon">
-      <i class="bi" [class.bi-folder2-open]="node.expanded" [class.bi-folder2]="!node.expanded"></i>
+      @if (node.icon) {
+        <i class="bi" [class]="node.icon"></i>
+      } @else {
+        <i class="bi" [class.bi-folder2-open]="node.expanded" [class.bi-folder2]="!node.expanded"></i>
+      }
     </div>
 
     <div class="node-info">
