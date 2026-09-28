@@ -23,6 +23,7 @@
   <div class="tables-row d-flex flex-column">
     <div class="table-col">
       <app-common-table-card
+        [loading]="isLoading"
         [recordCountText]="recordCountText"
         [columns]="columns"
         [rows]="rows"

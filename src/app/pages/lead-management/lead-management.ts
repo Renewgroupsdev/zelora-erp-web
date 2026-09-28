@@ -23,6 +23,8 @@ import { AppointmentForm } from './appointment-form/appointment-form';
 import { FollowUpForm } from './follow-up-form/follow-up-form';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { ToastService } from '../../shared/common-services/toast.service';
@@ -59,10 +61,9 @@ export class LeadManagement implements OnInit {
     private crmFlow: CrmFlowService,
     private auth: AuthService,
   ) {
-    // A saved call outcome changes the lead's status / next follow-up - reload the list.
     this.telephony.outcomeSaved$.pipe(takeUntilDestroyed()).subscribe(() => {
       this.loadLeadData();
-      this.loadStats();
+      this.loadFilterList();
     });
 
     this.searchInput$.pipe(
@@ -81,22 +82,20 @@ export class LeadManagement implements OnInit {
     ).subscribe();
   }
 
-  readonly staffOptions = ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S', 'Meera Nair'];
+  readonly staffOptions = [];
 
-  /** Filled from GET telephony/leads/stats and telephony/reports (scoped to the logged-in user). */
   stats: DetailCardData[] = [
-    { label: 'Total Leads', value: '1,284', trendText: 'Visible to you', trendDirection: 'neutral', icon: 'bi-person-lines-fill', iconVariant: 'primary' },
-    { label: 'Follow-ups Today', value: '2', trendText: 'Due today', trendDirection: 'neutral', icon: 'bi-arrow-repeat', iconVariant: 'blue' },
-    { label: 'Overdue', value: '3', trendText: 'Missed follow-ups', trendDirection: 'neutral', icon: 'bi-exclamation-circle', iconVariant: 'orange' },
-    { label: 'Not Contacted', value: '4', trendText: 'Never called', trendDirection: 'neutral', icon: 'bi-telephone-x', iconVariant: 'green' },
-    { label: 'Conversion Rate', value: '3%', trendText: 'Answered calls, last 30 days', trendDirection: 'neutral', icon: 'bi-graph-up-arrow', iconVariant: 'purple' },
+    { label: 'Total Leads', value: '0', trendText: 'Visible to you', trendDirection: 'neutral', icon: 'bi-person-lines-fill', iconVariant: 'primary' },
+    { label: 'Follow-ups Today', value: '0', trendText: 'Due today', trendDirection: 'neutral', icon: 'bi-arrow-repeat', iconVariant: 'blue' },
+    { label: 'Overdue', value: '0', trendText: 'Missed follow-ups', trendDirection: 'neutral', icon: 'bi-exclamation-circle', iconVariant: 'orange' },
+    { label: 'Not Contacted', value: '0', trendText: 'Never called', trendDirection: 'neutral', icon: 'bi-telephone-x', iconVariant: 'green' },
+    { label: 'Conversion Rate', value: '0%', trendText: 'Answered calls, last 30 days', trendDirection: 'neutral', icon: 'bi-graph-up-arrow', iconVariant: 'purple' },
   ];
 
   filters: FilterOption[] = [
-    { key: 'status', label: 'Status', options: ['New', 'Contacted', 'Qualified', 'Lost'] },
-    { key: 'source', label: 'Source', options: ['Website', 'Instagram', 'Facebook', 'Google Ads', 'Referral', 'Walk-in', 'Call Center', 'Campaign', 'Meta Campaign'] },
-    { key: 'branch', label: 'Branch', multiSelect: true, options: ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'] },
-    { key: 'telecaller', label: 'Telecaller', options: ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S'] },
+    { key: 'source', label: 'Source', options: [] },
+    { key: 'branch', label: 'Branch', multiSelect: true, options: [] },
+    { key: 'telecaller', label: 'Telecaller', options: [] },
     { key: 'date', label: 'Date' },
   ];
 
@@ -125,43 +124,140 @@ export class LeadManagement implements OnInit {
 
   readonly pageSizeOptions = [10, 30, 50, 100];
   isLoading = false;
-  /** Raw lead records from the API, keyed by id, so the edit form can be pre-filled with fields
-   *  (mobile_no, address, type, reason, ...) that the table row doesn't carry. */
+  allRows: TableRow[] = [];
   private leadsById = new Map<number, any>();
+  readonly type: number = 2;
 
   rows: TableRow[] = [];
+  loading = false;
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
   sortActive = 'lead';
   sortDirection: SortDirection = 'asc';
   private searchTerm = '';
+  sourceOptions: any = [];
+  typeOptions: any = [];
+  statusOptions: any = [];
 
-  readonly ALL_LEADS_DROP_LIST_ID = 'all-leads-drop-list';
-  readonly FOLLOW_UP_DROP_LIST_ID = 'follow-up-drop-list';
-
-  followUpColumns: TableColumn[] = [
-    { key: 'lead', header: 'Name', type: 'lead' },
-    { key: 'contact', header: 'Contact', type: 'text' },
-    { key: 'gender', header: 'Gender', type: 'text' },
-    { key: 'source', header: 'Source', type: 'text' },
-    { key: 'service_category', header: 'Service Category', type: 'text' },
-    { key: 'service_request', header: 'service_request', type: 'text'},
-    { key: 'branch', header: 'Branch', type: 'branch' },
-    { key: 'assigned_by', header: 'Assigned By', type: 'avatarGroup', width: '155px', sortable: false },
-    { key: 'status', header: 'Status', type: 'badge' },
-  ];
-
-  followUpRows: TableRow[] = [];
+  private statusIdByName = new Map<string, number>();
+  private sourceIdByName = new Map<string, number>();
+  private branchIdByName = new Map<string, number>();
+  private telecallerIdByName = new Map<string, number>();
 
   ngOnInit(): void {
+    this.loadFilterList();
     this.loadLeadData();
-    this.loadStats();
   }
 
-  /** Re-runs the current search/filters/sort/page against the API. Safe to call as often as
-   *  needed - reload$'s switchMap cancels whatever request is already in flight, so this never
-   *  stacks up parallel DB hits. */
+  private loadFilterList(): void {
+    forkJoin({
+      statuses: this.ApiDataService.GET(`${ApiRoutesConstants.Status_List_Options}`).pipe(
+        catchError(() => of(null))
+      ),
+      sources: this.ApiDataService.GET(`${ApiRoutesConstants.Source_List_Options}`).pipe(
+        catchError(() => of(null))
+      ),
+      branches: this.ApiDataService.GET(`${ApiRoutesConstants.Branch_List_Options}`).pipe(
+        catchError(() => of(null))
+      ),
+      types: this.ApiDataService.GET(`${ApiRoutesConstants.Type_List_Options}/${this.type}`).pipe(
+        catchError(() => of(null))
+      ),
+      telecallers: this.telephony.telecallers().pipe(catchError(() => of([]))),
+      workStats: this.ApiDataService.GET(ApiRoutesConstants.LEAD_WORK_STATS).pipe(catchError(() => of(null))),
+      reportStats: this.ApiDataService.GET(ApiRoutesConstants.CALL_REPORTS).pipe(catchError(() => of(null))),
+    }).subscribe((result: any) => {
+      const { statuses, sources, branches, types, telecallers, workStats, reportStats } = result;
+      this.sourceOptions = sources?.data?.data ?? [];
+      this.typeOptions = types?.data?.data ?? [];
+      this.statusOptions = statuses?.data?.data ?? [];
+
+      this.applyStatusOptions(statuses);
+      this.applySourceOptions(sources);
+      this.applyBranchOptions(branches);
+      this.applyTelecallerOptions(telecallers);
+      this.applyWorkStats(workStats);
+      this.applyReportStats(reportStats);
+    });
+  }
+
+  private applyStatusOptions(res: any): void {
+    const list: any[] = res?.data?.data ?? [];
+    this.statusIdByName = new Map(list.filter(s => s?.name).map(s => [s.name, Number(s.id)]));
+    const names = list.map(s => s?.name).filter((name: unknown): name is string => !!name);
+
+    if (names.length) {
+      this.filters = this.filters.map(f => (f.key === 'status' ? { ...f, options: names } : f));
+    }
+  }
+
+  private applySourceOptions(res: any): void {
+    const list: any[] = res?.data?.data ?? [];
+    this.sourceIdByName = new Map(list.filter(s => s?.source_name).map(s => [s.source_name, Number(s.id)]));
+    const names = list.map(s => s?.source_name).filter((name: unknown): name is string => !!name);
+
+    if (names.length) {
+      this.filters = this.filters.map(f => (f.key === 'source' ? { ...f, options: names } : f));
+    }
+  }
+
+  private applyBranchOptions(res: any): void {
+    const list: any[] = res?.data?.data ?? [];
+    this.branchIdByName = new Map(list.filter(b => b?.name).map(b => [b.name, Number(b.id)]));
+    const names = list.map(b => b?.name).filter((name: unknown): name is string => !!name);
+
+    if (names.length) {
+      this.filters = this.filters.map(f => (f.key === 'branch' ? { ...f, options: names } : f));
+    }
+  }
+
+  private applyTelecallerOptions(rows: { id: number; name: string }[]): void {
+    this.telecallerIdByName = new Map(rows.map(r => [r.name, r.id]));
+    const names = rows.map(r => r.name);
+
+    if (names.length) {
+      this.filters = this.filters.map(f => (f.key === 'telecaller' ? { ...f, options: names } : f));
+    }
+  }
+
+  private applyWorkStats(res: any): void {
+    const s: LeadWorkStats | undefined = res?.data;
+    if (!s) return;
+    this.setStat('Total Leads', s.assigned.toLocaleString());
+    this.setStat('Follow-ups Today', s.follow_ups_today);
+    this.setStat('Overdue', s.follow_ups_overdue);
+    this.setStat('Not Contacted', s.never_contacted);
+  }
+
+  private applyReportStats(res: any): void {
+    const r: CallReportSummary | undefined = res?.data;
+    if (r) this.setStat('Conversion Rate', `${r.conversion_rate}%`);
+  }
+
+  private buildQueryParams(): string {
+    const params = new URLSearchParams();
+    // params.set('per_page', '100');
+
+    if (this.searchTerm) params.set('search', this.searchTerm);
+
+    const statusId = this.filterState.status ? this.statusIdByName.get(this.filterState.status) : undefined;
+    if (statusId) params.set('status_id', String(statusId));
+
+    const sourceId = this.filterState.source ? this.sourceIdByName.get(this.filterState.source) : undefined;
+    if (sourceId) params.set('source_id', String(sourceId));
+
+    this.filterState.branch
+      .map(name => this.branchIdByName.get(name))
+      .filter((id): id is number => id !== undefined)
+      .forEach(id => params.append('organization_id[]', String(id)));
+
+    const telecallerId = this.filterState.telecaller ? this.telecallerIdByName.get(this.filterState.telecaller) : undefined;
+    if (telecallerId) params.set('assigned_to', String(telecallerId));
+
+    return params.toString();
+  }
+
   loadLeadData(): void {
     this.reload$.next();
   }
@@ -171,17 +267,11 @@ export class LeadManagement implements OnInit {
    *  their branch, admins everything), so only the current page is ever fetched. */
   private fetchLeads() {
     this.isLoading = true;
+    this.loading = true;
 
-    const params = [
-      `page=${this.currentPage}`,
-      `per_page=${this.pageSize}`,
-      `sort_by=${encodeURIComponent(this.sortActive)}`,
-      `sort_dir=${this.sortDirection || 'asc'}`,
-      ...this.buildFilterParams(),
-    ];
-
-    return this.ApiDataService.GET(`${ApiRoutesConstants.LEAD_GET_List}?${params.join('&')}`).pipe(
-      tap((response: any) => {
+    const qs = this.buildQueryParams();
+    this.ApiDataService.GetAllPages(`${ApiRoutesConstants.LEAD_GET_List}?${qs}`).subscribe({
+      next: (leads: any[]) => {
         this.isLoading = false;
 
         if (!response?.success) {
@@ -193,38 +283,18 @@ export class LeadManagement implements OnInit {
         const leads: any[] = page?.data ?? [];
 
         this.leadsById.clear();
-        this.rows = leads.map((lead: any) => this.mapLeadToRow(lead));
-        this.totalRecords = Number(page?.total ?? this.rows.length);
-      }),
-      catchError((err: any) => {
+        this.allRows = leads.map((lead: any) => this.mapLeadToRow(lead));
+        this.refreshRows();
+        this.loading = false;
+      },
+      error: (err: any) => {
         this.isLoading = false;
-        this.toast.error(err?.error?.message || 'Failed to load leads. Please try again.');
-        console.error('Failed to load leads:', err);
-        return of(null);
-      }),
-    );
+        this.loading = false;
+        this.toast.error(err.message);
+      },
+    });
   }
 
-  /** Builds the shared query-string filters sent to both the list endpoint and the export
-   *  endpoint, so what's on screen and what gets downloaded can never drift apart. */
-  private buildFilterParams(): string[] {
-    const params: string[] = [];
-
-    if (this.searchTerm) params.push(`search=${encodeURIComponent(this.searchTerm)}`);
-    if (this.filterState.status) params.push(`status=${encodeURIComponent(this.filterState.status)}`);
-    if (this.filterState.source) params.push(`source=${encodeURIComponent(this.filterState.source)}`);
-    this.filterState.branch.forEach((branch) => params.push(`branch[]=${encodeURIComponent(branch)}`));
-    if (this.filterState.telecaller) params.push(`telecaller=${encodeURIComponent(this.filterState.telecaller)}`);
-    if (this.filterState.dateFrom) params.push(`date_from=${this.filterState.dateFrom}`);
-    if (this.filterState.dateTo) params.push(`date_to=${this.filterState.dateTo}`);
-
-    return params;
-  }
-
-  /** Maps one lead record from the API's paginated payload into the row shape the table expects.
-   *  The API returns both raw ids (source_id, service_category_id, status_id, ...) and their
-   *  resolved lookup labels (source_name, service_category_name, status_name, ...) - the labels
-   *  are what the list should display. */
   private mapLeadToRow(lead: any): TableRow {
     this.leadsById.set(lead.id, lead);
 
@@ -234,11 +304,11 @@ export class LeadManagement implements OnInit {
         subtitle: `LD-${String(lead.id ?? '').padStart(5, '0')}`,
       },
       contact: lead.mobile_no ?? '',
-      source: lead.source_name || this.formatSource(lead.source_id ?? lead.source),
+      source: lead.source_name ?? '',
       service_category: lead.service_category_name ?? '',
       service_request: lead.reason ?? '',
       branch: lead.organization_name ?? lead.location ?? '',
-      status: lead.status_name || this.formatStatus(lead.status),
+      status: lead.status_name || 'Lead',
       created_at: this.formatDate(lead.created_at),
       gender: lead.gender ?? '',
       telecaller: lead.assigned_to_name || 'Unassigned',
@@ -248,67 +318,10 @@ export class LeadManagement implements OnInit {
     };
   }
 
-  private loadStats(): void {
-    this.ApiDataService.GET(ApiRoutesConstants.LEAD_WORK_STATS).subscribe({
-      next: (res: any) => {
-        const s: LeadWorkStats | undefined = res?.data;
-        if (!s) return;
-        this.setStat('Total Leads', s.assigned.toLocaleString());
-        this.setStat('Follow-ups Today', s.follow_ups_today);
-        this.setStat('Overdue', s.follow_ups_overdue);
-        this.setStat('Not Contacted', s.never_contacted);
-      },
-      error: () => undefined,
-    });
-
-    this.ApiDataService.GET(ApiRoutesConstants.CALL_REPORTS).subscribe({
-      next: (res: any) => {
-        const r: CallReportSummary | undefined = res?.data;
-        if (r) this.setStat('Conversion Rate', `${r.conversion_rate}%`);
-      },
-      error: () => undefined,
-    });
-  }
-
   private setStat(label: string, value: string | number): void {
     this.stats = this.stats.map(stat => (stat.label === label ? { ...stat, value } : stat));
   }
 
-  /** Fallback map for the numeric source id, used only when the API doesn't return source_name. */
-  private readonly sourceLabels: Record<number, string> = {
-    0: 'Website',
-    1: 'Instagram',
-    2: 'Facebook',
-    3: 'Google Ads',
-    4: 'Referral',
-    5: 'Walk-in',
-    6: 'Call Center',
-    7: 'Campaign',
-  };
-
-  private formatSource(source: unknown): string {
-    if (typeof source === 'number') {
-      return this.sourceLabels[source] ?? String(source);
-    }
-    return (source as string) ?? '';
-  }
-
-  /** "active" -> "Active" so it matches the badge styling used for status text. Fallback used
-   *  only when the API doesn't return status_name. */
-  private formatStatus(status: unknown): string {
-    const value = String(status ?? '').trim();
-    if (!value) return 'New';
-    return value.charAt(0).toUpperCase() + value.slice(1);
-  }
-
-  /** creator/updater can come back as null, a plain name, or a { name } lookup object. */
-  private formatPerson(person: unknown): string {
-    if (!person) return '';
-    if (typeof person === 'string') return person;
-    return (person as { name?: string })?.name ?? '';
-  }
-
-  /** ISO timestamp from the API -> "DD-Mon-YYYY" to match the rest of the UI. */
   private formatDate(value: unknown): string {
     if (!value) return '';
     const date = new Date(String(value));
@@ -320,47 +333,23 @@ export class LeadManagement implements OnInit {
   }
 
   onSearch(term: string) {
-    // Debounced by searchInput$ - only the last term typed within the window actually
-    // triggers a request, instead of one per keystroke.
-    this.searchInput$.next(term);
+    this.searchTerm = term.trim().toLowerCase();
+    this.currentPage = 1;
+    this.loadLeadData();
   }
 
   onFilterClick(key: string): void {
-    // The common filter card owns the dropdown UI. Keep this hook for future analytics.
     console.debug('Filter opened:', key);
   }
 
   onFiltersChange(filters: CommonFilterState): void {
     this.filterState = { ...filters, branch: [...filters.branch] };
     this.currentPage = 1;
-    this.reload$.next();
+    this.loadLeadData();
   }
 
-  onExport(format: ExportFormat): void {
-    const params = [...this.buildFilterParams(), `format=${format}`];
-
-    this.ApiDataService.GET_BLOB(`${ApiRoutesConstants.LEAD_EXPORT}?${params.join('&')}`).subscribe({
-      next: (blob: Blob) => this.downloadBlob(blob, `leads-${this.timestampForFilename()}.${format}`),
-      error: (err: any) => {
-        this.toast.error(err?.error?.message || 'Failed to export leads. Please try again.');
-        console.error('Failed to export leads:', err);
-      },
-    });
-  }
-
-  private downloadBlob(blob: Blob, filename: string): void {
-    const url = window.URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.click();
-    window.URL.revokeObjectURL(url);
-  }
-
-  private timestampForFilename(): string {
-    const now = new Date();
-    const pad = (value: number) => String(value).padStart(2, '0');
-    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  onExport() {
+    // Trigger export as needed.
   }
 
   get recordCountText(): string {
@@ -378,16 +367,20 @@ export class LeadManagement implements OnInit {
   }
 
   onPageChange(event: TablePageChangeEvent) {
+    this.loading = true;
     this.currentPage = event.page;
     this.pageSize = event.pageSize;
-    this.reload$.next();
+    this.refreshRows();
+    this.loading = false;
   }
 
   onSortChange(sort: Sort) {
+    this.loading = true;
     this.sortActive = sort.active;
     this.sortDirection = sort.direction || 'asc';
     this.currentPage = 1;
-    this.reload$.next();
+    this.refreshRows();
+    this.loading = false;
   }
 
   onRowAction(row: TableRow) {
@@ -442,29 +435,6 @@ export class LeadManagement implements OnInit {
     // moves); `event.rows` is already the reordered array, nothing else to sync here.
   }
 
-  onRowTransfer(event: TableTransferEvent): void {
-    const fromAllLeads = event.previousContainerId === this.ALL_LEADS_DROP_LIST_ID;
-    const sourceList = fromAllLeads ? this.rows : this.followUpRows;
-    const movedRow = sourceList[event.previousIndex];
-
-    if (!movedRow) {
-      return;
-    }
-
-    if (fromAllLeads) {
-      this.moveLeadToFollowUp(movedRow, event.currentIndex);
-    } else {
-      this.moveLeadToAllLeads(movedRow, event.currentIndex);
-    }
-  }
-
-  openFollowUp(row: TableRow): void {
-    this.openLeadProfile(row, 'lead');
-  }
-
-  /** The "Call" row action. The telephony dock takes over from here: live call bar
-   *  (hold / transfer / notes / hang up), then the call outcome form, which saves the
-   *  follow-up, appointment or conversion against this lead on the backend. */
   onCallLead(row: TableRow): void {
     if (this.telephony.onCall()) {
       this.toast.warning('You are already on a call.');
@@ -550,50 +520,8 @@ export class LeadManagement implements OnInit {
     };
   }
 
-  private moveLeadToFollowUp(row: TableRow, targetIndex: number = this.followUpRows.length): void {
-    const sourceIndex = this.rows.indexOf(row);
-    if (sourceIndex === -1) {
-      return;
-    }
-
-    this.rows.splice(sourceIndex, 1);
-
-    row['originalStatus'] = row['status'];
-
-    row['status'] = 'Contacted';
-    row['assigned_by'] = [
-      {
-        name: 'Priya Sharma',
-        empNo: 'EMP-1042',
-        image: 'assets/avatars/user-avatar.svg',
-      },
-    ];
-
-    this.followUpRows.splice(targetIndex, 0, row);
-
-    this.rows = [...this.rows];
-    this.followUpRows = [...this.followUpRows];
-  }
-
-  private moveLeadToAllLeads(row: TableRow, targetIndex: number = this.rows.length): void {
-    const sourceIndex = this.followUpRows.indexOf(row);
-    if (sourceIndex === -1) {
-      return;
-    }
-
-    this.followUpRows.splice(sourceIndex, 1);
-
-    if (row['originalStatus'] !== undefined) {
-      row['status'] = row['originalStatus'];
-      delete row['originalStatus'];
-    }
-
-    delete row['assigned_by'];
-
-    this.rows.splice(targetIndex, 0, row);
-
-    this.rows = [...this.rows];
-    this.followUpRows = [...this.followUpRows];
+  openFollowUp(row: TableRow): void {
+    this.openLeadProfile(row, 'lead');
   }
 
   openAddPopup(data: any = null): void {
@@ -605,14 +533,17 @@ export class LeadManagement implements OnInit {
       restoreFocus: true,
       disableClose: true,
       panelClass: 'add-lead-dialog',
-      data,
+      data: {
+        ...data,
+        sourceOptions: this.sourceOptions,
+        typeOptions: this.typeOptions,
+        statusOptions: this.statusOptions,
+      },
     });
 
     dialogRef.afterClosed().subscribe((leadData) => {
       if (!leadData) return;
 
-      // The dialog already saved the lead via its own POST/PUT call - refetch instead of
-      // patching locally so edits replace the existing row instead of duplicating it.
       this.loadLeadData();
     });
   }

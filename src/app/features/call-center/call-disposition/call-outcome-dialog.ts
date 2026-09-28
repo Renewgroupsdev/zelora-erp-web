@@ -52,7 +52,16 @@ export class CallOutcomeDialog implements OnInit {
   readonly counselors = signal<{ id: number; name: string }[]>([]);
   readonly selectedCode = signal<string>('');
   readonly saving = signal(false);
+  readonly endingCall = signal(false);
   readonly errors = signal<Record<string, string>>({});
+
+  /** The dialog opens as soon as the telecaller answers, so the outcome can be prepared while
+   *  still on the call - but the backend refuses to save a disposition before the call ends.
+   *  Tracks the live agent state (already polled elsewhere) to know when Save should unlock. */
+  readonly callLive = computed(() => {
+    const live = this.telephony.activeCall() ?? this.telephony.ringingCall();
+    return live?.id === this.call.id;
+  });
 
   readonly selected = computed(() => this.dispositions().find(d => d.code === this.selectedCode()) ?? null);
   readonly action = computed(() => this.selected()?.action ?? 'none');
@@ -123,7 +132,25 @@ export class CallOutcomeDialog implements OnInit {
     this.dialogRef.close();
   }
 
+  /** The dialog can cover the dock's own hang-up control while it's open, so it needs its own
+   *  way to end the call - the outcome itself can then be picked while the call was live. */
+  endCall(): void {
+    if (this.endingCall()) return;
+    this.endingCall.set(true);
+    this.telephony.hangup(this.call.id).subscribe({
+      next: () => this.endingCall.set(false),
+      error: (err: any) => {
+        this.endingCall.set(false);
+        this.toast.error(err?.error?.message || 'Could not end the call.');
+      },
+    });
+  }
+
   save(): void {
+    if (this.callLive()) {
+      this.toast.warning('End the call before saving its outcome.');
+      return;
+    }
     const disposition = this.selected();
     if (!disposition) {
       this.errors.set({ disposition: 'Choose an outcome.' });

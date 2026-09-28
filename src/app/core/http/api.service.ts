@@ -18,10 +18,16 @@ export class ApiDataService {
     }));
   }
 
+  /** Appends `page=N` whether or not `path` already carries a query string (filters, search, ...). */
+  private withPage(path: string, page: number): string {
+    return `${path}${path.includes('?') ? '&' : '?'}page=${page}`;
+  }
+
   /** Some list endpoints paginate (Laravel's paginate()) even when the caller wants the whole
    *  set at once - e.g. a parent/child tree breaks if a parent lands on page 2 while its
    *  children are on page 1. Walks every page via `last_page` and returns the flattened
-   *  `data.data` rows from all of them. */
+   *  `data.data` rows from all of them. `path` may already include query params (filters,
+   *  search, per_page, ...) - they're preserved on every subsequent page request. */
   GetAllPages(path: string): any {
     return this.GET(path).pipe(
       switchMap((firstResponse: any) => {
@@ -39,7 +45,7 @@ export class ApiDataService {
 
         const remainingPages = Array.from({ length: lastPage - 1 }, (_, index) => index + 2);
         return forkJoin(
-          remainingPages.map((pageNumber) => this.GET(`${path}?page=${pageNumber}`))
+          remainingPages.map((pageNumber) => this.GET(this.withPage(path, pageNumber)))
         ).pipe(
           map((responses: any[]) => [
             ...rows,

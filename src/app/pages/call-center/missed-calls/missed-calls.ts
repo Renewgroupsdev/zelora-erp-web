@@ -67,6 +67,7 @@ export class MissedCalls {
 
   rows: TableRow[] = [];
   totalRecords = 0;
+  loading = false;
 
   constructor(
     private telephony: TelephonyService,
@@ -75,9 +76,11 @@ export class MissedCalls {
     // Re-derives stats/rows whenever a new alert arrives (call not answered, disconnected, etc.)
     // or an existing one gets acknowledged - no manual refresh needed.
     effect(() => {
+      this.loading = true;
       const alerts = this.telephony.alerts();
       this.refreshRows(alerts);
       this.updateBranchFilterOptions(alerts);
+      this.loading = false;
     });
   }
 
@@ -126,15 +129,19 @@ export class MissedCalls {
   }
 
   onPageChange(event: TablePageChangeEvent): void {
+    this.loading = true;
     this.currentPage = event.page;
     this.pageSize = event.pageSize;
     this.refreshRows(this.telephony.alerts());
+    this.loading = false;
   }
 
   onSortChange(sort: Sort): void {
+    this.loading = true;
     this.sortActive = sort.active;
     this.sortDirection = sort.direction || 'desc';
     this.refreshRows(this.telephony.alerts());
+    this.loading = false;
   }
 
   onQuickAction({ row, action }: { row: TableRow; action: string }): void {

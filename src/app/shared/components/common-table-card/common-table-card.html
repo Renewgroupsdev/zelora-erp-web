@@ -18,7 +18,12 @@
     }
   </div>
 
-  <div class="table-scroll table-responsive">
+  <div class="table-scroll-wrap">
+    @if (loading) {
+      <app-page-loader [contained]="true"></app-page-loader>
+    }
+
+    <div class="table-scroll table-responsive">
     <table
       mat-table
       [dataSource]="rows"
@@ -294,6 +299,7 @@
         </td>
       </tr>
     </table>
+    </div>
   </div>
 
   <div class="table-card-footer d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">

@@ -108,6 +108,7 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   appointments: Appointment[] = [];
 
   rows: TableRow[] = [];
+  loading = false;
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
@@ -125,11 +126,13 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   canScrollTimelineNext = false;
 
   ngOnInit(): void {
+    this.loading = true;
     this.today = new Date();
     this.appointments = this.buildSeedAppointments();
     const imported = this.crmFlow.getAppointments().map((appointment, index) => this.flowAppointmentToAppointment(appointment, index));
     this.appointments = [...imported, ...this.appointments.filter(item => !imported.some(importedItem => importedItem.phone === item.phone && importedItem.date === item.date))];
     this.refreshRows();
+    this.loading = false;
   }
 
   ngAfterViewInit(): void {
@@ -309,16 +312,20 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   }
 
   onPageChange(event: TablePageChangeEvent): void {
+    this.loading = true;
     this.currentPage = event.page;
     this.pageSize = event.pageSize;
     this.refreshRows();
+    this.loading = false;
   }
 
   onSortChange(sort: Sort): void {
+    this.loading = true;
     this.sortActive = sort.active;
     this.sortDirection = sort.direction || 'asc';
     this.currentPage = 1;
     this.refreshRows();
+    this.loading = false;
   }
 
   onQuickAction({ row, action }: { row: TableRow; action: string }): void {

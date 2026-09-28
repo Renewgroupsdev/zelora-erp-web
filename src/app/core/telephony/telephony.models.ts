@@ -23,7 +23,7 @@ export const AGENT_STATUS_LABELS: Record<AgentStatus, string> = {
 };
 
 export type CallStatus =
-  | 'initiated' | 'ringing' | 'connected' | 'hold'
+  | 'initiated' | 'ringing' | 'connected' | 'hold' | 'answered'
   | 'completed' | 'missed' | 'rejected' | 'no_answer' | 'busy' | 'failed';
 
 export const LIVE_CALL_STATUSES: CallStatus[] = ['initiated', 'ringing', 'connected', 'hold'];
@@ -137,6 +137,36 @@ export interface CallReportSummary {
   conversions: number;
   answer_rate: number;
   conversion_rate: number;
+}
+
+/** One caller-history entry (a past call's outcome/notes) as returned with a follow-up lead. */
+export interface CallerHistoryEntry {
+  id: number;
+  notes: string | null;
+  call_record: string | null;
+  created_at: string;
+  telecaller: { id: number; name: string } | null;
+}
+
+/** A lead with an open or past follow-up, as returned by GET /telephony/leads/followups. */
+export interface FollowUpLead {
+  id: number;
+  name: string;
+  mobile_no: string;
+  gender: string | null;
+  reason: string | null;
+  source_name: string | null;
+  service_category_name: string | null;
+  status_name: string | null;
+  organization_name: string | null;
+  assigned_to: number | null;
+  assigned_to_name: string | null;
+  next_follow_up_at: string | null;
+  last_contacted_at: string | null;
+  follow_ups_count: number;
+  /** 0 general / 1 cool / 2 hot - the most recent follow-up logged for this lead. */
+  follow_up_type: number | null;
+  caller_histories: CallerHistoryEntry[];
 }
 
 export interface LeadWorkStats {

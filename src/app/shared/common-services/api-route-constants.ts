@@ -21,6 +21,7 @@ export class ApiRoutesConstants {
    public static Source_List_Options ='sources';
    public static Type_List_Options    ='service-category-requests';
    public static Status_List_Options    ='lead-statuses';
+   public static Branch_List_Options    ='organization-units';
 
    //Service Category (CURD)
    public static SERVICE_CATEGORY_GET_List = "service-category-requests/2";
@@ -94,6 +95,7 @@ export class ApiRoutesConstants {
    public static CALL_REPORTS = "telephony/reports";
    public static LEAD_ASSIGN = "telephony/leads/assign";
    public static LEAD_WORK_STATS = "telephony/leads/stats";
+   public static LEAD_FOLLOWUPS = "telephony/leads/followups";
    public static USER_LIST = "users";
 
 }

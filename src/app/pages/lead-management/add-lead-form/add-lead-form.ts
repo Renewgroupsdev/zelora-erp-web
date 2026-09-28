@@ -64,6 +64,7 @@ export class AddLeadForm implements OnInit{
     private toast: ToastService,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
+
     this.leadForm = this.fb.group({
       name: [data?.name ?? '', [Validators.required, Validators.maxLength(100)]],
       mobile_no: [data?.mobile_no ?? '',[Validators.required, Validators.maxLength(12), Validators.pattern(/^[0-9]{10}$/)],],
@@ -80,16 +81,26 @@ export class AddLeadForm implements OnInit{
   }
 
   ngOnInit(): void {
-    this.loadScheduleData();
     this.loadTelecallers();
+    this.applyPreloadedLookups();
   }
 
-  /** `data` may also be a prefill for a new lead (e.g. { mobile_no } from an unknown caller). */
+  private applyPreloadedLookups(): void {
+    this.sourceOptions = this.data.sourceOptions;
+    this.typeOptions = this.data.typeOptions;
+    this.statusOptions = this.data.statusOptions;
+
+    if (this.isEdit) {
+      this.patchEditDropdowns();
+    } else {
+      this.applyNewLeadStatus();
+    }
+  }
+
   get isEdit(): boolean {
     return !!this.data?.id;
   }
 
-  /** Supervisors pick the owning telecaller; telecallers never see this field. */
   get showAssign(): boolean {
     return !this.telephony.isTelecaller() && this.telecallerOptions.length > 0;
   }
@@ -101,47 +112,16 @@ export class AddLeadForm implements OnInit{
     });
   }
 
-  loadScheduleData(): void {
+  private applyNewLeadStatus(): void {
+    const newLeadStatus = this.statusOptions.find(
+      (status: any) => String(status?.name).toLowerCase() === 'lead'
+    );
+    if (!newLeadStatus) return;
 
-
-    forkJoin({
-
-      sourceOption: this.apiDataService.GET(ApiRoutesConstants.Source_List_Options),
-
-      typeOption: this.apiDataService.GET(ApiRoutesConstants.Type_List_Options+`/2`),
-
-      statusOption: this.apiDataService.GET(ApiRoutesConstants.Status_List_Options),
-
-
-    }).subscribe({
-
-      next: (response: any) => {
-
-        this.sourceOptions = response.sourceOption?.data.data ?? [];
-        this.typeOptions = response.typeOption?.data.data ?? [];
-        this.statusOptions = response.statusOption?.data.data ?? [];
-
-        if (this.isEdit) {
-          this.patchEditDropdowns();
-        }
-
-      },
-
-      error: (error) => {
-
-
-        console.error('API loading failed:', error);
-
-      }
-
-    });
-
+    this.statusOptions = [newLeadStatus];
+    this.leadForm.get('status')?.setValue(newLeadStatus.id);
   }
 
-
-  /** The lookup APIs load after the form controls are seeded, and the raw lead record's
-   *  source/category/status fields aren't guaranteed to already be the lookup `id` - so once
-   *  each option list arrives, re-resolve the stored value against it. */
   private patchEditDropdowns(): void {
     const source = this.resolveOptionId(this.sourceOptions, this.data?.source_id, 'source_name');
     if (source !== null) {
@@ -159,8 +139,6 @@ export class AddLeadForm implements OnInit{
     }
   }
 
-  /** Matches a stored value against a lookup list's `id` first, falling back to its label
-   *  (case-insensitive) in case the backend sent the name/slug instead of the id. */
   private resolveOptionId(options: any[], rawValue: unknown, labelKey: string): number | string | null {
     if (rawValue === null || rawValue === undefined || rawValue === '') {
       return null;

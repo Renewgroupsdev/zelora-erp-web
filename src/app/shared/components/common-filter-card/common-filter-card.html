@@ -50,7 +50,7 @@
     </div>
   }
 
-  @if (hasValue('status') || hasValue('source') || hasValue('branch') || hasValue('telecaller') || hasValue('date') || searchValue) {
+  @if (hasValue('status') || hasValue('source') || hasValue('branch') || hasValue('telecaller') || hasValue('date') || hasValue('type') || searchValue) {
     <button type="button" class="clear-all-btn" (click)="clearAll()">
       <i class="bi bi-x-circle"></i> Clear all
     </button>
