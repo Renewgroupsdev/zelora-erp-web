@@ -23,126 +23,14 @@ import { Router } from '@angular/router';
 import { CrmFlowService, FlowAppointment, FlowLead, FollowUpEntry } from '../../shared/common-services/crm-flow.service';
 import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
 import { TelephonyService } from '../../core/telephony/telephony.service';
-import { AuthService } from '../../core/auth/auth.service';
-import { isAdmin } from '../../core/auth/auth.model';
+import { FollowUpLead } from '../../core/telephony/telephony.models';
+import { ApiDataService } from '../../core/http/api.service';
+import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'call', icon: 'bi-telephone-outbound', label: 'Call Lead', variant: 'primary' },
   { key: 'appointment', icon: 'bi-calendar2-check', label: 'Book Appointment', variant: 'default' },
   { key: 'call-log', icon: 'bi-clock-history', label: 'View Call Log', variant: 'default' },
-];
-
-interface FollowUpSeed {
-  name: string;
-  phone: string;
-  gender: string;
-  source: string;
-  service_category: string;
-  service_request: string;
-  branch: string;
-  status: string;
-  followup_count: number;
-  callers: CallerAvatar[];
-  callLog: CallerLogEntry[];
-}
-
-export const FOLLOW_UP_SEEDS: FollowUpSeed[] = [
-  {
-    name: 'Ananya Sharma',
-    phone: '+91 98765 43210',
-    branch: 'Anna Nagar',
-    status: 'Contacted',
-    gender: 'F',
-    source: 'Website', 
-    service_category: 'Hair', 
-    followup_count: 3,
-    service_request: 'Hair Loss',
-    callers: [{ name: 'Priya', empNo: 'EMP-1042' }, { name: 'Karthik Iyer', empNo: 'EMP-1108' }],
-    callLog: [
-      { telecallerName: 'Priya', empNo: 'EMP-1042', dateTime: '08-Sep-2026, 04:05 PM', notes: 'Call not answered, left voicemail' },
-      { telecallerName: 'Priya', empNo: 'EMP-1042', dateTime: '10-Sep-2026, 11:20 AM', notes: 'Interested, asked to call back after consultation report' },
-      { telecallerName: 'Karthik Iyer', empNo: 'EMP-1108', dateTime: '12-Sep-2026, 03:00 PM', notes: 'Rescheduled - lead requested evening slot' },
-    ],
-  },
-  {
-    name: 'Rahul Kumar',
-    phone: '+91 91234 56780',
-    branch: 'Velachery',
-    status: 'Qualified',
-    gender: 'M',
-    followup_count: 2,
-    source: 'Referral',
-    service_category: 'Dermatology',
-    service_request: 'Acne Care',
-    callers: [{ name: 'Karthik Iyer', empNo: 'EMP-1108' }],
-    callLog: [
-      { telecallerName: 'Karthik Iyer', empNo: 'EMP-1108', dateTime: '09-Sep-2026, 10:00 AM', notes: 'Confirmed appointment for Acne Care consultation' },
-    ],
-  },
-  {
-    name: 'Sneha Menon',
-    phone: '+91 98867 66554',
-    branch: 'Indiranagar',
-    status: 'Pending',
-    gender: 'F',
-    source: 'Website',
-    followup_count: 4,
-    service_category: 'Skin Care',
-    service_request: 'Anti-Aging Treatment',
-    callers: [{ name: 'Meera Nair', empNo: 'EMP-1075', }, { name: 'Priya', empNo: 'EMP-1042' }, { name: 'Karthik Iyer', empNo: 'EMP-1108' }],
-    callLog: [
-      { telecallerName: 'Meera Nair', empNo: 'EMP-1075', dateTime: '05-Sep-2026, 09:40 AM', notes: 'Not reachable, switched off' },
-      { telecallerName: 'Priya', empNo: 'EMP-1042', dateTime: '06-Sep-2026, 05:30 PM', notes: 'Call disconnected midway' },
-      { telecallerName: 'Priya', empNo: 'EMP-1042', dateTime: '07-Sep-2026, 01:15 PM', notes: 'Spoke briefly, wants pricing over WhatsApp' },
-      { telecallerName: 'Karthik Iyer', empNo: 'EMP-1108', dateTime: '11-Sep-2026, 12:00 PM', notes: 'Escalated to senior telecaller - price negotiation' },
-    ],
-  },
-  {
-    name: 'Vikram Patel',
-    phone: '+91 90123 45678',
-    branch: 'Coimbatore',
-    status: 'Lost',
-    gender: 'M',
-    source: 'Referral',
-    followup_count: 1,
-    service_category: 'Dermatology',
-    service_request: 'Acne Care',
-    callers: [{ name: 'Meera Nair', empNo: 'EMP-1075' }],
-    callLog: [
-      { telecallerName: 'Meera Nair', empNo: 'EMP-1075', dateTime: '02-Sep-2026, 06:10 PM', notes: 'Went with a competitor clinic' },
-    ],
-  },
-  {
-    name: 'Neha Prasad',
-    phone: '+91 93450 78920',
-    branch: 'Anna Nagar',
-    status: 'Contacted',
-    gender: 'F',
-    source: 'Website',
-    followup_count: 2,
-    service_category: 'Skin Care',
-    service_request: 'Anti-Aging Treatment',
-    callers: [{ name: 'Priya', empNo: 'EMP-1042' }, { name: 'Meera Nair', empNo: 'EMP-1075' }],
-    callLog: [
-      { telecallerName: 'Priya', empNo: 'EMP-1042', dateTime: '06-Sep-2026, 10:50 AM', notes: 'Interested in Skin Rejuvenation package' },
-      { telecallerName: 'Meera Nair', empNo: 'EMP-1075', dateTime: '10-Sep-2026, 02:30 PM', notes: 'Asked for a callback next week - travelling' },
-    ],
-  },
-  {
-    name: 'Kavin Raj',
-    phone: '+91 99520 13840',
-    branch: 'T Nagar',
-    status: 'Qualified',
-    gender: 'M',
-    source: 'Referral',
-    followup_count: 3,
-    service_category: 'Dermatology',
-    service_request: 'Acne Care',
-    callers: [{ name: 'Karthik Iyer', empNo: 'EMP-1108' }],
-    callLog: [
-      { telecallerName: 'Karthik Iyer', empNo: 'EMP-1108', dateTime: '11-Sep-2026, 05:45 PM', notes: 'Confirmed, booked Laser Toning session' },
-    ],
-  },
 ];
 
 @Component({
@@ -160,7 +48,7 @@ export class Followups implements OnInit {
     private router: Router,
     private crmFlow: CrmFlowService,
     private telephony: TelephonyService,
-    private auth: AuthService,
+    private apiDataService: ApiDataService,
   ) { }
 
 
@@ -168,14 +56,15 @@ export class Followups implements OnInit {
 
   stats: DetailCardData[] = [
     { label: 'Total Leads', value: '1,284', trendText: '8.4% this month', trendDirection: 'up', icon: 'bi-person-lines-fill', iconVariant: 'primary' },
-    { label: 'Total Follow-Ups', value: FOLLOW_UP_SEEDS.length, trendText: 'Across all telecallers', trendDirection: 'neutral', icon: 'bi-arrow-repeat', iconVariant: 'blue' },
+    { label: 'Total Follow-Ups', value: 0, trendText: 'Across all telecallers', trendDirection: 'neutral', icon: 'bi-arrow-repeat', iconVariant: 'blue' },
     { label: 'Due Today', value: 2, trendText: 'Needs attention', trendDirection: 'up', icon: 'bi-alarm', iconVariant: 'orange' },
     { label: 'Completed', value: 3, trendText: 'Follow-up closed', trendDirection: 'up', icon: 'bi-check-circle', iconVariant: 'green' },
     { label: 'Appointment', value: 12, trendText: 'Confirmed appointments', trendDirection: 'up', icon: 'bi-calendar-check', iconVariant: 'purple' },
   ];
 
   filters: FilterOption[] = [
-    { key: 'status', label: 'Status', options: ['Contacted', 'Qualified', 'Pending', 'Lost', 'Completed'] },
+    { key: 'status', label: 'Status', options: ['Follow-Ups', 'Cool-Follow-Ups', 'Hot-Leads', 'Schedule', 'Customer'] },
+    { key: 'type', label: 'Follow-up Type', options: ['General', 'Cool', 'Hot'] },
     { key: 'source', label: 'Source', options: ['Website', 'Instagram', 'Facebook', 'Google Ads', 'Referral', 'Walk-in', 'Call Center', 'Campaign'] },
     { key: 'branch', label: 'Branch', multiSelect: true, options: ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'] },
     { key: 'telecaller', label: 'Telecaller', options: ['Priya', 'Karthik Iyer', 'Meera Nair'] },
@@ -189,7 +78,11 @@ export class Followups implements OnInit {
     telecaller: null,
     dateFrom: null,
     dateTo: null,
+    type: null,
   };
+
+  /** `follow_ups.type` (0/1/2) -> the label shown/filtered on in this table. */
+  private readonly FOLLOW_UP_TYPE_LABELS = ['General', 'Cool', 'Hot'];
 
   columns: TableColumn[] = [
     { key: 'lead', header: 'Name', type: 'lead' },
@@ -200,6 +93,7 @@ export class Followups implements OnInit {
     { key: 'service_request', header: 'Service Request', type: 'text'},
     { key: 'followup_count', header: 'Follow-Up Count', type: 'text' },
     { key: 'follow_up_date', header: 'Follow-Up Date', type: 'text' },
+    { key: 'follow_up_type_label', header: 'Type', type: 'badge' },
     { key: 'branch', header: 'Branch', type: 'branch' },
     { key: 'telecaller', header: 'Telecaller Assigned', type: 'avatarGroup', sortable: false, width: '140px' },
     { key: 'status', header: 'Status', type: 'badge' },
@@ -208,26 +102,10 @@ export class Followups implements OnInit {
 
   readonly pageSizeOptions = [10, 30, 50, 100];
 
-  allRows: TableRow[] = FOLLOW_UP_SEEDS.map((seed, index) => ({
-    lead: {
-      name: seed.name,
-      subtitle: `LD-${String(284 - index).padStart(5, '0')}`,
-    },
-    contact: seed.phone,
-    gender: seed.gender,
-    source: seed.source,
-    service_category: seed.service_category,
-    service_request: seed.service_request,
-    follow_up_date: seed.callLog.length ? seed.callLog[seed.callLog.length - 1].dateTime : '',
-    branch: seed.branch,
-    telecaller: seed.callers,
-    status: seed.status,
-    action: QUICK_ACTIONS,
-    followup_count: seed.callLog.length,
-    callLogEntries: seed.callLog,
-  }));
+  allRows: TableRow[] = [];
 
   rows: TableRow[] = [];
+  loading = false;
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
@@ -235,30 +113,112 @@ export class Followups implements OnInit {
   sortDirection: SortDirection = 'asc';
   private searchTerm = '';
 
+  /** Real lead_status name -> id, so the Status filter can be sent server-side as `status_id`. */
+  private statusIdByName = new Map<string, number>();
+
   ngOnInit(): void {
-    const imported = this.crmFlow.getFollowUps().map((lead, index) => this.flowLeadToRow(lead, index));
-    this.allRows = [...imported, ...this.allRows.filter(row => !imported.some(item => item['id'] === row['id']))];
-    this.allRows = this.scopeToCurrentTelecaller(this.allRows);
-    this.refreshRows();
+    this.loadStatusOptions();
+    this.loadFollowUps();
   }
 
-  /** Non-admins only see follow-ups assigned to them. There's no real user-account link for
-   *  telecaller assignment yet (it's a free-text name picked in the lead profile dialog), so
-   *  this matches on the logged-in user's display name against the assigned caller(s). */
-  private scopeToCurrentTelecaller(rows: TableRow[]): TableRow[] {
-    const user = this.auth.currentUser();
-    if (!user || isAdmin(user.role_id)) return rows;
+  /** Loads the real lead_status names (Follow-Ups, Cool-Follow-Ups, Hot-Leads, ...) for the
+   *  Status filter, same fix as Lead Management's - the options used to be made up and never
+   *  matched a real row. */
+  private loadStatusOptions(): void {
+    this.apiDataService.GET(`${ApiRoutesConstants.Status_List_Options}?per_page=100`).subscribe({
+      next: (res: any) => {
+        const list: any[] = res?.data?.data ?? [];
+        this.statusIdByName = new Map(list.filter(s => s?.name).map(s => [s.name, Number(s.id)]));
+        const names = list.map(s => s?.name).filter((name: unknown): name is string => !!name);
 
-    return rows.filter((row) => {
-      const callers = (row['telecaller'] as CallerAvatar[]) ?? [];
-      return callers.some(c => c.name === user.name);
+        if (names.length) {
+          this.filters = this.filters.map(f => (f.key === 'status' ? { ...f, options: names } : f));
+        }
+      },
+      error: () => undefined,
     });
+  }
+
+  /** Loads leads with an open or past follow-up from the backend, scoped there to what the
+   *  logged-in user may see (a telecaller only gets their own assigned leads via `assigned_to`).
+   *  Search, status and follow-up type are sent as query params so the backend does the
+   *  filtering. Each row already carries its recent call history, so the second call onward
+   *  shows the previous outcome without another round trip. */
+  private loadFollowUps(): void {
+    this.loading = true;
+
+    const statusId = this.filterState.status ? this.statusIdByName.get(this.filterState.status) : undefined;
+    const type = this.filterState.type ? this.FOLLOW_UP_TYPE_LABELS.indexOf(this.filterState.type) : undefined;
+
+    this.telephony.followupQueue({
+      per_page: 200,
+      search: this.searchTerm || undefined,
+      status_id: statusId,
+      type: type !== undefined && type >= 0 ? type : undefined,
+    }).subscribe({
+      next: (leads) => {
+        const rows = leads.map((lead) => this.leadToRow(lead));
+        const imported = this.crmFlow.getFollowUps().map((lead, index) => this.flowLeadToRow(lead, index));
+        this.allRows = [...imported, ...rows.filter(row => !imported.some(item => item['id'] === row['id']))];
+        this.stats[1] = { ...this.stats[1], value: this.allRows.length };
+        this.refreshRows();
+      },
+      error: (err: any) => {
+        this.loading = false;
+        this.toast.error(err?.error?.message || 'Could not load follow-ups.');
+      },
+    });
+  }
+
+  private leadToRow(lead: FollowUpLead): TableRow {
+    const callers: CallerAvatar[] = lead.assigned_to_name
+      ? [{ name: lead.assigned_to_name, empNo: `EMP-${lead.assigned_to}` }]
+      : [];
+
+    const callLog: CallerLogEntry[] = (lead.caller_histories ?? []).map((history) => ({
+      telecallerName: history.telecaller?.name ?? lead.assigned_to_name ?? 'Unknown',
+      empNo: history.telecaller ? `EMP-${history.telecaller.id}` : '',
+      dateTime: this.formatDateTime(history.created_at),
+      notes: history.notes ?? '',
+    }));
+
+    return {
+      id: lead.id,
+      lead: { name: lead.name, subtitle: `LD-${String(lead.id).padStart(5, '0')}` },
+      contact: lead.mobile_no,
+      gender: lead.gender ?? '',
+      source: lead.source_name ?? '',
+      service_category: lead.service_category_name ?? '',
+      service_request: lead.reason ?? '',
+      followup_count: lead.follow_ups_count,
+      follow_up_date: lead.next_follow_up_at
+        ? this.formatDateTime(lead.next_follow_up_at)
+        : (callLog.length ? callLog[callLog.length - 1].dateTime : ''),
+      branch: lead.organization_name ?? '',
+      telecaller: callers,
+      status: lead.status_name ?? '',
+      follow_up_type_label: this.FOLLOW_UP_TYPE_LABELS[lead.follow_up_type ?? 0] ?? '',
+      action: QUICK_ACTIONS,
+      callLogEntries: callLog,
+    };
+  }
+
+  /** Matches the "DD-Mon-YYYY, hh:mm AM/PM" format the mock data used, so sorting/parsing
+   *  elsewhere in this component (see toIsoDate) keeps working against real API dates. */
+  private formatDateTime(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return `${day}-${month}-${date.getFullYear()}, ${time}`;
   }
 
   onSearch(term: string): void {
     this.searchTerm = term.trim().toLowerCase();
     this.currentPage = 1;
-    this.refreshRows();
+    this.loadFollowUps();
   }
 
   onFilterClick(key: string): void {
@@ -268,7 +228,7 @@ export class Followups implements OnInit {
   onFiltersChange(filters: CommonFilterState): void {
     this.filterState = { ...filters, branch: [...filters.branch] };
     this.currentPage = 1;
-    this.refreshRows();
+    this.loadFollowUps();
   }
 
   onExport(): void {
@@ -410,10 +370,12 @@ export class Followups implements OnInit {
   }
 
   private flowLeadToRow(lead: FlowLead, index: number): TableRow {
-    return { id: lead.id, lead: { name: lead.name, subtitle: `FU-${String(index + 1).padStart(4, '0')}` }, contact: lead.phone, gender: lead.gender, source: lead.source, service_category: lead.category, service_request: lead.request, follow_up_date: lead.followUpDate || 'Not scheduled', branch: lead.branch, telecaller: lead.telecaller ? [{ name: lead.telecaller, empNo: lead.telecaller }] : [], status: 'Contacted', action: QUICK_ACTIONS, callLogEntries: lead.notes ? [{ telecallerName: lead.telecaller, empNo: lead.telecaller, dateTime: 'Today', notes: lead.notes }] : [], followUpHistory: lead.history ?? [] };
+    return { id: lead.id, lead: { name: lead.name, subtitle: `FU-${String(index + 1).padStart(4, '0')}` }, contact: lead.phone, gender: lead.gender, source: lead.source, service_category: lead.category, service_request: lead.request, follow_up_date: lead.followUpDate || 'Not scheduled', branch: lead.branch, telecaller: lead.telecaller ? [{ name: lead.telecaller, empNo: lead.telecaller }] : [], status: 'Contacted', follow_up_type_label: 'General', action: QUICK_ACTIONS, callLogEntries: lead.notes ? [{ telecallerName: lead.telecaller, empNo: lead.telecaller, dateTime: 'Today', notes: lead.notes }] : [], followUpHistory: lead.history ?? [] };
   }
 
   private refreshRows(): void {
+    this.loading = true;
+
     const filteredRows = this.getFilteredRows();
     const sortedRows = this.getSortedRows(filteredRows);
 
@@ -427,6 +389,8 @@ export class Followups implements OnInit {
     const startIndex = (this.currentPage - 1) * this.pageSize;
     const endIndex = startIndex + this.pageSize;
     this.rows = sortedRows.slice(startIndex, endIndex);
+
+    this.loading = false;
   }
 
   private getFilteredRows(): TableRow[] {
@@ -450,6 +414,7 @@ export class Followups implements OnInit {
       }
 
       if (this.filterState.status && row['status'] !== this.filterState.status) return false;
+      if (this.filterState.type && row['follow_up_type_label'] !== this.filterState.type) return false;
       if (this.filterState.source && row['source'] !== this.filterState.source) return false;
       if (this.filterState.branch.length > 0 && !this.filterState.branch.includes(String(row['branch']))) return false;
       if (this.filterState.telecaller && !callers.some(c => c.name === this.filterState.telecaller)) return false;

@@ -34,6 +34,8 @@ export interface CommonFilterState {
   telecaller: string | null;
   dateFrom: string | null;
   dateTo: string | null;
+  /** Follow-up temperature (General/Cool/Hot) - only used by pages that declare a `type` filter. */
+  type?: string | null;
 }
 
 export type TableColumnType = 'text' | 'lead' | 'branch' | 'badge' | 'action' | 'rowActions' | 'avatarGroup' | 'callLog' | 'quickActions';

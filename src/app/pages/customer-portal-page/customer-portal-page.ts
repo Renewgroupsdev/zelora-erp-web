@@ -87,6 +87,7 @@ export class CustomerPortalPage implements OnInit {
   customers: Customer[] = [];
   pagedCustomers: Customer[] = [];
   rows: TableRow[] = [];
+  loading = false;
 
   currentPage = 1;
   pageSize = 12;
@@ -310,6 +311,8 @@ export class CustomerPortalPage implements OnInit {
   }
 
   private refreshRows(): void {
+    this.loading = true;
+
     const filtered = this.getFilteredCustomers();
     const sorted = this.getSortedCustomers(filtered);
 
@@ -325,6 +328,8 @@ export class CustomerPortalPage implements OnInit {
 
     this.pagedCustomers = sorted.slice(startIndex, endIndex);
     this.rows = this.pagedCustomers.map((customer) => this.mapCustomerToRow(customer));
+
+    this.loading = false;
   }
 
   private mapCustomerToRow(customer: Customer): TableRow {

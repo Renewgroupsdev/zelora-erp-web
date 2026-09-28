@@ -10,11 +10,50 @@
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   animation: page-loader-fade-in 0.15s ease-out;
+
+  // Covers its own (position: relative) parent - e.g. just a table's rows - instead of
+  // the whole viewport, so filters/pagination/header outside it stay usable.
+  &.contained {
+    position: absolute;
+    z-index: 5;
+  }
 }
 
 .table-heartbeat {
   width: 96px;
   height: 36px;
+  // Beats per minute the ECG-style sweep completes at - one lap of the line per beat.
+  // Raise this (shorter duration) for a livelier pulse, lower it to slow it down.
+  --heartbeat-bpm: 70;
+  --heartbeat-duration: calc(60s / var(--heartbeat-bpm));
+}
+
+.heartbeat-track,
+.heartbeat-line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.heartbeat-track {
+  opacity: 0.25;
+}
+
+.heartbeat-line {
+  // pathLength="100" on the element means dasharray/dashoffset units below are percent-of-path,
+  // independent of its actual pixel length. A 100/100 dash/gap pair with the offset sweeping
+  // from +100 (fully hidden ahead of the start) to -100 (fully hidden past the end) draws the
+  // line once and lets it run off, then loops - a continuous scanning "beat" rather than a
+  // snap-back reset.
+  stroke-dasharray: 100 100;
+  stroke-dashoffset: 100;
+  animation: heartbeat-sweep var(--heartbeat-duration) linear infinite;
+}
+
+@keyframes heartbeat-sweep {
+  to { stroke-dashoffset: -100; }
 }
 
 @keyframes page-loader-fade-in {

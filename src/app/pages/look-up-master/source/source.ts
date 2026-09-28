@@ -59,6 +59,7 @@ export class Source implements OnInit {
   private sourcesById = new Map<number, any>();
 
   rows: TableRow[] = [];
+  loading = false;
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
@@ -72,6 +73,7 @@ export class Source implements OnInit {
 
   loadSources(): void {
     this.isLoading = true;
+    this.loading = true;
 
     // GetAllPages walks every page of the (paginated) endpoint so the list is always complete,
     // regardless of how many sources exist relative to the API's page size.
@@ -88,6 +90,7 @@ export class Source implements OnInit {
       },
       error: (err: any) => {
         this.isLoading = false;
+        this.loading = false;
         this.toast.error('Failed to load sources. Please try again.');
         console.error('Failed to load sources:', err);
       },
@@ -126,6 +129,7 @@ export class Source implements OnInit {
   onSearch(term: string): void {
     this.searchTerm = term.trim().toLowerCase();
     this.currentPage = 1;
+    this.loading = true;
     this.refreshRows();
   }
 
@@ -136,6 +140,7 @@ export class Source implements OnInit {
   onFiltersChange(filters: CommonFilterState): void {
     this.filterState = { ...filters, branch: [...filters.branch] };
     this.currentPage = 1;
+    this.loading = true;
     this.refreshRows();
   }
 
@@ -156,6 +161,7 @@ export class Source implements OnInit {
   onPageChange(event: TablePageChangeEvent): void {
     this.currentPage = event.page;
     this.pageSize = event.pageSize;
+    this.loading = true;
     this.refreshRows();
   }
 
@@ -163,6 +169,7 @@ export class Source implements OnInit {
     this.sortActive = sort.active;
     this.sortDirection = sort.direction || 'asc';
     this.currentPage = 1;
+    this.loading = true;
     this.refreshRows();
   }
 
@@ -238,6 +245,7 @@ export class Source implements OnInit {
     const startIndex = (this.currentPage - 1) * this.pageSize;
     const endIndex = startIndex + this.pageSize;
     this.rows = sortedRows.slice(startIndex, endIndex);
+    this.loading = false;
   }
 
   private getFilteredRows(): TableRow[] {

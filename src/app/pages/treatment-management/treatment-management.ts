@@ -54,6 +54,7 @@ export class TreatmentManagement {
     dateFrom: null,
     dateTo: null,
   });
+  readonly loading = signal(false);
   readonly currentPage = signal(1);
   readonly pageSize = signal(10);
   readonly pageSizeOptions = [10, 30, 50, 100];
@@ -125,14 +126,18 @@ export class TreatmentManagement {
   }
 
   onPageChange(event: TablePageChangeEvent): void {
+    this.loading.set(true);
     this.currentPage.set(event.page);
     this.pageSize.set(event.pageSize);
+    this.loading.set(false);
   }
 
   onSortChange(sort: Sort): void {
+    this.loading.set(true);
     this.sortActive.set(sort.active);
     this.sortDirection.set(sort.direction || 'asc');
     this.currentPage.set(1);
+    this.loading.set(false);
   }
 
   onQuickAction(event: { row: TableRow; action: string }): void {

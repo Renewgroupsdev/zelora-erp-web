@@ -49,7 +49,7 @@ export class CommonFilterCard {
   }
 
   selectSingle(key: string, value: string): void {
-    if (key === 'status' || key === 'source' || key === 'telecaller') {
+    if (key === 'status' || key === 'source' || key === 'telecaller' || key === 'type') {
       this.draftValues[key] = value || null;
     }
   }
@@ -132,11 +132,12 @@ export class CommonFilterCard {
     if (key === 'status') return state.status;
     if (key === 'source') return state.source;
     if (key === 'telecaller') return state.telecaller;
+    if (key === 'type') return state.type ?? null;
     return null;
   }
 
   private emptyState(): CommonFilterState {
-    return { status: null, source: null, branch: [], telecaller: null, dateFrom: null, dateTo: null };
+    return { status: null, source: null, branch: [], telecaller: null, dateFrom: null, dateTo: null, type: null };
   }
 
   private cloneState(state: CommonFilterState): CommonFilterState {

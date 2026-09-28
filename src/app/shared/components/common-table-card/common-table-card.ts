@@ -4,6 +4,7 @@ import { Component, EventEmitter, Input, Output, ViewChild } from '@angular/core
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSortModule, Sort, SortDirection } from '@angular/material/sort';
 import { MatTable, MatTableModule } from '@angular/material/table';
+import { PageLoader } from '../page-loader/page-loader';
 import { CallerAvatar, CallerLogEntry, LeadCell, QuickAction, TableColumn, TablePageChangeEvent, TableReorderEvent, TableRow, TableTransferEvent } from '../../models/common-components.model';
 
 const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue'> = {
@@ -19,7 +20,7 @@ const AVATAR_PALETTE_SIZE = 5;
 @Component({
   selector: 'app-common-table-card',
   standalone: true,
-  imports: [CommonModule, MatTableModule, MatPaginatorModule, MatSortModule, DragDropModule],
+  imports: [CommonModule, MatTableModule, MatPaginatorModule, MatSortModule, DragDropModule, PageLoader],
   templateUrl: './common-table-card.html',
   styleUrl: './common-table-card.scss',
 })
@@ -28,6 +29,9 @@ export class CommonTableCard {
   @Input() recordCountText = '';
   @Input() columns: TableColumn[] = [];
   @Input() rows: TableRow[] = [];
+  /** Shows a heartbeat loader over the rows while a page of data is (re)loading - the
+   *  initial load and every subsequent page/sort/page-size change. */
+  @Input() loading = false;
   @Input() bulkActionsLabel?: string;
   @Input() totalRecords = 0;
   @Input() pageSize = 10;

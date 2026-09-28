@@ -52,6 +52,7 @@ export class TelephonyDock implements OnDestroy {
   readonly dockPos = signal<{ x: number; y: number } | null>(null);
   private dragOrigin: { x: number; y: number; posX: number; posY: number } | null = null;
   private dragged = false;
+  private warnedRecordingUnavailable = false;
 
   readonly ringing = this.telephony.ringingCall;
   readonly active = this.telephony.activeCall;
@@ -114,6 +115,19 @@ export class TelephonyDock implements OnDestroy {
       if (pending && !this.telephony.onCall()) untracked(() => this.openOutcome(pending, true));
     });
 
+    // Tell the telecaller (not just the console) when this browser/connection can't record
+    // calls at all - e.g. served over plain HTTP instead of HTTPS. Only once per session so it
+    // doesn't re-pop on every call.
+    effect(() => {
+      if (this.telephony.recordingUnavailable() && !this.warnedRecordingUnavailable) {
+        this.warnedRecordingUnavailable = true;
+        untracked(() => this.toast.warning(
+          'Call recording is unavailable',
+          'This page must be opened over HTTPS (or localhost) for the browser to record calls. Ask your admin to enable HTTPS on this server.'
+        ));
+      }
+    });
+
     this.telephony.callFinished$.pipe(takeUntilDestroyed()).subscribe(call => this.onCallFinished(call));
   }
 
@@ -168,8 +182,22 @@ export class TelephonyDock implements OnDestroy {
 
   /* ---------------- call controls ---------------- */
 
+  /** Opens the outcome dialog the instant the call is answered (not after hangup), so the
+   *  telecaller can pick the disposition while still talking - Save stays disabled in the
+   *  dialog itself until the call actually ends (see CallOutcomeDialog.callLive). */
   answer(call: CallLog): void {
-    this.run(this.telephony.answer(call.id), 'Could not answer the call.');
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.telephony.answer(call.id).subscribe({
+      next: fresh => {
+        this.busy.set(false);
+        this.openOutcome(fresh, true);
+      },
+      error: err => {
+        this.busy.set(false);
+        this.fail(err, 'Could not answer the call.');
+      },
+    });
   }
 
   reject(call: CallLog): void {

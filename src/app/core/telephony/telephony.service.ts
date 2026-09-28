@@ -12,6 +12,7 @@ import {
   CallLog,
   CallerProfile,
   DispositionPayload,
+  FollowUpLead,
   TelecallerRow,
   TelephonyConnectionState,
 } from './telephony.models';
@@ -141,6 +142,31 @@ export class TelephonyService {
     return this.api.POST(ApiRoutesConstants.LEAD_ASSIGN, { lead_ids: leadIds, assigned_to: assignedTo });
   }
 
+  /** Leads with an open or past follow-up, scoped server-side to what the caller may see
+   *  (a telecaller only gets leads assigned to them via `assigned_to`). Each row includes its
+   *  recent call history, so the Follow-ups page shows the previous call's outcome directly.
+   *  `status_id` and `type` (0 general/1 cool/2 hot) filter server-side against `follow_ups.type`
+   *  and `customer_leads.status_id` respectively. */
+  followupQueue(params: {
+    per_page?: number;
+    search?: string;
+    status_id?: number;
+    branch_id?: number;
+    type?: number;
+  } = {}): Observable<FollowUpLead[]> {
+    const query = new URLSearchParams();
+    if (params.per_page) query.set('per_page', String(params.per_page));
+    if (params.search) query.set('search', params.search);
+    if (params.status_id) query.set('status_id', String(params.status_id));
+    if (params.branch_id) query.set('branch_id', String(params.branch_id));
+    if (params.type !== undefined && params.type !== null) query.set('type', String(params.type));
+    const qs = query.toString();
+
+    return this.api.GET(`${ApiRoutesConstants.LEAD_FOLLOWUPS}${qs ? '?' + qs : ''}`).pipe(
+      map((res: any) => (res?.data?.data ?? []) as FollowUpLead[])
+    );
+  }
+
   /* ---------------- alerts ---------------- */
 
   /** Marks an alert reviewed. Updates local state right away; the request runs in the background. */
@@ -216,25 +242,46 @@ export class TelephonyService {
 
   /* ---------------- microphone recording ---------------- */
 
+  /** True once we've detected the browser can't record here (insecure origin). Read by the dock UI. */
+  readonly recordingUnavailable = signal(false);
+
   private syncRecording(call: CallLog | null): void {
-    if (call?.status === 'connected' && this.recordingCallId !== call.id) {
-      this.startRecording(call.id);
-    } else if (this.recordingCallId !== null && (!call || call.id !== this.recordingCallId)) {
+    const isLive = !!call && (call.status === 'connected' || call.status === 'answered' || call.status === 'hold');
+    if (isLive && this.recordingCallId !== call!.id) {
+      this.startRecording(call!.id);
+    } else if (this.recordingCallId !== null && (!isLive || call!.id !== this.recordingCallId)) {
       this.stopRecording();
     }
   }
 
   private startRecording(callId: number): void {
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') return;
+    if (!window.isSecureContext) {
+      // getUserMedia/MediaRecorder are disabled by every browser on plain HTTP unless the
+      // host is localhost — this is a browser security policy, not something we can code around.
+      // Serve the app over HTTPS (even a self-signed/internal cert) to fix this for real.
+      console.warn(
+        `[telephony] Microphone recording unavailable: getUserMedia/MediaRecorder requires a secure ` +
+        `context (https, or http://localhost). This page is served over ${window.location.origin}, ` +
+        `so this call will not be recorded.`
+      );
+      this.recordingUnavailable.set(true);
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      this.recordingUnavailable.set(true);
+      return;
+    }
 
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
       // The call may already have moved on by the time the mic permission prompt resolves.
       const call = this.activeCall();
-      if (call?.id !== callId || call.status !== 'connected') {
+      const stillLive = call?.id === callId && (call.status === 'connected' || call.status === 'answered' || call.status === 'hold');
+      if (!stillLive) {
         stream.getTracks().forEach(track => track.stop());
         return;
       }
 
+      this.recordingUnavailable.set(false);
       const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
       this.recordedChunks = [];
       this.mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
@@ -247,7 +294,10 @@ export class TelephonyService {
       this.mediaRecorder.onstop = () => stream.getTracks().forEach(track => track.stop());
 
       this.mediaRecorder.start();
-    }).catch(() => undefined); // Mic denied/unavailable: the call just won't have a recording.
+    }).catch((err) => {
+      console.warn('[telephony] Microphone permission denied or unavailable:', err?.message ?? err);
+      this.recordingUnavailable.set(true);
+    });
   }
 
   private stopRecording(): void {

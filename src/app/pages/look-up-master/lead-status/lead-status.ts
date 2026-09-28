@@ -53,6 +53,7 @@ export class LeadStatus implements OnInit {
 
   readonly pageSizeOptions = [10, 30, 50, 100];
   isLoading = false;
+  loading = false;
   allRows: TableRow[] = [];
   /** Raw lead-status records from the API, keyed by id, so a fresh Edit fetch has somewhere to
    *  fall back to if that request ever fails. */
@@ -72,6 +73,7 @@ export class LeadStatus implements OnInit {
 
   loadStatuses(): void {
     this.isLoading = true;
+    this.loading = true;
 
     // GetAllPages walks every page of the (paginated) endpoint so the list is always complete,
     // regardless of how many statuses exist relative to the API's page size.
@@ -85,9 +87,11 @@ export class LeadStatus implements OnInit {
         this.allRows = statuses.map((status: any) => this.mapStatusToRow(status));
         this.currentPage = 1;
         this.refreshRows();
+        this.loading = false;
       },
       error: (err: any) => {
         this.isLoading = false;
+        this.loading = false;
         this.toast.error('Failed to load lead statuses. Please try again.');
         console.error('Failed to load lead statuses:', err);
       },
@@ -129,7 +133,9 @@ export class LeadStatus implements OnInit {
   onSearch(term: string): void {
     this.searchTerm = term.trim().toLowerCase();
     this.currentPage = 1;
+    this.loading = true;
     this.refreshRows();
+    this.loading = false;
   }
 
   onFilterClick(key: string): void {
@@ -139,7 +145,9 @@ export class LeadStatus implements OnInit {
   onFiltersChange(filters: CommonFilterState): void {
     this.filterState = { ...filters, branch: [...filters.branch] };
     this.currentPage = 1;
+    this.loading = true;
     this.refreshRows();
+    this.loading = false;
   }
 
   get recordCountText(): string {
@@ -159,14 +167,18 @@ export class LeadStatus implements OnInit {
   onPageChange(event: TablePageChangeEvent): void {
     this.currentPage = event.page;
     this.pageSize = event.pageSize;
+    this.loading = true;
     this.refreshRows();
+    this.loading = false;
   }
 
   onSortChange(sort: Sort): void {
     this.sortActive = sort.active;
     this.sortDirection = sort.direction || 'asc';
     this.currentPage = 1;
+    this.loading = true;
     this.refreshRows();
+    this.loading = false;
   }
 
   onEditStatus(row: TableRow): void {

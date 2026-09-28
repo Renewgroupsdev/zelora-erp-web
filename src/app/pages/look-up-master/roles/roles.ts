@@ -130,7 +130,9 @@ export class Roles implements OnInit {
   onSearch(term: string): void {
     this.searchTerm = term.trim().toLowerCase();
     this.currentPage = 1;
+    this.isLoading = true;
     this.refreshRows();
+    this.isLoading = false;
   }
 
   onFilterClick(key: string): void {
@@ -140,7 +142,9 @@ export class Roles implements OnInit {
   onFiltersChange(filters: CommonFilterState): void {
     this.filterState = { ...filters, branch: [...filters.branch] };
     this.currentPage = 1;
+    this.isLoading = true;
     this.refreshRows();
+    this.isLoading = false;
   }
 
   get recordCountText(): string {
@@ -160,14 +164,18 @@ export class Roles implements OnInit {
   onPageChange(event: TablePageChangeEvent): void {
     this.currentPage = event.page;
     this.pageSize = event.pageSize;
+    this.isLoading = true;
     this.refreshRows();
+    this.isLoading = false;
   }
 
   onSortChange(sort: Sort): void {
     this.sortActive = sort.active;
     this.sortDirection = sort.direction || 'asc';
     this.currentPage = 1;
+    this.isLoading = true;
     this.refreshRows();
+    this.isLoading = false;
   }
 
   onEditRole(row: TableRow): void {
