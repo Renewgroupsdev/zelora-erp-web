@@ -13,10 +13,6 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 const TOKEN_TYPE_KEY = 'token_type';
 const TOKEN_EXPIRES_AT_KEY = 'token_expires_at';
 const AUTH_USER_KEY = 'auth_user';
-/** `menus` and `permissions` are the same role-scoped module tree (`SidebarModule[]`) -
- *  `menus` backs the left sidebar's nav links, `permissions` backs `hasModuleAccess()`. Both are
- *  populated from the same source (login()/me()'s `Menus`, or a manual `loadPermissions()` re-fetch
- *  from `/side-bar`), so they're always kept in sync from one place: `persistSession()`. */
 const MENUS_KEY = 'auth_menus';
 const AUTH_PERMISSIONS_KEY = 'auth_permissions';
 
@@ -26,9 +22,7 @@ const AUTH_PERMISSIONS_KEY = 'auth_permissions';
 export class AuthService {
   readonly currentUser = signal<AuthUser | null>(this.readUser());
   readonly isAuthenticated = signal<boolean>(!!this.readAccessToken());
-  /** Left-sidebar modules for the logged-in user's role, from login()/me()'s `Menus`. */
   readonly menus = signal<SidebarModule[]>(this.readMenus());
-  /** Same data as `menus`, kept for `hasModuleAccess()` role-gating checks. */
   readonly permissions = signal<SidebarModule[]>(this.readPermissions());
 
   constructor(
@@ -38,7 +32,6 @@ export class AuthService {
   ) {
     if (this.isAuthenticated()) {
       this.idleService.start(() => this.logout());
-      // Existing sessions logged in before this feature shipped have no cached menus yet.
       if (this.menus().length === 0) this.refreshMenus();
     }
   }
@@ -49,17 +42,12 @@ export class AuthService {
       .pipe(tap((response: LoginResponse) => this.handleAuthResponse(response)));
   }
 
-  /** Exchanges the stored refresh token for a new access token. Used by the auth interceptor on 401s.
-   *  The refresh endpoint doesn't return `Menus`, so the previously cached copy is left as-is. */
   refreshAccessToken(): Observable<LoginResponse> {
     return this.api
       .POST(ApiRoutesConstants.AUTH_REFRESH, { refresh_token: this.readRefreshToken() })
       .pipe(tap((response: LoginResponse) => this.handleAuthResponse(response)));
   }
 
-  /** Re-fetches the current user's role-scoped sidebar modules/actions on demand (e.g. after
-   *  an admin changes this role's permissions mid-session) and re-caches them. Login already
-   *  returns this inline as `Menus`, so this is only needed for an explicit refresh. */
   loadPermissions(): Observable<SidebarModule[]> {
     return this.api.GET(ApiRoutesConstants.USER_ROLE_ACCESS).pipe(
       map((response: any) => (response?.data ?? []) as SidebarModule[]),
@@ -73,8 +61,6 @@ export class AuthService {
     this.permissions.set(modules);
   }
 
-  /** True when the current role's permitted modules include this slug, anywhere in the tree
-   *  (top-level module or sub-module) - used to gate nav items / feature access by role. */
   hasModuleAccess(slugName: string): boolean {
     return flattenModuleSlugs(this.permissions()).has(slugName);
   }
@@ -127,7 +113,6 @@ export class AuthService {
     return url.startsWith(environment.apiBaseUrl);
   }
 
-  /** Login/refresh/forgot-password/reset-password calls must skip the Authorization header and must never trigger a refresh-on-401 loop. */
   isAuthEndpoint(url: string): boolean {
     const loginUrl = `${environment.apiBaseUrl}${ApiRoutesConstants.AUTH_LOGIN}`;
     const refreshUrl = `${environment.apiBaseUrl}${ApiRoutesConstants.AUTH_REFRESH}`;
@@ -138,9 +123,6 @@ export class AuthService {
 
   private handleAuthResponse(response: LoginResponse): void {
     if (response?.success && response.data) {
-      // Never store a session without real tokens. Otherwise localStorage.setItem(key, undefined)
-      // saves the string "undefined", which is truthy, so the app thinks the user is logged in
-      // and sends "Authorization: Bearer undefined" on every request.
       if (!response.data.token || !response.data.refresh_token) {
         throw new Error('Auth response is missing access_token / refresh_token.');
       }
@@ -158,15 +140,11 @@ export class AuthService {
       localStorage.setItem(TOKEN_EXPIRES_AT_KEY, String(Date.now() + expiresIn * 1000));
     }
 
-    // A refresh response may not include the user, so keep the existing one in that case.
     if (data.user) {
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
       this.currentUser.set(data.user);
     }
 
-    // Likewise, a refresh response has no `Menus` - keep whatever the last login()/me() gave us.
-    // Login returns the role-scoped module tree inline as `Menus`; it backs both the sidebar
-    // (`menus`) and role-gating (`permissions`) - they're always the same data.
     if (menus) {
       localStorage.setItem(MENUS_KEY, JSON.stringify(menus));
       this.menus.set(menus);
@@ -185,7 +163,6 @@ export class AuthService {
     return this.readStoredToken(REFRESH_TOKEN_KEY);
   }
 
-  /** Treats empty values and the broken literals "undefined" / "null" as "no token". */
   private readStoredToken(key: string): string | null {
     const value = localStorage.getItem(key);
     return value && value !== 'undefined' && value !== 'null' ? value : null;
@@ -215,8 +192,6 @@ export class AuthService {
     }
   }
 
-  /** `me()` also returns `Menus` (see AuthController::me) - refetch and re-cache them without a
-   *  full re-login, e.g. after a hard page reload where login() never ran this session. */
   refreshMenus(): void {
     this.api.GET(ApiRoutesConstants.AUTH_ME).subscribe({
       next: (res: ApiResponse<AuthUser> & { Menus?: SidebarModule[] }) => {

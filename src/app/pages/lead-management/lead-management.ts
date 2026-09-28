@@ -215,8 +215,8 @@ export class LeadManagement implements OnInit {
 
     if (this.searchTerm) params.set('search', this.searchTerm);
 
-    const statusId = this.filterState.status ? this.statusIdByName.get(this.filterState.status) : undefined;
-    if (statusId) params.set('status_id', String(statusId));
+    // const statusId = this.filterState.status ? this.statusIdByName.get(this.filterState.status) : undefined;
+    // if (statusId) params.set('status_id', String(statusId));
 
     const sourceId = this.filterState.source ? this.sourceIdByName.get(this.filterState.source) : undefined;
     if (sourceId) params.set('source_id', String(sourceId));

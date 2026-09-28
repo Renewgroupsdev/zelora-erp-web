@@ -1,5 +1,3 @@
-/** Mirrors the backend's `modules_premission` / `module_action_premission` rows as returned
- *  by the `/side-bar` endpoint, already filtered down to the current user's role. */
 export interface SidebarAction {
   id?: number;
   action_name: string;
@@ -19,8 +17,6 @@ export interface SidebarModule {
   sub_modules: SidebarModule[];
 }
 
-/** Flattens a role's permitted module tree into the set of module slugs it grants access to
- *  (parents and sub-modules alike) - used to check "can this role see module X" by slug. */
 export function flattenModuleSlugs(modules: SidebarModule[] | null | undefined): Set<string> {
   const slugs = new Set<string>();
 
@@ -33,4 +29,21 @@ export function flattenModuleSlugs(modules: SidebarModule[] | null | undefined):
 
   walk(modules ?? []);
   return slugs;
+}
+
+export function normalizeModulePath(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return url.startsWith('/') ? url : `/${url}`;
+}
+
+export function firstModulePath(modules: SidebarModule[] | null | undefined): string | null {
+  for (const module of modules ?? []) {
+    const ownPath = normalizeModulePath(module.url);
+    if (ownPath) return ownPath;
+
+    const childPath = firstModulePath(module.sub_modules);
+    if (childPath) return childPath;
+  }
+
+  return null;
 }

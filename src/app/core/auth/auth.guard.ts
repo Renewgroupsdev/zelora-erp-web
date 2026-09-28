@@ -11,7 +11,9 @@ export const authGuard: CanActivateFn = () => {
     return true;
   }
 
-  return router.createUrlTree(['/login']);
+  // A signed-out visitor hitting a protected route sees the same 404 a bad URL would give them,
+  // rather than a login redirect that confirms the route exists. /login itself stays reachable directly.
+  return router.createUrlTree(['/404']);
 };
 
 /** Blocks plain telecallers from navigating straight to branch-wide call center views

@@ -48,8 +48,9 @@ export const routes: Routes = [
       { path: 'reports', loadComponent: () => import('./pages/reports/reports').then(m => m.Reports) },
       { path: 'reports/:id', loadComponent: () => import('./pages/reports/report-detail/report-detail').then(m => m.ReportDetail) },
       { path: 'settings', loadComponent: () => import('./pages/settings-page/settings-page').then(m => m.SettingsPage) },
-      
+
     ],
   },
-  { path: '**', redirectTo: '' },
+  { path: '404', loadComponent: () => import('./not-found-page/not-found-page').then(m => m.NotFoundPage) },
+  { path: '**', loadComponent: () => import('./not-found-page/not-found-page').then(m => m.NotFoundPage) },
 ];

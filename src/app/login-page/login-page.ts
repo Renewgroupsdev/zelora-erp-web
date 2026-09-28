@@ -7,6 +7,7 @@ import { environment } from '../../environments/environment';
 import { AuthService } from '../core/auth/auth.service';
 import { CookieService } from '../shared/common-services/cookie.service';
 import { AuthBackground } from '../shared/components/auth-background/auth-background';
+import { firstModulePath } from '../shared/models/permission.model';
 
 const REMEMBER_ME_DAYS = 30;
 
@@ -97,7 +98,9 @@ export class LoginPage implements OnInit {
         }
 
         this.processRememberMe(username, password, rememberMe);
-        this.router.navigate(['/app/dashboard']);
+
+        const landingPath = firstModulePath(this.authService.menus()) ?? '/app/dashboard';
+        this.router.navigateByUrl(landingPath);
       },
       error: (err) => {
         this.loading = false;

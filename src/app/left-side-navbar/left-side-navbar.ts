@@ -2,7 +2,7 @@ import { Component, HostListener, computed, inject, signal } from '@angular/core
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NavLayoutService } from '../services/nav-layout.service';
 import { AuthService } from '../core/auth/auth.service';
-import { SidebarModule } from '../shared/models/permission.model';
+import { SidebarModule, normalizeModulePath } from '../shared/models/permission.model';
 
 interface NavLink {
   label: string;
@@ -63,14 +63,9 @@ export class LeftSideNavbar {
     return {
       label: menu.module_name,
       icon: this.ICON_BY_SLUG[menu.slug_name] ?? this.DEFAULT_ICON,
-      path: this.normalizePath(menu.url) ?? `#${menu.slug_name}`,
+      path: normalizeModulePath(menu.url) ?? `#${menu.slug_name}`,
       ...(children.length ? { children } : {}),
     };
-  }
-
-  private normalizePath(url: string | null | undefined): string | null {
-    if (!url) return null;
-    return url.startsWith('/') ? url : `/${url}`;
   }
 
   /** `allNavLinks` filtered to what the logged-in user's role is granted. An item with no
