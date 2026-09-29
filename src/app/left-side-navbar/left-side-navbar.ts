@@ -10,11 +10,6 @@ interface NavLink {
   path: string;
   children?: NavLink[];
   groupOnly?: boolean;
-  /** Matches this item to a `slug_name` in the Roles & Permissions module tree. When set,
-   *  the item is only shown if the logged-in user's role is granted that module (via
-   *  AuthService.hasModuleAccess). Left unset for items not yet managed by that screen,
-   *  which always stay visible rather than disappearing for everyone. */
-  permissionSlug?: string;
 }
 
 @Component({
@@ -62,27 +57,13 @@ export class LeftSideNavbar {
 
     return {
       label: menu.module_name,
-      icon: this.ICON_BY_SLUG[menu.slug_name] ?? this.DEFAULT_ICON,
+      icon:  menu.icon || this.ICON_BY_SLUG[menu.slug_name] || this.DEFAULT_ICON,
       path: normalizeModulePath(menu.url) ?? `#${menu.slug_name}`,
       ...(children.length ? { children } : {}),
     };
   }
 
-  /** `allNavLinks` filtered to what the logged-in user's role is granted. An item with no
-   *  `permissionSlug` (not yet managed by Roles & Permissions) always stays visible. */
-  // readonly navLinks = computed<NavLink[]>(() => {
-  //   // Reading the signal here (rather than calling hasModuleAccess per item without it) is what
-  //   // makes this recompute whenever permissions load/change.
-  //   this.authService.permissions();
-  //   const visible = (link: NavLink): boolean =>
-  //     !link.permissionSlug || this.authService.hasModuleAccess(link.permissionSlug);
-
-  //   return this.allNavLinks
-  //     .filter(visible)
-  //     .map((link) => (link.children ? { ...link, children: link.children.filter(visible) } : link));
-  // });
-
-  constructor(public navLayout: NavLayoutService, private authService: AuthService) { }
+  constructor(public navLayout: NavLayoutService) { }
 
   childrenExpanded(path: string): boolean {
     return this.expandedParent() === path;

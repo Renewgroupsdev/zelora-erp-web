@@ -198,12 +198,13 @@ export class AuthService {
 
   refreshMenus(): void {
     this.api.GET(ApiRoutesConstants.ROLES_PERMISSION_SIDEBAR).subscribe({
-      next: (res: ApiResponse<AuthUser> & { Menus?: SidebarModule[] }) => {
-        
-        if (res?.Menus) {
-          localStorage.setItem(MENUS_KEY, JSON.stringify(res.Menus));
-          this.menus.set(res.Menus);
-          this.applyPermissions(res.Menus);
+      next: (res: any) => {
+        const menus: SidebarModule[] | undefined = res?.Menus ?? res?.data;
+
+        if (menus) {
+          localStorage.setItem(MENUS_KEY, JSON.stringify(menus));
+          this.menus.set(menus);
+          this.applyPermissions(menus);
         }
       },
       error: () => undefined,
