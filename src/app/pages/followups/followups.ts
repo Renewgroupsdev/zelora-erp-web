@@ -55,11 +55,11 @@ export class Followups implements OnInit {
   readonly staffOptions = ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S', 'Meera Nair'];
 
   stats: DetailCardData[] = [
-    { label: 'Total Leads', value: '1,284', trendText: '8.4% this month', trendDirection: 'up', icon: 'bi-person-lines-fill', iconVariant: 'primary' },
-    { label: 'Total Follow-Ups', value: 0, trendText: 'Across all telecallers', trendDirection: 'neutral', icon: 'bi-arrow-repeat', iconVariant: 'blue' },
-    { label: 'Due Today', value: 2, trendText: 'Needs attention', trendDirection: 'up', icon: 'bi-alarm', iconVariant: 'orange' },
-    { label: 'Completed', value: 3, trendText: 'Follow-up closed', trendDirection: 'up', icon: 'bi-check-circle', iconVariant: 'green' },
-    { label: 'Appointment', value: 12, trendText: 'Confirmed appointments', trendDirection: 'up', icon: 'bi-calendar-check', iconVariant: 'purple' },
+    { label: 'Total Leads', value: '1', trendText: '8.4% this month', trendDirection: 'up', icon: 'bi-person-lines-fill', iconVariant: 'primary' },
+    { label: 'Total Follow-Ups', value: 1, trendText: 'Across all telecallers', trendDirection: 'neutral', icon: 'bi-arrow-repeat', iconVariant: 'blue' },
+    { label: 'Due Today', value: 0, trendText: 'Needs attention', trendDirection: 'up', icon: 'bi-alarm', iconVariant: 'orange' },
+    { label: 'Completed', value: 0, trendText: 'Follow-up closed', trendDirection: 'up', icon: 'bi-check-circle', iconVariant: 'green' },
+    { label: 'Appointment', value: 0, trendText: 'Confirmed appointments', trendDirection: 'up', icon: 'bi-calendar-check', iconVariant: 'purple' },
   ];
 
   filters: FilterOption[] = [

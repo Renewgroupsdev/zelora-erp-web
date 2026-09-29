@@ -2,12 +2,18 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { AddLeadForm } from '../../../pages/lead-management/add-lead-form/add-lead-form';
 import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { CallDisposition, CallLog, DispositionPayload, customerNumber, formatCallDuration } from '../../../core/telephony/telephony.models';
 import { TelephonyService } from '../../../core/telephony/telephony.service';
+
+/** Same "lead" module type used by the Lead Management list (lead-management.ts) to scope
+ *  service-category options - kept in sync here so Create Lead offers the same Type list. */
+const LEAD_MODULE_TYPE = 2;
 
 export interface CallOutcomeDialogData {
   call: CallLog;
@@ -50,6 +56,11 @@ export class CallOutcomeDialog implements OnInit {
 
   readonly dispositions = signal<CallDisposition[]>([]);
   readonly counselors = signal<{ id: number; name: string }[]>([]);
+  /** Preloaded as soon as this dialog opens (i.e. the moment the call is answered), so Create
+   *  Lead can hand them straight to AddLeadForm instead of it fetching them itself mid-call. */
+  sourceOptions: any = [];
+  typeOptions: any = [];
+  statusOptions: any = [];
   readonly selectedCode = signal<string>('');
   readonly saving = signal(false);
   readonly endingCall = signal(false);
@@ -96,6 +107,20 @@ export class CallOutcomeDialog implements OnInit {
       },
       error: () => this.counselors.set([]),
     });
+
+    this.loadLeadDropdowns();
+  }
+
+  private loadLeadDropdowns(): void {
+    forkJoin({
+      statuses: this.api.GET(ApiRoutesConstants.Status_List_Options).pipe(catchError(() => of(null))),
+      sources: this.api.GET(ApiRoutesConstants.Source_List_Options).pipe(catchError(() => of(null))),
+      types: this.api.GET(`${ApiRoutesConstants.Type_List_Options}/${LEAD_MODULE_TYPE}`).pipe(catchError(() => of(null))),
+    }).subscribe(({ statuses, sources, types }: any) => {
+      this.statusOptions = statuses?.data?.data ?? [];
+      this.sourceOptions = sources?.data?.data ?? [];
+      this.typeOptions = types?.data?.data ?? [];
+    });
   }
 
   icon(d: CallDisposition): string {
@@ -117,7 +142,12 @@ export class CallOutcomeDialog implements OnInit {
         autoFocus: false,
         disableClose: true,
         panelClass: 'add-lead-dialog',
-        data: { mobile_no: this.number },
+        data: {
+          mobile_no: this.number,
+          sourceOptions: this.sourceOptions,
+          typeOptions: this.typeOptions,
+          statusOptions: this.statusOptions,
+        },
       })
       .afterClosed()
       .subscribe((lead: any) => {
