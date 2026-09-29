@@ -1,0 +1,209 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-people-fill"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>{{ isEdit ? 'Edit User' : 'Add User' }}</h2>
+        <p>{{ isEdit ? 'Update user, role and branch' : 'Create a user with a role and branch' }}</p>
+      </div>
+    </div>
+
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="userForm" (ngSubmit)="saveUser()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-person-vcard"></i>
+        User Information
+      </div>
+
+      <div class="photo-upload">
+        <div class="photo-preview" [class.has-image]="photoPreview">
+          @if (photoPreview) {
+            <img [src]="photoPreview" alt="Profile photo preview">
+          } @else {
+            <span>{{ initials() }}</span>
+          }
+        </div>
+        <div class="photo-actions">
+          <label class="photo-btn">
+            <i class="bi bi-camera"></i> {{ photoPreview ? 'Change photo' : 'Upload photo' }}
+            <input type="file" accept="image/*" hidden (change)="onPhotoSelected($event)">
+          </label>
+          @if (photoPreview) {
+            <button type="button" class="photo-btn remove" (click)="removePhoto()"><i class="bi bi-trash"></i> Remove</button>
+          }
+          <small>JPG, PNG or WebP, up to 2 MB.</small>
+          @if (photoError) { <small class="error-text">{{ photoError }}</small> }
+        </div>
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field">
+          <label for="user-name">Name <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-person"></i>
+            <input id="user-name" type="text" formControlName="name" placeholder="Enter full name" [class.is-invalid]="isInvalid('name')" />
+          </div>
+          @if (isInvalid('name')) { <small class="error-text">Name is required.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="user-email">Email <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-envelope"></i>
+            <input id="user-email" type="email" formControlName="email" placeholder="name@company.com" [class.is-invalid]="isInvalid('email')" />
+          </div>
+          @if (isInvalid('email')) { <small class="error-text">Enter a valid email.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="user-password">Password @if (!isEdit) { <span>*</span> }</label>
+          <div class="input-wrap">
+            <i class="bi bi-key"></i>
+            <input id="user-password" [type]="showPassword ? 'text' : 'password'" formControlName="password"
+              [placeholder]="isEdit ? 'Leave blank to keep current' : 'Minimum 6 characters'" autocomplete="new-password"
+              [class.is-invalid]="isInvalid('password')" />
+          </div>
+          @if (isInvalid('password')) { <small class="error-text">{{ isEdit ? 'Minimum 6 characters.' : 'Password is required (minimum 6 characters).' }}</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="user-password-confirm">Confirm Password @if (!isEdit) { <span>*</span> }</label>
+          <div class="input-wrap">
+            <i class="bi bi-key-fill"></i>
+            <input id="user-password-confirm" type="password" formControlName="password_confirmation"
+              placeholder="Re-enter password" autocomplete="new-password" [class.is-invalid]="passwordMismatch" />
+          </div>
+          @if (passwordMismatch) { <small class="error-text">Passwords do not match.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="user-phone">Phone</label>
+          <div class="input-wrap">
+            <i class="bi bi-telephone"></i>
+            <input id="user-phone" type="text" formControlName="phone_no" placeholder="Mobile number" [class.is-invalid]="isInvalid('phone_no')" />
+          </div>
+          @if (isInvalid('phone_no')) { <small class="error-text">Phone number is too long.</small> }
+        </div>
+
+      </div>
+
+      <div class="section-title">
+        <i class="bi bi-diagram-3"></i>
+        Role &amp; Branch
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field">
+          <label for="user-role">Role <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-person-badge"></i>
+            <select id="user-role" formControlName="role_id" [class.is-invalid]="isInvalid('role_id')">
+              <option value="">Select role</option>
+              @for (role of roles; track role.id) { <option [value]="role.id">{{ role.name }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+          @if (isInvalid('role_id')) { <small class="error-text">Role is required.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="user-branch">Branch <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-building"></i>
+            <select id="user-branch" formControlName="org_unit_id" [class.is-invalid]="isInvalid('org_unit_id')">
+              <option value="">Select branch</option>
+              @for (branch of branches; track branch.id) { <option [value]="branch.id">{{ branch.name }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+          @if (isInvalid('org_unit_id')) { <small class="error-text">Branch is required.</small> }
+        </div>
+
+        <div class="form-field full-width">
+          <label for="user-status">Status <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-circle-half"></i>
+            <select id="user-status" formControlName="status">
+              <option [value]="1">Active</option>
+              <option [value]="0">Inactive</option>
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+      </div>
+
+      @if (isTelecallerRole) {
+        <div class="section-title">
+          <i class="bi bi-headset"></i>
+          Telephony Extension
+        </div>
+
+        <div class="form-grid">
+
+          <div class="form-field">
+            <label for="user-extension">Extension <span>*</span></label>
+            <div class="input-wrap">
+              <i class="bi bi-hash"></i>
+              <input id="user-extension" type="text" formControlName="extension" placeholder="e.g. 1001" [class.is-invalid]="isInvalid('extension')" />
+            </div>
+            @if (isInvalid('extension')) { <small class="error-text">Extension is required (letters, digits, * # _ - only).</small> }
+          </div>
+
+          <div class="form-field">
+            <label for="user-device">Device Type</label>
+            <div class="input-wrap select-wrap">
+              <i class="bi bi-phone"></i>
+              <select id="user-device" formControlName="device_type">
+                <option value="sip">SIP phone / softphone</option>
+                <option value="webrtc">WebRTC (browser)</option>
+                <option value="desk">Desk phone</option>
+                <option value="mobile">Mobile</option>
+              </select>
+              <i class="bi bi-chevron-down select-arrow"></i>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="user-sip-username">SIP Username</label>
+            <div class="input-wrap">
+              <i class="bi bi-person-lines-fill"></i>
+              <input id="user-sip-username" type="text" formControlName="sip_username" placeholder="Defaults to the extension" />
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="user-sip-domain">SIP Domain</label>
+            <div class="input-wrap">
+              <i class="bi bi-globe2"></i>
+              <input id="user-sip-domain" type="text" formControlName="sip_domain" placeholder="Defaults to the PBX domain" />
+            </div>
+          </div>
+
+        </div>
+      }
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn" [disabled]="isSaving" [title]="isEdit ? 'Update User' : 'Save User'">
+        <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-floppy]="!isSaving && !isEdit" [class.bi-pencil-square]="!isSaving && isEdit"></i>
+        {{ isSaving ? 'Saving...' : (isEdit ? 'Update' : 'Save') }}
+      </button>
+    </div>
+
+  </form>
+</div>

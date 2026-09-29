@@ -23,10 +23,10 @@ export const AGENT_STATUS_LABELS: Record<AgentStatus, string> = {
 };
 
 export type CallStatus =
-  | 'initiated' | 'ringing' | 'connected' | 'hold' | 'answered'
+  | 'initiated' | 'ringing' | 'connected' | 'hold' | 'waiting' | 'answered'
   | 'completed' | 'missed' | 'rejected' | 'no_answer' | 'busy' | 'failed';
 
-export const LIVE_CALL_STATUSES: CallStatus[] = ['initiated', 'ringing', 'connected', 'hold'];
+export const LIVE_CALL_STATUSES: CallStatus[] = ['initiated', 'ringing', 'connected', 'hold', 'waiting'];
 
 export interface CallLead {
   id: number;
@@ -74,6 +74,9 @@ export interface AgentState {
   endpoint: string | null;
   ringing_call: CallLog | null;
   active_call: CallLog | null;
+  /** A customer parked specifically for this telecaller (sticky routing), waiting for
+   *  them to free up. Shown even while they're on another call. */
+  waiting_call: CallLog | null;
   pending_disposition: CallLog | null;
   ring_timeout: number;
 }
@@ -161,6 +164,7 @@ export interface FollowUpLead {
   organization_name: string | null;
   assigned_to: number | null;
   assigned_to_name: string | null;
+  assigned_to_photo?: string | null;
   next_follow_up_at: string | null;
   last_contacted_at: string | null;
   follow_ups_count: number;
@@ -213,7 +217,7 @@ export function customerNumber(call: Pick<CallLog, 'direction' | 'caller_number'
 export function callStatusClass(status: string): string {
   if (['completed', 'connected', 'answered', 'available'].includes(status)) return 'success';
   if (['missed', 'rejected', 'failed', 'no_answer', 'busy', 'offline'].includes(status)) return 'danger';
-  if (['ringing', 'initiated', 'hold', 'on_call', 'wrap_up'].includes(status)) return 'warning';
+  if (['ringing', 'initiated', 'hold', 'waiting', 'on_call', 'wrap_up'].includes(status)) return 'warning';
   return 'neutral';
 }
 
@@ -222,6 +226,7 @@ export function callStatusLabel(status: string): string {
   if (status === 'ringing') return 'Ringing';
   if (status === 'connected') return 'Connected';
   if (status === 'hold') return 'On Hold';
+  if (status === 'waiting') return 'Waiting for Telecaller';
   if (status === 'completed') return 'Completed';
   if (status === 'missed') return 'Missed';
   if (status === 'rejected') return 'Rejected';

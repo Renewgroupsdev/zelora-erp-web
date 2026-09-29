@@ -42,6 +42,10 @@ export interface LeadProfileDialogData {
   lead: FlowLead;
   stage: LeadProfileStage;
   telecallers: string[];
+  /** Branch names to pick from; falls back to the built-in list when omitted. */
+  branches?: string[];
+  /** Telecaller name -> their branch name, used to pre-select the branch when a telecaller is chosen. */
+  telecallerBranches?: Record<string, string>;
   /** Follow-up stage only - the lead's logged call history, shown via the "Call History" icon. */
   callLogEntries?: CallerLogEntry[];
   /** Appointment stage only - the richer booking record (service/date/payment) to display and complete. */
@@ -77,7 +81,7 @@ export interface LeadProfileDialogResult {
 export class LeadProfileDialog {
   readonly form;
   readonly paymentMethods = PAYMENT_METHODS;
-  readonly branches = ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'];
+  readonly branches: string[];
   readonly categories = TREATMENT_CATEGORIES;
 
   history: FollowUpEntry[];
@@ -102,6 +106,7 @@ export class LeadProfileDialog {
     private dialogRef: MatDialogRef<LeadProfileDialog, LeadProfileDialogResult>,
     @Inject(MAT_DIALOG_DATA) public data: LeadProfileDialogData,
   ) {
+    this.branches = data.branches?.length ? data.branches : ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'];
     const lead = data.lead;
     const appointment = data.appointment;
     this.history = [...(lead.history ?? [])];
@@ -535,6 +540,11 @@ export class LeadProfileDialog {
   }
 
   // ---------------------------------------------------------------------
+
+  onTelecallerChange(): void {
+    const branch = this.data.telecallerBranches?.[this.form.get('telecaller')?.value ?? ''];
+    if (branch && this.branches.includes(branch)) this.form.patchValue({ branch });
+  }
 
   close(): void { this.dialogRef.close({ action: 'close', lead: this.data.lead }); }
 

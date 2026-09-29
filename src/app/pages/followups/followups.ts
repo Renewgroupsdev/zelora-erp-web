@@ -172,7 +172,7 @@ export class Followups implements OnInit {
 
   private leadToRow(lead: FollowUpLead): TableRow {
     const callers: CallerAvatar[] = lead.assigned_to_name
-      ? [{ name: lead.assigned_to_name, empNo: `EMP-${lead.assigned_to}` }]
+      ? [{ name: lead.assigned_to_name, empNo: `EMP-${lead.assigned_to}`, image: lead.assigned_to_photo ?? undefined }]
       : [];
 
     const callLog: CallerLogEntry[] = (lead.caller_histories ?? []).map((history) => ({

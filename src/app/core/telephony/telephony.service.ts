@@ -50,6 +50,7 @@ export class TelephonyService {
   readonly state = signal<AgentState | null>(null);
   readonly ringingCall = computed(() => this.state()?.ringing_call ?? null);
   readonly activeCall = computed(() => this.state()?.active_call ?? null);
+  readonly waitingCall = computed(() => this.state()?.waiting_call ?? null);
   readonly pendingDisposition = computed(() => this.state()?.pending_disposition ?? null);
   readonly agentStatus = computed<AgentStatus>(() => this.state()?.agent?.status ?? 'offline');
   readonly isTelecaller = computed(() => !!this.state()?.is_telecaller);
@@ -138,8 +139,12 @@ export class TelephonyService {
     return this.api.GET(ApiRoutesConstants.CALL_AGENT_LIST).pipe(map((res: any) => (res?.data ?? []) as TelecallerRow[]));
   }
 
-  assignLeads(leadIds: number[], assignedTo: number | null): Observable<any> {
-    return this.api.POST(ApiRoutesConstants.LEAD_ASSIGN, { lead_ids: leadIds, assigned_to: assignedTo });
+  assignLeads(leadIds: number[], assignedTo: number | null, organizationId: number | null = null): Observable<any> {
+    return this.api.POST(ApiRoutesConstants.LEAD_ASSIGN, {
+      lead_ids: leadIds,
+      assigned_to: assignedTo,
+      ...(organizationId ? { organization_id: organizationId } : {}),
+    });
   }
 
   /** Leads with an open or past follow-up, scoped server-side to what the caller may see

@@ -23,6 +23,34 @@
   > * { pointer-events: auto; width: 100%; }
 }
 
+.waiting-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--app-surface-solid, #fff);
+  border: 1px solid var(--dock-amber);
+  box-shadow: 0 10px 28px -14px rgba(15, 60, 50, 0.5);
+
+  i { color: var(--dock-amber); font-size: 16px; }
+}
+
+.waiting-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.waiting-title { font-size: 12px; font-weight: 700; color: var(--dock-amber); }
+.waiting-detail {
+  font-size: 13px;
+  color: var(--dock-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .presence { position: relative; width: auto !important; }
 
 .presence-pill {

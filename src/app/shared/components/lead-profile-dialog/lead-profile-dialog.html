@@ -40,7 +40,7 @@
       <div class="profile-section">
         <div class="section-title"><i class="bi bi-person-check"></i> Assign &amp; Next Step</div>
         <div class="field-grid">
-          <label>Assigned telecaller<select formControlName="telecaller" [class.is-invalid]="isInvalid('telecaller')"><option value="">Select telecaller</option>@for (caller of data.telecallers; track caller) { <option [value]="caller">{{ caller }}</option> }</select></label>
+          <label>Assigned telecaller<select formControlName="telecaller" (change)="onTelecallerChange()" [class.is-invalid]="isInvalid('telecaller')"><option value="">Select telecaller</option>@for (caller of data.telecallers; track caller) { <option [value]="caller">{{ caller }}</option> }</select></label>
           <label>Branch<select formControlName="branch" [class.is-invalid]="isInvalid('branch')"><option value="">Select branch</option>@for (branch of branches; track branch) { <option [value]="branch">{{ branch }}</option> }</select></label>
           <label class="full">Reason / Notes<textarea rows="4" formControlName="notes" [class.is-invalid]="isInvalid('notes')" placeholder="Why this lead was contacted, requirements, and next action"></textarea></label>
         </div>
@@ -59,7 +59,7 @@
         </div>
 
         <div class="field-grid">
-          <label>Assigned telecaller<select formControlName="telecaller" [class.is-invalid]="isInvalid('telecaller')"><option value="">Select telecaller</option>@for (caller of data.telecallers; track caller) { <option [value]="caller">{{ caller }}</option> }</select></label>
+          <label>Assigned telecaller<select formControlName="telecaller" (change)="onTelecallerChange()" [class.is-invalid]="isInvalid('telecaller')"><option value="">Select telecaller</option>@for (caller of data.telecallers; track caller) { <option [value]="caller">{{ caller }}</option> }</select></label>
           <label>Branch<select formControlName="branch" [class.is-invalid]="isInvalid('branch')"><option value="">Select branch</option>@for (branch of branches; track branch) { <option [value]="branch">{{ branch }}</option> }</select></label>
         </div>
 

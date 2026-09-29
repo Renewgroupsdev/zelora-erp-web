@@ -25,6 +25,16 @@
         (note)="saveNote(call, $event)"></app-active-call>
     }
 
+    @if (waiting(); as call) {
+      <div class="waiting-banner" role="status">
+        <i class="bi bi-headset"></i>
+        <div class="waiting-body">
+          <span class="waiting-title">Customer waiting for you</span>
+          <span class="waiting-detail">{{ call.lead?.name ?? 'Unknown caller' }} - {{ customerNumber(call) }}</span>
+        </div>
+      </div>
+    }
+
     @if (telephony.isTelecaller()) {
       <div class="presence" [class.pinned-open]="statusMenuOpen()">
         <button type="button" class="presence-pill" [ngClass]="statusClass(telephony.agentStatus())"

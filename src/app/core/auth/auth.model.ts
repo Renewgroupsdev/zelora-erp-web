@@ -18,6 +18,7 @@ export interface AuthUser {
   phone_no: string | null;
   status: string;
   profile_photo: string | null;
+  profile_photo_url?: string;
   [key: string]: unknown;
 }
 

@@ -98,5 +98,7 @@ export class ApiRoutesConstants {
    public static LEAD_WORK_STATS = "telephony/leads/stats";
    public static LEAD_FOLLOWUPS = "telephony/leads/followups";
    public static USER_LIST = "users";
+   public static USER_ADD = "users";
+   public static USER_DELETE = "users";
 
 }

@@ -76,7 +76,7 @@
     </div>
 
     <div class="profile-block">
-      <div class="profile-avatar"><i class="bi bi-person-fill"></i></div>
+      <div class="profile-avatar">@if (currentUser()?.profile_photo_url) {<img [src]="currentUser()?.profile_photo_url" [alt]="currentUser()?.name" class="profile-avatar-img">} @else {<i class="bi bi-person-fill"></i>}</div>
       <div class="profile-text d-none d-sm-flex">
         <span class="profile-name">{{ currentUser()?.name || 'User' }}</span>
         <span class="profile-role">{{ currentUserRole() }}</span>

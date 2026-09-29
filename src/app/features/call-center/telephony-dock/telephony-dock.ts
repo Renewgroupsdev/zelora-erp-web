@@ -12,6 +12,7 @@ import {
   LIVE_CALL_STATUSES,
   SELECTABLE_AGENT_STATUSES,
   TelecallerRow,
+  customerNumber,
 } from '../../../core/telephony/telephony.models';
 import { TelephonyService } from '../../../core/telephony/telephony.service';
 import { ToastService } from '../../../shared/common-services/toast.service';
@@ -19,11 +20,7 @@ import { ActiveCallComponent } from '../active-call/active-call.component';
 import { openCallOutcome } from '../call-disposition/open-call-outcome';
 import { IncomingCallComponent } from '../incoming-call/incoming-call.component';
 
-/**
- * Floating call widget mounted once in the app layout. Owns the telephony wiring - caller
- * lookup, ringtone, outcome dialog and presence - and delegates the visuals to
- * <app-incoming-call> and <app-active-call>.
- */
+
 @Component({
   selector: 'app-telephony-dock',
   standalone: true,
@@ -47,8 +44,6 @@ export class TelephonyDock implements OnDestroy {
   readonly callerProfile = signal<CallerProfile | null>(null);
   readonly transferTargets = signal<TelecallerRow[]>([]);
 
-  /** Lets the floating dock be dragged to a different spot on screen. Purely a visual offset -
-   *  it never affects the presence/call logic below. */
   readonly dockPos = signal<{ x: number; y: number } | null>(null);
   private dragOrigin: { x: number; y: number; posX: number; posY: number } | null = null;
   private dragged = false;
@@ -56,6 +51,8 @@ export class TelephonyDock implements OnDestroy {
 
   readonly ringing = this.telephony.ringingCall;
   readonly active = this.telephony.activeCall;
+  readonly waiting = this.telephony.waitingCall;
+  readonly customerNumber = customerNumber;
 
   readonly callSeconds = computed(() => {
     const call = this.active();
@@ -69,8 +66,6 @@ export class TelephonyDock implements OnDestroy {
   private profileForCallId: number | null = null;
   private outcomeOpenFor: number | null = null;
   private ringtone?: { timer: ReturnType<typeof setInterval> };
-  /** Reused across every ring instead of recreated each time, so it only ever needs
-   *  unlocking once (see unlockAudio()) rather than hitting the autoplay block on every call. */
   private audioCtx?: AudioContext;
   private readonly unlockAudioEvents = ['pointerdown', 'keydown'] as const;
   private readonly unlockAudio = (): void => {
@@ -79,15 +74,11 @@ export class TelephonyDock implements OnDestroy {
   };
 
   constructor() {
-    // The ringtone fires from a poll response, not a click, so Chrome's autoplay policy
-    // blocks a fresh AudioContext from actually making sound ("was not allowed to start").
-    // Unlock one on the first real user gesture and reuse it for every ring afterwards.
     this.unlockAudioEvents.forEach(evt => document.addEventListener(evt, this.unlockAudio, { passive: true }));
     this.destroyRef.onDestroy(() =>
       this.unlockAudioEvents.forEach(evt => document.removeEventListener(evt, this.unlockAudio))
     );
 
-    // Load the caller card once per ringing / active call.
     effect(() => {
       const call = this.ringing() ?? this.active();
       if (!call) {
@@ -103,21 +94,16 @@ export class TelephonyDock implements OnDestroy {
       }));
     });
 
-    // Ringtone while an inbound call is ringing.
     effect(() => {
       const ringing = !!this.ringing();
       untracked(() => (ringing ? this.startRingtone() : this.stopRingtone()));
     });
 
-    // Outcome is mandatory for an answered call (also after a page reload).
     effect(() => {
       const pending = this.telephony.pendingDisposition();
       if (pending && !this.telephony.onCall()) untracked(() => this.openOutcome(pending, true));
     });
 
-    // Tell the telecaller (not just the console) when this browser/connection can't record
-    // calls at all - e.g. served over plain HTTP instead of HTTPS. Only once per session so it
-    // doesn't re-pop on every call.
     effect(() => {
       if (this.telephony.recordingUnavailable() && !this.warnedRecordingUnavailable) {
         this.warnedRecordingUnavailable = true;
@@ -137,7 +123,7 @@ export class TelephonyDock implements OnDestroy {
   }
 
   get showDock(): boolean {
-    return this.telephony.isTelecaller() || !!this.ringing() || !!this.active();
+    return this.telephony.isTelecaller() || !!this.ringing() || !!this.active() || !!this.waiting();
   }
 
   statusClass(status: AgentStatus): string {
@@ -182,9 +168,6 @@ export class TelephonyDock implements OnDestroy {
 
   /* ---------------- call controls ---------------- */
 
-  /** Opens the outcome dialog the instant the call is answered (not after hangup), so the
-   *  telecaller can pick the disposition while still talking - Save stays disabled in the
-   *  dialog itself until the call actually ends (see CallOutcomeDialog.callLive). */
   answer(call: CallLog): void {
     if (this.busy()) return;
     this.busy.set(true);
@@ -277,16 +260,8 @@ export class TelephonyDock implements OnDestroy {
     this.telephony.refresh();
   }
 
-  /** Soft two-tone ring via WebAudio (no asset needed). Reuses the context unlockAudio()
-   *  set up on the page's first click/keydown, instead of creating a fresh (autoplay-blocked) one.
-   *  If nothing has unlocked audio yet (e.g. a call rings before the telecaller has clicked
-   *  anywhere on the page this session), it stays silent - the popup is still shown - rather
-   *  than repeatedly calling start() on a suspended context and spamming the console. */
   private startRingtone(): void {
     if (this.ringtone) return;
-    try {
-      // Only reuse a context a real gesture already created - don't create one from here,
-      // since this effect fires from a poll response, not a click.
       const ctx = this.audioCtx;
 
       const beep = () => {
@@ -304,9 +279,7 @@ export class TelephonyDock implements OnDestroy {
       };
       beep();
       this.ringtone = { timer: setInterval(beep, 2000) };
-    } catch {
-      // Audio unavailable - the visual popup is enough.
-    }
+   
   }
 
   private stopRingtone(): void {

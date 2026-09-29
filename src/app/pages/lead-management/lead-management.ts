@@ -26,7 +26,7 @@ import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { ToastService } from '../../shared/common-services/toast.service';
 import { TelephonyService } from '../../core/telephony/telephony.service';
-import { CallReportSummary, LeadWorkStats } from '../../core/telephony/telephony.models';
+import { CallReportSummary, LeadWorkStats, TelecallerRow } from '../../core/telephony/telephony.models';
 import { CrmFlowService, FlowAppointment, FlowLead } from '../../shared/common-services/crm-flow.service';
 import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
 import { AuthService } from '../../core/auth/auth.service';
@@ -56,7 +56,6 @@ export class LeadManagement implements OnInit {
     });
   }
 
-  readonly staffOptions = [];
 
   stats: DetailCardData[] = [
     { label: 'Total Leads', value: '0', trendText: 'Visible to you', trendDirection: 'neutral', icon: 'bi-person-lines-fill', iconVariant: 'primary' },
@@ -90,9 +89,9 @@ export class LeadManagement implements OnInit {
     { key: 'service_category', header: 'Service Category', type: 'text', width: '9%' },
     { key: 'service_request', header: 'Service Request', type: 'text', width: '9%' },
     { key: 'branch', header: 'Branch', type: 'branch', width: '9%' },
-    { key: 'telecaller', header: 'Telecaller', type: 'text', width: '8%' },
+    { key: 'telecaller_avatar', header: 'Telecaller', type: 'avatarGroup', width: '8%', sortable: false },
     { key: 'status', header: 'Status', type: 'badge', width: '8%' },
-    { key: 'next_follow_up', header: 'Next Follow-up', type: 'text', width: '8%' },
+    // { key: 'next_follow_up', header: 'Next Follow-up', type: 'text', width: '8%' },
     { key: 'action', header: 'Action', type: 'action', width: '15%', sortable: false },
   ];
 
@@ -118,6 +117,7 @@ export class LeadManagement implements OnInit {
   private sourceIdByName = new Map<string, number>();
   private branchIdByName = new Map<string, number>();
   private telecallerIdByName = new Map<string, number>();
+  private telecallerBranchByName: Record<string, string> = {};
 
   ngOnInit(): void {
     this.loadFilterList();
@@ -186,8 +186,9 @@ export class LeadManagement implements OnInit {
     }
   }
 
-  private applyTelecallerOptions(rows: { id: number; name: string }[]): void {
+  private applyTelecallerOptions(rows: TelecallerRow[]): void {
     this.telecallerIdByName = new Map(rows.map(r => [r.name, r.id]));
+    this.telecallerBranchByName = Object.fromEntries(rows.filter(r => r.branch?.name).map(r => [r.name, r.branch!.name]));
     const names = rows.map(r => r.name);
 
     if (names.length) {
@@ -270,6 +271,9 @@ export class LeadManagement implements OnInit {
       created_at: this.formatDate(lead.created_at),
       gender: lead.gender ?? '',
       telecaller: lead.assigned_to_name || 'Unassigned',
+      telecaller_avatar: lead.assigned_to_name
+        ? [{ name: lead.assigned_to_name, empNo: `EMP-${lead.assigned_to}`, image: lead.assigned_to_photo ?? undefined }]
+        : [],
       next_follow_up: lead.next_follow_up_at ? this.formatDate(lead.next_follow_up_at) : '-',
       action: 'menu',
       id: lead.id,
@@ -440,7 +444,9 @@ export class LeadManagement implements OnInit {
       data: {
         lead: this.toFlowLead(row),
         stage,
-        telecallers: this.staffOptions,
+        telecallers: [...this.telecallerIdByName.keys()],
+        branches: [...this.branchIdByName.keys()],
+        telecallerBranches: this.telecallerBranchByName,
         isNewBooking: stage === 'appointment',
         treatments: TREATMENTS,
         combos: COMBO_OFFERS,
@@ -455,10 +461,24 @@ export class LeadManagement implements OnInit {
 
   private handleLeadProfileResult(row: TableRow, result: LeadProfileDialogResult): void {
     if (result.action === 'followup') {
-      this.crmFlow.addFollowUp(result.lead);
-      this.removeLeadRow(row);
-      this.toast.success('Follow-up logged', `${result.lead.name} moved to Follow-Ups.`);
-      this.router.navigate(['/app/follow-ups']);
+      const telecallerId = this.telecallerIdByName.get(result.lead.telecaller);
+      const branchId = this.branchIdByName.get(result.lead.branch);
+
+      if (!telecallerId) {
+        this.toast.error('Select a valid telecaller.');
+        return;
+      }
+
+      this.telephony.assignLeads([Number(row['id'])], telecallerId, branchId ?? null).subscribe({
+        next: () => {
+          this.crmFlow.addFollowUp(result.lead);
+          this.removeLeadRow(row);
+          this.toast.success('Follow-up logged', `${result.lead.name} assigned to ${result.lead.telecaller} and moved to Follow-Ups.`);
+          this.loadFilterList();
+          this.router.navigate(['/app/follow-ups']);
+        },
+        error: (err: any) => this.toast.error(err?.error?.message || 'Unable to assign the lead. Please try again.'),
+      });
       return;
     }
 
@@ -492,7 +512,7 @@ export class LeadManagement implements OnInit {
       category: String(row['service_category'] ?? ''),
       request: String(row['service_request'] ?? ''),
       branch: String(row['branch'] ?? ''),
-      telecaller: this.auth.currentUser()?.name ?? String(row['telecaller'] ?? ''),
+      telecaller: row['telecaller'] && row['telecaller'] !== 'Unassigned' ? String(row['telecaller']) : '',
       notes: '',
       followUpDate: '',
       status: 'Valid',
