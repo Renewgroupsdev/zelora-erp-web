@@ -10,11 +10,11 @@
   /* ---------------------------------------------------------
      Brand & surface colors
   ---------------------------------------------------------- */
-  --brand-blue: #0878b8;
-  --brand-blue-dark: #075b87;
-  --brand-green: #19b875;
-  --brand-green-dark: #119965;
-  --brand-teal-dark: #0f7666;
+  --brand-blue: var(--primary);
+  --brand-blue-dark: var(--primary-dark);
+  --brand-green: var(--primary);
+  --brand-green-dark: var(--primary-dark);
+  --brand-teal-dark: var(--primary-dark);
   --brand-ink: #123c38;
 
   --app-bg: linear-gradient(145deg, #e9f7f2 0%, #eef5fb 45%, #f7fbf9 100%);
@@ -125,10 +125,10 @@
 
   /* Premium elevation — soft, color-tinted "floating glass" shadows layered
      on top of the plain ones above; used for headers, sidebars & hero surfaces */
-  --shadow-premium-sm: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 6px 16px -8px color-mix(in srgb, var(--primary, #18b875) 22%, transparent), 0 2px 6px rgba(16, 40, 36, 0.06);
-  --shadow-premium-md: 0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 16px 32px -14px color-mix(in srgb, var(--primary, #18b875) 26%, transparent), 0 4px 14px rgba(16, 40, 36, 0.08);
-  --shadow-premium-lg: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 26px 54px -18px color-mix(in srgb, var(--primary, #18b875) 30%, transparent), 0 8px 22px rgba(16, 40, 36, 0.1);
-  --glass-border: color-mix(in srgb, var(--primary, #18b875) 14%, rgba(255, 255, 255, 0.6));
+  --shadow-premium-sm: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 6px 16px -8px color-mix(in srgb, var(--primary, #7b1e42) 22%, transparent), 0 2px 6px rgba(16, 40, 36, 0.06);
+  --shadow-premium-md: 0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 16px 32px -14px color-mix(in srgb, var(--primary, #7b1e42) 26%, transparent), 0 4px 14px rgba(16, 40, 36, 0.08);
+  --shadow-premium-lg: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 26px 54px -18px color-mix(in srgb, var(--primary, #7b1e42) 30%, transparent), 0 8px 22px rgba(16, 40, 36, 0.1);
+  --glass-border: color-mix(in srgb, var(--primary, #7b1e42) 14%, rgba(255, 255, 255, 0.6));
 
   /* ---------------------------------------------------------
      Premium stat-card gradients — one dark, color-coded surface
@@ -303,18 +303,23 @@ h1, h2, h3, h4, h5, h6 {
   --font-family-base: 'Rubik', sans-serif;
   --header-bg: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(255,255,255,.93) 100%);
   --sidebar-bg: rgba(255,255,255,.96);
-  --primary: #18b875;
-  --primary-dark: #0f9d64;
-  --primary-soft: #e9f8f2;
-  --primary-soft-strong: #def3ea;
-  --primary-border: rgba(24,184,117,.16);
-  --primary-border-strong: rgba(24,184,117,.35);
-  --primary-shadow: rgba(24,184,117,.22);
+  --primary: #7b1e42;
+  --primary-dark: #5c1232;
+  --primary-soft: #f9eef2;
+  --primary-soft-strong: #f2dfe6;
+  --primary-border: rgba(123,30,66,.16);
+  --primary-border-strong: rgba(123,30,66,.35);
+  --primary-shadow: rgba(123,30,66,.22);
+  --brand-rose-gold: #d9a48a;
   --shadow-header: 0 5px 24px rgba(18,60,56,.06);
   --shadow-sidebar: 5px 0 24px rgba(18,60,56,.045);
   --shadow-sidebar-horizontal: 0 4px 18px rgba(18,60,56,.05);
 }
 
+:root[data-primary='green'] {
+  --primary: #18b875; --primary-dark: #0f9d64; --primary-soft: #e9f8f2; --primary-soft-strong: #def3ea;
+  --primary-border: rgba(24,184,117,.16); --primary-border-strong: rgba(24,184,117,.35); --primary-shadow: rgba(24,184,117,.22);
+}
 :root[data-primary='blue'] {
   --primary: #2d7ff9; --primary-dark: #1767d6; --primary-soft: #eaf2ff; --primary-soft-strong: #dceaff;
   --primary-border: rgba(45,127,249,.17); --primary-border-strong: rgba(45,127,249,.35); --primary-shadow: rgba(45,127,249,.22);

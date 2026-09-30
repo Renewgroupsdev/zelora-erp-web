@@ -37,14 +37,11 @@ export class TreatmentManagement {
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
 
-  // The shared filter card only knows about a fixed CommonFilterState shape, so the
-  // "status" slot doubles as Category and "source" as Type (Treatment/Combo) here.
   readonly filters: FilterOption[] = [
     { key: 'status', label: 'Category', options: [...TREATMENT_CATEGORIES] },
     { key: 'source', label: 'Type', options: ['Treatment', 'Combo'] },
   ];
 
-  // Real signals (not plain fields) so the computed()s below actually re-run when these change.
   readonly search = signal('');
   readonly filterState = signal<CommonFilterState>({
     status: null,

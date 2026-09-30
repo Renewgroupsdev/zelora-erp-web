@@ -252,7 +252,7 @@
 
   &:hover,
   &:focus-visible {
-    color: var(--brand-green, #19b875);
+    color: var(--brand-green, #7b1e42);
     text-decoration: underline;
   }
 }
@@ -666,8 +666,9 @@
   }
 
   &:hover {
-    filter: brightness(0.94);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.14);
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 4px 10px -4px var(--primary-shadow);
     transform: translateY(-1px);
   }
 

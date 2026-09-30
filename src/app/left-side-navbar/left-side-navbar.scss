@@ -367,7 +367,7 @@
 
 .nav-link.active .nav-active-bar {
   opacity: 1;
-  transform: translateY(-50%) translateY(-50%) scaleY(1);
+  transform: translateY(5%) translateY(-50%) scaleY(1);
 }
 
 .nav-icon {
@@ -439,7 +439,7 @@
   left: -6px;
   top: 50%;
   width: 3px;
-  height: 20px;
+  height: 28px;
   border-radius: 0 4px 4px 0;
   background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--primary) 40%, #fff));
   opacity: 0;

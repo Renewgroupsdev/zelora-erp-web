@@ -46,6 +46,7 @@
         <div><h2>Primary color</h2><p>Change the accent color across the application.</p></div>
       </div>
       <div class="color-options">
+        <button type="button" class="color-option burgundy" [class.selected]="navLayout.primaryColor() === 'burgundy'" (click)="navLayout.setPrimaryColor('burgundy')"><span class="color-swatch"></span>Burgundy<i class="bi bi-check"></i></button>
         <button type="button" class="color-option green" [class.selected]="navLayout.primaryColor() === 'green'" (click)="navLayout.setPrimaryColor('green')"><span class="color-swatch"></span>Green<i class="bi bi-check"></i></button>
         <button type="button" class="color-option blue" [class.selected]="navLayout.primaryColor() === 'blue'" (click)="navLayout.setPrimaryColor('blue')"><span class="color-swatch"></span>Blue<i class="bi bi-check"></i></button>
         <button type="button" class="color-option purple" [class.selected]="navLayout.primaryColor() === 'purple'" (click)="navLayout.setPrimaryColor('purple')"><span class="color-swatch"></span>Purple<i class="bi bi-check"></i></button>

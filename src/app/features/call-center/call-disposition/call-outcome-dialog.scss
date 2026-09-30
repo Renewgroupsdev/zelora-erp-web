@@ -112,7 +112,7 @@
   i { font-size: 16px; color: var(--brand-teal-dark, #0f7666); }
   &:hover { background: var(--bg-light-green-soft, #f6fbf9); }
   &.selected {
-    border-color: var(--brand-green, #19b875);
+    border-color: var(--brand-green, #7b1e42);
     background: var(--bg-light-green, #e6f4ee);
     font-weight: 600;
   }
@@ -161,7 +161,7 @@ textarea {
   border: 1px solid var(--border-soft-strong, rgba(17, 95, 78, 0.16));
   background: var(--app-surface-solid, #fff);
 
-  &:focus { outline: 2px solid var(--brand-green, #19b875); outline-offset: 0; border-color: transparent; }
+  &:focus { outline: 2px solid var(--brand-green, #7b1e42); outline-offset: 0; border-color: transparent; }
 }
 
 textarea { resize: vertical; }
@@ -225,7 +225,7 @@ textarea { resize: vertical; }
 }
 
 .btn-primary {
-  background: var(--brand-green, #19b875);
+  background: var(--brand-green, #7b1e42);
   color: #fff;
 
   &:hover:not(:disabled) { background: var(--brand-green-dark, #119965); }

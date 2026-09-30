@@ -5,9 +5,10 @@ const MOBILE_BREAKPOINT = '(max-width: 768px)';
 
 export type NavLayoutMode = 'vertical' | 'horizontal';
 export type ThemeMode = 'light' | 'dark';
-export type PrimaryColor = 'green' | 'blue' | 'purple' | 'teal' | 'custom';
+export type PrimaryColor = 'burgundy' | 'green' | 'blue' | 'purple' | 'teal' | 'custom';
 
 const PRIMARY_PRESETS: Record<Exclude<PrimaryColor, 'custom'>, string> = {
+  burgundy: '#7b1e42',
   green: '#18b875',
   blue: '#2d7ff9',
   purple: '#8b5cf6',
@@ -29,17 +30,9 @@ export class NavLayoutService {
   readonly settingsMenuOpen = signal<boolean>(false);
   readonly notificationsOpen = signal<boolean>(false);
 
-  /**
-   * `sidebarExpanded` is a persisted DESKTOP preference (full labels vs icon-only).
-   * It must never double as the mobile drawer's open/closed state, otherwise the
-   * drawer's visibility on phones ends up driven by whatever was last saved on
-   * desktop (defaults to `true`, i.e. already "open") instead of starting closed
-   * and responding to the hamburger button. Mobile gets its own transient state.
-   */
   readonly mobileSidebarOpen = signal<boolean>(false);
   readonly isMobileViewport = signal<boolean>(this.readMobileViewport());
 
-  /** What the 3-bar icon / off-canvas nav should actually key off, per viewport. */
   readonly sidebarVisible = computed(() =>
     this.isMobileViewport() ? this.mobileSidebarOpen() : this.sidebarExpanded()
   );
@@ -50,7 +43,6 @@ export class NavLayoutService {
     this.watchViewport();
   }
 
-  /** Called by the top-navbar's 3-bar icon. Routes to the correct state for the current viewport. */
   toggleSidebar(): void {
     if (this.isMobileViewport()) {
       this.mobileSidebarOpen.update(open => !open);
@@ -132,7 +124,7 @@ export class NavLayoutService {
 
   private readPrimaryColor(): PrimaryColor {
     const value = localStorage.getItem('renew-plus-primary');
-    return value === 'blue' || value === 'purple' || value === 'teal' || value === 'custom' ? value : 'green';
+    return value === 'burgundy' || value === 'green' || value === 'blue' || value === 'purple' || value === 'teal' || value === 'custom' ? value : 'burgundy';
   }
 
   private readPrimaryHex(): string {
@@ -143,7 +135,7 @@ export class NavLayoutService {
     }
 
     if (color === 'custom') {
-      return PRIMARY_PRESETS.green;
+      return PRIMARY_PRESETS.burgundy;
     }
 
     return PRIMARY_PRESETS[color];
@@ -164,8 +156,6 @@ export class NavLayoutService {
     const mql = window.matchMedia(MOBILE_BREAKPOINT);
     const handleChange = (event: MediaQueryList | MediaQueryListEvent): void => {
       this.isMobileViewport.set(event.matches);
-      // Leaving mobile (e.g. rotating / resizing to desktop) should close the drawer
-      // so it doesn't reappear as a full-screen overlay next time the viewport shrinks.
       if (!event.matches) {
         this.mobileSidebarOpen.set(false);
       }

@@ -304,7 +304,7 @@
 
 .color-options {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 7px;
 }
 
@@ -340,6 +340,10 @@
 
 .color-option.selected .color-swatch {
   box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.color-option.burgundy span {
+  background: linear-gradient(135deg, #7b1e42, #d9a48a);
 }
 
 .color-option.green span {

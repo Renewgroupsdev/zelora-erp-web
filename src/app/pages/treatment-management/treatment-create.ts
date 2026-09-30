@@ -41,13 +41,6 @@ export class TreatmentCreate implements OnInit {
     ]),
   });
 
-  /**
-   * `computed()` only re-runs when a *signal* it read last time changes. Reading
-   * `form.controls.category.value` directly (a plain property) isn't a signal read,
-   * so a computed built on it would freeze at whatever category was active on its
-   * first evaluation — clicking a different category tab would never update it.
-   * Bridging the control's valueChanges through toSignal keeps it properly reactive.
-   */
   readonly activeCategory = toSignal(this.form.controls.category.valueChanges, {
     initialValue: this.form.controls.category.value,
   });
@@ -56,9 +49,6 @@ export class TreatmentCreate implements OnInit {
     this.store.treatments().filter(t => t.category === this.activeCategory())
   );
 
-  // Same computed()-freezing issue as activeCategory: these need to react to edits in the
-  // price/discount/GST fields, so each control's live value is bridged through toSignal
-  // rather than read as a plain FormControl.value (which establishes no signal dependency).
   private readonly priceValue = toSignal(this.form.controls.price.valueChanges, { initialValue: this.form.controls.price.value });
   private readonly discountValue = toSignal(this.form.controls.discount.valueChanges, { initialValue: this.form.controls.discount.value });
   private readonly discountTypeValue = toSignal(this.form.controls.discountType.valueChanges, { initialValue: this.form.controls.discountType.value });
@@ -75,7 +65,6 @@ export class TreatmentCreate implements OnInit {
   readonly gstAmount = computed(() => this.subtotal() * (Number(this.gstRateValue()) || 0) / 100);
   readonly total = computed(() => this.subtotal() + this.gstAmount());
 
-  // Pre-discount total, shown struck-through above the final price whenever a discount applies.
   readonly originalTotal = computed(() => {
     const price = Number(this.priceValue()) || 0;
     const gstRate = Number(this.gstRateValue()) || 0;
@@ -153,8 +142,6 @@ export class TreatmentCreate implements OnInit {
   }
 
   ngOnInit(): void {
-    // Base price is derived from the combo line-items whenever the "Combo" category is active,
-    // so keep it in sync with every pick/remove and lock the field while it applies.
     this.comboTreatments.valueChanges.subscribe(() => this.syncComboPrice());
     this.form.controls.category.valueChanges.subscribe(category => this.applyComboPriceLock(category === 'Combo'));
 
@@ -166,8 +153,6 @@ export class TreatmentCreate implements OnInit {
 
     this.applyComboPriceLock(this.form.controls.category.value === 'Combo');
 
-    // View Treatment reuses this same form; disabling it after every control is in place
-    // greys every field out instead of swapping in a separate read-only layout.
     if (this.readOnly) {
       this.form.disable({ emitEvent: false });
     }
@@ -195,8 +180,6 @@ export class TreatmentCreate implements OnInit {
     this.form.patchValue({ name: treatment.name, category: treatment.category, description: treatment.description, price: treatment.price, discount: treatment.discount, discountType: treatment.discountType, gstRate: treatment.gstRate, maxSessions: treatment.maxSessions });
 
     while (this.comboTreatments.length) this.comboTreatments.removeAt(0);
-    // Older records only stored keys into the shared treatment catalogue; resolve those to
-    // name/price rows so they still show up when reopened for edit under the add-a-row form.
     const comboSource: { name: string; price: number }[] = treatment.comboItems?.length
       ? treatment.comboItems
       : (treatment.treatmentKeys || []).map((key: string) => {
