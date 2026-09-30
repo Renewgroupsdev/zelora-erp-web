@@ -1,0 +1,28 @@
+<div class="qr-landing-page">
+
+  <div class="state-card" *ngIf="state === 'loading'">
+    <div class="spinner"></div>
+    <p>Verifying...</p>
+  </div>
+
+  <div class="landing-card" *ngIf="state === 'ready'">
+    <div class="brand-mark"><i class="bi bi-qr-code-scan"></i></div>
+    <h1>Thanks for scanning!</h1>
+    <p class="subtitle" *ngIf="branchName">You scanned the code for <strong>{{ branchName }}</strong>.</p>
+    <p class="subtitle" *ngIf="!branchName">Tap below to continue.</p>
+
+    <button type="button" class="continue-btn" *ngIf="canContinue" [disabled]="redirecting" (click)="continueToForm()">
+      {{ redirecting ? 'Redirecting...' : 'Continue to Form' }}
+      <i class="bi bi-arrow-right-circle" *ngIf="!redirecting"></i>
+    </button>
+    <div class="continue-btn continue-btn--disabled" *ngIf="!canContinue">
+      <i class="bi bi-exclamation-triangle"></i> Form link isn't configured yet
+    </div>
+  </div>
+
+  <div class="state-card" *ngIf="state === 'invalid'">
+    <i class="bi bi-exclamation-circle"></i>
+    <p>{{ invalidMessage }}</p>
+  </div>
+
+</div>

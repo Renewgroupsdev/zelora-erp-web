@@ -1,0 +1,156 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-diagram-3-fill"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>{{ isEdit ? 'Edit Organization' : 'Add Organization' }}</h2>
+        <p>{{ isEdit ? 'Update organization unit details' : 'Create a new branch, division or department' }}</p>
+      </div>
+    </div>
+
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="orgForm" (ngSubmit)="saveOrganization()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-building"></i>
+        Organization Information
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field">
+          <label for="org-type">Type <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-diagram-3"></i>
+            <select id="org-type" formControlName="type" [class.is-invalid]="isInvalid('type')">
+              @for (option of typeOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="org-name">Name <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-signpost"></i>
+            <input id="org-name" type="text" formControlName="name" placeholder="Enter organization name" [class.is-invalid]="isInvalid('name')" />
+          </div>
+          @if (isInvalid('name')) { <small class="error-text">Name is required.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="org-code">Code</label>
+          <div class="input-wrap">
+            <i class="bi bi-upc-scan"></i>
+            <input id="org-code" type="text" [value]="code" placeholder="Auto-generated after saving" readonly disabled />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="org-status">Status</label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-circle-half"></i>
+            <select id="org-status" formControlName="status">
+              <option [value]="1">Active</option>
+              <option [value]="0">Inactive</option>
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="section-title">
+        <i class="bi bi-geo-alt"></i>
+        Location &amp; Contact
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field full-width">
+          <label for="org-address">Address</label>
+          <div class="input-wrap textarea-wrap">
+            <i class="bi bi-geo-alt"></i>
+            <textarea id="org-address" rows="2" formControlName="address" placeholder="Enter address"></textarea>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="org-pincode">Pincode</label>
+          <div class="input-wrap">
+            <i class="bi bi-mailbox"></i>
+            <input id="org-pincode" type="text" formControlName="pincode" placeholder="e.g. 600002" [class.is-invalid]="isInvalid('pincode')" />
+          </div>
+          @if (isInvalid('pincode')) { <small class="error-text">Pincode may not exceed 10 characters.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="org-phone">Phone Number</label>
+          <div class="input-wrap">
+            <i class="bi bi-telephone"></i>
+            <input id="org-phone" type="text" formControlName="phone_no" placeholder="Mobile or landline number" [class.is-invalid]="isInvalid('phone_no')" />
+          </div>
+          @if (isInvalid('phone_no')) { <small class="error-text">Enter a valid phone number (10-15 digits).</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="org-email">Email</label>
+          <div class="input-wrap">
+            <i class="bi bi-envelope"></i>
+            <input id="org-email" type="email" formControlName="email" placeholder="name@company.com" [class.is-invalid]="isInvalid('email')" />
+          </div>
+          @if (isInvalid('email')) { <small class="error-text">Enter a valid email.</small> }
+        </div>
+
+      </div>
+
+      <div class="section-title">
+        <i class="bi bi-receipt-cutoff"></i>
+        Tax &amp; Additional Information
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field">
+          <label for="org-gst">GST Number</label>
+          <div class="input-wrap">
+            <i class="bi bi-file-earmark-text"></i>
+            <input id="org-gst" type="text" formControlName="gst_number" placeholder="e.g. 33AABCM1234F1Z5" maxlength="15" style="text-transform: uppercase" [class.is-invalid]="isInvalid('gst_number')" />
+          </div>
+          @if (isInvalid('gst_number')) { <small class="error-text">GST number may not exceed 15 characters.</small> }
+        </div>
+
+        <div class="form-field full-width">
+          <label for="org-description">Description</label>
+          <div class="input-wrap textarea-wrap">
+            <i class="bi bi-card-text"></i>
+            <textarea id="org-description" rows="2" formControlName="description" placeholder="Enter a short description"></textarea>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn" [disabled]="isSaving" [title]="isEdit ? 'Update Organization' : 'Save Organization'">
+        <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-floppy]="!isSaving && !isEdit" [class.bi-pencil-square]="!isSaving && isEdit"></i>
+        {{ isSaving ? 'Saving...' : (isEdit ? 'Update' : 'Save') }}
+      </button>
+    </div>
+
+  </form>
+</div>

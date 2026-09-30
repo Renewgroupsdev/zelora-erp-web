@@ -18,6 +18,7 @@ export class BranchInfoPage implements OnInit {
   notFound = false;
   branch: BranchQrPayload | null = null;
   downloadLink: AppDownloadLink | null = null;
+  leadFormUrl: string | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -33,6 +34,7 @@ export class BranchInfoPage implements OnInit {
       this.loading = false;
       if (payload) {
         this.applyPayload(payload);
+        this.loadLeadFormUrl();
       } else {
         this.notFound = true;
       }
@@ -49,10 +51,29 @@ export class BranchInfoPage implements OnInit {
     this.loadBranchFromApi(id);
   }
 
+  /** The button that hands the visitor off to the next step - "Continue to Form" - needs the
+   *  branch's own (plain) code plus wherever the Lead form URL setting currently points. */
+  get continueUrl(): string | null {
+    if (!this.leadFormUrl || !this.branch?.code) return null;
+    const separator = this.leadFormUrl.includes('?') ? '&' : '?';
+    return `${this.leadFormUrl}${separator}code=${encodeURIComponent(this.branch.code)}`;
+  }
+
   private applyPayload(payload: BranchQrPayload): void {
     this.branch = payload;
     const platform = detectPlatform(navigator.userAgent || '');
     this.downloadLink = resolveAppDownloadLink(platform, payload.playstore_url, payload.appstore_url);
+  }
+
+  /** Only used on the "d" payload path - the API path already fetches settings for the store
+   *  links, so it captures leadform_url from that same response instead of a second call. */
+  private loadLeadFormUrl(): void {
+    this.apiDataService.GET(ApiRoutesConstants.SETTINGS_GET).subscribe({
+      next: (response: any) => {
+        this.leadFormUrl = response?.success ? (response.data?.leadform_url ?? null) : null;
+      },
+      error: () => { /* leave null - the button just won't show */ },
+    });
   }
 
   private loadBranchFromApi(id: string): void {
@@ -78,6 +99,7 @@ export class BranchInfoPage implements OnInit {
       next: (response: any) => {
         this.loading = false;
         const settings = response?.success ? response.data : {};
+        this.leadFormUrl = settings?.leadform_url ?? null;
         this.applyPayload({
           id: unit.id,
           type: unit.type ?? null,

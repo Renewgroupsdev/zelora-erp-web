@@ -583,6 +583,16 @@
   margin-top: 2px;
 }
 
+.inline-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inline-input-row .playstore-input {
+  flex: 1;
+}
+
 .qr-warning {
   display: flex;
   align-items: flex-start;
@@ -711,7 +721,8 @@
 }
 
 @media (max-width: 480px) {
-  .qr-control {
+  .qr-control,
+  .inline-input-row {
     flex-direction: column;
     align-items: stretch;
   }

@@ -7,20 +7,14 @@ import { IdleService } from '../../core/idle-service/idle.service';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { ToastService } from '../../shared/common-services/toast.service';
-import { BranchQrPayload, encodeBranchQrPayload } from '../../shared/models/branch-qr-payload.model';
 
 interface OrganizationUnitOption {
   id: number;
-  type: string | null;
   name: string;
   code: string;
-  address: string | null;
-  pincode: string | null;
-  phone_no: string | null;
-  email: string | null;
-  gst_number: string | null;
-  description: string | null;
-  status: number;
+  /** Encrypted stand-in for `code` (from the backend's `qr_token` accessor) - this is what
+   *  actually goes in the QR, so scanning it never exposes the real branch code in plain text. */
+  qrToken: string;
 }
 
 @Component({
@@ -40,10 +34,20 @@ export class SettingsPage implements OnInit {
     private toast: ToastService,
   ) { }
 
-  // App download links (used by the branch QR page to send visitors to the right store)
+  // App download links
   playstoreUrl = '';
   appstoreUrl = '';
   savingStoreUrls = false;
+
+  // Lead form URL (base URL the mobile app opens when it scans a branch QR)
+  leadFormUrl = '';
+  savingLeadFormUrl = false;
+
+  // Public App URL - what the QR itself points at (our own /scan page). Explicit and
+  // saved, instead of trusting window.location.origin, because generating the QR from an
+  // admin browser open on "localhost" would otherwise bake in an address no phone can reach.
+  appBaseUrl = '';
+  savingAppBaseUrl = false;
 
   // Organization unit QR code
   branches: OrganizationUnitOption[] = [];
@@ -64,22 +68,55 @@ export class SettingsPage implements OnInit {
     }
   }
 
-  /** The QR only works from another device if this origin is actually reachable from it -
-   *  "localhost"/127.0.0.1 never is, so flag it instead of generating a QR that will always 404. */
-  get originLooksLocal(): boolean {
-    const host = window.location.hostname;
-    return host === 'localhost' || host === '127.0.0.1';
-  }
-
   private loadSettings(): void {
     this.apiDataService.GET(ApiRoutesConstants.SETTINGS_GET).subscribe({
       next: (response: any) => {
         const settings = response?.success ? response.data : {};
         this.playstoreUrl = settings?.playstore_url ?? '';
         this.appstoreUrl = settings?.appstore_url ?? '';
+        this.leadFormUrl = settings?.leadform_url ?? '';
+        this.appBaseUrl = settings?.app_base_url ?? '';
       },
       error: (err: any) => {
         console.error('Failed to load settings:', err);
+      },
+    });
+  }
+
+  /** What the QR actually gets built against: the saved Public App URL if set, otherwise
+   *  wherever this page itself happens to be open right now. */
+  get effectiveAppOrigin(): string {
+    return this.appBaseUrl.trim().replace(/\/+$/, '') || window.location.origin;
+  }
+
+  /** "localhost"/127.0.0.1 only ever means the device itself - a QR built against either
+   *  will never open on a phone, no matter how it's reached. */
+  get originLooksLocal(): boolean {
+    try {
+      const host = new URL(this.effectiveAppOrigin).hostname;
+      return host === 'localhost' || host === '127.0.0.1';
+    } catch {
+      return false;
+    }
+  }
+
+  saveAppBaseUrl(): void {
+    this.savingAppBaseUrl = true;
+    const payload = { settings: { app_base_url: this.appBaseUrl.trim() } };
+
+    this.apiDataService.PUT(ApiRoutesConstants.SETTINGS_UPDATE, payload).subscribe({
+      next: (response: any) => {
+        this.savingAppBaseUrl = false;
+        if (response?.success !== false) {
+          this.toast.success('Public App URL saved');
+        } else {
+          this.toast.error(response?.message || 'Failed to save Public App URL.');
+        }
+      },
+      error: (err: any) => {
+        this.savingAppBaseUrl = false;
+        this.toast.error(err?.error?.message || 'Failed to save Public App URL.');
+        console.error('Failed to save Public App URL:', err);
       },
     });
   }
@@ -110,6 +147,27 @@ export class SettingsPage implements OnInit {
     });
   }
 
+  saveLeadFormUrl(): void {
+    this.savingLeadFormUrl = true;
+    const payload = { settings: { leadform_url: this.leadFormUrl.trim() } };
+
+    this.apiDataService.PUT(ApiRoutesConstants.SETTINGS_UPDATE, payload).subscribe({
+      next: (response: any) => {
+        this.savingLeadFormUrl = false;
+        if (response?.success !== false) {
+          this.toast.success('Lead form URL saved');
+        } else {
+          this.toast.error(response?.message || 'Failed to save lead form URL.');
+        }
+      },
+      error: (err: any) => {
+        this.savingLeadFormUrl = false;
+        this.toast.error(err?.error?.message || 'Failed to save lead form URL.');
+        console.error('Failed to save lead form URL:', err);
+      },
+    });
+  }
+
   private loadBranches(): void {
     this.loadingBranches = true;
     this.apiDataService.GetAllPages(ApiRoutesConstants.Branch_List_Options).subscribe({
@@ -117,16 +175,9 @@ export class SettingsPage implements OnInit {
         this.loadingBranches = false;
         this.branches = (units ?? []).map((unit: any) => ({
           id: unit.id,
-          type: unit.type ?? null,
           name: unit.name,
           code: unit.code,
-          address: unit.address ?? null,
-          pincode: unit.pincode ?? null,
-          phone_no: unit.phone_no ?? null,
-          email: unit.email ?? null,
-          gst_number: unit.gst_number ?? null,
-          description: unit.description ?? null,
-          status: unit.status,
+          qrToken: unit.qr_token,
         }));
 
         if (!this.selectedBranchId && this.branches.length) {
@@ -148,28 +199,26 @@ export class SettingsPage implements OnInit {
       return;
     }
 
+    const baseUrl = this.leadFormUrl.trim();
+    if (!baseUrl) {
+      this.toast.warning('Enter the lead form URL first.');
+      return;
+    }
+
+    if (!branch.qrToken) {
+      this.toast.error('This branch has no encrypted code yet. Try reloading the page.');
+      return;
+    }
+
     this.generatingQr = true;
     this.qrDataUrl = null;
 
-    // Everything the landing page needs travels inside the QR itself - no API call happens
-    // when it's scanned, so it works regardless of what host/network the phone is on.
-    const payload: BranchQrPayload = {
-      id: branch.id,
-      type: branch.type,
-      name: branch.name,
-      code: branch.code,
-      address: branch.address,
-      pincode: branch.pincode,
-      phone_no: branch.phone_no,
-      email: branch.email,
-      gst_number: branch.gst_number,
-      description: branch.description,
-      status: branch.status,
-      playstore_url: this.playstoreUrl.trim() || null,
-      appstore_url: this.appstoreUrl.trim() || null,
-    };
-
-    const targetUrl = `${window.location.origin}/branch-info?d=${encodeBranchQrPayload(payload)}`;
+    // The QR points at our own /scan page, not the lead form directly - that page logs the
+    // scan (device/branch data) before handing the visitor on to the lead form URL above.
+    // Only the encrypted branch code travels in the QR itself; only our backend (same
+    // APP_KEY) can decrypt it back to the real branch code. It's already URL-safe (the
+    // backend urlencodes it), so it's appended as-is.
+    const targetUrl = `${this.effectiveAppOrigin}/scan?code=${branch.qrToken}`;
     this.qrTargetUrl = targetUrl;
 
     try {

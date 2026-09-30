@@ -115,4 +115,15 @@ export class ApiRoutesConstants {
    //Organization Unit QR landing page (public, no auth)
    public static ORGANIZATION_UNIT_PUBLIC_SHOW = "public/organization-units";
 
+   //Organization (CURD)
+   public static ORGANIZATION_GET_List = "organization-units";
+   public static ORGANIZATION_ADD = "organization-units";
+   public static ORGANIZATION_DELETE = "organization-units";
+
+   //QR scan tracking (public write, auth required for reporting)
+   public static QR_SCAN_STORE = "qr-scans";
+   public static QR_SCAN_CLICK = "qr-scans";
+   public static QR_SCAN_LIST = "qr-scans";
+   public static QR_SCAN_SUMMARY = "qr-scans/summary";
+
 }

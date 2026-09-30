@@ -32,6 +32,14 @@
     </div>
 
     <a
+      class="continue-btn"
+      *ngIf="continueUrl"
+      [href]="continueUrl"
+    >
+      Continue to Form <i class="bi bi-arrow-right-circle"></i>
+    </a>
+
+    <a
       class="download-btn"
       *ngIf="downloadLink"
       [href]="downloadLink.url"

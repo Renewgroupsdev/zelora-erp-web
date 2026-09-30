@@ -87,7 +87,7 @@
     <section class="settings-card">
       <div class="card-heading">
         <div class="heading-icon"><i class="bi bi-phone"></i></div>
-        <div><h2>App download links</h2><p>Shown on the branch QR page so visitors can install the app on their phone.</p></div>
+        <div><h2>App download links</h2><p>Google Play and App Store links for the mobile app.</p></div>
       </div>
       <div class="store-url-row">
         <label class="store-url-label"><i class="bi bi-google-play"></i> Google Play (Android)</label>
@@ -115,14 +115,47 @@
     </section>
 
     <section class="settings-card qr-card">
+      
       <div class="card-heading">
         <div class="heading-icon"><i class="bi bi-qr-code"></i></div>
-        <div><h2>Branch QR code</h2><p>Generate a QR code for an organization unit. Its data is embedded directly in the code, so scanning it works without needing to reach this server - it shows the branch details plus a download link for the right store.</p></div>
+        <div><h2>Branch QR code</h2><p>Generates a QR with only the branch code embedded, encrypted. Scanning it logs the visit (for the branch report) then continues to the lead form below.</p></div>
+      </div>
+
+      <div class="store-url-row">
+        <label class="store-url-label"><i class="bi bi-link-45deg"></i> Lead form URL</label>
+        <div class="inline-input-row">
+          <input
+            type="url"
+            class="playstore-input"
+            placeholder="https://your-tunnel-url.example.com/leadform"
+            [(ngModel)]="leadFormUrl"
+            name="leadFormUrl"
+          >
+          <button type="button" class="btn-primary" [disabled]="savingLeadFormUrl" (click)="saveLeadFormUrl()">
+            {{ savingLeadFormUrl ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="store-url-row">
+        <label class="store-url-label"><i class="bi bi-globe2"></i> Public App URL</label>
+        <div class="inline-input-row">
+          <input
+            type="url"
+            class="playstore-input"
+            placeholder="http://192.168.x.x:4200 (leave blank to use this page's own address)"
+            [(ngModel)]="appBaseUrl"
+            name="appBaseUrl"
+          >
+          <button type="button" class="btn-primary" [disabled]="savingAppBaseUrl" (click)="saveAppBaseUrl()">
+            {{ savingAppBaseUrl ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
       </div>
 
       <div class="qr-warning" *ngIf="originLooksLocal">
         <i class="bi bi-exclamation-triangle"></i>
-        You're on <strong>{{ 'localhost' }}</strong> - a QR generated here won't open on another phone. Open this app using your machine's network IP or public domain before generating.
+        The QR will be built against <strong>{{ effectiveAppOrigin }}</strong> - a phone can't reach "localhost" or "127.0.0.1". Set the Public App URL above to this machine's LAN IP (or public domain) before generating.
       </div>
 
       <div class="qr-control">
