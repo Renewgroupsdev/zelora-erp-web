@@ -51,6 +51,13 @@ export class ApiRoutesConstants {
    public static ROLES_PERMISSION_REORDER = "module-with-actions/reorder";
    public static ROLES_PERMISSION_SIDEBAR = 'side-bar';
 
+   //Treatments (CURD)
+   public static TREATMENT_GET_List = "treatments";
+   public static TREATMENT_ADD = "treatments";
+   public static TREATMENT_DELETE = "treatments";
+   public static TREATMENT_CATEGORY_OPTIONS = "categories";
+   public static TREATMENT_PRODUCT_OPTIONS = "products";
+
    //Lead Appointment (CURD)
    public static LEAD_APPOINTMENT_ADD = "appointments";
 

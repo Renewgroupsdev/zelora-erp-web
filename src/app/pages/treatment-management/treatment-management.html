@@ -4,7 +4,7 @@
     <h6 class="page-title"><i class="bi bi-heart-pulse-fill"></i> Treatment Management</h6>
 
     <div class="page-header-actions">
-      <span class="today-date-badge"><i class="bi bi-grid-3x3-gap"></i> {{ store.treatments().length }} treatments</span>
+      <span class="today-date-badge"><i class="bi bi-grid-3x3-gap"></i> {{ summary().total }} treatments</span>
 
       <button type="button" class="add-treatment-btn" (click)="create()">
         <i class="bi bi-plus-lg"></i> <span>Create Treatment</span>

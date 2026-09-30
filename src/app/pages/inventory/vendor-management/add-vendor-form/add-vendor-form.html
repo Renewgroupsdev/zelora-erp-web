@@ -1,0 +1,112 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-truck"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>{{ isEdit ? 'Edit Vendor' : 'Add Vendor' }}</h2>
+        <p>{{ isEdit ? 'Update vendor details' : 'Create a vendor' }}</p>
+      </div>
+    </div>
+
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="vendorForm" (ngSubmit)="saveVendor()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-building"></i>
+        Vendor Information
+      </div>
+
+      <div class="form-grid">
+
+        @if (isEdit) {
+          <div class="form-field">
+            <label for="vendor-code">Vendor Code</label>
+            <div class="input-wrap">
+              <i class="bi bi-upc-scan"></i>
+              <input id="vendor-code" type="text" [value]="code" readonly disabled />
+            </div>
+          </div>
+        }
+
+        <div class="form-field">
+          <label for="vendor-name">Vendor Name <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-shop"></i>
+            <input id="vendor-name" type="text" formControlName="name" placeholder="Enter vendor name" [class.is-invalid]="isInvalid('name')" />
+          </div>
+          @if (isInvalid('name')) { <small class="error-text">Vendor name is required.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="vendor-gst">GST No <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-file-earmark-text"></i>
+            <input id="vendor-gst" type="text" formControlName="gstNo" placeholder="e.g. 33AABCM1234F1Z5" maxlength="15" style="text-transform: uppercase" [class.is-invalid]="isInvalid('gstNo')" />
+          </div>
+          @if (isInvalid('gstNo')) { <small class="error-text">Enter a valid 15-character GST number.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="vendor-phone">Phone Number <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-telephone"></i>
+            <input id="vendor-phone" type="text" formControlName="phone" placeholder="Mobile number" [class.is-invalid]="isInvalid('phone')" />
+          </div>
+          @if (isInvalid('phone')) { <small class="error-text">Enter a valid phone number (10-15 digits).</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="vendor-email">Email <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-envelope"></i>
+            <input id="vendor-email" type="email" formControlName="email" placeholder="name@company.com" [class.is-invalid]="isInvalid('email')" />
+          </div>
+          @if (isInvalid('email')) { <small class="error-text">Enter a valid email.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="vendor-status">Status</label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-circle-half"></i>
+            <select id="vendor-status" formControlName="status">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="vendor-address">Address <span>*</span></label>
+          <div class="input-wrap textarea-wrap">
+            <i class="bi bi-geo-alt"></i>
+            <textarea id="vendor-address" rows="2" formControlName="address" placeholder="Enter vendor address" [class.is-invalid]="isInvalid('address')"></textarea>
+          </div>
+          @if (isInvalid('address')) { <small class="error-text">Address is required.</small> }
+        </div>
+
+      </div>
+
+
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn" [title]="isEdit ? 'Update Vendor' : 'Save Vendor'">
+        <i class="bi" [class.bi-floppy]="!isEdit" [class.bi-pencil-square]="isEdit"></i>
+        {{ isEdit ? 'Update' : 'Save' }}
+      </button>
+    </div>
+
+  </form>
+</div>

@@ -1,0 +1,159 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-box-seam-fill"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>{{ isEdit ? 'Edit Product' : 'Add Product' }}</h2>
+        <p>{{ isEdit ? 'Update product pricing and supplier' : 'Create a product and map it to a supplier' }}</p>
+      </div>
+    </div>
+
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="productForm" (ngSubmit)="saveProduct()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-box-seam"></i>
+        Product Information
+      </div>
+
+      <div class="form-grid">
+
+        @if (isEdit) {
+          <div class="form-field">
+            <label for="product-code">Product Code</label>
+            <div class="input-wrap">
+              <i class="bi bi-upc-scan"></i>
+              <input id="product-code" type="text" [value]="code" readonly disabled />
+            </div>
+          </div>
+        }
+
+        <div class="form-field">
+          <label for="product-name">Product Name <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-tag"></i>
+            <input id="product-name" type="text" formControlName="name" placeholder="Enter product name" [class.is-invalid]="isInvalid('name')" />
+          </div>
+          @if (isInvalid('name')) { <small class="error-text">Product name is required.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="product-vendor">Supplier (Vendor) <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-truck"></i>
+            <select id="product-vendor" formControlName="vendorId" [class.is-invalid]="isInvalid('vendorId')">
+              <option value="">Select supplier</option>
+              @for (vendor of vendors(); track vendor.id) { <option [value]="vendor.id">{{ vendor.name }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+          @if (isInvalid('vendorId')) { <small class="error-text">Select a supplier.</small> }
+        </div>
+
+        <div class="form-field full-width">
+          <label for="product-description">Description</label>
+          <div class="input-wrap textarea-wrap">
+            <i class="bi bi-card-text"></i>
+            <textarea id="product-description" rows="2" maxlength="255" formControlName="description" placeholder="Enter product description" [class.is-invalid]="isInvalid('description')"></textarea>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="section-title">
+        <i class="bi bi-receipt-cutoff"></i>
+        Pricing
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field">
+          <label for="product-purchase">Purchase Price (₹) <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-currency-rupee"></i>
+            <input id="product-purchase" type="number" min="0" step="0.01" formControlName="purchasePrice" placeholder="0.00" [class.is-invalid]="isInvalid('purchasePrice')" />
+          </div>
+          @if (isInvalid('purchasePrice')) { <small class="error-text">Enter a valid purchase price.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="product-margin">Product Margin (%) <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-graph-up-arrow"></i>
+            <input id="product-margin" type="number" min="0" step="0.01" formControlName="marginPercent" placeholder="0" [class.is-invalid]="isInvalid('marginPercent')" />
+          </div>
+          @if (isInvalid('marginPercent')) { <small class="error-text">Enter a valid margin.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="product-selling">Selling Price (₹)</label>
+          <div class="input-wrap">
+            <i class="bi bi-cash-stack"></i>
+            <input id="product-selling" type="text" [value]="pricing().sellingPrice | number:'1.2-2'" readonly disabled />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="product-gst">GST (%) <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-percent"></i>
+            <input id="product-gst" type="number" min="0" max="100" step="0.01" formControlName="gstPercent" [class.is-invalid]="isInvalid('gstPercent')" />
+          </div>
+          @if (isInvalid('gstPercent')) { <small class="error-text">GST must be between 0 and 100.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="product-gst-amount">GST Amount (₹)</label>
+          <div class="input-wrap">
+            <i class="bi bi-receipt"></i>
+            <input id="product-gst-amount" type="text" [value]="pricing().gstAmount | number:'1.2-2'" readonly disabled />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="product-total">Total Amount (₹)</label>
+          <div class="input-wrap">
+            <i class="bi bi-calculator"></i>
+            <input id="product-total" type="text" [value]="pricing().totalAmount | number:'1.2-2'" readonly disabled />
+          </div>
+        </div>
+
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field">
+          <label for="product-status">Status</label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-circle-half"></i>
+            <select id="product-status" formControlName="status">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn" [title]="isEdit ? 'Update Product' : 'Save Product'">
+        <i class="bi" [class.bi-floppy]="!isEdit" [class.bi-pencil-square]="isEdit"></i>
+        {{ isEdit ? 'Update' : 'Save' }}
+      </button>
+    </div>
+
+  </form>
+</div>
