@@ -1,4 +1,18 @@
 :host {
+  /* Pre-login pages always use the burgundy brand color, regardless of the in-app theme choice. */
+  --primary: #7b1e42;
+  --primary-dark: #5c1532;
+  --primary-soft: #f7ecf0;
+  --primary-soft-strong: #efdbe3;
+  --primary-border: rgba(123, 30, 66, .18);
+  --primary-border-strong: rgba(123, 30, 66, .38);
+  --primary-shadow: rgba(123, 30, 66, .24);
+  --brand-blue: #9c2a58;
+  --brand-blue-dark: #5c1532;
+  --brand-green: #7b1e42;
+  --brand-green-dark: #5c1532;
+  --brand-teal-dark: #5c1532;
+  --bg-light-green: #f7ecf0;
   display: block;
   width: 100%;
   min-height: 100%;
@@ -17,9 +31,9 @@
   justify-content: center;
   padding: 20px;
   background:
-    radial-gradient(circle at 14% -2%, rgba(197, 239, 231, .34) 0 10%, transparent 22%),
-    radial-gradient(circle at 84% 34%, rgba(187, 241, 240, .36) 0 9%, transparent 24%),
-    linear-gradient(180deg, #ffffff 0%, #f7fdfc 50%, #ecf9f7 100%);
+    radial-gradient(circle at 14% -2%, rgba(233, 196, 210, .34) 0 10%, transparent 22%),
+    radial-gradient(circle at 84% 34%, rgba(226, 178, 196, .30) 0 9%, transparent 24%),
+    linear-gradient(180deg, #ffffff 0%, #fdf7f9 50%, #f7ecf0 100%);
   cursor: pointer;
 }
 
@@ -48,7 +62,7 @@
   background: rgba(255, 255, 255, .975);
   border: 1px solid rgba(255, 255, 255, .96);
   border-radius: 31px;
-  box-shadow: 0 22px 55px rgba(33, 105, 101, .12), 0 8px 24px rgba(14, 87, 100, .08);
+  box-shadow: 0 22px 55px rgba(123, 30, 66, .12), 0 8px 24px rgba(92, 21, 50, .08);
   animation: splash-in .62s cubic-bezier(.22, 1, .36, 1) both;
 }
 
@@ -74,18 +88,18 @@
 
 .splash-title {
   margin: 3px 0 2px;
-  color: #0874a6;
+  color: #7b1e42;
   font-size: 25px;
   line-height: 1.2;
   font-weight: 500;
   letter-spacing: -.35px;
 }
 
-.splash-title span { color: #12a77d; font-weight: 700; }
+.splash-title span { color: #a63a62; font-weight: 700; }
 
 .splash-subtitle {
   margin: 0 0 15px;
-  color: #76a0af;
+  color: #9a7f8b;
   font-size: 15px;
   line-height: 1.35;
   font-weight: 400;
@@ -102,8 +116,8 @@
   border-radius: 28px;
   text-decoration: none;
   color: #fff;
-  background: linear-gradient(100deg, #10b887 0%, #0fb9bf 52%, #0a83c4 100%);
-  box-shadow: 0 9px 20px rgba(14, 154, 166, .22);
+  background: linear-gradient(100deg, #9c2a58 0%, #7b1e42 52%, #5c1532 100%);
+  box-shadow: 0 9px 20px rgba(123, 30, 66, .22);
   font-size: 15px;
   font-weight: 700;
   letter-spacing: .05px;
@@ -112,11 +126,11 @@
 
 .splash-cta-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 13px 25px rgba(14, 154, 166, .30);
+  box-shadow: 0 13px 25px rgba(123, 30, 66, .30);
 }
 
 .splash-cta-btn:focus-visible {
-  outline: 3px solid rgba(12, 142, 178, .25);
+  outline: 3px solid rgba(123, 30, 66, .25);
   outline-offset: 3px;
 }
 
@@ -130,19 +144,19 @@
   margin-top: 18px;
 }
 
-.trust-line { flex: 1; height: 1px; background: #dcebe9; }
+.trust-line { flex: 1; height: 1px; background: #f0dfe5; }
 
 .trust-text {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
-  color: #91aeb6;
+  color: #a8949d;
   font-size: 12px;
   font-weight: 500;
 }
 
-.trust-text i { color: #8eacb6; font-size: 11px; }
+.trust-text i { color: #a8949d; font-size: 11px; }
 
 .page-features {
   display: flex;
@@ -165,15 +179,15 @@
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  border: 1.5px solid #12b8bd;
+  border: 1.5px solid #7b1e42;
   border-radius: 50%;
-  color: #0ab0b3;
+  color: #7b1e42;
   background: rgba(255, 255, 255, .20);
   font-size: 18px;
 }
 
 .page-feature-label {
-  color: #528b9c;
+  color: #7b6470;
   font-size: 11.5px;
   line-height: 1.28;
   font-weight: 600;
@@ -184,7 +198,7 @@
   width: 1px;
   height: 39px;
   margin-top: 1px;
-  background: rgba(119, 177, 184, .35);
+  background: rgba(160, 110, 128, .35);
 }
 
 /* ------------------------------------------------------------------

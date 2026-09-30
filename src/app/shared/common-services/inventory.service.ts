@@ -1,148 +1,143 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { EMPTY, Observable, catchError, expand, map, of, reduce } from 'rxjs';
+import { ApiDataService } from './api-data.service';
+import { ApiRoutesConstants } from './api-route-constants';
 
-export interface Vendor {
-  id: string;
+export type RecordStatus = 'Active' | 'Inactive';
+
+export interface VendorRecord {
+  id: number;
   code: string;
   name: string;
   address: string;
-  gstNo: string;
+  gst_no: string;
   phone: string;
   email: string;
-  /** Ids of the products this vendor supplies (mirrors Product.vendorId). */
-  productIds: string[];
-  status: 'Active' | 'Inactive';
+  status: RecordStatus;
+  products_count: number;
 }
 
-export interface Product {
+export interface ProductRecord {
+  /** Encrypted id - use as-is in URLs. */
   id: string;
-  /** Auto-generated, e.g. PRD-0001. */
   code: string;
   name: string;
-  description?: string;
-  vendorId: string | null;
-  purchasePrice: number;
-  marginPercent: number;
-  sellingPrice: number;
-  gstPercent: number;
-  gstAmount: number;
-  totalAmount: number;
-  status: 'Active' | 'Inactive';
+  description: string | null;
+  vendor_id: number | null;
+  vendor: { id: number; name: string } | null;
+  purchase_price: number | string;
+  margin_percent: number | string;
+  selling_price: number | string;
+  gst_percent: number | string;
+  gst_amount: number | string;
+  total_amount: number | string;
+  status: RecordStatus;
 }
 
-/** selling = purchase + margin%, then GST on top of the selling price. */
-export function calculatePricing(purchasePrice: number, marginPercent: number, gstPercent: number) {
-  const round2 = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
-  const purchase = Number(purchasePrice) || 0;
-  const sellingPrice = round2(purchase + purchase * (Number(marginPercent) || 0) / 100);
-  const gstAmount = round2(sellingPrice * (Number(gstPercent) || 0) / 100);
-  return { sellingPrice, gstAmount, totalAmount: round2(sellingPrice + gstAmount) };
+export interface ProductPayload {
+  name: string;
+  description: string;
+  vendor_id: number;
+  purchase_price: number;
+  margin_percent: number;
+  gst_percent: number;
+  status: RecordStatus;
 }
 
-/**
- * Front-end only store for Inventory (products + vendors), persisted in localStorage
- * until the inventory API exists.
- */
+export interface VendorPayload {
+  name: string;
+  address: string;
+  gst_no: string;
+  phone: string;
+  email: string;
+  status: RecordStatus;
+}
+
+export interface ListQuery {
+  page: number;
+  perPage: number;
+  search?: string;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+  status?: RecordStatus | null;
+  vendorId?: number | null;
+}
+
+export interface PricingPreviewRequest {
+  purchase_price: number;
+  margin_percent: number;
+  gst_percent: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class InventoryService {
-  private readonly productKey = 'renew-plus-inventory-products';
-  private readonly vendorKey = 'renew-plus-inventory-vendors';
+  private readonly api = inject(ApiDataService);
 
-  readonly products = signal<Product[]>(this.load<Product>(this.productKey, () => this.seedProducts()));
-  readonly vendors = signal<Vendor[]>(this.load<Vendor>(this.vendorKey, () => this.seedVendors()));
-
-  /** Next product code, e.g. PRD-0004 (max existing number + 1). */
-  nextProductCode(): string {
-    const max = this.products().reduce((m, p) => Math.max(m, Number(p.code.replace(/\D/g, '')) || 0), 0);
-    return `PRD-${String(max + 1).padStart(4, '0')}`;
+  // ---- Products ----
+  listProducts(query: ListQuery): Observable<any> {
+    return this.api.GET(`${ApiRoutesConstants.PRODUCT_GET_List}?${this.toParams(query, 'status')}`);
   }
 
-  nextVendorCode(): string {
-    const max = this.vendors().reduce((m, v) => Math.max(m, Number(v.code.replace(/\D/g, '')) || 0), 0);
-    return `VEN-${String(max + 1).padStart(4, '0')}`;
+  createProduct(payload: ProductPayload): Observable<any> {
+    return this.api.POST(ApiRoutesConstants.PRODUCT_ADD, payload);
   }
 
-  vendorName(id: string | null): string {
-    return this.vendors().find(v => v.id === id)?.name ?? '-';
+  updateProduct(id: string, payload: ProductPayload): Observable<any> {
+    return this.api.PUT(`${ApiRoutesConstants.PRODUCT_ADD}/${id}`, payload);
   }
 
-  saveProduct(product: Product): void {
-    const exists = this.products().some(p => p.id === product.id);
-    this.products.set(exists ? this.products().map(p => p.id === product.id ? product : p) : [...this.products(), product]);
-    this.persist(this.productKey, this.products());
-    this.syncVendorMapping(product);
+  /** Server-side pricing preview (selling price, GST amount, total) - nothing is saved. */
+  calculatePricing(request: PricingPreviewRequest): Observable<any> {
+    return this.api.POST(`${ApiRoutesConstants.PRODUCT_ADD}/calculate-pricing`, request);
   }
 
-  deleteProduct(id: string): void {
-    this.products.set(this.products().filter(p => p.id !== id));
-    this.persist(this.productKey, this.products());
-    this.vendors.set(this.vendors().map(v => ({ ...v, productIds: v.productIds.filter(pid => pid !== id) })));
-    this.persist(this.vendorKey, this.vendors());
+  deleteProduct(id: string): Observable<any> {
+    return this.api.Delete(`${ApiRoutesConstants.PRODUCT_DELETE}/${id}`, {});
   }
 
-  saveVendor(vendor: Vendor): void {
-    const exists = this.vendors().some(v => v.id === vendor.id);
-    this.vendors.set(exists ? this.vendors().map(v => v.id === vendor.id ? vendor : v) : [...this.vendors(), vendor]);
-    this.persist(this.vendorKey, this.vendors());
-
-    // A product maps to one vendor: mapped products point here, un-mapped ones that pointed here are released.
-    this.products.set(this.products().map(p => {
-      if (vendor.productIds.includes(p.id)) return { ...p, vendorId: vendor.id };
-      return p.vendorId === vendor.id ? { ...p, vendorId: null } : p;
-    }));
-    this.persist(this.productKey, this.products());
-    // Products that moved to this vendor must leave their previous vendor's list.
-    this.vendors.set(this.vendors().map(v => v.id === vendor.id
-      ? v
-      : { ...v, productIds: v.productIds.filter(pid => !vendor.productIds.includes(pid)) }));
-    this.persist(this.vendorKey, this.vendors());
+  // ---- Vendors ----
+  listVendors(query: ListQuery): Observable<any> {
+    return this.api.GET(`${ApiRoutesConstants.VENDOR_GET_List}?${this.toParams(query, 'status')}`);
   }
 
-  deleteVendor(id: string): void {
-    this.vendors.set(this.vendors().filter(v => v.id !== id));
-    this.persist(this.vendorKey, this.vendors());
-    this.products.set(this.products().map(p => p.vendorId === id ? { ...p, vendorId: null } : p));
-    this.persist(this.productKey, this.products());
+  createVendor(payload: VendorPayload): Observable<any> {
+    return this.api.POST(ApiRoutesConstants.VENDOR_ADD, payload);
   }
 
-  newId(): string {
-    return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  updateVendor(id: number, payload: VendorPayload): Observable<any> {
+    return this.api.PUT(`${ApiRoutesConstants.VENDOR_ADD}/${id}`, payload);
   }
 
-  /** Keep vendor.productIds in step when a product's supplier changes. */
-  private syncVendorMapping(product: Product): void {
-    this.vendors.set(this.vendors().map(v => {
-      const without = v.productIds.filter(pid => pid !== product.id);
-      return v.id === product.vendorId ? { ...v, productIds: [...without, product.id] } : { ...v, productIds: without };
-    }));
-    this.persist(this.vendorKey, this.vendors());
+  deleteVendor(id: number): Observable<any> {
+    return this.api.Delete(`${ApiRoutesConstants.VENDOR_DELETE}/${id}`, {});
   }
 
-  private load<T>(key: string, seed: () => T[]): T[] {
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved) return JSON.parse(saved);
-    } catch { /* fall through to seed data */ }
-    return seed();
+  /** Every active vendor (for dropdowns/filters), walking the paginated `data[]` + `pagination` envelope. */
+  vendorOptions(): Observable<{ id: number; name: string }[]> {
+    const fetchPage = (page: number) =>
+      this.api.GET(`${ApiRoutesConstants.VENDOR_GET_List}?status=Active&per_page=100&page=${page}`) as Observable<any>;
+
+    return fetchPage(1).pipe(
+      expand((res: any) => {
+        const current = Number(res?.pagination?.current_page ?? 1);
+        const last = Number(res?.pagination?.last_page ?? 1);
+        return current < last ? fetchPage(current + 1) : EMPTY;
+      }),
+      reduce((all: { id: number; name: string }[], res: any) => [
+        ...all,
+        ...((res?.data ?? []) as any[]).map(v => ({ id: v.id, name: v.name })),
+      ], [] as { id: number; name: string }[]),
+      catchError(() => of([])),
+    );
   }
 
-  private persist(key: string, value: unknown): void {
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage unavailable */ }
-  }
-
-  private seedVendors(): Vendor[] {
-    return [
-      { id: 'v1', code: 'VEN-0001', name: 'Medico Supplies Pvt Ltd', address: '12, Anna Salai, Chennai - 600002', gstNo: '33AABCM1234F1Z5', phone: '9840012345', email: 'sales@medicosupplies.in', productIds: ['p1', 'p2'], status: 'Active' },
-      { id: 'v2', code: 'VEN-0002', name: 'DermaCare Distributors', address: '45, MG Road, Bengaluru - 560001', gstNo: '29AAECD5678K1Z2', phone: '9880054321', email: 'orders@dermacare.in', productIds: ['p3'], status: 'Active' },
-    ];
-  }
-
-  private seedProducts(): Product[] {
-    const make = (id: string, code: string, name: string, vendorId: string, purchase: number, margin: number, gst: number): Product =>
-      ({ id, code, name, vendorId, purchasePrice: purchase, marginPercent: margin, gstPercent: gst, ...calculatePricing(purchase, margin, gst), status: 'Active' });
-    return [
-      make('p1', 'PRD-0001', 'PRP Kit', 'v1', 1200, 25, 18),
-      make('p2', 'PRD-0002', 'Disposable Syringe (100 pcs)', 'v1', 350, 20, 12),
-      make('p3', 'PRD-0003', 'Vitamin C Serum', 'v2', 800, 30, 18),
-    ];
+  private toParams(query: ListQuery, statusKey: string): string {
+    const params = new URLSearchParams({ page: String(query.page), per_page: String(query.perPage) });
+    if (query.search) params.set('search', query.search);
+    if (query.sortBy) params.set('sort_by', query.sortBy);
+    if (query.sortDirection) params.set('sort_direction', query.sortDirection);
+    if (query.status) params.set(statusKey, query.status);
+    if (query.vendorId) params.set('vendor_id', String(query.vendorId));
+    return params.toString();
   }
 }

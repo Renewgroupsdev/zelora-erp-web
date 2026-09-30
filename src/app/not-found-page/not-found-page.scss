@@ -1,4 +1,18 @@
 :host {
+  /* Pre-login pages always use the burgundy brand color, regardless of the in-app theme choice. */
+  --primary: #7b1e42;
+  --primary-dark: #5c1532;
+  --primary-soft: #f7ecf0;
+  --primary-soft-strong: #efdbe3;
+  --primary-border: rgba(123, 30, 66, .18);
+  --primary-border-strong: rgba(123, 30, 66, .38);
+  --primary-shadow: rgba(123, 30, 66, .24);
+  --brand-blue: #9c2a58;
+  --brand-blue-dark: #5c1532;
+  --brand-green: #7b1e42;
+  --brand-green-dark: #5c1532;
+  --brand-teal-dark: #5c1532;
+  --bg-light-green: #f7ecf0;
   display: block;
   width: 100%;
   min-height: 100%;
@@ -17,9 +31,9 @@
   justify-content: center;
   padding: 20px;
   background:
-    radial-gradient(circle at 14% -2%, rgba(197, 239, 231, .34) 0 10%, transparent 22%),
-    radial-gradient(circle at 84% 34%, rgba(187, 241, 240, .36) 0 9%, transparent 24%),
-    linear-gradient(180deg, #ffffff 0%, #f7fdfc 50%, #ecf9f7 100%);
+    radial-gradient(circle at 14% -2%, rgba(233, 196, 210, .34) 0 10%, transparent 22%),
+    radial-gradient(circle at 84% 34%, rgba(226, 178, 196, .30) 0 9%, transparent 24%),
+    linear-gradient(180deg, #ffffff 0%, #fdf7f9 50%, #f7ecf0 100%);
 }
 
 .notfound-stack {
@@ -32,9 +46,10 @@
 }
 
 .notfound-card {
+  position: relative;
   width: min(370px, calc(100vw - 34px));
   box-sizing: border-box;
-  padding: 20px;
+  padding: 62px 20px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -42,7 +57,7 @@
   background: rgba(255, 255, 255, .975);
   border: 1px solid rgba(255, 255, 255, .96);
   border-radius: 31px;
-  box-shadow: 0 22px 55px rgba(33, 105, 101, .12), 0 8px 24px rgba(14, 87, 100, .08);
+  box-shadow: 0 22px 55px rgba(123, 30, 66, .12), 0 8px 24px rgba(92, 21, 50, .08);
   animation: notfound-in .62s cubic-bezier(.22, 1, .36, 1) both;
 }
 
@@ -51,19 +66,30 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* Round logo badge overlapping the card top, same as the login page */
 .logo-shell {
-  width: 60%;
-  height: 60%;
+  position: absolute;
+  top: -52px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 104px;
+  height: 104px;
+  padding: 7px;
+  box-sizing: border-box;
   display: grid;
   place-items: center;
+  background: #ffffff;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .9);
+  box-shadow: 0 15px 35px rgba(60, 10, 30, .2), 0 0 0 6px rgba(255, 255, 255, .22);
 }
 
 .notfound-logo {
-  width: 100%;
-  height: 100%;
+  width: 90px;
+  height: 90px;
   display: block;
-  object-fit: contain;
-  border-radius: 18px;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .notfound-code {
@@ -71,7 +97,7 @@
   font-weight: 800;
   line-height: 1;
   letter-spacing: -1px;
-  background: linear-gradient(100deg, #10b887 0%, #0fb9bf 52%, #0a83c4 100%);
+  background: linear-gradient(100deg, #9c2a58 0%, #7b1e42 52%, #5c1532 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -79,7 +105,8 @@
 
 .notfound-title {
   margin: 6px 0 4px;
-  color: #0874a6;
+  font-family: Georgia, "Times New Roman", serif;
+  color: #3a1424;
   font-size: 21px;
   line-height: 1.2;
   font-weight: 600;
@@ -87,7 +114,7 @@
 
 .notfound-subtitle {
   margin: 0 0 10px;
-  color: #76a0af;
+  color: #9a7f8b;
   font-size: 14px;
   line-height: 1.45;
   font-weight: 400;
@@ -106,8 +133,8 @@
   cursor: pointer;
   text-decoration: none;
   color: #fff;
-  background: linear-gradient(100deg, #10b887 0%, #0fb9bf 52%, #0a83c4 100%);
-  box-shadow: 0 9px 20px rgba(14, 154, 166, .22);
+  background: linear-gradient(100deg, #9c2a58 0%, #7b1e42 52%, #5c1532 100%);
+  box-shadow: 0 9px 20px rgba(123, 30, 66, .22);
   font-size: 15px;
   font-weight: 700;
   letter-spacing: .05px;
@@ -116,11 +143,11 @@
 
 .notfound-cta-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 13px 25px rgba(14, 154, 166, .30);
+  box-shadow: 0 13px 25px rgba(123, 30, 66, .30);
 }
 
 .notfound-cta-btn:focus-visible {
-  outline: 3px solid rgba(12, 142, 178, .25);
+  outline: 3px solid rgba(123, 30, 66, .25);
   outline-offset: 3px;
 }
 

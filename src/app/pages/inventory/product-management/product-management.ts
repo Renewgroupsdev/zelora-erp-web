@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
 import {
@@ -11,9 +13,21 @@ import {
   TablePageChangeEvent,
   TableRow,
 } from '../../../shared/models/common-components.model';
-import { InventoryService, Product } from '../../../shared/common-services/inventory.service';
+import { InventoryService, ProductRecord } from '../../../shared/common-services/inventory.service';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AddProductForm } from './add-product-form/add-product-form';
+
+/** Table column key -> products API `sort_by` value. */
+const SORT_FIELDS: Record<string, string> = {
+  code: 'code',
+  name: 'name',
+  purchase: 'purchase_price',
+  margin: 'margin_percent',
+  selling: 'selling_price',
+  gst: 'gst_amount',
+  total: 'total_amount',
+  status: 'status',
+};
 
 @Component({
   selector: 'app-product-management',
@@ -26,6 +40,11 @@ export class ProductManagement implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly inventory = inject(InventoryService);
   private readonly toast = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly search$ = new Subject<string>();
+
+  private vendors: { id: number; name: string }[] = [];
+  private records: ProductRecord[] = [];
 
   // The filter card is keyed by fixed names; `source` is reused here for the Vendor filter.
   filters: FilterOption[] = [
@@ -45,7 +64,7 @@ export class ProductManagement implements OnInit {
   columns: TableColumn[] = [
     { key: 'code', header: 'Code', type: 'text', width: '8%' },
     { key: 'name', header: 'Product', type: 'text', width: '18%' },
-    { key: 'vendor', header: 'Vendor', type: 'text', width: '15%' },
+    { key: 'vendor', header: 'Vendor', type: 'text', width: '15%', sortable: false },
     { key: 'purchase', header: 'Purchase Price', type: 'text', width: '10%' },
     { key: 'margin', header: 'Margin', type: 'text', width: '7%' },
     { key: 'selling', header: 'Selling Price', type: 'text', width: '10%' },
@@ -66,15 +85,51 @@ export class ProductManagement implements OnInit {
   private searchTerm = '';
 
   ngOnInit(): void {
-    this.filters = this.filters.map(f =>
-      f.key === 'source' ? { ...f, options: this.inventory.vendors().map(v => v.name) } : f);
-    this.refreshRows();
+    this.search$
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe(term => {
+        this.searchTerm = term.trim();
+        this.currentPage = 1;
+        this.loadProducts();
+      });
+
+    this.inventory.vendorOptions().subscribe(vendors => {
+      this.vendors = vendors;
+      this.filters = this.filters.map(f => f.key === 'source' ? { ...f, options: vendors.map(v => v.name) } : f);
+    });
+
+    this.loadProducts();
+  }
+
+  loadProducts(): void {
+    this.isLoading = true;
+    const vendor = this.vendors.find(v => v.name === this.filterState.source);
+
+    this.inventory.listProducts({
+      page: this.currentPage,
+      perPage: this.pageSize,
+      search: this.searchTerm,
+      sortBy: SORT_FIELDS[this.sortActive] ?? 'code',
+      sortDirection: this.sortDirection || 'asc',
+      status: this.filterState.status as 'Active' | 'Inactive' | null,
+      vendorId: vendor?.id ?? null,
+    }).subscribe({
+      next: (res: any) => {
+        this.isLoading = false;
+        this.records = res?.data ?? [];
+        this.totalRecords = res?.pagination?.total ?? 0;
+        this.rows = this.records.map(p => this.toRow(p));
+      },
+      error: (err: any) => {
+        this.isLoading = false;
+        this.toast.error('Failed to load products. Please try again.');
+        console.error('Failed to load products:', err);
+      },
+    });
   }
 
   onSearch(term: string): void {
-    this.searchTerm = term.trim().toLowerCase();
-    this.currentPage = 1;
-    this.refreshRows();
+    this.search$.next(term);
   }
 
   onFilterClick(key: string): void {
@@ -84,7 +139,7 @@ export class ProductManagement implements OnInit {
   onFiltersChange(filters: CommonFilterState): void {
     this.filterState = { ...filters, branch: [...filters.branch] };
     this.currentPage = 1;
-    this.refreshRows();
+    this.loadProducts();
   }
 
   get recordCountText(): string {
@@ -101,18 +156,18 @@ export class ProductManagement implements OnInit {
   onPageChange(event: TablePageChangeEvent): void {
     this.currentPage = event.page;
     this.pageSize = event.pageSize;
-    this.refreshRows();
+    this.loadProducts();
   }
 
   onSortChange(sort: Sort): void {
     this.sortActive = sort.active;
     this.sortDirection = sort.direction || 'asc';
     this.currentPage = 1;
-    this.refreshRows();
+    this.loadProducts();
   }
 
   onEditProduct(row: TableRow): void {
-    const product = this.inventory.products().find(p => p.id === row['id']);
+    const product = this.records.find(p => p.id === row['id']);
     if (product) this.openAddPopup(product);
   }
 
@@ -120,12 +175,24 @@ export class ProductManagement implements OnInit {
     const confirmed = await this.toast.confirm('Delete this product?', `${row['name'] ?? 'This product'} will be removed from Inventory.`);
     if (!confirmed) return;
 
-    this.inventory.deleteProduct(String(row['id']));
-    this.toast.success('Product deleted successfully');
-    this.refreshRows();
+    this.inventory.deleteProduct(String(row['id'])).subscribe({
+      next: (res: any) => {
+        if (res?.success === false) {
+          this.toast.error(res?.message || 'Failed to delete product. Please try again.');
+          return;
+        }
+        this.toast.success('Product deleted successfully');
+        if (this.records.length === 1 && this.currentPage > 1) this.currentPage--;
+        this.loadProducts();
+      },
+      error: (err: any) => {
+        this.toast.error(err?.error?.message || 'Failed to delete product. Please try again.');
+        console.error('Failed to delete product:', err);
+      },
+    });
   }
 
-  openAddPopup(product: Product | null = null): void {
+  openAddPopup(product: ProductRecord | null = null): void {
     const dialogRef = this.dialog.open(AddProductForm, {
       width: '620px',
       maxWidth: 'calc(100vw - 32px)',
@@ -133,71 +200,27 @@ export class ProductManagement implements OnInit {
       autoFocus: false,
       restoreFocus: true,
       disableClose: true,
-      data: { product },
+      data: { product, vendors: this.vendors },
     });
 
     dialogRef.afterClosed().subscribe(result => {
-      if (result) this.refreshRows();
+      if (result) this.loadProducts();
     });
   }
 
-  private toRow(p: Product): TableRow {
-    const inr = (v: number) => `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  private toRow(p: ProductRecord): TableRow {
+    const inr = (v: number | string) => `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     return {
       id: p.id,
       code: p.code,
       name: p.name,
-      vendor: this.inventory.vendorName(p.vendorId),
-      purchase: inr(p.purchasePrice),
-      margin: `${p.marginPercent}%`,
-      selling: inr(p.sellingPrice),
-      gst: `${inr(p.gstAmount)} (${p.gstPercent}%)`,
-      total: inr(p.totalAmount),
+      vendor: p.vendor?.name ?? '-',
+      purchase: inr(p.purchase_price),
+      margin: `${Number(p.margin_percent)}%`,
+      selling: inr(p.selling_price),
+      gst: `${inr(p.gst_amount)} (${Number(p.gst_percent)}%)`,
+      total: inr(p.total_amount),
       status: p.status,
     };
-  }
-
-  private refreshRows(): void {
-    const sorted = this.getSorted(this.getFiltered());
-    this.totalRecords = sorted.length;
-
-    const totalPages = Math.max(1, Math.ceil(this.totalRecords / this.pageSize));
-    if (this.currentPage > totalPages) this.currentPage = totalPages;
-
-    const start = (this.currentPage - 1) * this.pageSize;
-    this.rows = sorted.slice(start, start + this.pageSize).map(p => this.toRow(p));
-  }
-
-  private getFiltered(): Product[] {
-    return this.inventory.products().filter(p => {
-      const vendor = this.inventory.vendorName(p.vendorId);
-      const haystack = [p.code, p.name, vendor].join(' ').toLowerCase();
-      if (this.searchTerm && !haystack.includes(this.searchTerm)) return false;
-      if (this.filterState.source && vendor !== this.filterState.source) return false;
-      if (this.filterState.status && p.status !== this.filterState.status) return false;
-      return true;
-    });
-  }
-
-  private getSorted(products: Product[]): Product[] {
-    if (!this.sortActive || !this.sortDirection) return products;
-    const direction = this.sortDirection === 'asc' ? 1 : -1;
-    const value = (p: Product): string | number => {
-      switch (this.sortActive) {
-        case 'vendor': return this.inventory.vendorName(p.vendorId).toLowerCase();
-        case 'purchase': return p.purchasePrice;
-        case 'margin': return p.marginPercent;
-        case 'selling': return p.sellingPrice;
-        case 'gst': return p.gstAmount;
-        case 'total': return p.totalAmount;
-        case 'status': return p.status;
-        case 'name': return p.name.toLowerCase();
-        default: return p.code;
-      }
-    };
-    return [...products].sort((a, b) => {
-      const l = value(a), r = value(b);
-      return l < r ? -1 * direction : l > r ? 1 * direction : 0;
-    });
   }
 }

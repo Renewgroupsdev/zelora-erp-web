@@ -3,6 +3,8 @@
 }
 
 .treatment-page {
+  position: relative;
+  min-height: 320px;
   margin: 0 auto;
 }
 
@@ -144,7 +146,8 @@
 .field input,
 .field select,
 .field textarea,
-.material-row input {
+.material-row input,
+.material-row select {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid var(--border-soft);
@@ -160,7 +163,8 @@
 .field input:focus,
 .field select:focus,
 .field textarea:focus,
-.material-row input:focus {
+.material-row input:focus,
+.material-row select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-soft)
 }
@@ -353,7 +357,8 @@
   padding: 7px 9px
 }
 
-.material-row input {
+.material-row input,
+.material-row select {
   padding: 7px 8px;
   font-size: clamp(10.5px, 0.2vw + 10px, 11px)
 }
@@ -463,7 +468,7 @@
   border: 1px solid var(--border-soft);
   border-radius: 9px;
   background: var(--app-surface-solid);
-  font-size: clamp(9px, 0.25vw + 8.5px, 9.5px);
+  font-size: clamp(9px, 0.25vw + 8.5px, 12.5px);
   color: var(--text-muted)
 }
 
@@ -565,7 +570,7 @@
       "quantity remove";
   }
 
-  .material-row input:nth-child(1) { grid-area: name }
+  .material-row select:nth-child(1) { grid-area: name }
   .material-row input:nth-child(2) { grid-area: unit }
   .material-row input:nth-child(3) { grid-area: quantity }
   .material-row .remove-btn { grid-area: remove }
@@ -607,7 +612,8 @@
 }
 
 .combo-row input.error,
-.material-row input.error {
+.material-row input.error,
+.material-row select.error {
   border-color: #dc4c4c;
 }
 
@@ -778,6 +784,7 @@
 .field select:disabled,
 .field textarea:disabled,
 .material-row input:disabled,
+.material-row select:disabled,
 .combo-row input:disabled {
   // background: var(--app-surface-soft);
   color: var(--text-dark);
@@ -788,4 +795,13 @@
 .treatment-chip:disabled {
   opacity: .75;
   cursor: default;
+}
+
+/* Wraps the two workspace columns without affecting the grid; `disabled` on it locks all controls. */
+.form-lock {
+  display: contents;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
 }

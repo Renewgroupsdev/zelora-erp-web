@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
+import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
 import {
@@ -11,9 +13,17 @@ import {
   TablePageChangeEvent,
   TableRow,
 } from '../../../shared/models/common-components.model';
-import { InventoryService, Vendor } from '../../../shared/common-services/inventory.service';
+import { InventoryService, VendorRecord } from '../../../shared/common-services/inventory.service';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AddVendorForm } from './add-vendor-form/add-vendor-form';
+
+/** Table column key -> vendors API `sort_by` value. */
+const SORT_FIELDS: Record<string, string> = {
+  code: 'code',
+  name: 'name',
+  gstNo: 'gst_no',
+  status: 'status',
+};
 
 @Component({
   selector: 'app-vendor-management',
@@ -26,6 +36,10 @@ export class VendorManagement implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly inventory = inject(InventoryService);
   private readonly toast = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly search$ = new Subject<string>();
+
+  private records: VendorRecord[] = [];
 
   filters: FilterOption[] = [
     { key: 'status', label: 'Status', options: ['Active', 'Inactive'] },
@@ -43,8 +57,8 @@ export class VendorManagement implements OnInit {
   columns: TableColumn[] = [
     { key: 'code', header: 'Code', type: 'text', width: '8%' },
     { key: 'name', header: 'Vendor Name', type: 'text', width: '22%' },
-    { key: 'phone', header: 'Phone', type: 'text', width: '10%' },
-    { key: 'email', header: 'Email', type: 'text', width: '22%' },
+    { key: 'phone', header: 'Phone', type: 'text', width: '10%', sortable: false },
+    { key: 'email', header: 'Email', type: 'text', width: '22%', sortable: false },
     { key: 'gstNo', header: 'GST No', type: 'text', width: '16%' },
     { key: 'status', header: 'Status', type: 'badge', width: '8%' },
     { key: 'action', header: 'Action', type: 'rowActions', width: '8%', sortable: false },
@@ -61,13 +75,44 @@ export class VendorManagement implements OnInit {
   private searchTerm = '';
 
   ngOnInit(): void {
-    this.refreshRows();
+    this.search$
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe(term => {
+        this.searchTerm = term.trim();
+        this.currentPage = 1;
+        this.loadVendors();
+      });
+
+    this.loadVendors();
+  }
+
+  loadVendors(): void {
+    this.isLoading = true;
+
+    this.inventory.listVendors({
+      page: this.currentPage,
+      perPage: this.pageSize,
+      search: this.searchTerm,
+      sortBy: SORT_FIELDS[this.sortActive] ?? 'code',
+      sortDirection: this.sortDirection || 'asc',
+      status: this.filterState.status as 'Active' | 'Inactive' | null,
+    }).subscribe({
+      next: (res: any) => {
+        this.isLoading = false;
+        this.records = res?.data ?? [];
+        this.totalRecords = res?.pagination?.total ?? 0;
+        this.rows = this.records.map(v => this.toRow(v));
+      },
+      error: (err: any) => {
+        this.isLoading = false;
+        this.toast.error('Failed to load vendors. Please try again.');
+        console.error('Failed to load vendors:', err);
+      },
+    });
   }
 
   onSearch(term: string): void {
-    this.searchTerm = term.trim().toLowerCase();
-    this.currentPage = 1;
-    this.refreshRows();
+    this.search$.next(term);
   }
 
   onFilterClick(key: string): void {
@@ -77,7 +122,7 @@ export class VendorManagement implements OnInit {
   onFiltersChange(filters: CommonFilterState): void {
     this.filterState = { ...filters, branch: [...filters.branch] };
     this.currentPage = 1;
-    this.refreshRows();
+    this.loadVendors();
   }
 
   get recordCountText(): string {
@@ -94,31 +139,43 @@ export class VendorManagement implements OnInit {
   onPageChange(event: TablePageChangeEvent): void {
     this.currentPage = event.page;
     this.pageSize = event.pageSize;
-    this.refreshRows();
+    this.loadVendors();
   }
 
   onSortChange(sort: Sort): void {
     this.sortActive = sort.active;
     this.sortDirection = sort.direction || 'asc';
     this.currentPage = 1;
-    this.refreshRows();
+    this.loadVendors();
   }
 
   onEditVendor(row: TableRow): void {
-    const vendor = this.inventory.vendors().find(v => v.id === row['id']);
+    const vendor = this.records.find(v => v.id === row['id']);
     if (vendor) this.openAddPopup(vendor);
   }
 
   async onDeleteVendor(row: TableRow): Promise<void> {
-    const confirmed = await this.toast.confirm('Delete this vendor?', `${row['name'] ?? 'This vendor'} will be removed and its products left without a supplier.`);
+    const confirmed = await this.toast.confirm('Delete this vendor?', `${row['name'] ?? 'This vendor'} will be removed from Vendor Management.`);
     if (!confirmed) return;
 
-    this.inventory.deleteVendor(String(row['id']));
-    this.toast.success('Vendor deleted successfully');
-    this.refreshRows();
+    this.inventory.deleteVendor(Number(row['id'])).subscribe({
+      next: (res: any) => {
+        if (res?.success === false) {
+          this.toast.error(res?.message || 'Failed to delete vendor. Please try again.');
+          return;
+        }
+        this.toast.success('Vendor deleted successfully');
+        if (this.records.length === 1 && this.currentPage > 1) this.currentPage--;
+        this.loadVendors();
+      },
+      error: (err: any) => {
+        this.toast.error(err?.error?.message || 'Failed to delete vendor. Please try again.');
+        console.error('Failed to delete vendor:', err);
+      },
+    });
   }
 
-  openAddPopup(vendor: Vendor | null = null): void {
+  openAddPopup(vendor: VendorRecord | null = null): void {
     const dialogRef = this.dialog.open(AddVendorForm, {
       width: '620px',
       maxWidth: 'calc(100vw - 32px)',
@@ -130,51 +187,19 @@ export class VendorManagement implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe(result => {
-      if (result) this.refreshRows();
+      if (result) this.loadVendors();
     });
   }
 
-  private toRow(v: Vendor): TableRow {
+  private toRow(v: VendorRecord): TableRow {
     return {
       id: v.id,
       code: v.code,
       name: v.name,
       phone: v.phone || '-',
       email: v.email || '-',
-      gstNo: v.gstNo || '-',
+      gstNo: v.gst_no || '-',
       status: v.status,
     };
-  }
-
-  private refreshRows(): void {
-    const sorted = this.getSorted(this.getFiltered());
-    this.totalRecords = sorted.length;
-
-    const totalPages = Math.max(1, Math.ceil(this.totalRecords / this.pageSize));
-    if (this.currentPage > totalPages) this.currentPage = totalPages;
-
-    const start = (this.currentPage - 1) * this.pageSize;
-    this.rows = sorted.slice(start, start + this.pageSize).map(v => this.toRow(v));
-  }
-
-  private getFiltered(): Vendor[] {
-    return this.inventory.vendors().filter(v => {
-      const haystack = [v.code, v.name, v.phone, v.email, v.gstNo].join(' ').toLowerCase();
-      if (this.searchTerm && !haystack.includes(this.searchTerm)) return false;
-      if (this.filterState.status && v.status !== this.filterState.status) return false;
-      return true;
-    });
-  }
-
-  private getSorted(vendors: Vendor[]): Vendor[] {
-    if (!this.sortActive || !this.sortDirection) return vendors;
-    const direction = this.sortDirection === 'asc' ? 1 : -1;
-    const value = (v: Vendor): string => String(({
-      name: v.name, phone: v.phone, email: v.email, gstNo: v.gstNo, status: v.status, code: v.code,
-    } as Record<string, string>)[this.sortActive] ?? v.code).toLowerCase();
-    return [...vendors].sort((a, b) => {
-      const l = value(a), r = value(b);
-      return l < r ? -1 * direction : l > r ? 1 * direction : 0;
-    });
   }
 }
