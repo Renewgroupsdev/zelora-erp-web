@@ -83,5 +83,66 @@
         <input type="number" min="1" max="180" [value]="idleService.idleMinutes()" (change)="setIdleMinutes($any($event.target).valueAsNumber)">
       </label> -->
     </section>
+
+    <section class="settings-card">
+      <div class="card-heading">
+        <div class="heading-icon"><i class="bi bi-phone"></i></div>
+        <div><h2>App download links</h2><p>Shown on the branch QR page so visitors can install the app on their phone.</p></div>
+      </div>
+      <div class="store-url-row">
+        <label class="store-url-label"><i class="bi bi-google-play"></i> Google Play (Android)</label>
+        <input
+          type="url"
+          class="playstore-input"
+          placeholder="https://play.google.com/store/apps/details?id=..."
+          [(ngModel)]="playstoreUrl"
+          name="playstoreUrl"
+        >
+      </div>
+      <div class="store-url-row">
+        <label class="store-url-label"><i class="bi bi-apple"></i> App Store (iOS)</label>
+        <input
+          type="url"
+          class="playstore-input"
+          placeholder="https://apps.apple.com/app/id..."
+          [(ngModel)]="appstoreUrl"
+          name="appstoreUrl"
+        >
+      </div>
+      <button type="button" class="btn-primary save-store-urls" [disabled]="savingStoreUrls" (click)="saveStoreUrls()">
+        {{ savingStoreUrls ? 'Saving...' : 'Save' }}
+      </button>
+    </section>
+
+    <section class="settings-card qr-card">
+      <div class="card-heading">
+        <div class="heading-icon"><i class="bi bi-qr-code"></i></div>
+        <div><h2>Branch QR code</h2><p>Generate a QR code for an organization unit. Its data is embedded directly in the code, so scanning it works without needing to reach this server - it shows the branch details plus a download link for the right store.</p></div>
+      </div>
+
+      <div class="qr-warning" *ngIf="originLooksLocal">
+        <i class="bi bi-exclamation-triangle"></i>
+        You're on <strong>{{ 'localhost' }}</strong> - a QR generated here won't open on another phone. Open this app using your machine's network IP or public domain before generating.
+      </div>
+
+      <div class="qr-control">
+        <select class="qr-branch-select" [(ngModel)]="selectedBranchId" name="selectedBranchId" [disabled]="loadingBranches">
+          <option *ngIf="loadingBranches" [ngValue]="null">Loading organization units...</option>
+          <option *ngIf="!loadingBranches && !branches.length" [ngValue]="null">No organization units found</option>
+          <option *ngFor="let branch of branches" [ngValue]="branch.id">{{ branch.name }} ({{ branch.code }})</option>
+        </select>
+        <button type="button" class="btn-primary" [disabled]="!selectedBranchId || generatingQr" (click)="generateQr()">
+          {{ generatingQr ? 'Generating...' : 'Generate QR' }}
+        </button>
+      </div>
+
+      <div class="qr-result" *ngIf="qrDataUrl">
+        <img [src]="qrDataUrl" alt="Organization unit QR code" class="qr-image">
+        <div class="qr-meta">
+          <small>{{ qrTargetUrl }}</small>
+          <button type="button" class="btn-secondary" (click)="downloadQr()"><i class="bi bi-download"></i> Download</button>
+        </div>
+      </div>
+    </section>
   </div>
 </div>

@@ -1,0 +1,152 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: var(--app-surface-bg);
+}
+
+.branch-info-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.branch-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 28px 24px;
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  background: var(--app-surface-solid);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.brand-mark {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--primary-soft), var(--primary-soft-strong));
+  color: var(--primary-dark);
+  font-size: 26px;
+}
+
+.branch-card h1 {
+  margin: 0 0 6px;
+  font-family: var(--font-family-display);
+  color: var(--text-dark);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 22px;
+  text-align: left;
+}
+
+.detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 11px;
+  background: var(--app-surface-soft);
+}
+
+.detail-row i {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--primary);
+  font-size: 15px;
+}
+
+.detail-row small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.detail-row strong {
+  color: var(--text-dark);
+  font-size: 13.5px;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.detail-row a {
+  color: var(--text-dark);
+  text-decoration: none;
+}
+
+.download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+  padding: 13px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.download-btn--disabled {
+  background: var(--app-surface-soft);
+  border: 1px dashed var(--border-soft-strong);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.state-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.state-card i {
+  font-size: 32px;
+  color: var(--primary);
+}
+
+.spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--border-soft);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -52,6 +52,15 @@ export const routes: Routes = [
 
     ],
   },
+  {
+    // Current QR codes carry data via ?d=... on this path; :id is kept for older/manual links.
+    path: 'branch-info',
+    loadComponent: () => import('./public/branch-info-page/branch-info-page').then(m => m.BranchInfoPage),
+  },
+  {
+    path: 'branch-info/:id',
+    loadComponent: () => import('./public/branch-info-page/branch-info-page').then(m => m.BranchInfoPage),
+  },
   { path: '404', loadComponent: () => import('./not-found-page/not-found-page').then(m => m.NotFoundPage) },
   { path: '**', loadComponent: () => import('./not-found-page/not-found-page').then(m => m.NotFoundPage) },
 ];

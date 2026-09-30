@@ -101,4 +101,11 @@ export class ApiRoutesConstants {
    public static USER_ADD = "users";
    public static USER_DELETE = "users";
 
+   //Settings (key-value)
+   public static SETTINGS_GET = "settings";
+   public static SETTINGS_UPDATE = "settings";
+
+   //Organization Unit QR landing page (public, no auth)
+   public static ORGANIZATION_UNIT_PUBLIC_SHOW = "public/organization-units";
+
 }

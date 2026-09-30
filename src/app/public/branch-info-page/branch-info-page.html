@@ -1,0 +1,57 @@
+<div class="branch-info-page">
+  <div class="branch-card" *ngIf="!loading && branch">
+    <div class="brand-mark"><i class="bi bi-hospital"></i></div>
+    <h1>{{ branch.name }}</h1>
+    <span class="type-badge" *ngIf="branch.type">{{ formatType(branch.type) }}</span>
+
+    <div class="detail-list">
+      <div class="detail-row" *ngIf="branch.code">
+        <i class="bi bi-upc-scan"></i>
+        <div><small>Branch code</small><strong>{{ branch.code }}</strong></div>
+      </div>
+      <div class="detail-row" *ngIf="branch.address">
+        <i class="bi bi-geo-alt"></i>
+        <div><small>Address</small><strong>{{ branch.address }}{{ branch.pincode ? ' - ' + branch.pincode : '' }}</strong></div>
+      </div>
+      <div class="detail-row" *ngIf="branch.phone_no">
+        <i class="bi bi-telephone"></i>
+        <div><small>Phone</small><strong><a [href]="'tel:' + branch.phone_no">{{ branch.phone_no }}</a></strong></div>
+      </div>
+      <div class="detail-row" *ngIf="branch.email">
+        <i class="bi bi-envelope"></i>
+        <div><small>Email</small><strong><a [href]="'mailto:' + branch.email">{{ branch.email }}</a></strong></div>
+      </div>
+      <div class="detail-row" *ngIf="branch.gst_number">
+        <i class="bi bi-receipt"></i>
+        <div><small>GST number</small><strong>{{ branch.gst_number }}</strong></div>
+      </div>
+      <div class="detail-row" *ngIf="branch.description">
+        <i class="bi bi-info-circle"></i>
+        <div><small>About</small><strong>{{ branch.description }}</strong></div>
+      </div>
+    </div>
+
+    <a
+      class="download-btn"
+      *ngIf="downloadLink"
+      [href]="downloadLink.url"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <i class="bi" [class]="downloadLink.icon"></i> {{ downloadLink.label }}
+    </a>
+    <div class="download-btn download-btn--disabled" *ngIf="!downloadLink">
+      <i class="bi bi-phone"></i> App download link isn't set up yet
+    </div>
+  </div>
+
+  <div class="state-card" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading branch details...</p>
+  </div>
+
+  <div class="state-card" *ngIf="!loading && notFound">
+    <i class="bi bi-exclamation-circle"></i>
+    <p>We couldn't find this branch. Please check the QR code and try again.</p>
+  </div>
+</div>
