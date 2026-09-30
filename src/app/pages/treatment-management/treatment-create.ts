@@ -1,10 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ComboTreatmentItem, TreatmentCategory, TreatmentMaterial, TREATMENT_CATEGORIES } from '../../shared/data/treatment-catalog';
-import { TreatmentManagementService } from '../../shared/common-services/treatment-management.service';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { forkJoin } from 'rxjs';
+import { LookupOption, TreatmentManagementService, TreatmentPayload, TreatmentRecord } from '../../shared/common-services/treatment-management.service';
 import { Breadcrumb } from '../../shared/components/breadcrumb/breadcrumb';
 import { BreadcrumbItem } from '../../shared/models/common-components.model';
 import { ToastService } from '../../shared/common-services/toast.service';
@@ -21,246 +21,191 @@ export class TreatmentCreate implements OnInit {
   private readonly route = inject(ActivatedRoute);
   readonly router = inject(Router);
   private readonly toast = inject(ToastService);
-  editingKey: string | null = null;
+  private readonly service = inject(TreatmentManagementService);
+
+  /** Encrypted treatment id when editing / viewing. */
+  editingId: string | null = null;
   readonly readOnly = this.route.snapshot.queryParamMap.get('mode') === 'view';
-  readonly store = inject(TreatmentManagementService);
-  readonly categories = TREATMENT_CATEGORIES;
+
+  readonly categories = signal<LookupOption[]>([]);
+  readonly branches = signal<LookupOption[]>([]);
+  readonly products = signal<LookupOption[]>([]);
+  readonly loading = signal(false);
+  readonly saving = signal(false);
 
   readonly form = this.fb.group({
-    name: ['', [Validators.required, Validators.maxLength(100)]],
-    category: ['Hair' as TreatmentCategory, Validators.required],
-    description: [''],
-    price: [0, [Validators.required, Validators.min(0)]],
-    discount: [0, [Validators.min(0)]],
-    discountType: ['percentage' as 'percentage' | 'fixed', Validators.required],
+    name: ['', [Validators.required, Validators.maxLength(255)]],
+    treatment_category_id: [null as number | null, Validators.required],
+    branch_id: [null as number | null, Validators.required],
+    description: ['', Validators.maxLength(255)],
+    default_sittings: [1, [Validators.required, Validators.min(1)]],
+    amount: [0, [Validators.required, Validators.min(0)]],
     gstRate: [18, [Validators.required, Validators.min(0), Validators.max(100)]],
-    maxSessions: [1, [Validators.required, Validators.min(1)]],
-    comboTreatments: this.fb.array([]),
-    materials: this.fb.array([
-      this.createMaterial('Gloves', 'pair'),
-    ]),
+    product_id: [null as string | null, Validators.required],
+    needed_product_qty: [null as number | null, Validators.min(1)],
+    is_active: [true],
   });
 
-  readonly activeCategory = toSignal(this.form.controls.category.valueChanges, {
-    initialValue: this.form.controls.category.value,
-  });
-
-  readonly filteredTreatments = computed(() =>
-    this.store.treatments().filter(t => t.category === this.activeCategory())
-  );
-
-  private readonly priceValue = toSignal(this.form.controls.price.valueChanges, { initialValue: this.form.controls.price.value });
-  private readonly discountValue = toSignal(this.form.controls.discount.valueChanges, { initialValue: this.form.controls.discount.value });
-  private readonly discountTypeValue = toSignal(this.form.controls.discountType.valueChanges, { initialValue: this.form.controls.discountType.value });
+  private readonly nameValue = toSignal(this.form.controls.name.valueChanges, { initialValue: this.form.controls.name.value });
+  private readonly descriptionValue = toSignal(this.form.controls.description.valueChanges, { initialValue: this.form.controls.description.value });
+  private readonly categoryValue = toSignal(this.form.controls.treatment_category_id.valueChanges, { initialValue: this.form.controls.treatment_category_id.value });
+  private readonly sittingsValue = toSignal(this.form.controls.default_sittings.valueChanges, { initialValue: this.form.controls.default_sittings.value });
+  private readonly amountValue = toSignal(this.form.controls.amount.valueChanges, { initialValue: this.form.controls.amount.value });
   private readonly gstRateValue = toSignal(this.form.controls.gstRate.valueChanges, { initialValue: this.form.controls.gstRate.value });
+  private readonly productValue = toSignal(this.form.controls.product_id.valueChanges, { initialValue: this.form.controls.product_id.value });
 
-  readonly subtotal = computed(() => {
-    const price = Number(this.priceValue()) || 0;
-    const discount = Number(this.discountValue()) || 0;
-    return Math.max(0, price - (this.discountTypeValue() === 'percentage'
-      ? price * Math.min(discount, 100) / 100
-      : discount));
-  });
+  readonly previewName = computed(() => this.nameValue() || 'Your treatment name');
+  readonly previewDescription = computed(() => this.descriptionValue() || 'Treatment description will appear here.');
+  readonly previewSittings = computed(() => Number(this.sittingsValue()) || 1);
+  readonly previewGstRate = computed(() => Number(this.gstRateValue()) || 0);
+  readonly categoryName = computed(() => this.categories().find(c => c.id === this.categoryValue())?.name ?? 'Category');
+  readonly productName = computed(() => this.products().find(p => p.id === this.productValue())?.name ?? 'No product');
 
-  readonly gstAmount = computed(() => this.subtotal() * (Number(this.gstRateValue()) || 0) / 100);
-  readonly total = computed(() => this.subtotal() + this.gstAmount());
-
-  readonly originalTotal = computed(() => {
-    const price = Number(this.priceValue()) || 0;
-    const gstRate = Number(this.gstRateValue()) || 0;
-    return price + (price * gstRate / 100);
-  });
-
-  readonly hasDiscount = computed(() => this.originalTotal() > this.total());
-
-  readonly discountPercent = computed(() => {
-    const original = this.originalTotal();
-    return original > 0 ? Math.round((1 - this.total() / original) * 100) : 0;
-  });
-
-  get materials(): FormArray { return this.form.controls.materials; }
-  get comboTreatments(): FormArray { return this.form.controls.comboTreatments; }
-
-  createMaterial(name = '', unit = 'piece') {
-    return this.fb.group({
-      name: [name, Validators.required],
-      unit: [unit, Validators.required],
-      quantity: [1, [Validators.required, Validators.min(0.01)]],
-    });
-  }
-
-  createComboItem(name = '', price: number | null = null) {
-    return this.fb.group({
-      name: [name, Validators.required],
-      price: [price, [Validators.required, Validators.min(0)]],
-    });
-  }
+  /** GST in rupees (rounded to 2dp - the API rejects more decimals). */
+  readonly gstAmount = computed(() => this.round2((Number(this.amountValue()) || 0) * (Number(this.gstRateValue()) || 0) / 100));
+  readonly total = computed(() => this.round2((Number(this.amountValue()) || 0) + this.gstAmount()));
 
   get breadcrumbItems(): BreadcrumbItem[] {
     return [
       { label: 'Dashboard', link: ['/app/dashboard'], icon: 'bi-house-fill' },
       { label: 'Treatment Management', link: ['/app/treatments'], icon: 'bi-heart-pulse-fill' },
-      { label: this.editingKey ? (this.readOnly ? 'View Treatment' : 'Edit Treatment') : 'Create Treatment' },
+      { label: this.editingId ? (this.readOnly ? 'View Treatment' : 'Edit Treatment') : 'Create Treatment' },
     ];
   }
 
-  setCategory(category: TreatmentCategory): void {
-    if (this.readOnly) return;
-    this.form.controls.category.setValue(category);
+  ngOnInit(): void {
+    this.editingId = this.route.snapshot.queryParamMap.get('id');
+    this.loading.set(true);
+
+    forkJoin({
+      categories: this.service.categories(),
+      branches: this.service.branches(),
+      products: this.service.products(),
+    }).subscribe(({ categories, branches, products }) => {
+      this.categories.set(categories);
+      this.branches.set(branches);
+      this.products.set(products);
+
+      if (this.editingId) {
+        this.loadTreatment(this.editingId);
+      } else {
+        this.loading.set(false);
+        this.applyReadOnly();
+      }
+    });
+  }
+
+  private loadTreatment(id: string): void {
+    this.service.get(id).subscribe({
+      next: (res: any) => {
+        this.loading.set(false);
+        if (!res?.success) {
+          this.toast.error('Treatment not found', res?.message || 'Please try again.');
+          this.router.navigate(['/app/treatments']);
+          return;
+        }
+        this.patchTreatment(res.data as TreatmentRecord);
+        this.applyReadOnly();
+      },
+      error: (err: any) => {
+        this.loading.set(false);
+        this.toast.error('Failed to load treatment', err?.error?.message || 'Please try again.');
+        this.router.navigate(['/app/treatments']);
+      },
+    });
+  }
+
+  private applyReadOnly(): void {
+    if (this.readOnly) this.form.disable({ emitEvent: false });
+  }
+
+  private patchTreatment(t: TreatmentRecord): void {
+    const amount = Number(t.amount) || 0;
+    const gst = Number(t.gst) || 0;
+    this.form.patchValue({
+      name: t.name,
+      treatment_category_id: t.category?.id ?? null,
+      branch_id: t.branch?.id ?? null,
+      description: t.description ?? '',
+      default_sittings: t.default_sittings,
+      amount,
+      gstRate: amount > 0 ? this.round2(gst / amount * 100) : 18,
+      product_id: t.product?.id ?? null,
+      needed_product_qty: t.needed_product_qty,
+      is_active: t.is_active,
+    });
   }
 
   invalid(control: AbstractControl | null | undefined): boolean {
     return !!control && control.invalid && (control.touched || control.dirty);
   }
 
-  addMaterial(): void {
-    const last = this.materials.at(this.materials.length - 1) as FormGroup | undefined;
-    if (last && last.invalid) {
-      last.markAllAsTouched();
-      this.toast.warning('Complete this item first', 'Fill in the item name, unit and quantity before adding another.');
-      return;
-    }
-    this.materials.push(this.createMaterial());
-  }
-
-  removeMaterial(index: number): void {
-    if (this.materials.length > 1) this.materials.removeAt(index);
-  }
-
-  addComboTreatment(): void {
-    const last = this.comboTreatments.at(this.comboTreatments.length - 1) as FormGroup | undefined;
-    if (last && last.invalid) {
-      last.markAllAsTouched();
-      this.toast.warning('Complete this treatment first', 'Fill in the treatment name and price before adding another.');
-      return;
-    }
-    this.comboTreatments.push(this.createComboItem());
-  }
-
-  removeComboTreatment(index: number): void {
-    if (this.comboTreatments.length > 1) this.comboTreatments.removeAt(index);
-  }
-
-  ngOnInit(): void {
-    this.comboTreatments.valueChanges.subscribe(() => this.syncComboPrice());
-    this.form.controls.category.valueChanges.subscribe(category => this.applyComboPriceLock(category === 'Combo'));
-
-    const key = this.route.snapshot.queryParamMap.get('key');
-    if (key) {
-      const treatment = this.store.getTreatment(key);
-      if (treatment) { this.editingKey = key; this.patchTreatment(treatment); }
-    }
-
-    this.applyComboPriceLock(this.form.controls.category.value === 'Combo');
-
-    if (this.readOnly) {
-      this.form.disable({ emitEvent: false });
-    }
-  }
-
-  private syncComboPrice(): void {
-    if (this.form.controls.category.value !== 'Combo') return;
-    const total = (this.comboTreatments.getRawValue() as { price: number }[])
-      .reduce((sum, item) => sum + (Number(item.price) || 0), 0);
-    this.form.controls.price.setValue(total);
-  }
-
-  private applyComboPriceLock(isCombo: boolean): void {
-    if (isCombo) {
-      if (!this.comboTreatments.length) this.addComboTreatment();
-      this.syncComboPrice();
-      this.form.controls.price.disable({ emitEvent: false });
-    } else {
-      while (this.comboTreatments.length) this.comboTreatments.removeAt(0);
-      this.form.controls.price.enable({ emitEvent: false });
-    }
-  }
-
-  private patchTreatment(treatment: any): void {
-    this.form.patchValue({ name: treatment.name, category: treatment.category, description: treatment.description, price: treatment.price, discount: treatment.discount, discountType: treatment.discountType, gstRate: treatment.gstRate, maxSessions: treatment.maxSessions });
-
-    while (this.comboTreatments.length) this.comboTreatments.removeAt(0);
-    const comboSource: { name: string; price: number }[] = treatment.comboItems?.length
-      ? treatment.comboItems
-      : (treatment.treatmentKeys || []).map((key: string) => {
-          const referenced = this.store.getTreatment(key);
-          return { name: referenced?.name ?? key, price: referenced?.price ?? 0 };
-        });
-    comboSource.forEach((c) => this.comboTreatments.push(this.createComboItem(c.name, c.price)));
-    if (this.form.controls.category.value === 'Combo' && !this.comboTreatments.length) this.addComboTreatment();
-
-    while (this.materials.length) this.materials.removeAt(0);
-    const list = treatment.materials?.length ? treatment.materials : [{name: 'Gloves', unit: 'pair', quantity: 1}];
-    list.forEach((m: any) => { const group = this.createMaterial(m.name, m.unit); group.patchValue({ quantity: m.quantity }); this.materials.push(group); });
-  }
-
   save(): void {
+    if (this.readOnly || this.saving()) return;
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      // this.toast.error('Missing required details', 'Please fill in the treatment name, category, max sittings, pricing and all added rows before creating the treatment.');
       return;
     }
 
     const raw = this.form.getRawValue();
-    const materials: TreatmentMaterial[] = (raw.materials ?? []).map((m: any, i: number) => ({
-      key: `${this.slug(m.name)}-${i + 1}`,
-      name: m.name,
-      unit: m.unit,
-      quantity: Number(m.quantity),
-    }));
-
-    const isCombo = raw.category === 'Combo';
-    const comboItems: ComboTreatmentItem[] = !isCombo ? [] : (raw.comboTreatments ?? [])
-      .filter((c: any) => (c.name ?? '').trim())
-      .map((c: any, i: number) => ({
-        key: `${this.slug(c.name)}-${i + 1}`,
-        name: c.name,
-        price: Number(c.price) || 0,
-      }));
-
-    const key = this.editingKey ?? `${this.slug(raw.name ?? '')}-${Date.now()}`;
-    const treatment = {
-      key,
-      name: raw.name!,
-      category: raw.category!,
-      price: Number(raw.price),
-      description: raw.description ?? '',
-      discount: Number(raw.discount) || 0,
-      discountType: raw.discountType!,
-      gstRate: Number(raw.gstRate),
-      maxSessions: Number(raw.maxSessions),
-      isCombo,
-      treatmentKeys: [] as string[],
-      comboItems,
-      materials,
+    const payload: TreatmentPayload = {
+      treatment_category_id: Number(raw.treatment_category_id),
+      branch_id: Number(raw.branch_id),
+      name: (raw.name ?? '').trim(),
+      description: (raw.description ?? '').trim(),
+      amount: this.round2(Number(raw.amount) || 0),
+      gst: this.gstAmount(),
+      default_sittings: Number(raw.default_sittings),
+      product_id: raw.product_id!,
+      needed_product_qty: raw.needed_product_qty ? Number(raw.needed_product_qty) : null,
+      is_active: !!raw.is_active,
     };
-    if (this.editingKey) {
-      this.store.updateTreatment(this.editingKey, treatment);
-      this.toast.success('Treatment updated', `${treatment.name} has been updated successfully.`);
-    } else {
-      this.store.addTreatment(treatment);
-      this.toast.success('Treatment created', `${treatment.name} has been added to Treatment Management.`);
-    }
-    this.router.navigate(['/app/treatments']);
+
+    this.saving.set(true);
+    const request$ = this.editingId ? this.service.update(this.editingId, payload) : this.service.create(payload);
+
+    request$.subscribe({
+      next: (res: any) => {
+        this.saving.set(false);
+        if (!res?.success) {
+          this.toast.error('Save failed', res?.message || 'Please try again.');
+          return;
+        }
+        this.toast.success(
+          this.editingId ? 'Treatment updated' : 'Treatment created',
+          this.editingId
+            ? `${payload.name} has been updated successfully.`
+            : `${payload.name} has been added to Treatment Management.`,
+        );
+        this.router.navigate(['/app/treatments']);
+      },
+      error: (err: any) => {
+        this.saving.set(false);
+        const errors = err?.error?.errors as Record<string, string[]> | undefined;
+        const firstError = errors ? Object.values(errors)[0]?.[0] : undefined;
+        this.toast.error('Save failed', firstError || err?.error?.message || 'Please try again.');
+        console.error('Failed to save treatment:', err);
+      },
+    });
   }
 
   reset(): void {
     this.form.reset({
       name: '',
-      category: 'Hair',
+      treatment_category_id: null,
+      branch_id: null,
       description: '',
-      price: 0,
-      discount: 0,
-      discountType: 'percentage',
+      default_sittings: 1,
+      amount: 0,
       gstRate: 18,
-      maxSessions: 1,
+      product_id: null,
+      needed_product_qty: null,
+      is_active: true,
     });
-    while (this.comboTreatments.length) this.comboTreatments.removeAt(0);
-    while (this.materials.length) this.materials.removeAt(0);
-    this.materials.push(this.createMaterial('Gloves', 'pair'));
   }
 
-  private slug(value: string): string {
-    return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'treatment';
+  private round2(value: number): number {
+    return Math.round((value + Number.EPSILON) * 100) / 100;
   }
 }
