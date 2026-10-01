@@ -37,12 +37,13 @@ export class AddProductForm {
     vendorId: [null as number | null, Validators.required],
     purchasePrice: [null as number | null, [Validators.required, Validators.min(0)]],
     marginPercent: [0, [Validators.required, Validators.min(0)]],
+    discountPercent: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
     gstPercent: [18, [Validators.required, Validators.min(0), Validators.max(100)]],
     status: ['Active' as 'Active' | 'Inactive'],
   });
 
   /** Selling price, GST amount and total - always calculated by the API. */
-  readonly pricing = signal({ sellingPrice: 0, gstAmount: 0, totalAmount: 0 });
+  readonly pricing = signal({ sellingPrice: 0, discountAmount: 0, gstAmount: 0, totalAmount: 0 });
 
   constructor(
     private dialogRef: MatDialogRef<AddProductForm>,
@@ -64,6 +65,7 @@ export class AddProductForm {
         vendorId: product.vendor_id,
         purchasePrice: Number(product.purchase_price),
         marginPercent: Number(product.margin_percent),
+        discountPercent: Number(product.discount_percent ?? 0),
         gstPercent: Number(product.gst_percent),
         status: product.status,
       });
@@ -82,21 +84,24 @@ export class AddProductForm {
     const current = () => ({
       purchase_price: c.purchasePrice.value,
       margin_percent: c.marginPercent.value,
+      discount_percent: c.discountPercent.value,
       gst_percent: c.gstPercent.value,
     });
 
     combineLatest([
       c.purchasePrice.valueChanges.pipe(startWith(c.purchasePrice.value)),
       c.marginPercent.valueChanges.pipe(startWith(c.marginPercent.value)),
+      c.discountPercent.valueChanges.pipe(startWith(c.discountPercent.value)),
       c.gstPercent.valueChanges.pipe(startWith(c.gstPercent.value)),
     ]).pipe(
       debounceTime(300),
       map(() => current()),
-      filter(v => [v.purchase_price, v.margin_percent, v.gst_percent].every(x => x !== null && String(x) !== '' && Number(x) >= 0) && Number(v.gst_percent) <= 100),
+      filter(v => [v.purchase_price, v.margin_percent, v.discount_percent, v.gst_percent].every(x => x !== null && String(x) !== '' && Number(x) >= 0) && Number(v.gst_percent) <= 100 && Number(v.discount_percent) <= 100),
       distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
       switchMap(v => this.inventory.calculatePricing({
         purchase_price: Number(v.purchase_price),
         margin_percent: Number(v.margin_percent),
+        discount_percent: Number(v.discount_percent),
         gst_percent: Number(v.gst_percent),
       }).pipe(catchError(() => of(null)))),
       takeUntilDestroyed(this.destroyRef),
@@ -104,6 +109,7 @@ export class AddProductForm {
       if (res?.success) {
         this.pricing.set({
           sellingPrice: res.data.selling_price,
+          discountAmount: res.data.discount_amount,
           gstAmount: res.data.gst_amount,
           totalAmount: res.data.total_amount,
         });
@@ -126,6 +132,7 @@ export class AddProductForm {
       vendor_id: Number(raw.vendorId),
       purchase_price: Number(raw.purchasePrice),
       margin_percent: Number(raw.marginPercent),
+      discount_percent: Number(raw.discountPercent),
       gst_percent: Number(raw.gstPercent),
       status: raw.status ?? 'Active',
     };
@@ -159,7 +166,7 @@ export class AddProductForm {
     this.dialogRef.close();
   }
 
-  isInvalid(controlName: 'name' | 'description' | 'vendorId' | 'purchasePrice' | 'marginPercent' | 'gstPercent'): boolean {
+  isInvalid(controlName: 'name' | 'description' | 'vendorId' | 'purchasePrice' | 'marginPercent' | 'discountPercent' | 'gstPercent'): boolean {
     const control = this.productForm.controls[controlName];
     return control.invalid && (control.touched || control.dirty);
   }

@@ -1,8 +1,8 @@
 <div class="treatment-page">
   <app-breadcrumb [items]="breadcrumbItems"></app-breadcrumb>
 
-  <!-- Same heartbeat loader the tables use; covers this page while the treatment loads or saves -->
-  @if (loading() || saving()) {
+  <!-- Same heartbeat loader the tables use - View / Edit only (Create shows the form straight away) -->
+  @if (editingId && (loading() || saving())) {
     <app-page-loader [contained]="true"></app-page-loader>
   }
 
@@ -25,9 +25,8 @@
 
 <form [formGroup]="form" class="workspace" (ngSubmit)="save()">
    <!-- A disabled fieldset locks every native control inside it, so View mode is read-only even for dropdowns -->
-   <fieldset class="form-lock" [disabled]="readOnly || loading()">
-   <!-- View / Edit: render the form only once the saved treatment (and all its materials) has loaded -->
-   @if (!(editingId && loading())) {
+   <fieldset class="form-lock" [disabled]="readOnly || (!!editingId && loading())">
+   <!-- The cards render right away and sit blurred behind the heartbeat loader while a View / Edit treatment loads -->
    <div class="workspace-col workspace-col-main">
     <section class="card main-card">
       <div class="section-head">
@@ -177,7 +176,6 @@
       </div>
     </aside>
    </div>
-   }
    </fieldset>
   </form>
 </div>

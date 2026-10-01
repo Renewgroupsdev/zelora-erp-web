@@ -19,6 +19,12 @@
   }
 }
 
+// Covers only the layout's content area (right of the sidebar, below the top navbar).
+:host(.in-content) .page-loader-backdrop {
+  position: absolute;
+  z-index: 20;
+}
+
 .table-heartbeat {
   width: 96px;
   height: 36px;

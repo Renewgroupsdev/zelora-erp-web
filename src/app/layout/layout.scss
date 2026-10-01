@@ -25,6 +25,15 @@
   overflow: hidden;
 }
 
+// Positioning context for the page loader so it can blur the whole content area.
+.content-shell {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
 .layout-content {
   flex: 1;
   min-width: 0;

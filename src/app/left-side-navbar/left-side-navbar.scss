@@ -519,6 +519,19 @@
   transition: background .16s ease, box-shadow .16s ease, transform .16s ease;
 }
 
+.subnav-icon {
+  width: 18px;
+  flex: 0 0 18px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  color: var(--nav-muted);
+}
+
+.subnav-link.active .subnav-icon {
+  color: var(--primary);
+}
+
 .subnav-link.active {
   color: var(--nav-accent-text);
   font-weight: 800;

@@ -104,6 +104,23 @@
         </div>
 
         <div class="form-field">
+          <label for="product-discount">Discount (%) <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-tag-fill"></i>
+            <input id="product-discount" type="number" min="0" max="100" step="0.01" formControlName="discountPercent" placeholder="0" [class.is-invalid]="isInvalid('discountPercent')" />
+          </div>
+          @if (isInvalid('discountPercent')) { <small class="error-text">Discount must be between 0 and 100.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="product-discount-amount">Discount Amount (₹)</label>
+          <div class="input-wrap">
+            <i class="bi bi-percent"></i>
+            <input id="product-discount-amount" type="text" [value]="pricing().discountAmount | number:'1.2-2'" readonly disabled />
+          </div>
+        </div>
+
+        <div class="form-field">
           <label for="product-gst">GST (%) <span>*</span></label>
           <div class="input-wrap">
             <i class="bi bi-percent"></i>

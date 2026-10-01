@@ -63,9 +63,9 @@
 }
 
 .modal-close-btn {
-  width: 25px;
-  height: 25px;
-  flex: 0 0 25px;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
   display: grid;
   place-items: center;
   border: 1px solid var(--primary-soft);
@@ -282,12 +282,10 @@
   border: 0;
   color: #fff;
   background: linear-gradient(135deg, var(--primary-dark), var(--primary));
-  box-shadow: 0 5px 12px var(--primary-shadow);
 }
 
 .save-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 8px 16px var(--primary-shadow);
 }
 
 .save-btn:disabled {

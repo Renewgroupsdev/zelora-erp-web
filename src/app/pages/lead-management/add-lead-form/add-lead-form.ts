@@ -116,7 +116,7 @@ export class AddLeadForm implements OnInit{
 
   private applyNewLeadStatus(): void {
     const newLeadStatus = this.statusOptions.find(
-      (status: any) => String(status?.name).toLowerCase() === 'lead'
+      (status: any) => String(status?.name).toLowerCase() === 'new lead'
     );
     if (!newLeadStatus) return;
 

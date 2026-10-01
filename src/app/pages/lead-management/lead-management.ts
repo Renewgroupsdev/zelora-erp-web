@@ -99,7 +99,7 @@ export class LeadManagement implements OnInit {
   isLoading = false;
   allRows: TableRow[] = [];
   private leadsById = new Map<number, any>();
-  readonly type: number = 2;
+  readonly type: number = 1;
 
   rows: TableRow[] = [];
   loading = false;

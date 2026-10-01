@@ -28,6 +28,8 @@ export interface ProductRecord {
   purchase_price: number | string;
   margin_percent: number | string;
   selling_price: number | string;
+  discount_percent: number | string;
+  discount_amount: number | string;
   gst_percent: number | string;
   gst_amount: number | string;
   total_amount: number | string;
@@ -40,6 +42,7 @@ export interface ProductPayload {
   vendor_id: number;
   purchase_price: number;
   margin_percent: number;
+  discount_percent: number;
   gst_percent: number;
   status: RecordStatus;
 }
@@ -66,6 +69,7 @@ export interface ListQuery {
 export interface PricingPreviewRequest {
   purchase_price: number;
   margin_percent: number;
+  discount_percent: number;
   gst_percent: number;
 }
 
