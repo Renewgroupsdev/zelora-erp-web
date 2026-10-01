@@ -94,7 +94,7 @@
                     <span class="compact-child-icon"><i [class]="'bi ' + child.icon"></i></span>
                     <span class="compact-child-copy">
                       <strong>{{ child.label }}</strong>
-                      <small>Follow-up activities</small>
+                      <small>Open {{ child.label }}</small>
                     </span>
                     <i class="bi bi-arrow-right-short"></i>
                   </a>
@@ -104,7 +104,7 @@
                   @for (child of link.children; track child.path) {
                     <li class="subnav-item">
                       <a class="subnav-link" [routerLink]="child.path" routerLinkActive="active" (click)="closeCompactSubmenu()">
-                        <span class="subnav-dot"></span>
+                        <span class="subnav-icon"><i [class]="'bi ' + child.icon"></i></span>
                         <span class="subnav-label">{{ child.label }}</span>
                       </a>
                     </li>
@@ -188,10 +188,7 @@
                     </span>
                     <span class="horizontal-child-copy">
                       <strong>{{ child.label }}</strong>
-                      <small>
-                        @if (child.label === 'Follow-up') { Follow-up activities }
-                        @else { Calendar &amp; planning }
-                      </small>
+                      <small>Open {{ child.label }}</small>
                     </span>
                     <i class="bi bi-arrow-right-short"></i>
                   </a>

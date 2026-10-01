@@ -55,8 +55,16 @@ export class ApiRoutesConstants {
    public static TREATMENT_GET_List = "treatments";
    public static TREATMENT_ADD = "treatments";
    public static TREATMENT_DELETE = "treatments";
-   public static TREATMENT_CATEGORY_OPTIONS = "categories";
+   public static TREATMENT_CATEGORY_OPTIONS = "service-category-requests/1";
    public static TREATMENT_PRODUCT_OPTIONS = "products";
+
+   //Inventory - Products & Vendors (CURD)
+   public static PRODUCT_GET_List = "products";
+   public static PRODUCT_ADD = "products";
+   public static PRODUCT_DELETE = "products";
+   public static VENDOR_GET_List = "vendors";
+   public static VENDOR_ADD = "vendors";
+   public static VENDOR_DELETE = "vendors";
 
    //Lead Appointment (CURD)
    public static LEAD_APPOINTMENT_ADD = "appointments";

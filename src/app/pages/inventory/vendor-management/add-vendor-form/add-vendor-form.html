@@ -102,9 +102,9 @@
 
     <div class="modal-footer-custom">
       <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
-      <button type="submit" class="save-btn" [title]="isEdit ? 'Update Vendor' : 'Save Vendor'">
+      <button type="submit" class="save-btn" [disabled]="isSaving()" [title]="isEdit ? 'Update Vendor' : 'Save Vendor'">
         <i class="bi" [class.bi-floppy]="!isEdit" [class.bi-pencil-square]="isEdit"></i>
-        {{ isEdit ? 'Update' : 'Save' }}
+        {{ isSaving() ? 'Saving...' : (isEdit ? 'Update' : 'Save') }}
       </button>
     </div>
 

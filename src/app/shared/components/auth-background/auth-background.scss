@@ -21,7 +21,7 @@
   height: clamp(260px, 25vw, 440px);
   top: -25%;
   left: 5%;
-  background: rgba(192, 238, 230, .32);
+  background: rgba(233, 196, 210, .32);
 }
 
 .background-orb--right {
@@ -29,13 +29,13 @@
   height: clamp(280px, 27vw, 480px);
   right: -12%;
   top: 20%;
-  background: rgba(163, 231, 231, .28);
+  background: rgba(226, 178, 196, .28);
 }
 
 .background-dot {
   position: absolute;
   border-radius: 50%;
-  background: rgba(73, 202, 211, .25);
+  background: rgba(156, 42, 88, .18);
 }
 
 .background-dot--left {
@@ -81,7 +81,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  color: #08758f;
+  color: #7b1e42;
   font-family: "Segoe Script", "Bradley Hand", "Brush Script MT", cursive;
   font-size: clamp(17px, 1.65vw, 28px);
   line-height: 1.05;
@@ -102,7 +102,7 @@
 
 .corner-tagline path {
   fill: none;
-  stroke: #08a0a5;
+  stroke: #9c2a58;
   stroke-width: 2;
   stroke-linecap: round;
 }
@@ -115,6 +115,7 @@
 .splash-waves {
   position: absolute;
   z-index: 0;
+  filter: drop-shadow(0 -10px 28px rgba(123, 30, 66, .18));
   left: 0;
   right: 0;
   bottom: -1px;
@@ -132,64 +133,24 @@
   height: clamp(315px, 45.5vh, 455px);
 }
 
+/* Rounded medical cross: chunky rounded arms, a translucent rose fill and a light-pink outline with a soft glow. */
 .medical-plus {
   position: absolute;
   display: block;
   width: var(--plus-size);
   height: var(--plus-size);
   opacity: var(--plus-opacity);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='f' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ffd6e6' stop-opacity='.26'/%3E%3Cstop offset='1' stop-color='%23ffd6e6' stop-opacity='.12'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23f)' stroke='%23ffc4d9' stroke-opacity='.95' stroke-width='4' stroke-linejoin='round' d='M38 6h24a8 8 0 0 1 8 8v20h20a8 8 0 0 1 8 8v16a8 8 0 0 1-8 8H70v20a8 8 0 0 1-8 8H38a8 8 0 0 1-8-8V66H10a8 8 0 0 1-8-8V42a8 8 0 0 1 8-8h20V14a8 8 0 0 1 8-8z'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 0 7px rgba(255, 190, 215, .4));
 }
 
-.medical-plus::before,
-.medical-plus::after {
-  content: "";
-  position: absolute;
-  border-radius: 1px;
-}
-
-.medical-plus::before {
-  width: 100%;
-  height: 27%;
-  left: 0;
-  top: 36.5%;
-}
-
-.medical-plus::after {
-  width: 27%;
-  height: 100%;
-  left: 36.5%;
-  top: 0;
-}
-
-.medical-plus--outline::before,
-.medical-plus--outline::after {
-  background: transparent;
-  border: 3px solid rgba(211, 255, 249, .23);
-  box-sizing: border-box;
-}
-
-.medical-plus--outline::before { border-right: 0; }
-.medical-plus--outline::after { border-bottom: 0; }
-
-.medical-plus--soft::before,
-.medical-plus--soft::after,
-.medical-plus--small::before,
-.medical-plus--small::after,
-.medical-plus--tiny::before,
-.medical-plus--tiny::after,
-.medical-plus--large::before,
-.medical-plus--large::after {
-  background: rgba(221, 255, 249, .30);
-}
-
-.medical-plus--1 { --plus-size: 54px; --plus-opacity: 1; left: 3.8%; bottom: 19%; }
-.medical-plus--2 { --plus-size: 32px; --plus-opacity: .9; left: 7.8%; bottom: 9%; }
-.medical-plus--3 { --plus-size: 24px; --plus-opacity: .7; left: 16.7%; bottom: 25%; }
-.medical-plus--4 { --plus-size: 43px; --plus-opacity: .8; right: 14%; bottom: 20%; }
-.medical-plus--5 { --plus-size: 24px; --plus-opacity: .48; right: 4.4%; bottom: 14%; }
-.medical-plus--6 { --plus-size: 72px; --plus-opacity: 1; right: 4.8%; bottom: 8%; }
-.medical-plus--7 { --plus-size: 34px; --plus-opacity: .72; right: 23.7%; bottom: 8%; }
-.medical-plus--8 { --plus-size: 25px; --plus-opacity: .55; right: 8.6%; bottom: 32%; }
+.medical-plus--1 { --plus-size: 56px; --plus-opacity: .9; left: 4%; bottom: 19%; }
+.medical-plus--2 { --plus-size: 22px; --plus-opacity: .9; left: 9%; bottom: 8%; }
+.medical-plus--3 { --plus-size: 34px; --plus-opacity: .8; left: 20%; bottom: 20%; }
+.medical-plus--4 { --plus-size: 42px; --plus-opacity: .75; right: 16%; bottom: 22%; }
+.medical-plus--5 { --plus-size: 20px; --plus-opacity: .85; right: 27%; bottom: 8%; }
+.medical-plus--6 { --plus-size: 64px; --plus-opacity: .85; right: 5%; bottom: 8%; }
+.medical-plus--7 { --plus-size: 30px; --plus-opacity: .9; right: 8%; bottom: 34%; }
 
 /* ------------------------------------------------------------------
    Responsive
@@ -225,7 +186,7 @@
   .medical-pluses { height: 36vh; min-height: 235px; }
 
   .medical-plus--4,
-  .medical-plus--7 { display: none; }
+  .medical-plus--5 { display: none; }
 }
 
 @media (max-width: 430px) {
@@ -250,8 +211,7 @@
   .medical-plus--1 { --plus-size: 40px; left: 2%; bottom: 18%; }
   .medical-plus--2 { --plus-size: 23px; left: 8%; }
   .medical-plus--3,
-  .medical-plus--5,
-  .medical-plus--8 { display: none; }
+  .medical-plus--7 { display: none; }
   .medical-plus--6 { --plus-size: 52px; right: 3%; bottom: 10%; }
 }
 

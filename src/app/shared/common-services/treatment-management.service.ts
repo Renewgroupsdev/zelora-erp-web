@@ -1,19 +1,39 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, expand, map, of, reduce, EMPTY } from 'rxjs';
+import { EMPTY, Observable, catchError, expand, map, of, reduce } from 'rxjs';
 import { ApiDataService } from './api-data.service';
 import { ApiRoutesConstants } from './api-route-constants';
 
+export type DiscountType = 'percentage' | 'fixed';
+
+export interface TreatmentMaterialRow {
+  /** Product reference (null if the product was since deleted). */
+  product_id: number | null;
+  name: string;
+  unit: string;
+  quantity: number | string;
+}
+
+export interface TreatmentComboRow {
+  name: string;
+  price: number | string;
+}
+
 export interface TreatmentRecord {
+  /** Encrypted id - use as-is in URLs. */
   id: string;
   name: string;
   description: string;
   category: { id: number; name: string } | null;
   branch: { id: number; name: string } | null;
-  product: { id: string; name: string } | null;
-  needed_product_qty: number | null;
-  amount: number;
-  gst: number;
-  total_amount: number;
+  is_combo: boolean;
+  materials: TreatmentMaterialRow[];
+  combo_items: TreatmentComboRow[];
+  amount: number | string;
+  discount_type: DiscountType;
+  discount: number | string;
+  gst_rate: number | string;
+  gst: number | string;
+  total_amount: number | string;
   default_sittings: number;
   is_active: boolean;
 }
@@ -24,11 +44,13 @@ export interface TreatmentPayload {
   name: string;
   description: string;
   amount: number;
-  gst: number;
+  discount_type: DiscountType;
+  discount: number;
+  gst_rate: number;
   default_sittings: number;
-  product_id: string;
-  needed_product_qty: number | null;
   is_active: boolean;
+  materials: { product_id: number; unit: string; quantity: number }[];
+  combo_items: { name: string; price: number }[];
 }
 
 export interface TreatmentListQuery {
@@ -78,25 +100,19 @@ export class TreatmentManagementService {
     return this.api.Delete(`${ApiRoutesConstants.TREATMENT_DELETE}/${id}`, {});
   }
 
-  /** Active categories (Laravel paginator: data.data). */
+  /** Active categories (Laravel paginator: data.data). One of them is named "Combo". */
   categories(): Observable<LookupOption[]> {
     return this.api.GetAllPages(`${ApiRoutesConstants.TREATMENT_CATEGORY_OPTIONS}?status=1&per_page=100`).pipe(
-      map((rows: any[]) => rows.map(r => ({ id: r.id, name: r.name }))),
+      // The service-category list holds categories and their sub-treatments; only top-level rows are categories.
+      map((rows: any[]) => rows.filter(r => r.parent_id === null || r.parent_id === undefined).map(r => ({ id: r.id, name: r.name }))),
       catchError(() => of([])),
     );
   }
 
-  branches(): Observable<LookupOption[]> {
-    return this.api.GetAllPages(`${ApiRoutesConstants.Branch_List_Options}?per_page=100`).pipe(
-      map((rows: any[]) => rows.map(r => ({ id: r.id, name: r.name }))),
-      catchError(() => of([])),
-    );
-  }
-
-  /** Active products (custom envelope: data[] + pagination), walked page by page. */
+  /** Active products for the Consumables / materials dropdown (custom envelope: data[] + pagination). */
   products(): Observable<LookupOption[]> {
     const fetchPage = (page: number) =>
-      this.api.GET(`${ApiRoutesConstants.TREATMENT_PRODUCT_OPTIONS}?is_active=1&per_page=100&page=${page}`) as Observable<any>;
+      this.api.GET(`${ApiRoutesConstants.TREATMENT_PRODUCT_OPTIONS}?status=Active&per_page=100&page=${page}`) as Observable<any>;
 
     return fetchPage(1).pipe(
       expand((res: any) => {
@@ -106,8 +122,15 @@ export class TreatmentManagementService {
       }),
       reduce((all: LookupOption[], res: any) => [
         ...all,
-        ...((res?.data ?? []) as any[]).map(p => ({ id: p.id, name: p.name })),
+        ...((res?.data ?? []) as any[]).map(p => ({ id: p.product_ref, name: p.name })),
       ], [] as LookupOption[]),
+      catchError(() => of([])),
+    );
+  }
+
+  branches(): Observable<LookupOption[]> {
+    return this.api.GetAllPages(`${ApiRoutesConstants.Branch_List_Options}?per_page=100`).pipe(
+      map((rows: any[]) => rows.map(r => ({ id: r.id, name: r.name }))),
       catchError(() => of([])),
     );
   }
