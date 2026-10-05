@@ -1,5 +1,8 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs';
+import { NavTabGroupService } from '../services/nav-tab-group.service';
 import { NavLayoutService } from '../services/nav-layout.service';
 import { AuthService } from '../core/auth/auth.service';
 import { SidebarModule, normalizeModulePath } from '../shared/models/permission.model';
@@ -15,7 +18,7 @@ interface NavLink {
 @Component({
   selector: 'app-left-side-navbar',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink],
   templateUrl: './left-side-navbar.html',
   styleUrl: './left-side-navbar.scss',
 })
@@ -26,22 +29,7 @@ export class LeftSideNavbar {
   readonly openCompactSubmenu = signal<string | null>(null);
   private readonly auth = inject(AuthService);
 
-  private readonly ICON_BY_SLUG: Record<string, string> = {
-    'dashboard': 'bi-house-fill',
-    'lead-management': 'bi-person-lines-fill',
-    'follow-up': 'bi-arrow-repeat',
-    'appoinment': 'bi-calendar2-check-fill',
-    'customer-management': 'bi-person-fill',
-    'treatment-management': 'bi-heart-pulse-fill',
-    'tele-caller': 'bi-telephone-inbound-fill',
-    'settings': 'bi-gear-fill',
-    'service-category': 'bi-tags-fill',
-    'source': 'bi-signpost-2-fill',
-    'lead-status': 'bi-flag-fill',
-    'roles': 'bi-shield-lock-fill',
-    'roles-permissions': 'bi-shield-lock-fill',
-    'reports': 'bi-bar-chart-fill',
-  };
+  
   private readonly DEFAULT_ICON = 'bi-dot';
 
   readonly navLinks = computed<NavLink[]>(() => {
@@ -54,13 +42,34 @@ export class LeftSideNavbar {
 
     return {
       label: menu.module_name,
-      icon:  menu.icon || this.ICON_BY_SLUG[menu.slug_name] || this.DEFAULT_ICON,
+      icon:  menu.icon || this.DEFAULT_ICON,
       path: normalizeModulePath(menu.url) ?? `#${menu.slug_name}`,
       ...(children.length ? { children } : {}),
     };
   }
 
+  private readonly tabGroups = inject(NavTabGroupService);
+  private readonly router = inject(Router);
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map(e => e.urlAfterRedirects.split(/[?#]/)[0]),
+    ),
+    { initialValue: this.router.url.split(/[?#]/)[0] },
+  );
+
   constructor(public navLayout: NavLayoutService) { }
+
+  /** A link is active on its own page and on every sibling page of the in-page tab strip it belongs to. */
+  isGroupActive(path: string): boolean {
+    const url = this.currentUrl();
+    if (url === path || url.startsWith(path + '/')) {
+      return true;
+    }
+
+    return this.tabGroups.groups().some(group =>
+      group.includes(url) && group.some(p => p === path || p.startsWith(path + '/')));
+  }
 
   childrenExpanded(path: string): boolean {
     return this.expandedParent() === path;
@@ -113,6 +122,31 @@ export class LeftSideNavbar {
     event.stopPropagation();
 
     this.openHorizontalSubmenu.update(current => (current === link.path ? null : link.path));
+  }
+
+  // The submenu is position: fixed (so the scrolling menu strip can't clip it); place it under its item.
+  positionHorizontalSubnav(event: Event): void {
+    const item = event.currentTarget as HTMLElement | null;
+    if (!item) {
+      return;
+    }
+
+    const rect = item.getBoundingClientRect();
+    const subnavWidth = 225;
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - subnavWidth - 8));
+    item.style.setProperty('--subnav-top', `${rect.bottom + 7}px`);
+    item.style.setProperty('--subnav-left', `${left}px`);
+  }
+
+  // Let a normal (vertical) mouse wheel scroll the horizontal menu sideways.
+  scrollHorizontalNav(event: WheelEvent): void {
+    const strip = event.currentTarget as HTMLElement;
+    if (strip.scrollWidth <= strip.clientWidth || Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+      return;
+    }
+
+    event.preventDefault();
+    strip.scrollLeft += event.deltaY;
   }
 
   closeHorizontalSubmenu(): void {

@@ -1,0 +1,61 @@
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-calendar2-x"></i> Leave &amp; Permission</h6>
+      <p class="page-subtitle">Employees request leave or short permission; HR approves and it reflects on attendance and payroll (LOP).</p>
+    </div>
+    <div class="header-actions">
+      <div class="segment" role="tablist" aria-label="Leave view">
+        <button type="button" role="tab" [class.active]="view() === 'Leave'" (click)="setView('Leave')">Leave</button>
+        <button type="button" role="tab" [class.active]="view() === 'Permission'" (click)="setView('Permission')">Permission</button>
+        <button type="button" role="tab" [class.active]="view() === 'Balance'" (click)="setView('Balance')">Leave Balance</button>
+      </div>
+      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button type="button" class="add-lead-btn" (click)="apply()"><i class="bi bi-plus-lg"></i> {{ view() === 'Permission' ? 'Request Permission' : 'Apply Leave' }}</button>
+    </div>
+  </div>
+
+  <app-module-tabs [tabs]="tabs()" label="HR Management"></app-module-tabs>
+
+  @if (hr.pendingLeaves() && hr.canApprove()) {
+    <div class="alert-banner info">
+      <i class="bi bi-bell-fill"></i>
+      <div><strong>{{ hr.pendingLeaves() }} request{{ hr.pendingLeaves() > 1 ? 's' : '' }} waiting for HR approval</strong> Use <i class="bi bi-check2-square"></i> to approve or reject.</div>
+    </div>
+  }
+
+  <div class="row g-2 stat-row">
+    @for (stat of stats(); track stat.label) {
+      <div class="col-6 col-md-3">
+        <app-common-detail-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'"></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by employee, request no or reason"
+    [filters]="filters"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
+
+  <div class="table-col">
+    <app-common-table-card
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+      (quickActionClick)="onQuickAction($event)"
+    ></app-common-table-card>
+  </div>
+</div>

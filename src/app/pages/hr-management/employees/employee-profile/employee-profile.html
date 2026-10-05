@@ -1,0 +1,199 @@
+@let e = employee();
+@let b = breakup();
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="avatar">{{ initials(e.name) }}</div>
+      <div class="title-content">
+        <h2>{{ e.name }} <span class="pill" [ngClass]="statusClass(e.status)">{{ e.status }}</span></h2>
+        <p>{{ e.empCode }} · {{ e.designation }} · {{ e.department }} · {{ e.branch }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="profile-tabs" role="tablist">
+    @for (t of tabs; track t.key) {
+      <button type="button" role="tab" [class.active]="tab() === t.key" [attr.aria-selected]="tab() === t.key" (click)="tab.set(t.key)">
+        <i class="bi" [ngClass]="t.icon"></i> {{ t.label }}
+      </button>
+    }
+  </div>
+
+  <div class="modal-body-custom">
+    @switch (tab()) {
+      @case ('overview') {
+        <div class="kpis">
+          <div><small>Tenure</small><strong>{{ tenure() }}</strong></div>
+          <div><small>Monthly Gross</small><strong>₹{{ b.gross | number:'1.0-0' }}</strong></div>
+          <div><small>Present this month</small><strong>{{ monthSummary().present + monthSummary().late }}</strong></div>
+          <div><small>Leave balance (EL)</small><strong>{{ balance()[2].balance }}</strong></div>
+        </div>
+        <div class="section-title"><i class="bi bi-person"></i> Personal</div>
+        <div class="info-grid">
+          <div><small>Gender</small><strong>{{ e.gender }}</strong></div>
+          <div><small>Date of Birth</small><strong>{{ displayDate(e.dob) }}</strong></div>
+          <div><small>Blood Group</small><strong>{{ e.bloodGroup || '-' }}</strong></div>
+          <div><small>Mobile</small><strong>{{ e.phone }}</strong></div>
+          <div><small>Email</small><strong>{{ e.email }}</strong></div>
+          <div><small>Emergency</small><strong>{{ e.emergencyContact || '-' }}</strong></div>
+          <div class="full-width"><small>Address</small><strong>{{ e.address || '-' }}</strong></div>
+        </div>
+        <div class="section-title"><i class="bi bi-briefcase"></i> Job</div>
+        <div class="info-grid">
+          <div><small>Employee Code</small><strong>{{ e.empCode }}</strong></div>
+          <div><small>Joining Date</small><strong>{{ displayDate(e.joinDate) }}</strong></div>
+          <div><small>Employment Type</small><strong>{{ e.employmentType }}</strong></div>
+          <div><small>Reporting To</small><strong>{{ e.reportingTo || '-' }}</strong></div>
+        </div>
+        <div class="section-title"><i class="bi bi-bank"></i> Statutory &amp; Bank</div>
+        <div class="info-grid">
+          <div><small>PAN</small><strong>{{ e.pan || '-' }}</strong></div>
+          <div><small>Aadhaar</small><strong>{{ e.aadhaarLast4 ? 'XXXX XXXX ' + e.aadhaarLast4 : '-' }}</strong></div>
+          <div><small>UAN</small><strong>{{ e.uan || '-' }}</strong></div>
+          <div><small>Bank</small><strong>{{ e.bankName || '-' }}</strong></div>
+          <div><small>Account No</small><strong>{{ e.accountNo ? '••••••' + e.accountNo.slice(-4) : '-' }}</strong></div>
+          <div><small>IFSC</small><strong>{{ e.ifsc || '-' }}</strong></div>
+        </div>
+      }
+
+      @case ('salary') {
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead><tr><th>Component</th><th class="num">Monthly</th><th class="num">Annual</th></tr></thead>
+            <tbody>
+              <tr><td>Basic</td><td class="num">₹{{ e.salary.basic | number }}</td><td class="num">₹{{ e.salary.basic * 12 | number }}</td></tr>
+              <tr><td>HRA</td><td class="num">₹{{ e.salary.hra | number }}</td><td class="num">₹{{ e.salary.hra * 12 | number }}</td></tr>
+              <tr><td>Conveyance</td><td class="num">₹{{ e.salary.conveyance | number }}</td><td class="num">₹{{ e.salary.conveyance * 12 | number }}</td></tr>
+              <tr><td>Special Allowance</td><td class="num">₹{{ e.salary.special | number }}</td><td class="num">₹{{ e.salary.special * 12 | number }}</td></tr>
+              <tr><td><strong>Gross</strong></td><td class="num"><strong>₹{{ b.gross | number }}</strong></td><td class="num"><strong>₹{{ b.gross * 12 | number }}</strong></td></tr>
+              <tr><td>PF ({{ e.salary.pfPercent }}% of basic)</td><td class="num">- ₹{{ b.pf | number }}</td><td class="num">- ₹{{ b.pf * 12 | number }}</td></tr>
+              <tr><td>ESI</td><td class="num">- ₹{{ b.esi | number }}</td><td class="num">- ₹{{ b.esi * 12 | number }}</td></tr>
+              <tr><td>Professional Tax</td><td class="num">- ₹{{ b.professionalTax | number }}</td><td class="num">- ₹{{ b.professionalTax * 12 | number }}</td></tr>
+              <tr><td><strong>Net Take-home</strong></td><td class="num"><strong>₹{{ b.net | number }}</strong></td><td class="num"><strong>₹{{ b.net * 12 | number }}</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="totals"><div class="grand"><span>Annual CTC</span><span>₹{{ b.annualCtc | number }}</span></div></div>
+      }
+
+      @case ('attendance') {
+        <div class="kpis">
+          <div><small>Present</small><strong>{{ monthSummary().present }}</strong></div>
+          <div><small>Late</small><strong>{{ monthSummary().late }}</strong></div>
+          <div><small>Half Day</small><strong>{{ monthSummary().half }}</strong></div>
+          <div><small>Absent</small><strong>{{ monthSummary().absent }}</strong></div>
+          <div><small>On Leave</small><strong>{{ monthSummary().leave }}</strong></div>
+          <div><small>Avg hours</small><strong>{{ hoursLabel(monthSummary().avg) }}</strong></div>
+        </div>
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead><tr><th>Date</th><th>Check In</th><th>Check Out</th><th>Hours</th><th>Status</th><th>Remarks</th></tr></thead>
+            <tbody>
+              @for (a of attendance(); track a.id) {
+                <tr>
+                  <td>{{ displayDate(a.date) }}</td>
+                  <td>{{ displayTime(a.checkIn) }}</td>
+                  <td>{{ displayTime(a.checkOut) }}</td>
+                  <td>{{ hoursLabel(workedHours(a)) }}</td>
+                  <td><span class="pill" [ngClass]="statusClass(a.status)">{{ a.status }}</span></td>
+                  <td class="muted">{{ a.remarks || a.source }}</td>
+                </tr>
+              } @empty { <tr><td colspan="6" class="muted">No attendance yet.</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @case ('leave') {
+        <div class="balance-grid">
+          @for (lb of balance(); track lb.type) {
+            <div class="balance">
+              <small>{{ lb.type }}</small>
+              @if (lb.quota) {
+                <strong>{{ lb.balance }}<span>/{{ lb.quota }}</span></strong>
+                <div class="progress"><span [style.width.%]="lb.balance / lb.quota * 100"></span></div>
+              } @else { <strong>{{ lb.used }}<span> used</span></strong> }
+            </div>
+          }
+        </div>
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead><tr><th>Request</th><th>Type</th><th>From</th><th>To</th><th>Reason</th><th>Status</th></tr></thead>
+            <tbody>
+              @for (l of leaves(); track l.id) {
+                <tr>
+                  <td>{{ l.requestNo }}</td>
+                  <td>{{ l.kind === 'Leave' ? l.leaveType : 'Permission ' + l.fromTime + '-' + l.toTime }}</td>
+                  <td>{{ displayDate(l.fromDate) }}</td>
+                  <td>{{ displayDate(l.toDate) }}</td>
+                  <td class="muted">{{ l.reason }}</td>
+                  <td><span class="pill" [ngClass]="statusClass(l.status)">{{ l.status }}</span></td>
+                </tr>
+              } @empty { <tr><td colspan="6" class="muted">No leave or permission requests.</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @case ('payslips') {
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead><tr><th>Month</th><th class="num">Paid Days</th><th class="num">Gross</th><th class="num">Deductions</th><th class="num">Net Pay</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              @for (p of payslips(); track p.id) {
+                <tr>
+                  <td>{{ monthLabel(p.month) }}</td>
+                  <td class="num">{{ p.paidDays }}/{{ p.workingDays }}</td>
+                  <td class="num">₹{{ p.gross | number }}</td>
+                  <td class="num">₹{{ p.totalDeductions | number }}</td>
+                  <td class="num"><strong>₹{{ p.net | number }}</strong></td>
+                  <td><span class="pill" [ngClass]="statusClass(p.status)">{{ p.status }}</span></td>
+                  <td><button type="button" class="link-btn" (click)="openPayslip(p.id)"><i class="bi bi-file-earmark-pdf"></i> View</button></td>
+                </tr>
+              } @empty { <tr><td colspan="7" class="muted">No payslips yet - run payroll for a month.</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @case ('appraisals') {
+        <div class="section-title"><i class="bi bi-award"></i> Appraisals</div>
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead><tr><th>Cycle</th><th>Rating</th><th class="num">KPI</th><th class="num">Increment</th><th class="num">Old → New Gross</th><th>Effective</th><th>Status</th></tr></thead>
+            <tbody>
+              @for (a of appraisals(); track a.id) {
+                <tr>
+                  <td>{{ a.cycle }}</td>
+                  <td class="stars">@for (s of [1, 2, 3, 4, 5]; track s) { <i class="bi" [class.bi-star-fill]="s <= a.rating" [class.bi-star]="s > a.rating"></i> }</td>
+                  <td class="num">{{ a.kpiScore }}%</td>
+                  <td class="num">{{ a.incrementPercent }}%</td>
+                  <td class="num">₹{{ a.oldMonthlyGross | number }} → ₹{{ a.newMonthlyGross | number }}</td>
+                  <td>{{ displayDate(a.effectiveFrom) }}</td>
+                  <td><span class="pill" [ngClass]="statusClass(a.status)">{{ a.status }}</span></td>
+                </tr>
+              } @empty { <tr><td colspan="7" class="muted">No appraisals yet.</td></tr> }
+            </tbody>
+          </table>
+        </div>
+        <div class="section-title"><i class="bi bi-gift"></i> Bonus</div>
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead><tr><th>Type</th><th>Reason</th><th>Pay Month</th><th class="num">Amount</th><th>Status</th></tr></thead>
+            <tbody>
+              @for (x of bonuses(); track x.id) {
+                <tr><td>{{ x.type }}</td><td class="muted">{{ x.reason }}</td><td>{{ monthLabel(x.payMonth) }}</td><td class="num">₹{{ x.amount | number }}</td><td><span class="pill" [ngClass]="statusClass(x.status)">{{ x.status }}</span></td></tr>
+              } @empty { <tr><td colspan="5" class="muted">No bonus records.</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+    <button type="button" class="save-btn" (click)="edit()"><i class="bi bi-pencil-square"></i> Edit Employee</button>
+  </div>
+</div>

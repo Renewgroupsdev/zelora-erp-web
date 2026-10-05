@@ -1,0 +1,104 @@
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-award-fill"></i></div>
+      <div class="title-content"><h2>New Appraisal</h2><p>Rate performance, set the increment and an optional bonus. Released appraisals revise the salary.</p></div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="ap-emp">Employee <span>*</span></label>
+        <div class="input-wrap"><i class="bi bi-person"></i>
+          <select id="ap-emp" [ngModel]="empId()" (ngModelChange)="empId.set($event)">
+            @for (e of hr.activeEmployees(); track e.id) { <option [value]="e.id">{{ e.empCode }} · {{ e.name }} - {{ e.designation }}</option> }
+          </select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+      </div>
+      <div class="form-field">
+        <label for="ap-cycle">Cycle</label>
+        <div class="input-wrap"><i class="bi bi-arrow-repeat"></i>
+          <select id="ap-cycle" [(ngModel)]="cycle">
+            @for (c of [year - 1, year]; track c) { <option [value]="'FY ' + (c - 1) + '-' + (c + '').slice(2)">FY {{ c - 1 }}-{{ (c + '').slice(2) }}</option> }
+            <option [value]="'H1 ' + year">H1 {{ year }}</option>
+          </select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Rating</label>
+        <div class="rating-pick">
+          @for (s of [1, 2, 3, 4, 5]; track s) {
+            <button type="button" [attr.aria-label]="s + ' stars'" (click)="setRating(s)"><i class="bi" [class.bi-star-fill]="s <= rating" [class.bi-star]="s > rating"></i></button>
+          }
+          <span class="muted">{{ ['', 'Needs improvement', 'Below expectations', 'Meets expectations', 'Exceeds expectations', 'Outstanding'][rating] }}</span>
+        </div>
+      </div>
+      <div class="form-field">
+        <label for="ap-kpi">KPI Score (%)</label>
+        <div class="input-wrap"><i class="bi bi-speedometer2"></i><input id="ap-kpi" type="number" min="0" max="100" [(ngModel)]="kpiScore" /></div>
+      </div>
+      <div class="form-field">
+        <label for="ap-inc">Increment (%)</label>
+        <div class="input-wrap"><i class="bi bi-graph-up-arrow"></i><input id="ap-inc" type="number" min="0" max="100" step="0.5" [(ngModel)]="incrementPercent" /></div>
+      </div>
+      <div class="form-field">
+        <label for="ap-eff">Effective From</label>
+        <div class="input-wrap"><i class="bi bi-calendar-check"></i><input id="ap-eff" type="date" [(ngModel)]="effectiveFrom" /></div>
+      </div>
+    </div>
+
+    <div class="info-grid" style="margin-top: 8px">
+      <div><small>Current gross / month</small><strong>₹{{ currentGross() | number }}</strong></div>
+      <div><small>Revised gross / month</small><strong>₹{{ newGross() | number }}</strong></div>
+      <div><small>Monthly hike</small><strong>₹{{ newGross() - currentGross() | number }}</strong></div>
+      <div><small>Annual impact</small><strong>₹{{ (newGross() - currentGross()) * 12 | number }}</strong></div>
+    </div>
+
+    <div class="form-grid" style="margin-top: 8px">
+      <div class="form-field">
+        <label for="ap-str">Strengths</label>
+        <div class="input-wrap textarea-wrap"><i class="bi bi-hand-thumbs-up"></i><textarea id="ap-str" rows="2" maxlength="255" [(ngModel)]="strengths"></textarea></div>
+      </div>
+      <div class="form-field">
+        <label for="ap-imp">Areas of Improvement</label>
+        <div class="input-wrap textarea-wrap"><i class="bi bi-lightbulb"></i><textarea id="ap-imp" rows="2" maxlength="255" [(ngModel)]="improvements"></textarea></div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <label style="display: inline-flex; align-items: center; gap: 6px; margin: 0; cursor: pointer">
+        <input type="checkbox" [(ngModel)]="withBonus" style="accent-color: var(--primary)" /> <i class="bi bi-gift"></i> Add bonus with this appraisal
+      </label>
+    </div>
+    @if (withBonus) {
+      <div class="form-grid cols-3">
+        <div class="form-field">
+          <label for="ap-btype">Bonus Type</label>
+          <div class="input-wrap"><i class="bi bi-tags"></i>
+            <select id="ap-btype" [(ngModel)]="bonusType">@for (t of bonusTypes; track t) { <option [value]="t">{{ t }}</option> }</select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="ap-bamt">Amount (₹)</label>
+          <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input id="ap-bamt" type="number" min="0" [(ngModel)]="bonusAmount" /></div>
+        </div>
+        <div class="form-field">
+          <label for="ap-bmonth">Pay with payroll of</label>
+          <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="ap-bmonth" type="month" [(ngModel)]="bonusMonth" /></div>
+        </div>
+      </div>
+    }
+
+    @if (submitted() && error()) { <p class="error-text" style="font-size: 11px"><i class="bi bi-exclamation-circle"></i> {{ error() }}</p> }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+    <button type="button" class="save-btn" (click)="save()"><i class="bi bi-floppy"></i> Save as Draft</button>
+  </div>
+</div>

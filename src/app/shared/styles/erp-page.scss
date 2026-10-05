@@ -1,0 +1,249 @@
+// Shared layout for ERP list pages (Purchase, HR, Accounts) - mirrors product-management.scss.
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.purchase-page {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+app-common-filter-card,
+app-common-table-card {
+  display: block;
+  min-width: 0;
+}
+
+.table-col {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+app-common-table-card {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.page-header {
+  gap: 5px;
+  padding: 7px;
+}
+
+.page-title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-family-display);
+  font-size: clamp(19px, 1.5vw, 22px);
+  line-height: var(--lh-tight);
+  font-weight: 600;
+  color: var(--text-dark);
+  letter-spacing: -0.3px;
+
+  i {
+    color: var(--primary);
+    font-size: 0.85em;
+  }
+}
+
+.page-subtitle {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.add-lead-btn,
+.ghost-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 25px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-family: var(--font-family-base);
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  i {
+    font-size: 11px;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.add-lead-btn {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  color: #fff;
+  border: 0;
+
+  &:hover {
+    box-shadow: 0 12px 24px var(--primary-shadow);
+  }
+}
+
+.ghost-btn {
+  border: 1px solid var(--primary-border-strong);
+  background: var(--app-surface-solid);
+  color: var(--primary-dark);
+}
+
+.stat-row {
+  margin: 0;
+}
+
+.alert-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(208, 57, 44, 0.25);
+  border-left: 4px solid var(--status-red-text);
+  border-radius: 10px;
+  background: var(--status-red-bg);
+  color: var(--status-red-text);
+  font-size: 12px;
+
+  > i {
+    font-size: 16px;
+    line-height: 1;
+    margin-top: 1px;
+  }
+
+  strong {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 12px;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .chip {
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: var(--app-surface-solid);
+    color: var(--status-red-text);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  &.info {
+    border-color: var(--primary-border);
+    border-left-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+  }
+}
+
+.segment {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--app-surface-bg);
+  border: 1px solid var(--border-soft);
+
+  button {
+    border: 0;
+    border-radius: 8px;
+    padding: 4px 12px;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &.active {
+      background: var(--app-surface-solid);
+      color: var(--primary-dark);
+      box-shadow: 0 2px 6px var(--primary-shadow);
+    }
+  }
+}
+
+:host ::ng-deep app-common-table-card {
+  .sort-indicator.bi-arrow-up,
+  .sort-indicator.bi-arrow-down {
+    color: var(--primary);
+  }
+
+  .table-scroll {
+    scrollbar-color: var(--primary) var(--table-scrollbar-track);
+  }
+
+  .table-scroll::-webkit-scrollbar-thumb {
+    background: var(--primary);
+  }
+
+  .mat-mdc-row:hover {
+    background: var(--primary-soft) !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .header-actions {
+    width: 100%;
+  }
+}
+
+.date-input {
+  height: 27px;
+  padding: 0 8px;
+  border: 1px solid var(--primary-border-strong);
+  border-radius: 10px;
+  background: var(--app-surface-solid);
+  color: var(--text-dark);
+  font: inherit;
+  font-size: 12px;
+}
+
+.kpi-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    background: var(--app-surface-solid);
+    font-size: 12px;
+  }
+
+  strong {
+    color: var(--primary-dark);
+    font-size: 14px;
+  }
+}

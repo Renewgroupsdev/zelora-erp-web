@@ -66,3 +66,9 @@ export function isTelecallerRole(user: Pick<AuthUser, 'role_id' | 'role'> | null
   if (!slug) return true; 
   return !CALL_CENTER_SUPERVISOR_SLUGS.includes(slug);
 }
+
+/** Branch managers / heads, admins and super admins can open any employee's attendance details. */
+export function canViewTeamAttendance(user: Pick<AuthUser, 'role_id' | 'role'> | null | undefined): boolean {
+  if (!user) return false;
+  return isAdmin(user.role_id) || ['branch_manager', 'branch_head', 'admin', 'super_admin'].includes(user.role?.slug ?? '');
+}

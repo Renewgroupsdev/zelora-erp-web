@@ -13,6 +13,20 @@ const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue'> =
   lost: 'red', cancelled: 'red', failed: 'red', overdue: 'red',
   new: 'gray', draft: 'gray', inactive: 'gray',
   scheduled: 'blue', follow: 'blue', upcoming: 'blue',
+  // Purchase Management
+  approved: 'green', received: 'green', adjusted: 'green', 'in stock': 'green', full: 'green',
+  'partially received': 'orange', partial: 'orange', open: 'orange', 'debit note': 'orange',
+  rejected: 'red', urgent: 'red', 'low stock': 'red', 'out of stock': 'red',
+  ordered: 'blue', 'credit note': 'blue',
+  // HR Management
+  onboarding: 'blue', 'on notice': 'orange', exited: 'red',
+  present: 'green', 'half day': 'orange', absent: 'red', 'on leave': 'blue', permission: 'blue', holiday: 'gray', 'not marked': 'gray',
+  applied: 'gray', shortlisted: 'blue', interview: 'orange', interviewed: 'blue', selected: 'green', verification: 'orange', offered: 'blue', hired: 'green', 'offer declined': 'red',
+  processed: 'blue', released: 'green', filled: 'green', 'on hold': 'gray', closed: 'gray',
+  'notice period': 'orange', clearance: 'blue', settled: 'green',
+  // Accounts
+  unpaid: 'red', 'partially paid': 'orange', sent: 'blue',
+  receipt: 'green', payment: 'red', sales: 'blue', purchase: 'orange', contra: 'gray', journal: 'gray',
 };
 
 const AVATAR_PALETTE_SIZE = 5;

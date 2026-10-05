@@ -1,0 +1,84 @@
+@let s = slip();
+@let e = employee();
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-file-earmark-text-fill"></i></div>
+      <div class="title-content">
+        <h2>Payslip · {{ monthLabel(s.month) }}</h2>
+        <p>{{ e.name }} · {{ e.empCode }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom doc-body">
+    <div class="doc-sheet" #sheet>
+      <div class="doc-head">
+        <div>
+          <h1>RENEW Plus</h1>
+          <p>Renew Plus Hair and Skin Care Pvt Ltd</p>
+          <p>Chennai, Tamil Nadu</p>
+        </div>
+        <div class="doc-meta">
+          <h2>PAYSLIP</h2>
+          <p><strong>{{ monthLabel(s.month) }}</strong></p>
+          <p>{{ s.status === 'Paid' ? 'Paid on ' + displayDate(s.paidAt) : 'Processed' }}</p>
+        </div>
+      </div>
+
+      <div class="doc-parties">
+        <div><small>Employee</small><strong>{{ e.name }}</strong><br />{{ e.empCode }} · {{ e.designation }}</div>
+        <div><small>Department / Branch</small>{{ e.department }}<br />{{ e.branch }}</div>
+        <div><small>Bank / PF</small>{{ e.bankName || '-' }} {{ e.accountNo ? '••••' + e.accountNo.slice(-4) : '' }}<br />UAN {{ e.uan || '-' }} · PAN {{ e.pan || '-' }}</div>
+      </div>
+
+      <table>
+        <tbody>
+          <tr>
+            <td><small class="doc-label">Working Days</small><strong>{{ s.workingDays }}</strong></td>
+            <td><small class="doc-label">Paid Days</small><strong>{{ s.paidDays }}</strong></td>
+            <td><small class="doc-label">LOP Days</small><strong>{{ s.lopDays }}</strong></td>
+            <td><small class="doc-label">Joining Date</small><strong>{{ displayDate(e.joinDate) }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="doc-split">
+        <table>
+          <thead><tr><th>Earnings</th><th class="num">Amount (₹)</th></tr></thead>
+          <tbody>
+            <tr><td>Basic</td><td class="num">{{ s.earnings.basic | number:'1.2-2' }}</td></tr>
+            <tr><td>House Rent Allowance</td><td class="num">{{ s.earnings.hra | number:'1.2-2' }}</td></tr>
+            <tr><td>Conveyance</td><td class="num">{{ s.earnings.conveyance | number:'1.2-2' }}</td></tr>
+            <tr><td>Special Allowance</td><td class="num">{{ s.earnings.special | number:'1.2-2' }}</td></tr>
+            <tr><td>Bonus</td><td class="num">{{ s.earnings.bonus | number:'1.2-2' }}</td></tr>
+            <tr><td><strong>Gross Earnings</strong></td><td class="num"><strong>{{ s.gross | number:'1.2-2' }}</strong></td></tr>
+          </tbody>
+        </table>
+        <table>
+          <thead><tr><th>Deductions</th><th class="num">Amount (₹)</th></tr></thead>
+          <tbody>
+            <tr><td>Provident Fund</td><td class="num">{{ s.deductions.pf | number:'1.2-2' }}</td></tr>
+            <tr><td>ESI</td><td class="num">{{ s.deductions.esi | number:'1.2-2' }}</td></tr>
+            <tr><td>Professional Tax</td><td class="num">{{ s.deductions.professionalTax | number:'1.2-2' }}</td></tr>
+            <tr><td>Loss of Pay</td><td class="num">{{ s.deductions.lop | number:'1.2-2' }}</td></tr>
+            <tr><td>Salary Advance</td><td class="num">{{ s.deductions.advance | number:'1.2-2' }}</td></tr>
+            <tr><td><strong>Total Deductions</strong></td><td class="num"><strong>{{ s.totalDeductions | number:'1.2-2' }}</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="doc-totals">
+        <div class="grand"><span>Net Pay</span><span>₹{{ s.net | number:'1.2-2' }}</span></div>
+      </div>
+      <p class="doc-words"><strong>In words:</strong> {{ amountInWords(s.net) }}</p>
+      <p class="doc-footer">This is a computer generated payslip and does not require a signature.</p>
+    </div>
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+    <button type="button" class="save-btn" (click)="downloadPdf()"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+  </div>
+</div>

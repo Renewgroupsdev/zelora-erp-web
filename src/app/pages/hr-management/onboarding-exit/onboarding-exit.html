@@ -1,0 +1,113 @@
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-door-open-fill"></i> Onboarding &amp; Exit</h6>
+      <p class="page-subtitle">Employee in: joining checklist until active. Employee out: notice, clearance, full &amp; final settlement and relieving letter.</p>
+    </div>
+    <div class="header-actions">
+      <div class="segment" role="tablist" aria-label="Onboarding or exit">
+        <button type="button" role="tab" [class.active]="view() === 'in'" (click)="view.set('in')"><i class="bi bi-box-arrow-in-right"></i> Onboarding ({{ summary().joining }})</button>
+        <button type="button" role="tab" [class.active]="view() === 'out'" (click)="view.set('out')"><i class="bi bi-box-arrow-right"></i> Exit ({{ summary().notice + summary().clearance }})</button>
+      </div>
+      <button type="button" class="add-lead-btn" (click)="initiateExit()"><i class="bi bi-person-dash"></i> Initiate Exit</button>
+    </div>
+  </div>
+
+  <app-module-tabs [tabs]="tabs()" label="HR Management"></app-module-tabs>
+
+  <div class="flow">
+    <div class="step in"><i class="bi bi-person-plus"></i><span>Manpower request</span></div>
+    <div class="step in"><i class="bi bi-people"></i><span>Candidate hired</span></div>
+    <div class="step in" [class.hot]="view() === 'in'"><i class="bi bi-list-check"></i><span>Onboarding ({{ summary().joining }})</span></div>
+    <div class="step mid"><i class="bi bi-person-badge"></i><span>Active employee</span></div>
+    <div class="step out" [class.hot]="view() === 'out'"><i class="bi bi-hourglass-split"></i><span>Notice ({{ summary().notice }})</span></div>
+    <div class="step out" [class.hot]="view() === 'out'"><i class="bi bi-clipboard-check"></i><span>Clearance ({{ summary().clearance }})</span></div>
+    <div class="step out"><i class="bi bi-cash-coin"></i><span>F&amp;F settled ({{ summary().settled }})</span></div>
+  </div>
+
+  <div class="card-grid">
+    @if (view() === 'in') {
+      @for (o of joiners(); track o.id) {
+        @let e = hr.employee(o.empId);
+        @if (e) {
+          <div class="case-card" [class.done]="o.status === 'Completed'">
+            <div class="case-head">
+              <span class="avatar">{{ initials(e.name) }}</span>
+              <div class="who"><strong>{{ e.name }}</strong><small>{{ e.empCode }} · {{ e.designation }} · {{ e.branch }}</small></div>
+              <span class="pill" [class.green]="o.status === 'Completed'" [class.blue]="o.status !== 'Completed'">{{ o.status }}</span>
+            </div>
+            <div class="case-meta">
+              <span><i class="bi bi-calendar-check"></i> Joins {{ displayDate(o.joinDate) }}
+                @if (o.status !== 'Completed' && daysTo(o.joinDate) >= 0) { <em>(in {{ daysTo(o.joinDate) }}d)</em> }</span>
+              <span><i class="bi bi-person-heart"></i> Buddy: {{ o.buddy || '-' }}</span>
+            </div>
+            <div class="bar"><span [style.width.%]="progress(o.checklist)"></span></div>
+            <button type="button" class="expand" (click)="toggle(o.id)">
+              {{ progress(o.checklist) }}% · {{ pending(o.checklist) }} pending
+              <i class="bi" [class.bi-chevron-down]="expanded() !== o.id" [class.bi-chevron-up]="expanded() === o.id"></i>
+            </button>
+            @if (expanded() === o.id) {
+              <ul class="checklist">
+                @for (c of o.checklist; track c.label; let i = $index) {
+                  <li><label><input type="checkbox" [checked]="c.done" (change)="hr.toggleOnboardingItem(o.id, i)" /> <span [class.ticked]="c.done">{{ c.label }}</span></label></li>
+                }
+              </ul>
+            }
+          </div>
+        }
+      } @empty {
+        <div class="empty"><i class="bi bi-person-plus"></i> No one is joining right now. Hire a candidate from Recruitment or add an employee.</div>
+      }
+    } @else {
+      @for (x of leavers(); track x.id) {
+        @let e = hr.employee(x.empId);
+        @if (e) {
+          <div class="case-card exit" [class.done]="x.status === 'Settled'">
+            <div class="case-head">
+              <span class="avatar">{{ initials(e.name) }}</span>
+              <div class="who"><strong>{{ e.name }}</strong><small>{{ e.empCode }} · {{ e.designation }} · {{ e.branch }}</small></div>
+              <span class="pill" [class.orange]="x.status === 'Notice Period'" [class.blue]="x.status === 'Clearance'" [class.green]="x.status === 'Settled'">{{ x.status }}</span>
+            </div>
+            <div class="case-meta">
+              <span><i class="bi bi-box-arrow-right"></i> {{ x.exitType }} · {{ displayDate(x.resignationDate) }}</span>
+              <span><i class="bi bi-calendar-x"></i> Last day {{ displayDate(x.lastWorkingDay) }}
+                @if (x.status !== 'Settled' && daysTo(x.lastWorkingDay) >= 0) { <em>({{ daysTo(x.lastWorkingDay) }}d left)</em> }</span>
+            </div>
+            <p class="reason">{{ x.reason }}</p>
+            <div class="bar"><span [style.width.%]="progress(x.checklist)"></span></div>
+
+            <div class="fnf">
+              <div><small>Salary</small>{{ inr(x.fnf.pendingSalary) }}</div>
+              <div><small>Leave enc.</small>{{ inr(x.fnf.leaveEncashment) }}</div>
+              <div><small>Gratuity</small>{{ inr(x.fnf.gratuity) }}</div>
+              <div><small>Recoveries</small>- {{ inr(x.fnf.recoveries) }}</div>
+              <div class="total"><small>F&amp;F payable</small>{{ inr(hr.fnfTotal(x.fnf)) }}</div>
+            </div>
+
+            <button type="button" class="expand" (click)="toggle(x.id)">
+              Clearance {{ progress(x.checklist) }}%
+              <i class="bi" [class.bi-chevron-down]="expanded() !== x.id" [class.bi-chevron-up]="expanded() === x.id"></i>
+            </button>
+            @if (expanded() === x.id) {
+              <ul class="checklist">
+                @for (c of x.checklist; track c.label; let i = $index) {
+                  <li><label><input type="checkbox" [checked]="c.done" [disabled]="x.status === 'Settled'" (change)="hr.toggleExitItem(x.id, i)" /> <span [class.ticked]="c.done">{{ c.label }}</span></label></li>
+                }
+              </ul>
+            }
+
+            <div class="case-actions">
+              @if (x.status !== 'Settled') { <button type="button" class="ghost-btn" (click)="editFnf(x)"><i class="bi bi-calculator"></i> Edit F&amp;F</button> }
+              <button type="button" class="ghost-btn" (click)="printFnf(x)"><i class="bi bi-file-earmark-pdf"></i> F&amp;F</button>
+              @if (x.status === 'Settled') { <button type="button" class="ghost-btn" (click)="printRelieving(x)"><i class="bi bi-envelope-paper"></i> Relieving Letter</button> }
+              @if (x.status === 'Clearance') { <button type="button" class="add-lead-btn" (click)="settle(x)"><i class="bi bi-check2-circle"></i> Settle</button> }
+            </div>
+          </div>
+        }
+      } @empty {
+        <div class="empty"><i class="bi bi-door-open"></i> No exits in progress.</div>
+      }
+    }
+  </div>
+</div>

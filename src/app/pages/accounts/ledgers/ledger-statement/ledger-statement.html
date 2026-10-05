@@ -1,0 +1,63 @@
+@let s = statement();
+@let l = ledger();
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-journal-richtext"></i></div>
+      <div class="title-content"><h2>Ledger: {{ l.name }}</h2><p>{{ l.group }} · closing {{ drCr(s.closing) }}</p></div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom doc-body">
+    <div class="form-grid" style="margin-bottom: 8px">
+      <div class="form-field">
+        <label for="ls-from">From</label>
+        <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="ls-from" type="date" [max]="to()" [ngModel]="from()" (ngModelChange)="from.set($event)" /></div>
+      </div>
+      <div class="form-field">
+        <label for="ls-to">To</label>
+        <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="ls-to" type="date" [min]="from()" [ngModel]="to()" (ngModelChange)="to.set($event)" /></div>
+      </div>
+    </div>
+
+    <div class="doc-sheet" #sheet>
+      <div class="doc-head">
+        <div><h1>RENEW Plus</h1><p>Renew Plus Hair and Skin Care Pvt Ltd</p></div>
+        <div class="doc-meta"><h2>LEDGER ACCOUNT</h2><p><strong>{{ l.name }}</strong> ({{ l.group }})</p><p>{{ displayDate(from()) }} to {{ displayDate(to()) }}</p></div>
+      </div>
+      <table>
+        <thead><tr><th>Date</th><th>Particulars</th><th>Vch Type</th><th>Vch No</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>
+        <tbody>
+          <tr><td>{{ displayDate(from()) }}</td><td><strong>Opening Balance</strong></td><td></td><td></td><td></td><td></td><td class="num"><strong>{{ drCr(s.opening) }}</strong></td></tr>
+          @for (x of s.lines; track x.voucher.id) {
+            <tr>
+              <td>{{ displayDate(x.voucher.date) }}</td>
+              <td>{{ x.debit ? 'By' : 'To' }} {{ x.particulars }}</td>
+              <td>{{ x.voucher.type }}</td>
+              <td>{{ x.voucher.voucherNo }}</td>
+              <td class="num">{{ x.debit ? (x.debit | number:'1.2-2') : '' }}</td>
+              <td class="num">{{ x.credit ? (x.credit | number:'1.2-2') : '' }}</td>
+              <td class="num">{{ drCr(x.balance) }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" style="text-align: center; color: #6a837d">No transactions in this period.</td></tr>
+          }
+          <tr>
+            <td></td><td><strong>Current Total</strong></td><td></td><td></td>
+            <td class="num"><strong>{{ totals().debit | number:'1.2-2' }}</strong></td>
+            <td class="num"><strong>{{ totals().credit | number:'1.2-2' }}</strong></td>
+            <td class="num"><strong>{{ drCr(s.closing) }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="doc-footer">Closing balance {{ drCr(s.closing) }} as on {{ displayDate(to()) }}</p>
+    </div>
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+    <button type="button" class="cancel-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+    <button type="button" class="save-btn" (click)="downloadPdf()"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+  </div>
+</div>

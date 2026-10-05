@@ -1,0 +1,120 @@
+.inward-table {
+  min-width: 980px;
+
+  .cell-input.qty {
+    width: 70px;
+    min-width: 70px;
+  }
+
+  .cell-input.date {
+    min-width: 120px;
+  }
+
+  tr.extra td {
+    background: var(--primary-soft) !important;
+  }
+
+  .row-actions {
+    width: 34px;
+  }
+
+  .icon-btn.add {
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+  }
+
+  .error-row td {
+    padding: 4px 8px;
+    border-top: 0;
+    color: #dc3545;
+    font-size: 11px;
+  }
+}
+
+.status-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 35px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--status-green-bg);
+  color: var(--status-green-text);
+  font-size: 12px;
+  font-weight: 600;
+
+  &.partial {
+    background: var(--status-orange-bg);
+    color: var(--status-orange-text);
+  }
+}
+
+.empty-note {
+  padding: 18px;
+  border-radius: 10px;
+  background: var(--status-green-bg);
+  color: var(--status-green-text);
+  text-align: center;
+  font-size: 12px;
+}
+
+.qty-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 99px;
+    background: var(--app-surface-bg);
+    font-size: 11px;
+  }
+
+  .ok { background: var(--status-green-bg); color: var(--status-green-text); }
+  .bad { background: var(--status-red-bg); color: var(--status-red-text); }
+  .warn { background: var(--status-orange-bg); color: var(--status-orange-text); }
+}
+
+.note-card {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px dashed var(--border-soft-strong);
+  border-radius: 10px;
+
+  &.on {
+    border-style: solid;
+    border-color: var(--primary-border-strong);
+    background: var(--primary-soft);
+  }
+
+  .form-grid {
+    margin-top: 8px;
+  }
+}
+
+.note-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  cursor: pointer;
+
+  input {
+    margin-top: 3px;
+    accent-color: var(--primary);
+  }
+
+  strong {
+    display: block;
+    font-size: 12px;
+  }
+
+  small {
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+}

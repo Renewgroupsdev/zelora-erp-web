@@ -1,0 +1,135 @@
+@let t = totals();
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi" [class.bi-file-earmark-text-fill]="kind() === 'Proforma'" [class.bi-receipt-cutoff]="kind() === 'Service'"></i></div>
+      <div class="title-content">
+        <h2>{{ kind() === 'Proforma' ? 'New Proforma Bill' : 'New Service Bill' }}</h2>
+        <p>{{ kind() === 'Proforma' ? 'Quotation for the customer - no accounting entry until converted.' : 'Tax invoice - posts a Sales voucher; collections go to the Day Book.' }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="kind-switch" role="tablist">
+      <button type="button" role="tab" [class.active]="kind() === 'Proforma'" (click)="setKind('Proforma')"><i class="bi bi-file-earmark-text"></i> Proforma Bill</button>
+      <button type="button" role="tab" [class.active]="kind() === 'Service'" (click)="setKind('Service')"><i class="bi bi-receipt"></i> Service Bill</button>
+    </div>
+
+    <div class="form-grid cols-3">
+      <div class="form-field">
+        <label for="bf-date">Bill Date</label>
+        <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="bf-date" type="date" [max]="today" [(ngModel)]="date" /></div>
+      </div>
+      <div class="form-field">
+        <label for="bf-due">{{ kind() === 'Proforma' ? 'Valid Till' : 'Payment Due' }}</label>
+        <div class="input-wrap"><i class="bi bi-calendar-event"></i><input id="bf-due" type="date" [min]="date" [(ngModel)]="dueDate" /></div>
+      </div>
+      <div class="form-field">
+        <label for="bf-branch">Branch</label>
+        <div class="input-wrap"><i class="bi bi-building"></i>
+          <select id="bf-branch" [(ngModel)]="branch">@for (b of acc.branches; track b) { <option [value]="b">{{ b }}</option> }</select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title"><i class="bi bi-person"></i> Customer</div>
+    <div class="form-grid cols-3">
+      <div class="form-field">
+        <label for="bf-cust">Name <span>*</span></label>
+        <div class="input-wrap"><i class="bi bi-person"></i>
+          <input id="bf-cust" list="bf-customers" maxlength="100" placeholder="Customer / company" [(ngModel)]="customerName" (change)="onCustomer()" />
+          <datalist id="bf-customers">@for (c of customers(); track c.id) { <option [value]="c.name"></option> }</datalist>
+        </div>
+      </div>
+      <div class="form-field">
+        <label for="bf-phone">Mobile</label>
+        <div class="input-wrap"><i class="bi bi-telephone"></i><input id="bf-phone" maxlength="10" placeholder="10-digit mobile" [(ngModel)]="customerPhone" /></div>
+      </div>
+      <div class="form-field">
+        <label for="bf-gst">GSTIN (B2B)</label>
+        <div class="input-wrap"><i class="bi bi-upc"></i><input id="bf-gst" maxlength="15" placeholder="Optional" [(ngModel)]="customerGstin" /></div>
+      </div>
+      <div class="form-field full-width">
+        <label for="bf-addr">Address</label>
+        <div class="input-wrap"><i class="bi bi-geo-alt"></i><input id="bf-addr" maxlength="255" [(ngModel)]="customerAddress" /></div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <i class="bi bi-list-ul"></i> Services &amp; Products
+      <span class="spacer"></span>
+      <button type="button" class="link-btn" (click)="addItem()"><i class="bi bi-plus-lg"></i> Add line</button>
+    </div>
+    <datalist id="bf-catalog">@for (c of catalog; track c.description) { <option [value]="c.description">₹{{ c.rate }}</option> }</datalist>
+    <div class="items-table-wrap">
+      <table class="items-table bill-items">
+        <thead>
+          <tr><th style="width: 34%">Description</th><th>SAC/HSN</th><th>Qty</th><th>Rate</th><th>Disc %</th><th>GST %</th><th class="num">Taxable</th><th class="num">Amount</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (item of items; track $index; let i = $index) {
+            <tr>
+              <td><input class="cell-input" list="bf-catalog" placeholder="Service / product" [(ngModel)]="item.description" (change)="onDescription(item)" /></td>
+              <td><input class="cell-input sm" maxlength="8" [(ngModel)]="item.sac" /></td>
+              <td><input class="cell-input xs" type="number" min="1" [(ngModel)]="item.qty" /></td>
+              <td><input class="cell-input sm" type="number" min="0" [(ngModel)]="item.rate" /></td>
+              <td><input class="cell-input xs" type="number" min="0" max="100" [(ngModel)]="item.discountPercent" /></td>
+              <td><select class="cell-input xs" [(ngModel)]="item.gstPercent">@for (g of gstRates; track g) { <option [ngValue]="g">{{ g }}</option> }</select></td>
+              <td class="num">{{ line(item).taxable | number:'1.2-2' }}</td>
+              <td class="num"><strong>{{ line(item).total | number:'1.2-2' }}</strong></td>
+              <td><button type="button" class="icon-btn" [disabled]="items.length === 1" (click)="removeItem(i)" aria-label="Remove line"><i class="bi bi-trash3"></i></button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bill-foot">
+      <div class="form-field">
+        <label for="bf-notes">Notes / Terms</label>
+        <div class="input-wrap textarea-wrap"><i class="bi bi-card-text"></i><textarea id="bf-notes" rows="3" maxlength="255" [(ngModel)]="notes" placeholder="Shown on the bill"></textarea></div>
+      </div>
+      <div class="totals">
+        <div><span>Gross</span><span>₹{{ t.gross | number:'1.2-2' }}</span></div>
+        <div><span>Discount</span><span>- ₹{{ t.discount | number:'1.2-2' }}</span></div>
+        <div><span>Taxable</span><span>₹{{ t.taxable | number:'1.2-2' }}</span></div>
+        <div><span>CGST</span><span>₹{{ t.gst / 2 | number:'1.2-2' }}</span></div>
+        <div><span>SGST</span><span>₹{{ t.gst / 2 | number:'1.2-2' }}</span></div>
+        <div><span>Round off</span><span>{{ t.roundOff | number:'1.2-2' }}</span></div>
+        <div class="grand"><span>Grand Total</span><span>₹{{ t.grandTotal | number:'1.2-2' }}</span></div>
+      </div>
+    </div>
+
+    @if (kind() === 'Service') {
+      <div class="collect" [class.on]="collectNow">
+        <label class="toggle"><input type="checkbox" [(ngModel)]="collectNow" /> <strong>Collect payment now</strong> <small>(posts a Receipt into today's collection)</small></label>
+        @if (collectNow) {
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="bf-amt">Amount Received (₹)</label>
+              <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input id="bf-amt" type="number" min="1" [max]="t.grandTotal" [placeholder]="t.grandTotal" [(ngModel)]="collectAmount" /></div>
+              <small class="muted">Leave blank to collect the full ₹{{ t.grandTotal | number }}.</small>
+            </div>
+            <div class="form-field">
+              <label for="bf-mode">Mode</label>
+              <div class="input-wrap"><i class="bi bi-credit-card"></i>
+                <select id="bf-mode" [(ngModel)]="collectMode">@for (m of modes; track m) { <option [value]="m">{{ m }}</option> }</select>
+                <i class="bi bi-chevron-down select-arrow"></i>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if ((submitted() && error()) || serverError()) { <p class="error-text" style="font-size: 11px"><i class="bi bi-exclamation-circle"></i> {{ serverError() || error() }}</p> }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+    <button type="button" class="save-btn" (click)="save()"><i class="bi bi-floppy"></i> {{ kind() === 'Proforma' ? 'Save Proforma' : 'Save & Post Bill' }}</button>
+  </div>
+</div>

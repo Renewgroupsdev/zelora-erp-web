@@ -1,0 +1,137 @@
+.invoice-body {
+  background: var(--app-surface-bg);
+}
+
+.invoice-sheet {
+  padding: 18px;
+  border-radius: 10px;
+  background: #fff;
+  color: #163b35;
+  font-size: 12px;
+  box-shadow: 0 8px 24px var(--primary-shadow);
+
+  small {
+    color: #6a837d;
+  }
+}
+
+.inv-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 3px solid var(--primary);
+
+  h1 {
+    margin: 0;
+    font-size: 18px;
+    color: var(--primary-dark);
+  }
+
+  h2 {
+    margin: 0 0 4px;
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+
+  p {
+    margin: 2px 0;
+    color: #6a837d;
+  }
+}
+
+.inv-meta {
+  text-align: right;
+}
+
+.inv-parties {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+
+  small {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    padding: 6px;
+    background: var(--table-header-bg);
+    font-size: 10px;
+    text-align: left;
+  }
+
+  td {
+    padding: 6px;
+    border-bottom: 1px solid var(--table-border);
+  }
+
+  .num {
+    text-align: right;
+  }
+}
+
+.inv-totals {
+  width: min(260px, 100%);
+  margin: 10px 0 0 auto;
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+  }
+
+  .grand {
+    margin-top: 4px;
+    padding-top: 6px;
+    border-top: 2px solid var(--primary);
+    font-size: 14px;
+    font-weight: 700;
+  }
+}
+
+.inv-words {
+  margin: 8px 0 0;
+  color: #6a837d;
+}
+
+.inv-sign {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 36px;
+
+  span {
+    min-width: 140px;
+    padding-top: 4px;
+    border-top: 1px solid #9fb3ad;
+    text-align: center;
+  }
+}
+
+.inv-footer {
+  margin: 18px 0 0;
+  color: #9fb3ad;
+  font-size: 10px;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .inv-parties {
+    grid-template-columns: 1fr;
+  }
+
+  .inv-meta {
+    text-align: left;
+  }
+}

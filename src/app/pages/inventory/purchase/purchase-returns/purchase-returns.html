@@ -1,0 +1,47 @@
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-box-arrow-up"></i> Purchase Return</h6>
+      <p class="page-subtitle">Return received stock to the vendor against a purchase inward. Stock is reduced batch-wise and a debit note is raised.</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="add-lead-btn" (click)="newReturn()"><i class="bi bi-plus-lg"></i> New Return</button>
+    </div>
+  </div>
+
+  <app-purchase-tabs></app-purchase-tabs>
+
+  <div class="row g-2 stat-row">
+    @for (stat of stats(); track stat.label) {
+      <div class="col-6 col-md-3">
+        <app-common-detail-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'"></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by return no, GRN, PO, batch or vendor"
+    [filters]="returnFilters()"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
+
+  <div class="table-col">
+    <app-common-table-card
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+    ></app-common-table-card>
+  </div>
+</div>

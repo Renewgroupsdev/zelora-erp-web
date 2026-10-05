@@ -1,0 +1,61 @@
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-person-plus-fill"></i> Recruitment</h6>
+      <p class="page-subtitle">Manpower request with budget → HR approval → job on Indeed, LinkedIn &amp; Naukri → applied candidates → hire.</p>
+    </div>
+    <div class="header-actions">
+      <div class="segment" role="tablist" aria-label="Recruitment view">
+        <button type="button" role="tab" [class.active]="view() === 'requests'" (click)="setView('requests')">Manpower Requests</button>
+        <button type="button" role="tab" [class.active]="view() === 'vacancies'" (click)="setView('vacancies')">Vacancies</button>
+        <button type="button" role="tab" [class.active]="view() === 'candidates'" (click)="setView('candidates')">All Candidates</button>
+      </div>
+      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button type="button" class="add-lead-btn" (click)="newRequest()"><i class="bi bi-plus-lg"></i> Manpower Request</button>
+    </div>
+  </div>
+
+  <app-module-tabs [tabs]="tabs()" label="HR Management"></app-module-tabs>
+
+  @if (hr.pendingManpower() && hr.canApprove()) {
+    <div class="alert-banner info">
+      <i class="bi bi-bell-fill"></i>
+      <div><strong>{{ hr.pendingManpower() }} manpower request{{ hr.pendingManpower() > 1 ? 's' : '' }} waiting for budget approval</strong> Approved requests become open vacancies.</div>
+    </div>
+  }
+
+  <div class="row g-2 stat-row">
+    @for (stat of stats(); track stat.label) {
+      <div class="col-6 col-md-3">
+        <app-common-detail-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'"></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    [searchPlaceholder]="view() === 'candidates' ? 'Search by candidate, vacancy or location' : 'Search by request no, designation or branch'"
+    [filters]="filters"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
+
+  <div class="table-col">
+    <app-common-table-card
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+      (quickActionClick)="onQuickAction($event)"
+    ></app-common-table-card>
+  </div>
+</div>

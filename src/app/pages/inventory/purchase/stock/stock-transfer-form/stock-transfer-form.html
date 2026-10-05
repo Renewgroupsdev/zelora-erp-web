@@ -1,0 +1,95 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-arrow-left-right"></i></div>
+      <div class="title-content">
+        <h2>Stock Transfer</h2>
+        <p>Move batch stock from the central store to a branch store</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="st-from">From Store <span>*</span></label>
+        <div class="input-wrap">
+          <i class="bi bi-building"></i>
+          <select id="st-from" [ngModel]="fromStore()" (ngModelChange)="setFrom($event)">
+            @for (s of purchase.stores; track s) { <option [value]="s">{{ s }}</option> }
+          </select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="st-to">To Branch Store <span>*</span></label>
+        <div class="input-wrap">
+          <i class="bi bi-shop"></i>
+          <select id="st-to" [(ngModel)]="toStore">
+            @for (s of targets(); track s) { <option [value]="s">{{ s }}</option> }
+          </select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+      </div>
+
+      <div class="form-field full-width">
+        <label for="st-batch">Product &amp; Batch <span>*</span></label>
+        <div class="input-wrap">
+          <i class="bi bi-upc-scan"></i>
+          <select id="st-batch" [ngModel]="batchId()" (ngModelChange)="batchId.set($event)" [class.is-invalid]="submitted() && !batch()">
+            <option [ngValue]="null">Select product batch</option>
+            @for (b of batches(); track b.id) {
+              <option [ngValue]="b.id">{{ b.productName }} · {{ b.batchNo }} · {{ b.qty }} in stock · exp {{ displayDate(b.expiryDate) }}</option>
+            }
+          </select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+        @if (submitted() && !batch()) { <small class="error-text">Select a batch to transfer.</small> }
+        @if (!batches().length) { <small class="error-text">No stock available in {{ fromStore() }}.</small> }
+      </div>
+
+      <div class="form-field">
+        <label for="st-qty">Transfer Qty <span>*</span></label>
+        <div class="input-wrap">
+          <i class="bi bi-123"></i>
+          <input id="st-qty" type="number" min="1" [max]="batch()?.qty ?? null" placeholder="0" [(ngModel)]="qty" [class.is-invalid]="submitted() && qtyError()" />
+        </div>
+        @if (submitted() && qtyError()) { <small class="error-text">{{ qtyError() }}</small> }
+      </div>
+
+      <div class="form-field">
+        <label for="st-remarks">Remarks</label>
+        <div class="input-wrap">
+          <i class="bi bi-chat-left-dots"></i>
+          <input id="st-remarks" type="text" maxlength="255" placeholder="Optional" [(ngModel)]="remarks" />
+        </div>
+      </div>
+    </div>
+
+    @if (batch(); as b) {
+      <div class="section-title"><i class="bi bi-clipboard-data"></i> After Transfer</div>
+      <div class="info-grid">
+        <div><small>Batch {{ b.batchNo }} left</small><strong>{{ remaining() }}</strong></div>
+        <div>
+          <small>{{ fromStore() }} total</small>
+          <strong><span class="pill" [class.red]="sourceTotalAfter() < threshold" [class.green]="sourceTotalAfter() >= threshold">{{ sourceTotalAfter() }}</span></strong>
+        </div>
+        <div>
+          <small>{{ toStore }} total</small>
+          <strong><span class="pill" [class.red]="targetTotalAfter() < threshold" [class.green]="targetTotalAfter() >= threshold">{{ targetTotalAfter() }}</span></strong>
+        </div>
+      </div>
+      @if (sourceTotalAfter() < threshold) {
+        <p class="error-text" style="font-size: 11px"><i class="bi bi-exclamation-triangle"></i> {{ fromStore() }} will drop below {{ threshold }} units. The branch head gets a low-stock alert.</p>
+      }
+    }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+    <button type="button" class="save-btn" (click)="save()"><i class="bi bi-arrow-left-right"></i> Transfer Stock</button>
+  </div>
+</div>

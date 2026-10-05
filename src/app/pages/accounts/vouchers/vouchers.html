@@ -1,0 +1,54 @@
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-arrow-left-right"></i> Vouchers</h6>
+      <p class="page-subtitle">Sales, Purchase, Receipt, Payment, Contra, Journal, Credit Note and Debit Note - every entry balanced Dr = Cr.</p>
+    </div>
+    <div class="header-actions">
+      <div class="segment" role="tablist" aria-label="Voucher view">
+        <button type="button" role="tab" [class.active]="view() === 'All'" (click)="setView('All')">All Vouchers</button>
+        <button type="button" role="tab" [class.active]="view() === 'Credit Note'" (click)="setView('Credit Note')">Credit Notes</button>
+        <button type="button" role="tab" [class.active]="view() === 'Debit Note'" (click)="setView('Debit Note')">Debit Notes</button>
+      </div>
+      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button type="button" class="add-lead-btn" (click)="newVoucher()"><i class="bi bi-plus-lg"></i> New Voucher</button>
+    </div>
+  </div>
+
+  <app-module-tabs [tabs]="tabs()" label="Accounts"></app-module-tabs>
+
+  <div class="row g-2 stat-row">
+    @for (stat of stats(); track stat.label) {
+      <div class="col-6 col-md-3">
+        <app-common-detail-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'" [trendText]="stat.trendText"></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by voucher no, ledger, narration or reference"
+    [filters]="filters"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
+
+  <div class="table-col">
+    <app-common-table-card
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+      (quickActionClick)="open($event.row)"
+    ></app-common-table-card>
+  </div>
+</div>

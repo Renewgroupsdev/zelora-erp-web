@@ -33,7 +33,7 @@
           [class.expanded]="link.children?.length && childrenExpanded(link.path)"
           [class.compact-subnav-open]="openCompactSubmenu() === link.path"
           (mouseenter)="showVerticalSubmenu(link)">
-          <a class="nav-link" [routerLink]="link.path" routerLinkActive="active" (click)="onNavLinkClick(link, $event)"
+          <a class="nav-link" [routerLink]="link.path" [class.active]="isGroupActive(link.path)" (click)="onNavLinkClick(link, $event)"
             [attr.aria-expanded]="link.children?.length ? (navLayout.sidebarVisible() ? childrenExpanded(link.path) : openCompactSubmenu() === link.path) : null">
             <span class="nav-active-bar"></span>
 
@@ -89,7 +89,7 @@
                 </div>
 
                 @for (child of link.children; track child.path) {
-                  <a class="compact-subnav-link" [routerLink]="child.path" routerLinkActive="active"
+                  <a class="compact-subnav-link" [routerLink]="child.path" [class.active]="isGroupActive(child.path)"
                     (click)="closeCompactSubmenu()">
                     <span class="compact-child-icon"><i [class]="'bi ' + child.icon"></i></span>
                     <span class="compact-child-copy">
@@ -103,7 +103,7 @@
                 <ul class="subnav-list">
                   @for (child of link.children; track child.path) {
                     <li class="subnav-item">
-                      <a class="subnav-link" [routerLink]="child.path" routerLinkActive="active" (click)="closeCompactSubmenu()">
+                      <a class="subnav-link" [routerLink]="child.path" [class.active]="isGroupActive(child.path)" (click)="closeCompactSubmenu()">
                         <span class="subnav-icon"><i [class]="'bi ' + child.icon"></i></span>
                         <span class="subnav-label">{{ child.label }}</span>
                       </a>
@@ -137,7 +137,7 @@
       </div>
     </div>
   } @else {
-    <div class="horizontal-nav-content">
+    <div class="horizontal-nav-content" (scroll)="closeHorizontalSubmenu()" (wheel)="scrollHorizontalNav($event)">
       <div class="horizontal-brand">
         <span class="horizontal-brand-icon"><i class="bi bi-buildings"></i></span>
         <span>Renew Plus</span>
@@ -147,8 +147,9 @@
 
       <ul class="nav-list">
         @for (link of navLinks(); track link.path) {
-          <li class="nav-item" [class.subnav-open]="openHorizontalSubmenu() === link.path">
-            <a class="nav-link" [routerLink]="link.path" routerLinkActive="active"
+          <li class="nav-item" [class.subnav-open]="openHorizontalSubmenu() === link.path"
+            (mouseenter)="positionHorizontalSubnav($event)" (focusin)="positionHorizontalSubnav($event)">
+            <a class="nav-link" [routerLink]="link.path" [class.active]="isGroupActive(link.path)"
               [attr.aria-expanded]="link.children?.length ? openHorizontalSubmenu() === link.path : null"
               [attr.aria-haspopup]="link.children?.length ? 'menu' : null"
               (click)="toggleHorizontalSubmenu(link, $event)"
@@ -181,7 +182,7 @@
                 @for (child of link.children; track child.path) {
                   <a class="horizontal-subnav-link"
                     [routerLink]="child.groupOnly ? null : child.path"
-                    routerLinkActive="active"
+                    [class.active]="isGroupActive(child.path)"
                     (click)="onSubnavClick(child, $event); closeHorizontalSubmenu()">
                     <span class="horizontal-child-icon">
                       <i [class]="'bi ' + child.icon"></i>

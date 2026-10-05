@@ -1680,6 +1680,25 @@
 
 .side-navbar.horizontal .horizontal-nav-content {
   gap: 8px;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+
+.side-navbar.horizontal .horizontal-nav-content::-webkit-scrollbar {
+  display: none;
+}
+
+.side-navbar.horizontal .nav-list {
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
+.side-navbar.horizontal .nav-item,
+.side-navbar.horizontal .nav-link {
+  flex-shrink: 0;
 }
 
 .side-navbar.horizontal .horizontal-brand {
@@ -2003,10 +2022,12 @@
   box-shadow: 0 0 0 3px var(--app-surface-solid);
 }
 
+/* Fixed (not absolute) so the dropdown is not clipped by the scrollable menu strip.
+   --subnav-top / --subnav-left are set from the hovered item in positionHorizontalSubnav(). */
 .side-navbar.horizontal .horizontal-subnav {
-  position: absolute;
-  top: calc(100% + 7px);
-  left: 0;
+  position: fixed;
+  top: var(--subnav-top, 110px);
+  left: var(--subnav-left, 12px);
   width: 225px;
   padding: 7px;
   display: flex;

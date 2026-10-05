@@ -1,0 +1,127 @@
+<div class="lead-modal tally">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-journal-plus"></i></div>
+      <div class="title-content">
+        <h2>Accounting Voucher Creation · <span class="vtype">{{ type() }}</span></h2>
+        <p>Press F4-F9 / Ctrl+F8 / Ctrl+F9 to switch voucher type, like Tally.</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="type-bar" role="tablist" aria-label="Voucher type">
+    @for (t of types; track t) {
+      <button type="button" role="tab" [class.active]="type() === t" (click)="setType(t)"><kbd>{{ keys[t] }}</kbd> {{ t }}</button>
+    }
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="form-grid cols-3">
+      <div class="form-field">
+        <label for="vf-date">Date</label>
+        <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="vf-date" type="date" [max]="today" [(ngModel)]="date" /></div>
+        @if (acc.isClosed(date)) { <small class="error-text">This day is closed in the Day Book.</small> }
+      </div>
+      <div class="form-field">
+        <label for="vf-branch">Branch / Cost Centre</label>
+        <div class="input-wrap"><i class="bi bi-building"></i>
+          <select id="vf-branch" [(ngModel)]="branch">@for (b of acc.branches; track b) { <option [value]="b">{{ b }}</option> }</select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+      </div>
+      <div class="form-field">
+        <label for="vf-ref">Reference No</label>
+        <div class="input-wrap"><i class="bi bi-hash"></i><input id="vf-ref" maxlength="40" placeholder="Bill / invoice no" [(ngModel)]="reference" /></div>
+      </div>
+    </div>
+
+    @if (simple()) {
+      @if (type() !== 'Contra') {
+        <div class="section-title"><i class="bi bi-credit-card"></i> Mode</div>
+        <div class="mode-row">
+          @for (m of modes; track m) { <button type="button" [class.active]="mode === m" (click)="setMode(m)">{{ m }}</button> }
+        </div>
+      }
+      <div class="form-grid" style="margin-top: 8px">
+        <div class="form-field">
+          <label for="vf-acc">{{ labels().account }}</label>
+          <div class="input-wrap"><i class="bi bi-safe"></i>
+            <select id="vf-acc" [(ngModel)]="accountId">@for (l of cashLedgers(); track l.id) { <option [value]="l.id">{{ l.name }}</option> }</select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+          <small class="muted">Cur Bal: {{ balanceOf(accountId) }}</small>
+        </div>
+        <div class="form-field">
+          <label for="vf-part">{{ labels().particular }}</label>
+          <div class="input-wrap"><i class="bi bi-journal-text"></i>
+            <select id="vf-part" [(ngModel)]="particularId">
+              <option value="">Select ledger</option>
+              @for (l of particularOptions(); track l.id) { <option [value]="l.id">{{ l.name }} · {{ l.group }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+          @if (particularId) { <small class="muted">Cur Bal: {{ balanceOf(particularId) }}</small> }
+        </div>
+        <div class="form-field">
+          <label for="vf-amt">Amount (₹)</label>
+          <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input id="vf-amt" type="number" min="0" step="0.01" class="amount" [(ngModel)]="amount" /></div>
+        </div>
+      </div>
+    } @else {
+      <div class="section-title"><i class="bi bi-list-columns"></i> Particulars
+        <span class="spacer"></span>
+        <button type="button" class="link-btn" (click)="addLine('Dr')"><i class="bi bi-plus"></i> Dr line</button>
+        <button type="button" class="link-btn" (click)="addLine('Cr')"><i class="bi bi-plus"></i> Cr line</button>
+      </div>
+      <div class="items-table-wrap">
+        <table class="items-table grid">
+          <thead><tr><th style="width: 64px">Dr/Cr</th><th>Ledger</th><th class="num" style="width: 150px">Debit</th><th class="num" style="width: 150px">Credit</th><th style="width: 70px"></th></tr></thead>
+          <tbody>
+            @for (l of lines; track $index; let i = $index) {
+              <tr>
+                <td>
+                  <select class="cell-input" [(ngModel)]="l.side"><option value="Dr">By (Dr)</option><option value="Cr">To (Cr)</option></select>
+                </td>
+                <td>
+                  <select class="cell-input" [(ngModel)]="l.ledgerId">
+                    <option value="">Select ledger</option>
+                    @for (g of acc.ledgers(); track g.id) { <option [value]="g.id">{{ g.name }} · {{ g.group }}</option> }
+                  </select>
+                  @if (l.ledgerId) { <div class="muted">Cur Bal: {{ balanceOf(l.ledgerId) }}</div> }
+                </td>
+                <td class="num">@if (l.side === 'Dr') { <input class="cell-input amount" type="number" min="0" step="0.01" [(ngModel)]="l.amount" /> }</td>
+                <td class="num">@if (l.side === 'Cr') { <input class="cell-input amount" type="number" min="0" step="0.01" [(ngModel)]="l.amount" /> }</td>
+                <td>
+                  <button type="button" class="icon-btn bal" title="Fill difference" (click)="autoBalance(i)"><i class="bi bi-magic"></i></button>
+                  <button type="button" class="icon-btn" [disabled]="lines.length <= 2" (click)="removeLine(i)" aria-label="Remove line"><i class="bi bi-trash3"></i></button>
+                </td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2" class="num"><strong>Total</strong> @if (difference()) { <span class="diff">Difference {{ drCr(difference()) }}</span> }</td>
+              <td class="num"><strong>{{ total('Dr') | number:'1.2-2' }}</strong></td>
+              <td class="num"><strong>{{ total('Cr') | number:'1.2-2' }}</strong></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    }
+
+    <div class="form-field full-width" style="margin-top: 8px">
+      <label for="vf-narr">Narration</label>
+      <div class="input-wrap textarea-wrap"><i class="bi bi-card-text"></i><textarea id="vf-narr" rows="2" maxlength="255" [(ngModel)]="narration" placeholder="Being ..."></textarea></div>
+    </div>
+
+    @if (error()) { <p class="error-text" style="font-size: 11px"><i class="bi bi-exclamation-circle"></i> {{ error() }}</p> }
+  </div>
+
+  <div class="modal-footer-custom">
+    <span class="footer-note"><i class="bi bi-keyboard"></i> Debits must equal credits.</span>
+    <button type="button" class="cancel-btn" (click)="close()">Quit</button>
+    <button type="button" class="save-btn" (click)="save()"><i class="bi bi-check2-square"></i> Accept</button>
+  </div>
+</div>

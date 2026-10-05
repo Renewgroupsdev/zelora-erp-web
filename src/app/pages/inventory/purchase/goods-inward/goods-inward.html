@@ -1,0 +1,51 @@
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-box-arrow-in-down"></i> Purchase Inward</h6>
+      <p class="page-subtitle">Batch-wise receipts from vendors into the central store. Partial and full deliveries are tracked against each PO.</p>
+    </div>
+    <div class="header-actions">
+      <div class="segment" role="tablist" aria-label="Inward view">
+        <button type="button" role="tab" [class.active]="view() === 'grn'" [attr.aria-selected]="view() === 'grn'" (click)="setView('grn')">GRN</button>
+        <button type="button" role="tab" [class.active]="view() === 'batch'" [attr.aria-selected]="view() === 'batch'" (click)="setView('batch')">Batch-wise</button>
+      </div>
+      <button type="button" class="add-lead-btn" (click)="receiveGoods()"><i class="bi bi-plus-lg"></i> Receive Goods</button>
+    </div>
+  </div>
+
+  <app-purchase-tabs></app-purchase-tabs>
+
+  <div class="row g-2 stat-row">
+    @for (stat of stats(); track stat.label) {
+      <div class="col-6 col-md-3">
+        <app-common-detail-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'"></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by GRN, PO, batch or vendor"
+    [filters]="filters"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
+
+  <div class="table-col">
+    <app-common-table-card
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+    ></app-common-table-card>
+  </div>
+</div>

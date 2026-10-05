@@ -1,0 +1,58 @@
+@let e = employee();
+@let r = record();
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-fingerprint"></i></div>
+      <div class="title-content">
+        <h2>{{ e?.name ?? 'Employee' }} <span class="pill" [class.green]="r?.status === 'Present'" [class.orange]="r?.status === 'Late' || r?.status === 'Half Day'" [class.red]="!r || r?.status === 'Absent'">{{ r?.status ?? 'Not Marked' }}</span></h2>
+        <p>{{ e?.empCode }} · {{ e?.designation }} · {{ e?.branch }} · {{ displayDate(date) }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="info-grid">
+      <div><small>Check In</small><strong>{{ displayTime(r?.checkIn) }}</strong></div>
+      <div><small>Check Out</small><strong>{{ r?.checkIn && !r?.checkOut && date === today ? 'Working…' : displayTime(r?.checkOut) }}</strong></div>
+      <div><small>Total Hours</small><strong>{{ hoursLabel(worked()) }}</strong></div>
+      <div><small>Total Break</small><strong>{{ minutesLabel(totalBreak()) }}</strong></div>
+      <div><small>Net Working</small><strong>{{ hoursLabel(netWorked()) }}</strong></div>
+      <div><small>Source</small><strong>{{ r?.source ?? '-' }}</strong></div>
+    </div>
+
+    <div class="section-title"><i class="bi bi-cup-hot"></i> Breaks</div>
+    <div class="items-table-wrap">
+      <table class="items-table">
+        <thead>
+          <tr><th>Break</th><th>Start</th><th>End</th><th class="num">Duration</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          @for (b of breaks(); track b.type) {
+            <tr>
+              <td><strong><i class="bi" [class.bi-cup-hot]="b.type !== 'Lunch'" [class.bi-egg-fried]="b.type === 'Lunch'"></i> {{ b.type }}</strong></td>
+              <td>{{ b.start ? displayTime(b.start) : '-' }}</td>
+              <td>{{ b.end ? displayTime(b.end) : b.running ? 'Running…' : '-' }}</td>
+              <td class="num">{{ minutesLabel(b.minutes) }}</td>
+              <td>
+                @if (b.running) { <span class="pill orange">On break</span> }
+                @else if (b.start) { <span class="pill green">Taken</span> }
+                @else { <span class="muted">Not taken</span> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (r?.remarks) { <p class="muted">Remarks: {{ r?.remarks }}</p> }
+    @if (!r) { <p class="muted">No attendance was recorded for this employee on this date.</p> }
+  </div>
+
+  <div class="modal-footer-custom">
+    <span class="footer-note"><i class="bi bi-eye"></i> View only</span>
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+  </div>
+</div>

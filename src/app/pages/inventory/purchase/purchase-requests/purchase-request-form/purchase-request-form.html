@@ -1,0 +1,133 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-cart-plus-fill"></i></div>
+      <div class="title-content">
+        <h2>New Purchase Request</h2>
+        <p>Request products from a vendor. The branch head is notified to approve it.</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <div class="modal-body-custom">
+
+      <div class="section-title"><i class="bi bi-info-circle"></i> Request Details</div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="pr-branch">Requesting Branch <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-geo-alt"></i>
+            <select id="pr-branch" formControlName="branch">
+              @for (b of purchase.branches; track b) { <option [value]="b">{{ b }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="pr-vendor">Vendor <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-truck"></i>
+            <select id="pr-vendor" formControlName="vendorId" (change)="onVendorChange()" [class.is-invalid]="invalid('vendorId')">
+              <option [ngValue]="null">Select vendor</option>
+              @for (v of vendors(); track v.id) { <option [ngValue]="v.id">{{ v.name }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+          @if (invalid('vendorId')) { <small class="error-text">Select a vendor.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="pr-required">Required By</label>
+          <div class="input-wrap">
+            <i class="bi bi-calendar-event"></i>
+            <input id="pr-required" type="date" [min]="today" formControlName="requiredBy" />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="pr-priority">Priority</label>
+          <div class="input-wrap">
+            <i class="bi bi-flag"></i>
+            <select id="pr-priority" formControlName="priority">
+              @for (p of priorities; track p) { <option [value]="p">{{ p }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <i class="bi bi-box-seam"></i> Products
+        <span class="spacer"></span>
+        <button type="button" class="link-btn" (click)="addItem()"><i class="bi bi-plus-lg"></i> Add Product</button>
+      </div>
+
+      <div class="items-table-wrap" formArrayName="items">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width: 34%">Product</th>
+              <th class="num">Central Store<br /><small>Stock in Hand</small></th>
+              <th style="width: 14%">Request Qty</th>
+              <th class="num">Unit Price</th>
+              <th class="num">GST</th>
+              <th class="num">Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of items.controls; track row; let i = $index) {
+              <tr [formGroupName]="i">
+                <td>
+                  <select class="cell-input" formControlName="productId" [class.is-invalid]="invalid('items.' + i + '.productId')">
+                    <option [ngValue]="null">Select product</option>
+                    @for (p of vendorProducts(); track p.id) {
+                      <option [ngValue]="p.id" [disabled]="isTaken(p.id, i)">{{ p.code }} - {{ p.name }}</option>
+                    }
+                  </select>
+                </td>
+                <td class="num">
+                  @if (product(i)) {
+                    <span class="pill" [class.red]="centralQty(i) < 10" [class.green]="centralQty(i) >= 10">{{ centralQty(i) }}</span>
+                  } @else { <span class="muted">-</span> }
+                </td>
+                <td><input class="cell-input" type="number" min="1" formControlName="qty" [class.is-invalid]="invalid('items.' + i + '.qty')" /></td>
+                <td class="num">₹{{ (product(i)?.unitPrice ?? 0) | number:'1.2-2' }}</td>
+                <td class="num">{{ product(i)?.gstPercent ?? 0 }}%</td>
+                <td class="num"><strong>₹{{ lineAmount(i) | number:'1.2-2' }}</strong></td>
+                <td>
+                  <button type="button" class="icon-btn" [disabled]="items.length === 1" (click)="removeItem(i)" aria-label="Remove product"><i class="bi bi-trash3"></i></button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="totals">
+        <div><span>Sub Total</span><span>₹{{ totals().subTotal | number:'1.2-2' }}</span></div>
+        <div><span>GST</span><span>₹{{ totals().gst | number:'1.2-2' }}</span></div>
+        <div class="grand"><span>Estimated Total</span><span>₹{{ totals().grandTotal | number:'1.2-2' }}</span></div>
+      </div>
+
+      <div class="form-field full-width">
+        <label for="pr-remarks">Remarks</label>
+        <div class="input-wrap textarea-wrap">
+          <i class="bi bi-card-text"></i>
+          <textarea id="pr-remarks" rows="2" maxlength="255" formControlName="remarks" placeholder="Why is this stock needed?"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <span class="footer-note"><i class="bi bi-bell"></i> The branch head gets a notification alert.</span>
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn"><i class="bi bi-send"></i> Send Request</button>
+    </div>
+  </form>
+</div>

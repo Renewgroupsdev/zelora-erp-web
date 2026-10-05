@@ -1,0 +1,60 @@
+@let v = voucher();
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-journal-text"></i></div>
+      <div class="title-content"><h2>{{ v.type }} · {{ v.voucherNo }}</h2><p>{{ displayDate(v.date) }} · {{ v.branch }} · by {{ v.createdBy }}</p></div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom doc-body">
+    <div class="doc-sheet" #sheet>
+      <div class="doc-head">
+        <div>
+          <h1>RENEW Plus</h1>
+          <p>Renew Plus Hair and Skin Care Pvt Ltd</p>
+          <p>Chennai, Tamil Nadu · GSTIN 33AAAAA0000A1Z5</p>
+        </div>
+        <div class="doc-meta">
+          <h2>{{ title() }}</h2>
+          <p><strong>No:</strong> {{ v.voucherNo }}</p>
+          <p><strong>Date:</strong> {{ displayDate(v.date) }}</p>
+          @if (v.reference) { <p><strong>Ref:</strong> {{ v.reference }}</p> }
+        </div>
+      </div>
+
+      @if (party(); as p) {
+        <div class="doc-parties">
+          <div><small>{{ isNote() ? (v.type === 'Credit Note' ? 'Credit To' : 'Debit To') : 'Party' }}</small><strong>{{ p.name }}</strong><br />{{ p.address || '' }} {{ p.phone || '' }}</div>
+          <div><small>GSTIN</small>{{ p.gstin || '-' }}</div>
+          <div><small>Branch / Mode</small>{{ v.branch }}{{ v.mode ? ' · ' + v.mode : '' }}</div>
+        </div>
+      }
+
+      <table>
+        <thead><tr><th>Particulars</th><th>Group</th><th class="num">Debit (₹)</th><th class="num">Credit (₹)</th></tr></thead>
+        <tbody>
+          @for (e of v.entries; track $index) {
+            <tr>
+              <td>{{ e.debit ? 'By' : 'To' }} {{ acc.ledgerName(e.ledgerId) }}</td>
+              <td>{{ acc.ledger(e.ledgerId)?.group }}</td>
+              <td class="num">{{ e.debit ? (e.debit | number:'1.2-2') : '' }}</td>
+              <td class="num">{{ e.credit ? (e.credit | number:'1.2-2') : '' }}</td>
+            </tr>
+          }
+          <tr><td colspan="2"><strong>Total</strong></td><td class="num"><strong>{{ amount() | number:'1.2-2' }}</strong></td><td class="num"><strong>{{ amount() | number:'1.2-2' }}</strong></td></tr>
+        </tbody>
+      </table>
+
+      <p class="doc-words"><strong>Amount in words:</strong> {{ amountInWords(amount()) }}</p>
+      @if (v.narration) { <p class="doc-words"><strong>Narration:</strong> {{ v.narration }}</p> }
+      <div class="doc-sign"><span>Prepared by {{ v.createdBy }}</span><span>Authorised Signatory</span></div>
+    </div>
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+    <button type="button" class="save-btn" (click)="downloadPdf()"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+  </div>
+</div>

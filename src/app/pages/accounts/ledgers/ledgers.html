@@ -1,0 +1,88 @@
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-journals"></i> Ledgers &amp; Reports</h6>
+      <p class="page-subtitle">Chart of accounts with Tally groups, ledger statements, Trial Balance and Profit &amp; Loss.</p>
+    </div>
+    <div class="header-actions">
+      <div class="segment" role="tablist" aria-label="Report">
+        <button type="button" role="tab" [class.active]="view() === 'ledgers'" (click)="setView('ledgers')">Ledgers</button>
+        <button type="button" role="tab" [class.active]="view() === 'trial'" (click)="setView('trial')">Trial Balance</button>
+        <button type="button" role="tab" [class.active]="view() === 'pl'" (click)="setView('pl')">Profit &amp; Loss</button>
+      </div>
+      @if (view() === 'trial') {
+        <label class="as-on">As on <input class="date-input" type="date" [ngModel]="asOn()" (ngModelChange)="setAsOn($event)" /></label>
+      }
+      @if (view() === 'pl') {
+        <input class="date-input" type="date" aria-label="From" [ngModel]="plFrom()" (ngModelChange)="plFrom.set($event)" />
+        <input class="date-input" type="date" aria-label="To" [ngModel]="plTo()" (ngModelChange)="plTo.set($event)" />
+      }
+      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button type="button" class="add-lead-btn" (click)="createLedger()"><i class="bi bi-plus-lg"></i> Create Ledger</button>
+    </div>
+  </div>
+
+  <app-module-tabs [tabs]="tabs()" label="Accounts"></app-module-tabs>
+
+  @if (view() === 'pl') {
+    @let p = pl();
+    <div class="pl">
+      <div class="pl-col">
+        <h4><i class="bi bi-arrow-down-left-circle"></i> Income</h4>
+        @for (r of p.income; track r.ledger.id) { <div class="pl-row"><span>{{ r.ledger.name }}<small>{{ r.ledger.group }}</small></span><strong>{{ inr(r.amount) }}</strong></div> }
+        @empty { <p class="muted-note">No income in this period.</p> }
+        <div class="pl-row total"><span>Total Income</span><strong>{{ inr(p.totalIncome) }}</strong></div>
+      </div>
+      <div class="pl-col">
+        <h4><i class="bi bi-arrow-up-right-circle"></i> Expenses</h4>
+        @for (r of p.expenses; track r.ledger.id) { <div class="pl-row"><span>{{ r.ledger.name }}<small>{{ r.ledger.group }}</small></span><strong>{{ inr(r.amount) }}</strong></div> }
+        @empty { <p class="muted-note">No expenses in this period.</p> }
+        <div class="pl-row total"><span>Total Expenses</span><strong>{{ inr(p.totalExpense) }}</strong></div>
+      </div>
+      <div class="pl-net" [class.loss]="p.net < 0">
+        <small>{{ displayDate(plFrom()) }} – {{ displayDate(plTo()) }}</small>
+        <span>{{ p.net >= 0 ? 'Net Profit' : 'Net Loss' }}</span>
+        <strong>{{ inr(p.net < 0 ? -p.net : p.net) }}</strong>
+        <small>Margin {{ p.totalIncome ? ((p.net / p.totalIncome) * 100).toFixed(1) : '0.0' }}%</small>
+      </div>
+    </div>
+  } @else {
+    @if (view() === 'trial') {
+      <div class="tb-strip" [class.bad]="trial().diff">
+        <span>Debit total <strong>{{ inr(trial().dr) }}</strong></span>
+        <span>Credit total <strong>{{ inr(trial().cr) }}</strong></span>
+        <span>
+          @if (!trial().diff) { <i class="bi bi-check-circle-fill"></i> Trial balance tallies } @else { <i class="bi bi-exclamation-triangle-fill"></i> Difference {{ drCr(trial().diff) }} }
+        </span>
+      </div>
+    }
+
+    <app-common-filter-card
+      searchPlaceholder="Search ledger, mobile or GSTIN"
+      [filters]="filters"
+      [showExport]="false"
+      (searchChange)="onSearch($event)"
+      (filtersChange)="onFiltersChange($event)"
+    ></app-common-filter-card>
+
+    <div class="table-col">
+      <app-common-table-card
+        [title]="view() === 'trial' ? 'Trial Balance as on ' + displayDate(asOn()) : 'List of Ledgers'"
+        [recordCountText]="recordCountText"
+        [columns]="columns"
+        [rows]="rows"
+        [totalRecords]="totalRecords"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="pageSizeOptions"
+        [currentPage]="currentPage"
+        [pageInfoText]="pageInfoText"
+        [sortActive]="sortActive"
+        [sortDirection]="sortDirection"
+        (pageChange)="onPageChange($event)"
+        (sortChange)="onSortChange($event)"
+        (quickActionClick)="onQuickAction($event)"
+      ></app-common-table-card>
+    </div>
+  }
+</div>

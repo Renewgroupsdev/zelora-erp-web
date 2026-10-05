@@ -1,0 +1,130 @@
+@let g = inward();
+@let s = summary();
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-box-arrow-up"></i></div>
+      <div class="title-content">
+        <h2>Purchase Return{{ g ? ' · ' + g.grnNo : '' }}</h2>
+        <p>{{ g ? g.vendorName + ' · return stock from ' + g.store : 'Return received stock to the vendor' }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="form-grid cols-3">
+      <div class="form-field">
+        <label for="pr-grn">Purchase Inward (GRN) <span>*</span></label>
+        <div class="input-wrap">
+          <i class="bi bi-box-arrow-in-down"></i>
+          <select id="pr-grn" [ngModel]="grnId()" (ngModelChange)="selectGrn($event)" [class.is-invalid]="submitted() && !g">
+            <option [ngValue]="null">Select purchase inward</option>
+            @for (i of inwards; track i.id) {
+              <option [ngValue]="i.id">{{ i.grnNo }} · {{ i.poNo }} · {{ i.vendorName }} ({{ displayDate(i.receivedAt) }})</option>
+            }
+          </select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+        @if (submitted() && !g) { <small class="error-text">Select a purchase inward.</small> }
+      </div>
+
+      <div class="form-field">
+        <label for="pr-reason">Return Reason <span>*</span></label>
+        <div class="input-wrap">
+          <i class="bi bi-flag"></i>
+          <select id="pr-reason" [(ngModel)]="reason" [class.is-invalid]="submitted() && !reason">
+            <option value="">Select reason</option>
+            @for (r of reasons; track r) { <option [value]="r">{{ r }}</option> }
+          </select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+        @if (submitted() && !reason) { <small class="error-text">Select a return reason.</small> }
+      </div>
+
+      <div class="form-field">
+        <label for="pr-remarks">Remarks</label>
+        <div class="input-wrap">
+          <i class="bi bi-chat-left-dots"></i>
+          <input id="pr-remarks" type="text" maxlength="255" placeholder="Optional" [(ngModel)]="remarks" />
+        </div>
+      </div>
+    </div>
+
+    @if (g) {
+      <div class="info-grid">
+        <div><small>PO No</small><strong>{{ g.poNo }}</strong></div>
+        <div><small>Vendor Invoice</small><strong>{{ g.vendorInvoiceNo || '-' }}</strong></div>
+        <div><small>Received On</small><strong>{{ displayDate(g.receivedAt) }}</strong></div>
+      </div>
+
+      <div class="section-title"><i class="bi bi-upc-scan"></i> Batch-wise Return</div>
+
+      <div class="items-table-wrap">
+        <table class="items-table return-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Batch No</th>
+              <th class="num">Accepted</th>
+              <th class="num">Returned</th>
+              <th class="num">Stock in Hand</th>
+              <th class="num">Returnable</th>
+              <th>Return Qty</th>
+              <th class="num">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.productId + row.batchNo) {
+              <tr [class.disabled]="!row.returnable">
+                <td><strong>{{ row.productName }}</strong></td>
+                <td>{{ row.batchNo }}</td>
+                <td class="num">{{ row.accepted }}</td>
+                <td class="num">{{ row.returned }}</td>
+                <td class="num">{{ row.inStock }}</td>
+                <td class="num"><span class="pill" [class.green]="row.returnable" [class.red]="!row.returnable">{{ row.returnable }}</span></td>
+                <td>
+                  <div class="qty-cell">
+                    <input class="cell-input qty" type="number" min="0" [max]="row.returnable" placeholder="0" [disabled]="!row.returnable"
+                      [(ngModel)]="row.qty" (ngModelChange)="touch()" [class.is-invalid]="rowError(row)" />
+                    @if (row.returnable) {
+                      <button type="button" class="link-btn" (click)="returnAll(row)">All</button>
+                    }
+                  </div>
+                </td>
+                <td class="num">{{ inr((row.qty || 0) * row.unitPrice) }}</td>
+              </tr>
+              @if (rowError(row); as err) {
+                <tr class="error-row"><td colspan="8"><i class="bi bi-exclamation-circle"></i> {{ row.productName }}: {{ err }}</td></tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="qty-summary">
+        <span><i class="bi bi-box-seam"></i> Return qty <strong>{{ s.qty }}</strong></span>
+        <span class="bad"><i class="bi bi-currency-rupee"></i> Return value <strong>{{ inr(s.value) }}</strong></span>
+      </div>
+
+      <div class="note-card" [class.on]="raiseNote">
+        <label class="note-toggle">
+          <input type="checkbox" [(ngModel)]="raiseNote" />
+          <span>
+            <strong>Raise Debit Note</strong>
+            <small>Creates a debit note on {{ g.vendorName }} for the return value. It shows under Credit / Debit Notes.</small>
+          </span>
+        </label>
+      </div>
+    }
+
+    @if (error(); as err) { <p class="error-text"><i class="bi bi-exclamation-circle"></i> {{ err }}</p> }
+  </div>
+
+  <div class="modal-footer-custom">
+    <span class="footer-note"><i class="bi bi-bell"></i> Branch head is alerted if any product drops below 10 units.</span>
+    <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+    <button type="button" class="save-btn" [disabled]="!g" (click)="save()"><i class="bi bi-box-arrow-up"></i> Save Return</button>
+  </div>
+</div>

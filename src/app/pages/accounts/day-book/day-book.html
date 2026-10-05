@@ -1,0 +1,107 @@
+@let b = book();
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-journal-bookmark-fill"></i> Day Book</h6>
+      <p class="page-subtitle">Daily cash &amp; bank position. Today's closing balance is tomorrow's opening balance.</p>
+    </div>
+    <div class="header-actions">
+      <div class="segment" role="tablist" aria-label="Day book view">
+        <button type="button" role="tab" [class.active]="view() === 'day'" (click)="setView('day')">Day Book</button>
+        <button type="button" role="tab" [class.active]="view() === 'history'" (click)="setView('history')">Cash Book (daily)</button>
+      </div>
+      <div class="date-nav">
+        <button type="button" aria-label="Previous day" (click)="shift(-1)"><i class="bi bi-chevron-left"></i></button>
+        <input class="date-input" type="date" aria-label="Day" [max]="today" [ngModel]="date()" (ngModelChange)="setDate($event)" />
+        <button type="button" aria-label="Next day" [disabled]="date() >= today" (click)="shift(1)"><i class="bi bi-chevron-right"></i></button>
+      </div>
+      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button type="button" class="ghost-btn" [disabled]="!!b.closed" (click)="newVoucher()"><i class="bi bi-plus-lg"></i> Voucher</button>
+      <button type="button" class="add-lead-btn" [disabled]="!!b.closed" (click)="newBill()"><i class="bi bi-receipt"></i> Service Bill</button>
+    </div>
+  </div>
+
+  <app-module-tabs [tabs]="tabs()" label="Accounts"></app-module-tabs>
+
+  @if (previousOpen(); as prev) {
+    <div class="alert-banner">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <div style="flex: 1"><strong>{{ displayDate(prev) }} is not closed</strong> Close earlier days first so each opening balance is locked.</div>
+      <button type="button" class="ghost-btn" (click)="setDate(prev)">Go to {{ displayDate(prev) }}</button>
+    </div>
+  }
+
+  <div class="balance-flow" [class.closed]="b.closed">
+    <div class="cell">
+      <small>Opening Balance</small>
+      <strong>{{ inr(b.opening) }}</strong>
+      <span>b/f from {{ displayDate(prevDay()) }} closing</span>
+    </div>
+    <i class="bi bi-plus-lg op"></i>
+    <div class="cell in">
+      <small>Total Collection</small>
+      <strong>{{ inr(b.receipts) }}</strong>
+      <span>{{ modes().length }} mode{{ modes().length === 1 ? '' : 's' }}</span>
+    </div>
+    <i class="bi bi-dash-lg op"></i>
+    <div class="cell out">
+      <small>Payments</small>
+      <strong>{{ inr(b.payments) }}</strong>
+      <span>expenses, vendors, refunds</span>
+    </div>
+    <i class="bi bi-pause op eq"></i>
+    <div class="cell close">
+      <small>Closing Balance</small>
+      <strong>{{ inr(b.closing) }}</strong>
+      <span>Cash {{ inr(b.cashClosing) }} · Bank {{ inr(b.bankClosing) }}</span>
+    </div>
+    <div class="cell status">
+      @if (b.closed) {
+        <span class="lock"><i class="bi bi-lock-fill"></i> Day closed</span>
+        <small>by {{ b.closed.closedBy }} · {{ b.closed.closedAt | date:'d MMM, h:mm a' }}</small>
+        <small>c/f as {{ displayDate(nextDay()) }} opening</small>
+        <button type="button" class="link" (click)="reopenDay()">Reopen</button>
+      } @else {
+        <span class="open"><i class="bi bi-unlock"></i> Day open</span>
+        <button type="button" class="add-lead-btn" (click)="closeDay()"><i class="bi bi-lock"></i> Close Day</button>
+      }
+    </div>
+  </div>
+
+  @if (view() === 'day') {
+    <div class="split-row">
+      <div class="split-card">
+        <h4><i class="bi bi-credit-card"></i> Collection by mode</h4>
+        @for (m of modes(); track m[0]) {
+          <div class="bar-row"><span>{{ m[0] }}</span><div class="bar"><span [style.width.%]="b.receipts ? (m[1] / b.receipts) * 100 : 0"></span></div><strong>{{ inr(m[1]) }}</strong></div>
+        } @empty { <p class="muted-note">No collections on this day.</p> }
+      </div>
+      <div class="split-card">
+        <h4><i class="bi bi-building"></i> Collection by branch</h4>
+        @for (m of branchesSplit(); track m[0]) {
+          <div class="bar-row"><span>{{ m[0] }}</span><div class="bar"><span [style.width.%]="b.receipts ? (m[1] / b.receipts) * 100 : 0"></span></div><strong>{{ inr(m[1]) }}</strong></div>
+        } @empty { <p class="muted-note">No collections on this day.</p> }
+      </div>
+    </div>
+  }
+
+  <div class="table-col">
+    <app-common-table-card
+      [title]="view() === 'day' ? 'Day Book · ' + displayDate(date()) : 'Cash Book · day-wise balances'"
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+      (quickActionClick)="onQuickAction($event)"
+    ></app-common-table-card>
+  </div>
+</div>

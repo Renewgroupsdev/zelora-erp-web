@@ -1,0 +1,166 @@
+.portal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.portal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--app-surface-solid);
+
+  --brand: #2557a7;
+
+  &.p-linkedin { --brand: #0a66c2; }
+  &.p-naukri { --brand: #4a90e2; }
+
+  .link-btn {
+    justify-content: center;
+    border-color: var(--brand);
+    color: var(--brand);
+    background: transparent;
+  }
+}
+
+.portal-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .logo {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 7px;
+    background: var(--brand);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  strong {
+    display: block;
+    font-size: 12px;
+  }
+
+  small {
+    color: var(--text-muted);
+    font-size: 10px;
+  }
+}
+
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 10px;
+
+  button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 4px;
+    border: 1px solid var(--card-border);
+    border-radius: 9px;
+    background: var(--app-surface-bg);
+    color: var(--text-dark);
+    font: inherit;
+    cursor: pointer;
+
+    &.active {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    strong {
+      font-size: 15px;
+      color: var(--primary-dark);
+    }
+
+    small {
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+  }
+}
+
+.source-select {
+  width: auto;
+  height: 26px;
+  font-size: 11px;
+}
+
+.cand-table {
+  min-width: 900px;
+
+  .src {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 99px;
+    background: var(--status-gray-bg);
+    font-size: 10px;
+    font-weight: 700;
+
+    &.s-indeed { background: #e8eefa; color: #2557a7; }
+    &.s-linkedin { background: #e6f0fa; color: #0a66c2; }
+    &.s-naukri { background: #eaf3fd; color: #2a6fc4; }
+    &.s-referral { background: var(--status-purple-bg); color: var(--status-purple-text); }
+  }
+
+  .profile-link {
+    display: block;
+    margin-top: 2px;
+    text-decoration: none;
+  }
+
+  .over {
+    color: var(--status-red-text);
+    font-weight: 700;
+  }
+
+  .stage {
+    min-width: 108px;
+
+    &.st-hired { color: var(--status-green-text); }
+    &.st-rejected { color: var(--status-red-text); }
+    &.st-offered { color: var(--status-blue-text); }
+  }
+
+  .icon-btn.add {
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+  }
+}
+
+.stars {
+  white-space: nowrap;
+
+  button {
+    padding: 0 1px;
+    border: 0;
+    background: none;
+    color: #f5a524;
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 700px) {
+  .portal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.stars-ro {
+  color: #f5a524;
+  font-size: 12px;
+  white-space: nowrap;
+}

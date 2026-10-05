@@ -5,11 +5,12 @@ import { NavLayoutService } from '../services/nav-layout.service';
 import { AppNotification, NotificationService } from '../shared/common-services/notification.service';
 import { AuthService } from '../core/auth/auth.service';
 import { roleLabel } from '../core/auth/auth.model';
+import { BranchChat } from '../shared/components/branch-chat/branch-chat';
 
 @Component({
   selector: 'app-top-navbar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, BranchChat],
   templateUrl: './top-navbar.html',
   styleUrl: './top-navbar.scss',
 })

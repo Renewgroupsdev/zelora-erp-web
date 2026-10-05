@@ -1,0 +1,67 @@
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-boxes"></i> Stock &amp; Transfer</h6>
+      <p class="page-subtitle">Batch-wise stock in the central store and branch stores. Transfer stock from the central store to branches.</p>
+    </div>
+    <div class="header-actions">
+      <div class="segment" role="tablist" aria-label="Stock view">
+        <button type="button" role="tab" [class.active]="view() === 'stock'" [attr.aria-selected]="view() === 'stock'" (click)="setView('stock')">Stock</button>
+        <button type="button" role="tab" [class.active]="view() === 'transfers'" [attr.aria-selected]="view() === 'transfers'" (click)="setView('transfers')">Transfers</button>
+      </div>
+      <button type="button" class="add-lead-btn" (click)="openTransfer()"><i class="bi bi-arrow-left-right"></i> Transfer Stock</button>
+    </div>
+  </div>
+
+  <app-purchase-tabs></app-purchase-tabs>
+
+  @if (purchase.lowStock().length) {
+    <div class="alert-banner">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <div style="flex: 1">
+        <strong>{{ purchase.lowStock().length }} product{{ purchase.lowStock().length > 1 ? 's are' : ' is' }} below {{ threshold }} units</strong>
+        <div class="chips">
+          @for (item of purchase.lowStock(); track item.store + item.productName) {
+            <span class="chip">{{ item.productName }} · {{ item.store }} · {{ item.qty }} left</span>
+          }
+        </div>
+      </div>
+      <button type="button" class="ghost-btn" (click)="notifyBranchHead()"><i class="bi bi-bell"></i> Notify Branch Head</button>
+    </div>
+  }
+
+  <div class="row g-2 stat-row">
+    @for (stat of stats(); track stat.label) {
+      <div class="col-6 col-md-3">
+        <app-common-detail-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'"></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by product, code, batch or store"
+    [filters]="filters"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
+
+  <div class="table-col">
+    <app-common-table-card
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+      (quickActionClick)="onQuickAction($event)"
+    ></app-common-table-card>
+  </div>
+</div>

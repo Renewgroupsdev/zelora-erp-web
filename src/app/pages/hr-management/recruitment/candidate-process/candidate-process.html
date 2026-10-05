@@ -1,0 +1,397 @@
+@let c = candidate();
+@let v = vacancy();
+@let canAct = hr.canApprove();
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-person-lines-fill"></i></div>
+      <div class="title-content">
+        <h2>{{ c.name }} <span class="pill stage" [class.green]="c.stage === 'Hired'" [class.red]="c.stage === 'Rejected' || c.stage === 'Offer Declined'" [class.orange]="c.stage === 'Interview' || c.stage === 'Verification'">{{ c.stage }}</span></h2>
+        <p>{{ v ? v.designation + ' · ' + v.branch : 'Candidate' }} · {{ c.experienceYears }} y exp · expects ₹{{ c.expectedCtc | number }} / month</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+
+    <ol class="stepper" aria-label="Hiring progress">
+      @for (s of steps; track s.stage; let i = $index) {
+        <li [class.done]="i < stepIndex() || c.stage === 'Hired'" [class.current]="i === stepIndex() && c.stage !== 'Hired'" [class.stopped]="i === stepIndex() && (c.stage === 'Rejected' || c.stage === 'Offer Declined')">
+          <span class="dot"><i class="bi" [class]="i < stepIndex() || c.stage === 'Hired' ? 'bi-check-lg' : s.icon"></i></span>
+          <small>{{ s.label }}</small>
+        </li>
+      }
+    </ol>
+
+    @if (c.stage === 'Rejected') {
+      <div class="banner bad">
+        <i class="bi bi-x-octagon-fill"></i>
+        <div>
+          <strong>Rejected{{ c.rejectedAtStage ? ' at ' + c.rejectedAtStage : '' }}</strong>
+          <span>{{ c.rejectionReason || 'No reason recorded' }} · {{ c.rejectedBy || '-' }}{{ c.rejectedAt ? ', ' + displayDate(c.rejectedAt) : '' }}</span>
+        </div>
+      </div>
+    } @else if (c.stage === 'Offer Declined') {
+      <div class="banner bad">
+        <i class="bi bi-hand-thumbs-down-fill"></i>
+        <div><strong>Offer declined by the candidate</strong><span>{{ c.offer?.responseRemarks || 'No reason recorded' }}</span></div>
+      </div>
+    } @else if (c.stage === 'Hired' && !hr.awaitingJoining(c)) {
+      <div class="banner good">
+        <i class="bi bi-person-check-fill"></i>
+        <div><strong>Offer accepted - candidate hired</strong><span>Onboarding has started. Joining on {{ displayDate(c.offer?.joiningDate) }}.</span></div>
+      </div>
+    }
+
+    @if (error(); as message) {
+      <div class="banner warn" role="alert"><i class="bi bi-exclamation-triangle-fill"></i><div><strong>{{ message }}</strong></div></div>
+    }
+
+    <!-- ===== Current step ===== -->
+    @if (!closed()) {
+      <div class="step-card">
+        @switch (c.stage) {
+
+          @case ('Applied') {
+            <div class="step-head"><i class="bi bi-bookmark-check"></i><div><h3>Shortlist this candidate?</h3><p>Review the profile and resume, then shortlist to move to the interview, or reject.</p></div></div>
+            @if (canAct) {
+              <div class="actions">
+                <button type="button" class="save-btn" (click)="shortlist()"><i class="bi bi-bookmark-check"></i> Shortlist</button>
+                <button type="button" class="danger-btn" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
+              </div>
+            }
+          }
+
+          @case ('Shortlisted') {
+            <div class="step-head"><i class="bi bi-calendar-event"></i><div><h3>Schedule the interview</h3><p>Shortlisted by {{ c.shortlistedBy || '-' }}{{ c.shortlistedAt ? ' on ' + displayDate(c.shortlistedAt) : '' }}.</p></div></div>
+            @if (canAct) {
+              <div class="form-grid cols-3">
+                <div class="form-field">
+                  <label for="cp-when">Date &amp; time <span>*</span></label>
+                  <div class="input-wrap"><i class="bi bi-calendar-event"></i><input id="cp-when" type="datetime-local" [(ngModel)]="schedAt" /></div>
+                </div>
+                <div class="form-field">
+                  <label for="cp-who">Interviewer <span>*</span></label>
+                  <div class="input-wrap"><i class="bi bi-person-badge"></i><input id="cp-who" type="text" maxlength="60" placeholder="Who will interview" [(ngModel)]="interviewer" /></div>
+                </div>
+                <div class="form-field">
+                  <label for="cp-mode">Mode</label>
+                  <div class="input-wrap">
+                    <i class="bi bi-camera-video"></i>
+                    <select id="cp-mode" [(ngModel)]="mode">@for (m of modes; track m) { <option [value]="m">{{ m }}</option> }</select>
+                    <i class="bi bi-chevron-down select-arrow"></i>
+                  </div>
+                </div>
+              </div>
+              <div class="actions">
+                <button type="button" class="save-btn" (click)="schedule()"><i class="bi bi-calendar-check"></i> Schedule interview</button>
+                <button type="button" class="danger-btn" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
+              </div>
+            }
+          }
+
+          @case ('Interview') {
+            <div class="step-head">
+              <i class="bi bi-chat-square-text"></i>
+              <div>
+                <h3>Interview scheduled - record how it went</h3>
+                <p>{{ (c.interview?.scheduledAt || c.interviewAt) | date:'EEE, d MMM y, h:mm a' }} · {{ c.interview?.interviewer || 'Interviewer not recorded' }} · {{ c.interview?.mode || 'In-person' }}</p>
+              </div>
+            </div>
+            @if (canAct) {
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="cp-done">Interviewed on <span>*</span></label>
+                  <div class="input-wrap"><i class="bi bi-calendar-check"></i><input id="cp-done" type="datetime-local" [(ngModel)]="doneAt" /></div>
+                </div>
+                <div class="form-field">
+                  <label>Performance rating <span>*</span></label>
+                  <div class="rating-pick">
+                    @for (s of stars; track s) {
+                      <button type="button" [attr.aria-label]="'Rate ' + s" (click)="setRating('performance', s)"><i class="bi" [class.bi-star-fill]="s <= performance" [class.bi-star]="s > performance"></i></button>
+                    }
+                    <span class="muted">{{ performance ? performance + ' / 5' : 'Not rated' }}</span>
+                  </div>
+                </div>
+                <div class="form-field full-width">
+                  <label for="cp-notes">Interview notes</label>
+                  <div class="input-wrap textarea-wrap"><i class="bi bi-card-text"></i><textarea id="cp-notes" rows="2" maxlength="500" placeholder="Skills, communication, attitude" [(ngModel)]="interviewNotes"></textarea></div>
+                </div>
+              </div>
+              <div class="actions">
+                <button type="button" class="save-btn" (click)="markInterviewed()"><i class="bi bi-check2-circle"></i> Mark as interviewed</button>
+                <button type="button" class="cancel-btn" (click)="reschedule()"><i class="bi bi-arrow-repeat"></i> Reschedule</button>
+                <button type="button" class="danger-btn" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
+              </div>
+            }
+          }
+
+          @case ('Interviewed') {
+            <div class="step-head"><i class="bi bi-patch-check"></i><div><h3>Final review - select or reject</h3><p>Interviewed by {{ c.interview?.interviewer || '-' }} · performance {{ c.interview?.performanceRating || c.rating }} / 5.</p></div></div>
+            @if (canAct) {
+              <div class="form-grid">
+                <div class="form-field">
+                  <label>Review rating <span>*</span></label>
+                  <div class="rating-pick">
+                    @for (s of stars; track s) {
+                      <button type="button" [attr.aria-label]="'Rate ' + s" (click)="setRating('reviewRating', s)"><i class="bi" [class.bi-star-fill]="s <= reviewRating" [class.bi-star]="s > reviewRating"></i></button>
+                    }
+                    <span class="muted">{{ reviewRating ? reviewRating + ' / 5' : 'Not rated' }}</span>
+                  </div>
+                </div>
+                <div class="form-field full-width">
+                  <label for="cp-review">Review <span>*</span></label>
+                  <div class="input-wrap textarea-wrap"><i class="bi bi-chat-left-quote"></i><textarea id="cp-review" rows="2" maxlength="500" placeholder="Why is the candidate selected / not selected?" [(ngModel)]="reviewComments"></textarea></div>
+                </div>
+              </div>
+              <div class="actions">
+                <button type="button" class="save-btn" (click)="decide(true)"><i class="bi bi-patch-check"></i> Select</button>
+                <button type="button" class="danger-btn" (click)="decide(false)"><i class="bi bi-x-circle"></i> Reject</button>
+              </div>
+            }
+          }
+
+          @case ('Selected') {
+            <div class="step-head"><i class="bi bi-shield-check"></i><div><h3>Start background verification</h3><p>Collect the candidate's certificates and let HR verify them before the offer.</p></div></div>
+            @if (canAct) {
+              <div class="actions">
+                <button type="button" class="save-btn" (click)="startVerification()"><i class="bi bi-shield-check"></i> Start verification</button>
+                <button type="button" class="danger-btn" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
+              </div>
+            }
+          }
+
+          @case ('Verification') {
+            <div class="step-head"><i class="bi bi-shield-check"></i><div><h3>Documents &amp; background verification</h3><p>Upload each certificate, then HR verifies it. Required documents (*) must be verified before the offer.</p></div></div>
+
+            <div class="items-table-wrap">
+              <table class="items-table doc-table">
+                <thead><tr><th>Document</th><th>File</th><th>Status</th><th>Remarks</th><th></th></tr></thead>
+                <tbody>
+                  @for (d of docTypes; track d.type) {
+                    @let up = doc(d.type);
+                    <tr>
+                      <td><strong>{{ d.type }}</strong>@if (d.required) { <span class="req"> *</span> }</td>
+                      <td>
+                        @if (up) { <i class="bi bi-file-earmark-check"></i> {{ up.fileName }}<div class="muted">{{ up.uploadedBy }} · {{ displayDate(up.uploadedAt) }}</div> }
+                        @else { <span class="muted">Not uploaded</span> }
+                      </td>
+                      <td>
+                        @if (up) { <span class="pill" [class.green]="up.status === 'Verified'" [class.red]="up.status === 'Rejected'" [class.orange]="up.status === 'Uploaded'">{{ up.status }}</span> }
+                        @if (up?.verifiedBy) { <div class="muted">by {{ up!.verifiedBy }}</div> }
+                      </td>
+                      <td>
+                        @if (up && canAct && up.status !== 'Verified') {
+                          <input class="cell-input" type="text" maxlength="120" placeholder="Remarks" [(ngModel)]="docRemarks[d.type]" [attr.aria-label]="'Remarks for ' + d.type" />
+                        } @else { <span class="muted">{{ up?.remarks || '-' }}</span> }
+                      </td>
+                      <td class="row-actions">
+                        <label class="link-btn upload">
+                          <i class="bi bi-upload"></i> {{ up ? 'Replace' : 'Upload' }}
+                          <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png" (change)="upload(d.type, $event)" />
+                        </label>
+                        @if (up && canAct && up.status !== 'Verified') {
+                          <button type="button" class="icon-btn add" title="Verify" aria-label="Verify document" (click)="verifyDoc(d.type, true)"><i class="bi bi-check-lg"></i></button>
+                          <button type="button" class="icon-btn" title="Reject document" aria-label="Reject document" (click)="verifyDoc(d.type, false)"><i class="bi bi-x-lg"></i></button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="form-grid bg-check">
+              <div class="form-field">
+                <label for="cp-bg">Background check (previous employer / references)</label>
+                <div class="input-wrap">
+                  <i class="bi bi-person-vcard"></i>
+                  <select id="cp-bg" [(ngModel)]="bgStatus" [disabled]="!canAct">
+                    <option value="Pending">Pending</option>
+                    <option value="Clear">Clear</option>
+                    <option value="Issue Found">Issue found</option>
+                  </select>
+                  <i class="bi bi-chevron-down select-arrow"></i>
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="cp-bgr">Remarks</label>
+                <div class="input-wrap"><i class="bi bi-chat-left-dots"></i><input id="cp-bgr" type="text" maxlength="200" [(ngModel)]="bgRemarks" [disabled]="!canAct" /></div>
+              </div>
+            </div>
+
+            @if (gaps().length && !c.verification?.completedAt) {
+              <ul class="gaps">@for (g of gaps(); track g) { <li><i class="bi bi-circle"></i> {{ g }}</li> }</ul>
+            }
+
+            @if (canAct) {
+              <div class="actions">
+                <button type="button" class="cancel-btn" (click)="saveBackground()"><i class="bi bi-save"></i> Save background check</button>
+                @if (!c.verification?.completedAt) {
+                  <button type="button" class="save-btn" [disabled]="gaps().length > 0" (click)="completeVerification()"><i class="bi bi-shield-fill-check"></i> Mark verified by HR</button>
+                }
+                <button type="button" class="danger-btn" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
+              </div>
+            }
+
+            @if (c.verification?.completedAt) {
+              <div class="step-head divider"><i class="bi bi-envelope-paper"></i><div><h3>Release the offer letter</h3><p>Verified by {{ c.verification?.completedBy }} on {{ displayDate(c.verification?.completedAt) }}.</p></div></div>
+              @if (canAct) {
+                <div class="form-grid cols-3">
+                  <div class="form-field">
+                    <label for="cp-gross">Monthly gross (₹) <span>*</span></label>
+                    <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input id="cp-gross" type="number" min="1" [(ngModel)]="offerGross" /></div>
+                    @if (v) { <small class="muted">Approved budget ₹{{ v.budgetMin | number }} - ₹{{ v.budgetMax | number }}</small> }
+                  </div>
+                  <div class="form-field">
+                    <label for="cp-join">Joining date <span>*</span></label>
+                    <div class="input-wrap"><i class="bi bi-calendar-event"></i><input id="cp-join" type="date" [min]="today" [(ngModel)]="joiningDate" /></div>
+                  </div>
+                  <div class="form-field">
+                    <label for="cp-valid">Offer valid until <span>*</span></label>
+                    <div class="input-wrap"><i class="bi bi-hourglass-split"></i><input id="cp-valid" type="date" [min]="today" [(ngModel)]="validUntil" /></div>
+                  </div>
+                </div>
+                <div class="actions"><button type="button" class="save-btn" (click)="releaseOffer()"><i class="bi bi-send-check"></i> Release offer letter</button></div>
+              }
+            }
+          }
+
+          @case ('Hired') {
+            <div class="step-head"><i class="bi bi-person-plus"></i><div><h3>Create the employee record</h3><p>Offer accepted. Confirm the employee details to add {{ c.name }} as a new employee and start onboarding.</p></div></div>
+            @if (canAct) {
+              <div class="actions">
+                <button type="button" class="cancel-btn" (click)="offerLetter(c)"><i class="bi bi-file-earmark-pdf"></i> Offer letter</button>
+                <button type="button" class="save-btn" (click)="addEmployee()"><i class="bi bi-person-plus"></i> Add employee</button>
+              </div>
+            }
+          }
+
+          @case ('Offered') {
+            <div class="step-head"><i class="bi bi-envelope-paper"></i>
+              <div>
+                <h3>Offer released - waiting for the candidate</h3>
+                <p>{{ c.offer?.offerNo }} · ₹{{ c.offer?.monthlyGross | number }} / month · joining {{ displayDate(c.offer?.joiningDate) }} · valid until {{ displayDate(c.offer?.validUntil) }}</p>
+              </div>
+            </div>
+            @if (canAct && c.offer) {
+                <div class="form-field full-width">
+                  <label for="cp-resp">Candidate's remarks</label>
+                  <div class="input-wrap"><i class="bi bi-chat-left-dots"></i><input id="cp-resp" type="text" maxlength="200" placeholder="Required if the offer is declined" [(ngModel)]="responseRemarks" /></div>
+                </div>
+                <div class="actions">
+                  <button type="button" class="cancel-btn" (click)="offerLetter(c)"><i class="bi bi-file-earmark-pdf"></i> Offer letter</button>
+                  <button type="button" class="save-btn" (click)="respond(true)"><i class="bi bi-hand-thumbs-up"></i> Candidate accepted</button>
+                  <button type="button" class="danger-btn" (click)="respond(false)"><i class="bi bi-hand-thumbs-down"></i> Candidate declined</button>
+                </div>
+            }
+          }
+        }
+
+        @if (!canAct) { <p class="muted readonly-note"><i class="bi bi-lock"></i> Only HR and branch heads can move candidates through the hiring steps.</p> }
+      </div>
+    }
+
+    @if (showReject() && !closed()) {
+      <div class="step-card reject-card">
+        <div class="step-head"><i class="bi bi-x-octagon"></i><div><h3>Reject {{ c.name }}</h3><p>The candidate is moved to Rejected. The reason is saved on the record.</p></div></div>
+        <div class="form-field full-width">
+          <label for="cp-rej">Reason <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-chat-left-text"></i><input id="cp-rej" type="text" maxlength="200" placeholder="Why is the candidate rejected?" [(ngModel)]="rejectReason" /></div>
+        </div>
+        <div class="actions">
+          <button type="button" class="danger-btn" (click)="confirmReject()"><i class="bi bi-x-circle"></i> Confirm reject</button>
+          <button type="button" class="cancel-btn" (click)="showReject.set(false)">Cancel</button>
+        </div>
+      </div>
+    }
+
+    <!-- ===== Record so far ===== -->
+    <div class="section-title"><i class="bi bi-person-vcard"></i> Candidate</div>
+    <div class="info-grid">
+      <div><small>Contact</small><strong>{{ c.phone }}</strong><br />{{ c.email }}</div>
+      <div><small>Current</small><strong>{{ c.currentCompany }}</strong><br />₹{{ c.currentCtc | number }} · notice {{ c.noticeDays }}d</div>
+      <div><small>Education</small><strong>{{ c.education }}</strong><br />{{ c.location }}</div>
+      <div><small>Source</small><strong>{{ c.source }}</strong><br />Applied {{ displayDate(c.appliedAt) }}</div>
+    </div>
+
+    @if (c.shortlistedBy || c.interview || c.review || c.offer) {
+      <div class="section-title"><i class="bi bi-clipboard-check"></i> Hiring record</div>
+      <div class="record-grid">
+        @if (c.shortlistedBy) {
+          <div class="record">
+            <small>Shortlisted by</small><strong>{{ c.shortlistedBy }}</strong>
+            <span>{{ displayDate(c.shortlistedAt) }}</span>
+          </div>
+        }
+        @if (c.interview) {
+          <div class="record">
+            <small>Interview</small>
+            <strong>{{ c.interview.interviewer }} · {{ c.interview.mode }}</strong>
+            <span>Scheduled {{ c.interview.scheduledAt | date:'d MMM y, h:mm a' }}</span>
+            @if (c.interview.interviewedAt) {
+              <span>Interviewed {{ c.interview.interviewedAt | date:'d MMM y, h:mm a' }}</span>
+              <span class="stars-ro" [attr.aria-label]="'Performance ' + c.interview.performanceRating + ' of 5'">
+                @for (s of stars; track s) { <i class="bi" [class.bi-star-fill]="s <= (c.interview.performanceRating || 0)" [class.bi-star]="s > (c.interview.performanceRating || 0)"></i> }
+              </span>
+              @if (c.interview.interviewNotes) { <span class="note">"{{ c.interview.interviewNotes }}"</span> }
+            }
+          </div>
+        }
+        @if (c.review) {
+          <div class="record">
+            <small>Review · {{ c.review.decision }}</small>
+            <strong>{{ c.review.reviewedBy }}</strong>
+            <span class="stars-ro" [attr.aria-label]="'Review ' + c.review.rating + ' of 5'">
+              @for (s of stars; track s) { <i class="bi" [class.bi-star-fill]="s <= c.review.rating" [class.bi-star]="s > c.review.rating"></i> }
+            </span>
+            <span class="note">"{{ c.review.comments }}"</span>
+          </div>
+        }
+        @if (c.verification && c.stage !== 'Verification') {
+          <div class="record">
+            <small>Verification</small>
+            <strong>{{ c.verification.completedAt ? 'Verified by ' + c.verification.completedBy : 'In progress' }}</strong>
+            <span>{{ c.verification.documents.length }} document(s) · background {{ c.verification.backgroundCheck }}</span>
+            @if (c.verification.backgroundRemarks) { <span class="note">{{ c.verification.backgroundRemarks }}</span> }
+          </div>
+        }
+        @if (c.offer) {
+          <div class="record">
+            <small>Offer {{ c.offer.offerNo }} · {{ c.offer.response }}</small>
+            <strong>₹{{ c.offer.monthlyGross | number }} / month</strong>
+            <span>Released by {{ c.offer.releasedBy }}, {{ displayDate(c.offer.releasedAt) }}</span>
+            <span>Joining {{ displayDate(c.offer.joiningDate) }}</span>
+            <button type="button" class="link-btn" (click)="offerLetter(c)"><i class="bi bi-file-earmark-pdf"></i> Offer letter</button>
+          </div>
+        }
+      </div>
+    }
+
+    <div class="section-title"><i class="bi bi-clock-history"></i> History</div>
+    @if (history().length) {
+      <ul class="timeline">
+        @for (e of history(); track $index) {
+          <li>
+            <span class="dot"></span>
+            <div>
+              <strong>{{ e.action }}</strong>
+              <small>{{ e.by }} · {{ e.at | date:'d MMM y, h:mm a' }}</small>
+              @if (e.note) { <span class="note">{{ e.note }}</span> }
+            </div>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="muted">No activity recorded yet.</p>
+    }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="link-btn" (click)="resume(c)"><i class="bi bi-download"></i> Resume</button>
+    <span class="spacer"></span>
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+  </div>
+</div>

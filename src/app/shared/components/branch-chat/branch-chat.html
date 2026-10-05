@@ -1,0 +1,153 @@
+<button
+  type="button"
+  class="chat-trigger"
+  [class.active]="open()"
+  [class.has-unread]="chat.unreadTotal() > 0"
+  (click)="toggle()"
+  [attr.aria-expanded]="open()"
+  [attr.aria-label]="'Branch group chat' + (chat.unreadTotal() ? ', ' + chat.unreadTotal() + ' new' : '')"
+  title="Branch group">
+  <i class="bi bi-chat-dots"></i>
+  @if (chat.unreadTotal() > 0) { <span class="count">{{ chat.unreadTotal() > 99 ? '99+' : chat.unreadTotal() }}</span> }
+</button>
+
+<!-- Rendered into a <body>-level CDK overlay (see branch-chat.ts). -->
+<ng-template #drawerTpl>
+  <aside class="chat-drawer" role="dialog" aria-label="Branch group">
+    <header class="drawer-head">
+      <div class="group-icon"><i class="bi bi-people-fill"></i></div>
+      <div class="group-copy">
+        <strong>{{ chat.branch() }} Branch Group</strong>
+        <small><i class="bi bi-lock-fill"></i> Private to {{ chat.branch() }} · {{ chat.members().length }} members · {{ onlineCount() }} online</small>
+      </div>
+      <button type="button" class="close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+    </header>
+
+    @if (chat.myBranches().length > 1) {
+      <div class="branch-switch">
+        <i class="bi bi-shield-check"></i>
+        <span>Admin view</span>
+        <select aria-label="Branch group" [ngModel]="chat.branch()" (ngModelChange)="switchBranch($event)">
+          @for (b of chat.myBranches(); track b) { <option [value]="b">{{ b }}</option> }
+        </select>
+      </div>
+    }
+
+    <nav class="drawer-tabs" role="tablist">
+      <button type="button" role="tab" [class.active]="tab() === 'chat'" (click)="setTab('chat')">
+        <i class="bi bi-chat-text"></i> Chat @if (chat.unreadChat() && tab() !== 'chat') { <span class="dot">{{ chat.unreadChat() }}</span> }
+      </button>
+      <button type="button" role="tab" [class.active]="tab() === 'posts'" (click)="setTab('posts')">
+        <i class="bi bi-megaphone"></i> Posts @if (chat.unreadPosts() && tab() !== 'posts') { <span class="dot">{{ chat.unreadPosts() }}</span> }
+      </button>
+      <button type="button" role="tab" [class.active]="tab() === 'members'" (click)="setTab('members')">
+        <i class="bi bi-person-lines-fill"></i> Members
+      </button>
+    </nav>
+
+    @switch (tab()) {
+      @case ('chat') {
+        @let list = chat.messages();
+        @let unreadAt = firstUnreadIndex(list);
+        <div class="messages" #scroller>
+          @for (m of list; track m.id; let i = $index) {
+            @if (dayLabel(list, i); as day) { <div class="day"><span>{{ day }}</span></div> }
+            @if (i === unreadAt) { <div class="new-divider"><span>New messages</span></div> }
+            <div class="msg" [class.mine]="isMine(m)" [class.grouped]="!showSender(list, i)">
+              @if (!isMine(m)) {
+                <span class="avatar" [class.head]="m.isHead" [style.visibility]="showSender(list, i) ? 'visible' : 'hidden'">{{ initials(m.senderName) }}</span>
+              }
+              <div class="bubble">
+                @if (showSender(list, i) && !isMine(m)) {
+                  <span class="sender">{{ m.senderName }} @if (m.isHead) { <em class="head-tag"><i class="bi bi-star-fill"></i> Head</em> } <small>{{ m.senderRole }}</small></span>
+                }
+                <p>{{ m.text }}</p>
+                <time>{{ m.at | date:'h:mm a' }} @if (isMine(m)) { <i class="bi bi-check2-all"></i> }</time>
+              </div>
+            </div>
+          } @empty {
+            <div class="empty"><i class="bi bi-chat-square-heart"></i><p>No messages yet. Say hello to the {{ chat.branch() }} team!</p></div>
+          }
+        </div>
+        <div class="composer">
+          <textarea rows="1" maxlength="1000" [(ngModel)]="draft" (keydown)="onComposerKey($event)" [placeholder]="'Message ' + chat.branch() + ' group…'" aria-label="Message"></textarea>
+          <button type="button" class="send" [disabled]="!draft.trim()" (click)="send()" aria-label="Send"><i class="bi bi-send-fill"></i></button>
+        </div>
+        <p class="hint">Enter to send · Shift + Enter for a new line · only {{ chat.branch() }} staff can read this</p>
+      }
+
+      @case ('posts') {
+        <div class="posts">
+          <div class="post-composer">
+            <span class="avatar me">{{ initials(chat.myName()) }}</span>
+            <div class="post-input">
+              <textarea rows="2" maxlength="2000" [(ngModel)]="postDraft" [placeholder]="chat.amHead() ? 'Share an announcement with your branch…' : 'Post an update to your branch…'" aria-label="New post"></textarea>
+              <div class="post-actions">
+                @if (chat.amHead()) {
+                  <label class="pin"><input type="checkbox" [(ngModel)]="pinPost" /> <i class="bi bi-pin-angle"></i> Pin as announcement</label>
+                }
+                <button type="button" class="post-btn" [disabled]="!postDraft.trim()" (click)="publish()"><i class="bi bi-send"></i> Post</button>
+              </div>
+            </div>
+          </div>
+
+          @for (p of chat.posts(); track p.id) {
+            <article class="post" [class.pinned]="p.pinned">
+              @if (p.pinned) { <span class="pinned-tag"><i class="bi bi-pin-angle-fill"></i> Pinned by branch head</span> }
+              <div class="post-head">
+                <span class="avatar" [class.head]="p.isHead">{{ initials(p.authorName) }}</span>
+                <div>
+                  <strong>{{ p.authorName }} @if (p.isHead) { <em class="head-tag"><i class="bi bi-star-fill"></i> Head</em> }</strong>
+                  <small>{{ p.authorRole }} · {{ p.at | date:'d MMM, h:mm a' }}</small>
+                </div>
+                @if (chat.amHead() || isMine(p)) {
+                  <div class="post-menu">
+                    @if (chat.amHead()) { <button type="button" [title]="p.pinned ? 'Unpin' : 'Pin'" (click)="chat.togglePin(p.id)"><i class="bi" [class.bi-pin-angle-fill]="p.pinned" [class.bi-pin-angle]="!p.pinned"></i></button> }
+                    <button type="button" title="Delete" (click)="chat.deletePost(p.id)"><i class="bi bi-trash3"></i></button>
+                  </div>
+                }
+              </div>
+              <p class="post-body">{{ p.body }}</p>
+              <div class="post-foot">
+                <button type="button" [class.liked]="p.likes.includes(chat.myKey())" (click)="chat.toggleLike(p.id)">
+                  <i class="bi" [class.bi-hand-thumbs-up-fill]="p.likes.includes(chat.myKey())" [class.bi-hand-thumbs-up]="!p.likes.includes(chat.myKey())"></i> {{ p.likes.length || '' }} Like
+                </button>
+                <button type="button" (click)="openComments.set(openComments() === p.id ? null : p.id)"><i class="bi bi-chat"></i> {{ p.comments.length || '' }} Comment</button>
+              </div>
+              @if (openComments() === p.id) {
+                <div class="comments">
+                  @for (c of p.comments; track c.at) {
+                    <div class="comment"><span class="avatar sm">{{ initials(c.name) }}</span><div><strong>{{ c.name }}</strong> {{ c.text }}<small>{{ c.at | date:'d MMM, h:mm a' }}</small></div></div>
+                  }
+                  <div class="comment-input">
+                    <input maxlength="500" placeholder="Write a comment…" [(ngModel)]="commentDrafts[p.id]" (keydown.enter)="addComment(p.id)" aria-label="Comment" />
+                    <button type="button" (click)="addComment(p.id)" aria-label="Add comment"><i class="bi bi-send"></i></button>
+                  </div>
+                </div>
+              }
+            </article>
+          } @empty {
+            <div class="empty"><i class="bi bi-megaphone"></i><p>No posts yet for {{ chat.branch() }}.</p></div>
+          }
+        </div>
+      }
+
+      @case ('members') {
+        <div class="members">
+          <p class="privacy"><i class="bi bi-shield-lock"></i> Only these {{ chat.branch() }} employees and the branch head can see this group. Other branches are never shown.</p>
+          @for (m of chat.members(); track m.key) {
+            <div class="member">
+              <span class="avatar" [class.head]="m.isHead">{{ initials(m.name) }}<i class="presence" [class.on]="m.online"></i></span>
+              <div>
+                <strong>{{ m.name }} @if (m.key === chat.myKey()) { <small>(you)</small> }</strong>
+                <small>{{ m.role }}</small>
+              </div>
+              @if (m.isHead) { <em class="head-tag"><i class="bi bi-star-fill"></i> Branch Head</em> }
+              <span class="status" [class.on]="m.online">{{ m.online ? 'Online' : 'Offline' }}</span>
+            </div>
+          }
+        </div>
+      }
+    }
+  </aside>
+</ng-template>

@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 
-export type NotificationType = 'lead' | 'appointment' | 'stock' | 'discount' | 'manager';
+export type NotificationType = 'lead' | 'appointment' | 'stock' | 'discount' | 'manager' | 'purchase' | 'hr' | 'accounts' | 'chat';
 
 export interface AppNotification {
   id: string;
@@ -19,6 +19,10 @@ const ICONS: Record<NotificationType, string> = {
   stock: 'bi-box-seam',
   discount: 'bi-percent',
   manager: 'bi-person-check',
+  purchase: 'bi-cart-check',
+  hr: 'bi-people',
+  accounts: 'bi-cash-coin',
+  chat: 'bi-chat-dots',
 };
 
 const COLORS: Record<NotificationType, string> = {
@@ -27,6 +31,10 @@ const COLORS: Record<NotificationType, string> = {
   stock: 'notification-icon-orange',
   discount: 'notification-icon-purple',
   manager: 'notification-icon-teal',
+  purchase: 'notification-icon-blue',
+  hr: 'notification-icon-teal',
+  accounts: 'notification-icon-green',
+  chat: 'notification-icon-purple',
 };
 
 /**

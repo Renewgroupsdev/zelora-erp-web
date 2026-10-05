@@ -1,0 +1,104 @@
+@let r = request();
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-clipboard-check-fill"></i></div>
+      <div class="title-content">
+        <h2>{{ r.requestNo }} <span class="pill" [ngClass]="statusClass()">{{ r.status }}</span></h2>
+        <p>{{ canReview() ? 'Check the request and confirm the purchase order' : 'Purchase request details' }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="info-grid">
+      <div><small>Branch</small><strong>{{ r.branch }}</strong></div>
+      <div><small>Vendor</small><strong>{{ r.vendorName }}</strong></div>
+      <div><small>Requested By</small><strong>{{ r.requestedBy }}</strong></div>
+      <div><small>Requested On</small><strong>{{ displayDate(r.requestedAt) }}</strong></div>
+      <div><small>Required By</small><strong>{{ displayDate(r.requiredBy) }}</strong></div>
+      <div><small>Priority</small><strong><span class="pill" [class.red]="r.priority === 'Urgent'" [class.blue]="r.priority !== 'Urgent'">{{ r.priority }}</span></strong></div>
+    </div>
+
+    @if (r.remarks) {
+      <div class="section-title"><i class="bi bi-chat-left-text"></i> Requester Remarks</div>
+      <p class="muted" style="margin: 0; font-size: 12px">{{ r.remarks }}</p>
+    }
+
+    <div class="section-title"><i class="bi bi-box-seam"></i> Requested Products</div>
+    <div class="items-table-wrap">
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th class="num">Central Store<br /><small>Stock in Hand</small></th>
+            <th class="num">Branch Store<br /><small>Stock in Hand</small></th>
+            <th class="num">Request Qty</th>
+            <th class="num">Unit Price</th>
+            <th class="num">GST</th>
+            <th class="num">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of r.items; track item.productId) {
+            <tr>
+              <td><strong>{{ item.productName }}</strong><div class="muted">{{ item.productCode }}</div></td>
+              <td class="num"><span class="pill" [class.red]="centralQty(item.productId) < 10" [class.green]="centralQty(item.productId) >= 10">{{ centralQty(item.productId) }}</span></td>
+              <td class="num"><span class="pill" [class.red]="branchQty(item.productId) < 10" [class.green]="branchQty(item.productId) >= 10">{{ branchQty(item.productId) }}</span></td>
+              <td class="num"><strong>{{ item.requestedQty }}</strong></td>
+              <td class="num">₹{{ item.unitPrice | number:'1.2-2' }}</td>
+              <td class="num">{{ item.gstPercent }}%</td>
+              <td class="num">₹{{ item.unitPrice * item.requestedQty * (1 + item.gstPercent / 100) | number:'1.2-2' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="totals">
+      <div><span>Sub Total</span><span>₹{{ totals().subTotal | number:'1.2-2' }}</span></div>
+      <div><span>GST</span><span>₹{{ totals().gst | number:'1.2-2' }}</span></div>
+      <div class="grand"><span>Total</span><span>₹{{ totals().grandTotal | number:'1.2-2' }}</span></div>
+    </div>
+
+    @if (canReview()) {
+      <div class="section-title"><i class="bi bi-person-check"></i> Branch Head Decision</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="rv-expected">Expected Delivery</label>
+          <div class="input-wrap">
+            <i class="bi bi-calendar-event"></i>
+            <input id="rv-expected" type="date" [min]="today" [(ngModel)]="expectedAt" />
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="rv-remarks">Remarks <span>(required to reject)</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-chat-left-dots"></i>
+            <input id="rv-remarks" type="text" maxlength="255" placeholder="Add a note for the requester" [(ngModel)]="remarks" (input)="remarksError.set(false)" [class.is-invalid]="remarksError()" />
+          </div>
+          @if (remarksError()) { <small class="error-text">Give a reason for rejecting this request.</small> }
+        </div>
+      </div>
+    } @else if (r.reviewedBy) {
+      <div class="section-title"><i class="bi bi-person-check"></i> Review</div>
+      <div class="info-grid">
+        <div><small>Reviewed By</small><strong>{{ r.reviewedBy }}</strong></div>
+        <div><small>Reviewed On</small><strong>{{ displayDate(r.reviewedAt) }}</strong></div>
+        <div class="full-width"><small>Remarks</small><strong>{{ r.reviewRemarks || '-' }}</strong></div>
+      </div>
+    } @else if (r.status === 'Pending') {
+      <div class="section-title" style="color: var(--status-orange-text)"><i class="bi bi-hourglass-split"></i> Waiting for branch head approval</div>
+    }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+    @if (canReview()) {
+      <button type="button" class="danger-btn" (click)="reject()"><i class="bi bi-x-circle"></i> Reject</button>
+      <button type="button" class="save-btn" (click)="approve()"><i class="bi bi-check2-circle"></i> Approve &amp; Generate PO</button>
+    }
+  </div>
+</div>

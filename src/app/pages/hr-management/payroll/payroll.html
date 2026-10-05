@@ -1,0 +1,61 @@
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-wallet2"></i> Payroll &amp; Payslips</h6>
+      <p class="page-subtitle">Monthly payroll from salary structure, attendance LOP and bonus. Download payslips as PDF and the bank sheet as Excel.</p>
+    </div>
+    <div class="header-actions">
+      <input class="date-input" type="month" aria-label="Payroll month" [max]="thisMonth" [ngModel]="month()" (ngModelChange)="setMonth($event)" />
+      <button type="button" class="ghost-btn" [disabled]="!slips().length" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      @if (unpaid().length) {
+        <button type="button" class="ghost-btn" (click)="markAllPaid()"><i class="bi bi-check2-all"></i> Mark All Paid</button>
+      }
+      <button type="button" class="add-lead-btn" (click)="runPayroll()"><i class="bi bi-play-circle"></i> {{ slips().length ? 'Re-run Payroll' : 'Run Payroll' }}</button>
+    </div>
+  </div>
+
+  <app-module-tabs [tabs]="tabs()" label="HR Management"></app-module-tabs>
+
+  @if (!slips().length) {
+    <div class="alert-banner info">
+      <i class="bi bi-info-circle-fill"></i>
+      <div><strong>Payroll not run for {{ monthLabel(month()) }}</strong> Click <em>Run Payroll</em> to generate payslips for every employee on the rolls this month.</div>
+    </div>
+  }
+
+  <div class="row g-2 stat-row">
+    @for (stat of stats(); track stat.label) {
+      <div class="col-6 col-md-3">
+        <app-common-detail-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'"></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by employee or code"
+    [filters]="filters"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
+
+  <div class="table-col">
+    <app-common-table-card
+      [title]="monthLabel(month())"
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+      (quickActionClick)="onQuickAction($event)"
+    ></app-common-table-card>
+  </div>
+</div>

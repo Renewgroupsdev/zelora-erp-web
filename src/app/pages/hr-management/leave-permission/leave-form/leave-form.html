@@ -1,0 +1,98 @@
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi" [class.bi-calendar2-x-fill]="kind() === 'Leave'" [class.bi-clock-fill]="kind() === 'Permission'"></i></div>
+      <div class="title-content">
+        <h2>{{ kind() === 'Leave' ? 'Apply Leave' : 'Request Permission' }}</h2>
+        <p>Sent to HR for approval - approved days appear on the attendance register.</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="kind-switch" role="tablist">
+      <button type="button" role="tab" [class.active]="kind() === 'Leave'" (click)="kind.set('Leave')"><i class="bi bi-calendar2-x"></i> Leave</button>
+      <button type="button" role="tab" [class.active]="kind() === 'Permission'" (click)="kind.set('Permission')"><i class="bi bi-clock"></i> Permission (hours)</button>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-field full-width">
+        <label for="lf-emp">Employee <span>*</span></label>
+        <div class="input-wrap"><i class="bi bi-person"></i>
+          <select id="lf-emp" [ngModel]="empId()" (ngModelChange)="empId.set($event)">
+            @for (e of hr.activeEmployees(); track e.id) { <option [value]="e.id">{{ e.empCode }} · {{ e.name }} ({{ e.branch }})</option> }
+          </select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+      </div>
+
+      @if (kind() === 'Leave') {
+        <div class="form-field">
+          <label for="lf-type">Leave Type</label>
+          <div class="input-wrap"><i class="bi bi-tags"></i>
+            <select id="lf-type" [(ngModel)]="leaveType">@for (t of leaveTypes; track t) { <option [value]="t">{{ t }}</option> }</select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+        <div class="form-field half-toggle">
+          <label class="check"><input type="checkbox" [(ngModel)]="halfDay" /> Half day</label>
+        </div>
+        <div class="form-field">
+          <label for="lf-from">From <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-calendar-event"></i><input id="lf-from" type="date" [(ngModel)]="fromDate" /></div>
+        </div>
+        @if (!halfDay) {
+          <div class="form-field">
+            <label for="lf-to">To <span>*</span></label>
+            <div class="input-wrap"><i class="bi bi-calendar-event"></i><input id="lf-to" type="date" [min]="fromDate" [(ngModel)]="toDate" /></div>
+          </div>
+        }
+      } @else {
+        <div class="form-field full-width">
+          <label for="lf-pdate">Date <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-calendar-event"></i><input id="lf-pdate" type="date" [(ngModel)]="fromDate" /></div>
+        </div>
+        <div class="form-field">
+          <label for="lf-ftime">From Time</label>
+          <div class="input-wrap"><i class="bi bi-clock"></i><input id="lf-ftime" type="time" [(ngModel)]="fromTime" /></div>
+        </div>
+        <div class="form-field">
+          <label for="lf-ttime">To Time</label>
+          <div class="input-wrap"><i class="bi bi-clock-history"></i><input id="lf-ttime" type="time" [(ngModel)]="toTime" /></div>
+        </div>
+      }
+
+      <div class="form-field full-width">
+        <label for="lf-reason">Reason <span>*</span></label>
+        <div class="input-wrap textarea-wrap"><i class="bi bi-card-text"></i><textarea id="lf-reason" rows="2" maxlength="255" [(ngModel)]="reason" placeholder="Reason for {{ kind() === 'Leave' ? 'leave' : 'permission' }}"></textarea></div>
+      </div>
+    </div>
+
+    <div class="summary-line">
+      @if (kind() === 'Leave') {
+        <span><i class="bi bi-calendar3"></i> {{ days() }} day{{ days() === 1 ? '' : 's' }} (Sundays excluded)</span>
+      } @else {
+        <span><i class="bi bi-hourglass-split"></i> {{ permissionHours() | number:'1.0-1' }} hour(s)</span>
+      }
+    </div>
+
+    @if (kind() === 'Leave') {
+      <div class="section-title"><i class="bi bi-pie-chart"></i> Leave Balance</div>
+      <div class="balance-row">
+        @for (b of balance(); track b.type) {
+          @if (b.quota) {
+            <div [class.selected]="b.type === leaveType"><small>{{ b.type }}</small><strong>{{ b.balance }}<span>/{{ b.quota }}</span></strong></div>
+          }
+        }
+      </div>
+    }
+
+    @if (submitted() && error()) { <p class="error-text" style="font-size: 11px"><i class="bi bi-exclamation-circle"></i> {{ error() }}</p> }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+    <button type="button" class="save-btn" (click)="save()"><i class="bi bi-send"></i> Submit Request</button>
+  </div>
+</div>

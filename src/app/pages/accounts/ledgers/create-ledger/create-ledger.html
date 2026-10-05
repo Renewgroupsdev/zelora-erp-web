@@ -1,0 +1,85 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-journal-plus"></i></div>
+      <div class="title-content">
+        <h2>Create Ledger</h2>
+        <p>Add an account under a group to post vouchers against</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="lg-name">Ledger Name <span>*</span></label>
+        <div class="input-wrap">
+          <i class="bi bi-journal-text"></i>
+          <input id="lg-name" type="text" maxlength="100" placeholder="Enter ledger name" [(ngModel)]="name"
+            [class.is-invalid]="submitted() && !name.trim()" />
+        </div>
+        @if (submitted() && !name.trim()) { <small class="error-text">Enter the ledger name.</small> }
+      </div>
+
+      <div class="form-field">
+        <label for="lg-group">Under Group <span>*</span></label>
+        <div class="input-wrap">
+          <i class="bi bi-diagram-3"></i>
+          <select id="lg-group" [(ngModel)]="group">
+            @for (g of groups; track g) { <option [value]="g">{{ g }}</option> }
+          </select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="lg-open">Opening Balance</label>
+        <div class="input-wrap">
+          <i class="bi bi-currency-rupee"></i>
+          <input id="lg-open" type="number" min="0" placeholder="0.00" [(ngModel)]="opening" />
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="lg-side">Dr / Cr</label>
+        <div class="input-wrap">
+          <i class="bi bi-arrow-left-right"></i>
+          <select id="lg-side" [(ngModel)]="side">
+            <option value="Dr">Dr (Debit)</option>
+            <option value="Cr">Cr (Credit)</option>
+          </select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="lg-phone">Mobile</label>
+        <div class="input-wrap">
+          <i class="bi bi-telephone"></i>
+          <input id="lg-phone" type="tel" maxlength="10" placeholder="Optional" [(ngModel)]="phone"
+            [class.is-invalid]="submitted() && phoneInvalid()" />
+        </div>
+        @if (submitted() && phoneInvalid()) { <small class="error-text">Enter a 10 digit mobile number.</small> }
+      </div>
+
+      <div class="form-field">
+        <label for="lg-gst">GSTIN</label>
+        <div class="input-wrap">
+          <i class="bi bi-upc-scan"></i>
+          <input id="lg-gst" type="text" maxlength="15" placeholder="Optional" [(ngModel)]="gstin"
+            [class.is-invalid]="submitted() && gstinInvalid()" />
+        </div>
+        @if (submitted() && gstinInvalid()) { <small class="error-text">GSTIN must be 15 characters.</small> }
+      </div>
+    </div>
+
+    @if (error(); as message) { <small class="error-text">{{ message }}</small> }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+    <button type="button" class="save-btn" (click)="save()"><i class="bi bi-check-lg"></i> Create Ledger</button>
+  </div>
+</div>

@@ -1,0 +1,118 @@
+@let b = bill();
+@let t = totals();
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi" [class.bi-file-earmark-text-fill]="b.kind === 'Proforma'" [class.bi-receipt-cutoff]="b.kind === 'Service'"></i></div>
+      <div class="title-content">
+        <h2>{{ b.billNo }} <span class="pill" [class.green]="b.status === 'Paid' || b.status === 'Converted'" [class.orange]="b.status === 'Partially Paid' || b.status === 'Sent'" [class.red]="b.status === 'Unpaid' || b.status === 'Cancelled'">{{ b.status }}</span></h2>
+        <p>{{ b.kind === 'Proforma' ? 'Proforma bill' : 'Service bill' }} · {{ b.customerName }} · {{ b.branch }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom doc-body">
+    <div class="doc-sheet" #sheet>
+      <div class="doc-head">
+        <div>
+          <h1>RENEW Plus</h1>
+          <p>Renew Plus Hair and Skin Care Pvt Ltd · {{ b.branch }} branch</p>
+          <p>Chennai, Tamil Nadu · GSTIN 33AAAAA0000A1Z5</p>
+        </div>
+        <div class="doc-meta">
+          <h2>{{ b.kind === 'Proforma' ? 'PROFORMA INVOICE' : 'TAX INVOICE' }}</h2>
+          <p><strong>No:</strong> {{ b.billNo }}</p>
+          <p><strong>Date:</strong> {{ displayDate(b.date) }}</p>
+          <p><strong>{{ b.kind === 'Proforma' ? 'Valid till' : 'Due' }}:</strong> {{ displayDate(b.dueDate) }}</p>
+          @if (b.status === 'Paid' || b.status === 'Cancelled') { <p><span class="doc-stamp">{{ b.status | uppercase }}</span></p> }
+        </div>
+      </div>
+
+      <div class="doc-parties">
+        <div><small>Bill To</small><strong>{{ b.customerName }}</strong><br />{{ b.customerAddress }}<br />{{ b.customerPhone }}</div>
+        <div><small>Customer GSTIN</small>{{ b.customerGstin || 'Unregistered (B2C)' }}<br /><small>Place of supply</small>Tamil Nadu (33)</div>
+        <div><small>Reference</small>{{ linked() ? (b.kind === 'Proforma' ? 'Converted to ' : 'Against proforma ') + linked()!.billNo : '-' }}<br />Prepared by {{ b.createdBy }}</div>
+      </div>
+
+      <table>
+        <thead><tr><th>#</th><th>Description</th><th>SAC/HSN</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Disc</th><th class="num">Taxable</th><th class="num">GST</th><th class="num">Amount</th></tr></thead>
+        <tbody>
+          @for (i of b.items; track $index) {
+            <tr>
+              <td>{{ $index + 1 }}</td>
+              <td>{{ i.description }}</td>
+              <td>{{ i.sac }}</td>
+              <td class="num">{{ i.qty }}</td>
+              <td class="num">{{ i.rate | number:'1.2-2' }}</td>
+              <td class="num">{{ i.discountPercent ? i.discountPercent + '%' : '-' }}</td>
+              <td class="num">{{ line(i).taxable | number:'1.2-2' }}</td>
+              <td class="num">{{ i.gstPercent }}%</td>
+              <td class="num">{{ line(i).total | number:'1.2-2' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="doc-split">
+        <table>
+          <thead><tr><th>SAC/HSN</th><th class="num">Taxable</th><th class="num">CGST</th><th class="num">SGST</th></tr></thead>
+          <tbody>
+            @for (x of taxSummary(); track x.sac + x.rate) {
+              <tr><td>{{ x.sac }} &#64; {{ x.rate }}%</td><td class="num">{{ x.taxable | number:'1.2-2' }}</td><td class="num">{{ x.gst / 2 | number:'1.2-2' }}</td><td class="num">{{ x.gst / 2 | number:'1.2-2' }}</td></tr>
+            }
+          </tbody>
+        </table>
+        <div class="doc-totals" style="margin-top: 6px">
+          <div><span>Taxable</span><span>₹{{ t.taxable | number:'1.2-2' }}</span></div>
+          <div><span>CGST + SGST</span><span>₹{{ t.gst | number:'1.2-2' }}</span></div>
+          <div><span>Round off</span><span>{{ t.roundOff | number:'1.2-2' }}</span></div>
+          <div class="grand"><span>Total</span><span>₹{{ t.grandTotal | number:'1.2-2' }}</span></div>
+          @if (b.kind === 'Service') {
+            <div><span>Received</span><span>₹{{ b.paidAmount | number:'1.2-2' }}</span></div>
+            <div><span><strong>Balance</strong></span><span><strong>₹{{ balance() | number:'1.2-2' }}</strong></span></div>
+          }
+        </div>
+      </div>
+
+      <p class="doc-words"><strong>In words:</strong> {{ amountInWords(t.grandTotal) }}</p>
+      @if (b.notes) { <p class="doc-words"><strong>Notes:</strong> {{ b.notes }}</p> }
+      <div class="doc-sign"><span>Customer Signature</span><span>For Renew Plus</span></div>
+      <p class="doc-footer">{{ b.kind === 'Proforma' ? 'This is a proforma invoice and not a demand for payment.' : 'Thank you for choosing Renew Plus.' }}</p>
+    </div>
+
+    @if (receipts().length || creditNote()) {
+      <div class="section-title"><i class="bi bi-clock-history"></i> Accounting entries</div>
+      <div class="items-table-wrap">
+        <table class="items-table">
+          <thead><tr><th>Voucher</th><th>Type</th><th>Date</th><th>Mode</th><th class="num">Amount</th></tr></thead>
+          <tbody>
+            @for (r of receipts(); track r.id) {
+              <tr><td>{{ r.voucherNo }}</td><td>Receipt</td><td>{{ displayDate(r.date) }}</td><td>{{ r.mode }}</td><td class="num">₹{{ acc.voucherAmount(r) | number:'1.2-2' }}</td></tr>
+            }
+            @if (creditNote(); as cn) {
+              <tr><td>{{ cn.voucherNo }}</td><td>Credit Note</td><td>{{ displayDate(cn.date) }}</td><td>-</td><td class="num">₹{{ acc.voucherAmount(cn) | number:'1.2-2' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+    @if (b.status !== 'Cancelled' && b.status !== 'Converted' && b.paidAmount === 0) {
+      <button type="button" class="danger-btn" (click)="cancel()"><i class="bi bi-x-circle"></i> Cancel Bill</button>
+    }
+    @if (b.kind === 'Proforma' && b.status === 'Draft') {
+      <button type="button" class="cancel-btn" (click)="markSent()"><i class="bi bi-send"></i> Mark Sent</button>
+    }
+    @if (b.kind === 'Proforma' && (b.status === 'Draft' || b.status === 'Sent')) {
+      <button type="button" class="save-btn" (click)="convert()"><i class="bi bi-arrow-right-circle"></i> Convert to Service Bill</button>
+    }
+    @if (b.kind === 'Service' && (b.status === 'Unpaid' || b.status === 'Partially Paid')) {
+      <button type="button" class="save-btn" (click)="collect()"><i class="bi bi-cash-coin"></i> Collect Payment</button>
+    }
+    <button type="button" class="save-btn" (click)="downloadPdf()"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+  </div>
+</div>

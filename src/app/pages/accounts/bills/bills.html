@@ -1,0 +1,55 @@
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-receipt"></i> Bills</h6>
+      <p class="page-subtitle">Proforma bills (quotations) and Service bills (GST tax invoices). Convert a proforma once the customer confirms.</p>
+    </div>
+    <div class="header-actions">
+      <div class="segment" role="tablist" aria-label="Bill type">
+        <button type="button" role="tab" [class.active]="view() === 'Service'" (click)="setView('Service')">Service Bills</button>
+        <button type="button" role="tab" [class.active]="view() === 'Proforma'" (click)="setView('Proforma')">Proforma Bills</button>
+      </div>
+      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button type="button" class="ghost-btn" (click)="newBill('Proforma')"><i class="bi bi-file-earmark-plus"></i> Proforma Bill</button>
+      <button type="button" class="add-lead-btn" (click)="newBill('Service')"><i class="bi bi-plus-lg"></i> Service Bill</button>
+    </div>
+  </div>
+
+  <app-module-tabs [tabs]="tabs()" label="Accounts"></app-module-tabs>
+
+  <div class="row g-2 stat-row">
+    @for (stat of stats(); track stat.label) {
+      <div class="col-6 col-md-3">
+        <app-common-detail-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'" [trendText]="stat.trendText"></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by bill no, customer, mobile or service"
+    [filters]="filters"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
+
+  <div class="table-col">
+    <app-common-table-card
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+      (quickActionClick)="open($event.row)"
+      (profileClick)="open($event)"
+    ></app-common-table-card>
+  </div>
+</div>

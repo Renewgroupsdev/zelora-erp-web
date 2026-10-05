@@ -1,0 +1,107 @@
+@let v = vacancy();
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-briefcase-fill"></i></div>
+      <div class="title-content">
+        <h2>{{ v.designation }} · {{ v.branch }} <span class="pill" [class.green]="v.vacancyStatus === 'Filled'" [class.orange]="v.vacancyStatus === 'Open'">{{ v.vacancyStatus }}</span></h2>
+        <p>{{ v.requestNo }} · {{ v.department }} · {{ v.positions }} position{{ v.positions > 1 ? 's' : '' }} · {{ v.hired }} hired</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="info-grid">
+      <div><small>Budget / month</small><strong>₹{{ v.budgetMin | number }} - ₹{{ v.budgetMax | number }}</strong></div>
+      <div><small>Experience</small><strong>{{ v.experience }}</strong></div>
+      <div><small>Employment</small><strong>{{ v.employmentType }}</strong></div>
+      <div><small>Required By</small><strong>{{ displayDate(v.requiredBy) }}</strong></div>
+      <div><small>Skills</small><strong>{{ v.skills || '-' }}</strong></div>
+    </div>
+
+    <div class="section-title"><i class="bi bi-globe2"></i> Job Portals</div>
+    <div class="portal-grid">
+      @for (p of portals; track p) {
+        <div class="portal" [ngClass]="'p-' + p.toLowerCase()">
+          <div class="portal-head">
+            <span class="logo">{{ p === 'LinkedIn' ? 'in' : p[0] }}</span>
+            <div>
+              <strong>{{ p }}</strong>
+              <small>{{ isPosted(p) ? 'Job live' : 'Not posted' }} · {{ bySource()[$index].count }} applicants</small>
+            </div>
+          </div>
+          @if (isPosted(p)) {
+            <button type="button" class="link-btn" [disabled]="syncing()" (click)="sync(p)">
+              <i class="bi" [class.bi-arrow-repeat]="syncing() !== p" [class.bi-hourglass-split]="syncing() === p"></i>
+              {{ syncing() === p ? 'Fetching profiles…' : 'Fetch applied profiles' }}
+            </button>
+          } @else {
+            <button type="button" class="link-btn" (click)="post(p)"><i class="bi bi-megaphone"></i> Post job</button>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="pipeline">
+      @for (s of pipeline(); track s.stage) {
+        <button type="button" [class.active]="stageFilter() === s.stage" (click)="stageFilter.set(stageFilter() === s.stage ? 'All' : s.stage)">
+          <strong>{{ s.count }}</strong><small>{{ s.stage }}</small>
+        </button>
+      }
+    </div>
+
+    <div class="section-title">
+      <i class="bi bi-people"></i> Applied Candidates ({{ candidates().length }})
+      <span class="spacer"></span>
+      <select class="cell-input source-select" aria-label="Source" [ngModel]="sourceFilter()" (ngModelChange)="sourceFilter.set($event)">
+        <option value="All">All sources</option>
+        @for (s of bySource(); track s.source) { <option [value]="s.source">{{ s.source }} ({{ s.count }})</option> }
+      </select>
+      <button type="button" class="link-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export list</button>
+    </div>
+
+    <div class="items-table-wrap">
+      <table class="items-table cand-table">
+        <thead>
+          <tr><th>Candidate</th><th>Source</th><th class="num">Exp</th><th class="num">Current / Expected</th><th class="num">Notice</th><th>Rating</th><th>Stage</th><th>Resume</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (c of candidates(); track c.id) {
+            <tr>
+              <td>
+                <strong>{{ c.name }}</strong>
+                <div class="muted">{{ c.currentCompany }} · {{ c.location }} · {{ c.education }}</div>
+                @if (c.interviewAt && c.stage === 'Interview') { <div class="muted"><i class="bi bi-calendar-event"></i> {{ c.interviewAt | date:'d MMM, h:mm a' }}{{ c.interview?.interviewer ? ' · ' + c.interview?.interviewer : '' }}</div> }
+              </td>
+              <td>
+                <span class="src" [ngClass]="'s-' + c.source.toLowerCase()">{{ c.source }}</span>
+                @if (c.profileUrl) { <a class="muted profile-link" [href]="c.profileUrl" target="_blank" rel="noopener">profile <i class="bi bi-box-arrow-up-right"></i></a> }
+              </td>
+              <td class="num">{{ c.experienceYears }} y</td>
+              <td class="num">₹{{ c.currentCtc | number }}<br /><span [class.over]="overBudget(c)">₹{{ c.expectedCtc | number }}</span></td>
+              <td class="num">{{ c.noticeDays }}d</td>
+              <td class="stars">
+                <span class="stars-ro" [attr.aria-label]="'Rating ' + c.rating + ' of 5'">
+                  @for (s of [1, 2, 3, 4, 5]; track s) { <i class="bi" [class.bi-star-fill]="s <= c.rating" [class.bi-star]="s > c.rating"></i> }
+                </span>
+              </td>
+              <td><span class="pill" [class.green]="c.stage === 'Hired'" [class.red]="c.stage === 'Rejected' || c.stage === 'Offer Declined'" [class.orange]="c.stage === 'Interview' || c.stage === 'Verification'">{{ c.stage }}</span></td>
+              <td><button type="button" class="link-btn" (click)="resume(c)" [title]="c.resumeFile"><i class="bi bi-download"></i> PDF</button></td>
+              <td>
+                <button type="button" class="link-btn" title="Shortlist, interview, verify and offer" (click)="openProcess(c)"><i class="bi bi-kanban"></i> Process</button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="9" class="muted" style="text-align: center; padding: 18px">No candidates yet - post the job and fetch applied profiles from the portals.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal-footer-custom">
+    <span class="footer-note"><i class="bi bi-info-circle"></i> Expected CTC in red is above the approved budget.</span>
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+  </div>
+</div>

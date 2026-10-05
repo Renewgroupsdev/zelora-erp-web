@@ -1,0 +1,157 @@
+@let o = order();
+@let s = summary();
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-box-arrow-in-down"></i></div>
+      <div class="title-content">
+        <h2>Purchase Inward · {{ o.poNo }}</h2>
+        <p>{{ o.vendorName }} · receive batch-wise, partial or full quantity</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="form-grid cols-3">
+      <div class="form-field">
+        <label for="gi-store">Receive Into <span>*</span></label>
+        <div class="input-wrap">
+          <i class="bi bi-building"></i>
+          <select id="gi-store" [(ngModel)]="store">
+            @for (st of purchase.stores; track st) { <option [value]="st">{{ st }}</option> }
+          </select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
+      </div>
+      <div class="form-field">
+        <label for="gi-invoice">Vendor Invoice / DC No <span>*</span></label>
+        <div class="input-wrap">
+          <i class="bi bi-receipt"></i>
+          <input id="gi-invoice" type="text" maxlength="40" placeholder="e.g. DSP/7781" [(ngModel)]="vendorInvoiceNo" [class.is-invalid]="submitted() && !vendorInvoiceNo.trim()" />
+        </div>
+        @if (submitted() && !vendorInvoiceNo.trim()) { <small class="error-text">Enter the vendor invoice number.</small> }
+      </div>
+      <div class="form-field">
+        <label>Receipt Status</label>
+        <div class="status-box" [class.partial]="s.partial">
+          <i class="bi" [class.bi-check2-all]="!s.partial" [class.bi-hourglass-split]="s.partial"></i>
+          {{ s.partial ? 'Partial receipt · ' + s.short + ' pending' : 'Full receipt' }}
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title"><i class="bi bi-upc-scan"></i> Batch-wise Receipt</div>
+
+    @if (!lines().length) {
+      <div class="empty-note"><i class="bi bi-check-circle"></i> Every item on this PO is already received.</div>
+    } @else {
+      <div class="items-table-wrap">
+        <table class="items-table inward-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th class="num">Central Store<br /><small>Stock in Hand</small></th>
+              <th class="num">Ordered</th>
+              <th class="num">Received</th>
+              <th class="num">Pending</th>
+              <th>Batch No *</th>
+              <th>MFG</th>
+              <th>Expiry</th>
+              <th>Recv Qty</th>
+              <th>Damaged</th>
+              <th class="num">Balance</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of lines(); track $index; let i = $index) {
+              <tr [class.extra]="line.isExtraBatch">
+                <td>
+                  @if (!line.isExtraBatch) {
+                    <strong>{{ line.productName }}</strong>
+                    <div class="progress"><span [style.width.%]="(line.previousQty + acceptedFor(line.productId)) / line.orderedQty * 100"></span></div>
+                  } @else { <span class="muted"><i class="bi bi-arrow-return-right"></i> another batch</span> }
+                </td>
+                <td class="num">@if (!line.isExtraBatch) { <span class="pill" [class.red]="centralQty(line.productId) < 10" [class.green]="centralQty(line.productId) >= 10">{{ centralQty(line.productId) }}</span> }</td>
+                <td class="num">{{ line.isExtraBatch ? '' : line.orderedQty }}</td>
+                <td class="num">{{ line.isExtraBatch ? '' : line.previousQty }}</td>
+                <td class="num">@if (!line.isExtraBatch) { <span class="pill orange">{{ pendingQty(line) }}</span> }</td>
+                <td><input class="cell-input" type="text" maxlength="30" placeholder="Batch" readonly title="Auto-generated from the purchase order" [(ngModel)]="line.batchNo" [class.is-invalid]="(submitted() && line.receivedQty > 0 && !line.batchNo.trim()) || isDuplicateBatch(line)" /></td>
+                <td><input class="cell-input date" type="date" [(ngModel)]="line.mfgDate" (ngModelChange)="touch()" /></td>
+                <td><input class="cell-input date" type="date" [(ngModel)]="line.expiryDate" (ngModelChange)="touch()" /></td>
+                <td><input class="cell-input qty" type="number" min="0" [(ngModel)]="line.receivedQty" (ngModelChange)="touch()" [class.is-invalid]="isOver(line)" /></td>
+                <td><input class="cell-input qty" type="number" min="0" [(ngModel)]="line.damagedQty" (ngModelChange)="touch()" [class.is-invalid]="line.damagedQty > line.receivedQty" /></td>
+                <td class="num">
+                  @if (!line.isExtraBatch) {
+                    <span class="pill" [class.green]="!balanceFor(line)" [class.red]="balanceFor(line)">{{ balanceFor(line) }}</span>
+                  }
+                </td>
+                <td class="row-actions">
+                  @if (line.isExtraBatch) {
+                    <button type="button" class="icon-btn" (click)="removeBatch(i)" aria-label="Remove batch"><i class="bi bi-trash3"></i></button>
+                  } @else {
+                    <button type="button" class="icon-btn add" (click)="addBatch(line)" title="Split into another batch" aria-label="Add batch"><i class="bi bi-plus-lg"></i></button>
+                  }
+                </td>
+              </tr>
+              @if (lineError(line); as err) {
+                @if (submitted() || isOver(line) || line.damagedQty > line.receivedQty) {
+                  <tr class="error-row"><td colspan="12"><i class="bi bi-exclamation-circle"></i> {{ line.productName }}: {{ err }}</td></tr>
+                }
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="qty-summary">
+        <span><i class="bi bi-box-seam"></i> Received <strong>{{ s.received }}</strong></span>
+        <span class="bad"><i class="bi bi-x-octagon"></i> Damaged <strong>{{ s.damaged }}</strong></span>
+        <span class="ok"><i class="bi bi-check2-circle"></i> Accepted to stock <strong>{{ s.received - s.damaged }}</strong></span>
+        <span class="warn"><i class="bi bi-hourglass-split"></i> Pending after inward <strong>{{ s.short }}</strong></span>
+      </div>
+
+      <div class="note-card" [class.on]="raiseNote">
+        <label class="note-toggle">
+          <input type="checkbox" [(ngModel)]="raiseNote" />
+          <span>
+            <strong>Raise Credit / Debit Note</strong>
+            <small>For damaged, short-supplied or rate-difference items. Suggested when damaged or pending qty is above 0.</small>
+          </span>
+        </label>
+
+        @if (raiseNote) {
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="gi-note-type">Note Type</label>
+              <div class="input-wrap">
+                <i class="bi bi-journal-text"></i>
+                <select id="gi-note-type" [(ngModel)]="noteType">
+                  @for (t of noteTypes; track t) { <option [value]="t">{{ t }}</option> }
+                </select>
+                <i class="bi bi-chevron-down select-arrow"></i>
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="gi-note-reason">Reason <span>*</span></label>
+              <div class="input-wrap">
+                <i class="bi bi-chat-left-dots"></i>
+                <input id="gi-note-reason" type="text" maxlength="255" placeholder="e.g. 2 bottles damaged in transit" [(ngModel)]="noteReason" [class.is-invalid]="submitted() && !noteReason.trim()" />
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="modal-footer-custom">
+    <span class="footer-note"><i class="bi bi-bell"></i> Branch head is alerted if any product drops below 10 units.</span>
+    <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+    <button type="button" class="save-btn" [disabled]="!lines().length" (click)="save()">
+      <i class="bi bi-box-arrow-in-down"></i> {{ s.partial ? 'Save Partial Inward' : 'Save Inward' }}
+    </button>
+  </div>
+</div>
