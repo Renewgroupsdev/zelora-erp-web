@@ -20,7 +20,7 @@ export interface FranchiseTotals extends ShareSplit {
  */
 @Injectable({ providedIn: 'root' })
 export class FranchiseService {
-  private readonly state = signal<FranchiseState>(loadState(STORAGE_KEY, seedState));
+  private readonly state = signal<FranchiseState>(withStock(loadState(STORAGE_KEY, seedState)));
 
   readonly franchises = computed(() => this.state().franchises);
   readonly invoices = computed(() => this.state().invoices);
@@ -101,7 +101,14 @@ export class FranchiseService {
   }
 }
 
+/** Stock reported by the seeded partner outlets (also back-fills data saved before the field existed). */
+const SEED_STOCK: Record<string, number> = { FR01: 72000, FR02: 95000, FR03: 64000, FR04: 81000, FR05: 0 };
+
 const CATALOG: [string, number][] = [['Hair Serum', 1000], ['Shampoo', 500], ['Hair Oil', 800], ['Hair Treatment', 2000], ['Scalp Care Kit', 1500], ['Anti-Dandruff Lotion', 650]];
+
+function withStock(state: FranchiseState): FranchiseState {
+  return { ...state, franchises: state.franchises.map(f => (f.inventoryValue === undefined ? { ...f, inventoryValue: SEED_STOCK[f.code] ?? 0 } : f)) };
+}
 
 function seedState(): FranchiseState {
   const today = isoDate();
@@ -112,7 +119,7 @@ function seedState(): FranchiseState {
     { code: 'FR04', name: 'Coimbatore', ownerCompany: 'LMN Retail', ownerName: 'Divya R', ownerPhone: '+91 98765 43304', ownerEmail: 'divya@lmn.in', city: 'Coimbatore', state: 'Tamil Nadu', gstin: '33LMNRT9012L1Z8', status: 'Active', agreementFrom: '2025-09-01', agreementTo: '2028-08-31', sharePercent: 65, shareEffectiveFrom: '2025-09-01', employees: 7 },
     { code: 'FR05', name: 'Bangalore', ownerCompany: 'JKL Beauty', ownerName: 'Anil Kumar', ownerPhone: '+91 98765 43305', ownerEmail: 'anil@jkl.in', city: 'Bangalore', state: 'Karnataka', gstin: '29JKLBE3456M1Z4', status: 'Pending', agreementFrom: '2026-10-01', agreementTo: '2029-09-30', sharePercent: 70, shareEffectiveFrom: '2026-10-01', employees: 0 },
   ];
-  const franchises = rows.map(r => ({ ...r, id: `FR-seed-${r.code}` }));
+  const franchises = rows.map(r => ({ ...r, id: `FR-seed-${r.code}`, inventoryValue: SEED_STOCK[r.code] ?? 0 }));
 
   let seed = 11;
   const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;

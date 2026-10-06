@@ -7,9 +7,8 @@ import { CommonDetailCard } from '../../../shared/components/common-detail-card/
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
 import { LocalListBase } from '../../../shared/components/local-list-base';
-import { DetailCardData, TableColumn, TableRow } from '../../../shared/models/common-components.model';
+import { DetailCardData, ExportFormat, TableColumn, TableRow } from '../../../shared/models/common-components.model';
 import { inrShort } from '../../../shared/models/branch-franchise.model';
-import { downloadExcel, fileStamp } from '../../../shared/utils/export.util';
 import { addDays, isoDate } from '../../../shared/utils/format.util';
 import { BranchForm } from '../branch-form/branch-form';
 
@@ -56,12 +55,14 @@ export class Branches extends LocalListBase {
     const sales = list.reduce((s, b) => s + this.store.sales(b.name, month), 0);
     const prevSales = list.reduce((s, b) => s + this.store.sales(b.name, prev), 0);
     const growth = prevSales ? Math.round(((sales - prevSales) / prevSales) * 100) : null;
-    const employees = list.reduce((s, b) => s + this.store.employees(b.name).length, 0);
+    const staff = list.flatMap(b => this.store.employees(b.name));
+    const newBranches = list.filter(b => b.openedOn?.startsWith(month)).length;
+    const newStaff = staff.filter(e => e.joinDate?.startsWith(month)).length;
     return [
-      { label: 'Total Branches', value: list.length, icon: 'bi-building', iconVariant: 'primary' },
-      { label: 'Active Branches', value: active.length, trendText: `${list.length ? Math.round((active.length / list.length) * 100) : 0}% active`, trendDirection: 'up', icon: 'bi-check-circle-fill', iconVariant: 'green' },
-      { label: 'Total Employees', value: employees, icon: 'bi-people-fill', iconVariant: 'blue' },
-      { label: 'Monthly Sales', value: inrShort(sales), trendText: growth === null ? 'This month' : `${growth >= 0 ? '+' : ''}${growth}% vs last month`, trendDirection: growth !== null && growth < 0 ? 'down' : 'up', icon: 'bi-currency-rupee', iconVariant: 'orange' },
+      { label: 'Total Branches', value: list.length, trendText: `+${newBranches} this month`, trendDirection: newBranches ? 'up' : 'neutral', icon: 'bi-building', iconVariant: 'blue' },
+      { label: 'Active Branches', value: active.length, trendText: `${list.length ? Math.round((active.length / list.length) * 100) : 0}% active`, trendDirection: 'neutral', icon: 'bi-check-circle-fill', iconVariant: 'green' },
+      { label: 'Total Employees', value: staff.length, trendText: `+${newStaff} this month`, trendDirection: newStaff ? 'up' : 'neutral', icon: 'bi-people-fill', iconVariant: 'purple' },
+      { label: 'Monthly Sales', value: inrShort(sales), trendText: growth === null ? 'This month' : `${growth >= 0 ? '+' : ''}${growth}% growth`, trendDirection: growth !== null && growth < 0 ? 'down' : 'up', icon: 'bi-graph-up-arrow', iconVariant: 'orange' },
     ];
   });
 
@@ -83,8 +84,9 @@ export class Branches extends LocalListBase {
         customers: String(this.store.customers(b.name)), __customers: this.store.customers(b.name),
         sales: `₹${Math.round(sales).toLocaleString('en-IN')}`, __sales: sales,
         actions: [
-          { key: 'view', icon: 'bi-eye-fill', label: 'View branch', variant: 'primary' },
-          { key: 'edit', icon: 'bi-pencil-fill', label: 'Edit' },
+          { key: 'edit', icon: 'bi-pencil-square', label: 'Edit branch', variant: 'primary' },
+          { key: 'view', icon: 'bi-eye-fill', label: 'View branch details' },
+          { key: 'employees', icon: 'bi-people-fill', label: 'Branch employees' },
         ],
       };
     });
@@ -101,9 +103,10 @@ export class Branches extends LocalListBase {
   onQuickAction(event: { row: TableRow; action: string }): void {
     if (event.action === 'view') this.open(event.row);
     if (event.action === 'edit') this.openDialog(BranchForm, { branchId: event.row['id'] }, '860px');
+    if (event.action === 'employees') this.router.navigate(['/app/branches', event.row['id'], 'employees']);
   }
 
-  exportExcel(): void {
-    downloadExcel(`branches-${fileStamp()}`, [this.exportSheet('Branches')]);
+  onExport(format: ExportFormat): void {
+    this.exportAs(format, 'branches', 'Branches');
   }
 }

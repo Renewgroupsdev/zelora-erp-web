@@ -6,9 +6,15 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { map } from 'rxjs';
 import { BranchService } from '../../../shared/common-services/branch.service';
+import { Employee } from '../../../shared/models/hr.model';
 import { initials } from '../../../shared/utils/format.util';
 import { EmployeeForm } from '../../hr-management/employees/employee-form/employee-form';
 import { EmployeeProfile } from '../../hr-management/employees/employee-profile/employee-profile';
+
+const TONES = ['blue', 'green', 'orange', 'purple', 'red'] as const;
+const DESIGNATION_ICONS: Record<string, string> = {
+  telecaller: 'bi-headset', 'sales executive': 'bi-graph-up-arrow', receptionist: 'bi-person-workspace', manager: 'bi-person-badge-fill',
+};
 
 /** Employees of one branch (from HR) with a designation summary. */
 @Component({
@@ -31,7 +37,7 @@ export class BranchEmployees {
   readonly designation = signal('');
   readonly status = signal('');
 
-  readonly all = computed(() => this.branch() ? this.store.employees(this.branch()!.name) : []);
+  readonly all = computed(() => (this.branch() ? this.store.employees(this.branch()!.name) : []));
   readonly designations = computed(() => [...new Set(this.all().map(e => e.designation))].sort());
   readonly rows = computed(() => {
     const q = this.search().trim().toLowerCase();
@@ -39,13 +45,26 @@ export class BranchEmployees {
       && (!this.status() || e.status === this.status())
       && (!q || [e.name, e.empCode, e.email, e.phone, e.designation].join(' ').toLowerCase().includes(q)));
   });
-  readonly summary = computed(() => this.designations().map(d => ({ designation: d, count: this.all().filter(e => e.designation === d).length })));
+  readonly summary = computed(() => this.designations().map((d, i) => ({
+    designation: d,
+    count: this.all().filter(e => e.designation === d).length,
+    tone: TONES[i % TONES.length],
+    icon: DESIGNATION_ICONS[d.toLowerCase()] ?? 'bi-person-fill',
+  })));
+
+  statusClass(status: string): string {
+    return status.toLowerCase().replace(' ', '-');
+  }
 
   view(empId: string): void {
     this.dialog.open(EmployeeProfile, { width: '920px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, data: { empId } });
   }
 
+  edit(employee: Employee): void {
+    this.dialog.open(EmployeeForm, { width: '900px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, disableClose: true, data: { employee } });
+  }
+
   addEmployee(): void {
-    this.dialog.open(EmployeeForm, { width: '900px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, disableClose: true, data: { employee: null } });
+    this.dialog.open(EmployeeForm, { width: '900px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, disableClose: true, data: { employee: null, branch: this.branch()?.name } });
   }
 }

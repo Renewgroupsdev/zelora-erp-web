@@ -6,14 +6,15 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { map } from 'rxjs';
 import { AccountsService } from '../../../shared/common-services/accounts.service';
 import { BranchService } from '../../../shared/common-services/branch.service';
-import { inrShort } from '../../../shared/models/branch-franchise.model';
+import { CrmFlowService } from '../../../shared/common-services/crm-flow.service';
+import { axisShort, chartTicks, inrShort } from '../../../shared/models/branch-franchise.model';
 import { billTotals } from '../../../shared/models/accounts.model';
 import { displayDate, initials, inr, isoDate } from '../../../shared/utils/format.util';
 import { BranchForm } from '../branch-form/branch-form';
 
-type Tab = 'overview' | 'employees' | 'customers' | 'sales';
+type Tab = 'overview' | 'employees' | 'leads' | 'customers' | 'appointments' | 'sales' | 'inventory' | 'reports';
 
-/** One branch: identity, head, KPIs, sales overview and recent activity. */
+/** One branch: identity, head, KPIs, sales vs target and recent activity, plus per-module tabs. */
 @Component({
   selector: 'app-branch-details',
   standalone: true,
@@ -26,36 +27,45 @@ export class BranchDetails {
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly acc = inject(AccountsService);
+  private readonly crm = inject(CrmFlowService);
   protected readonly store = inject(BranchService);
 
   readonly id = toSignal(this.route.paramMap.pipe(map(p => p.get('id') ?? '')), { initialValue: '' });
   readonly branch = computed(() => this.store.branch(this.id()));
   readonly tab = signal<Tab>('overview');
   readonly tabs: { key: Tab; label: string }[] = [
-    { key: 'overview', label: 'Overview' }, { key: 'employees', label: 'Employees' }, { key: 'customers', label: 'Customers' }, { key: 'sales', label: 'Sales' },
+    { key: 'overview', label: 'Overview' }, { key: 'employees', label: 'Employees' }, { key: 'leads', label: 'Leads' },
+    { key: 'customers', label: 'Customers' }, { key: 'appointments', label: 'Appointments' }, { key: 'sales', label: 'Sales' },
+    { key: 'inventory', label: 'Inventory' }, { key: 'reports', label: 'Reports' },
   ];
 
   readonly inr = inr;
   readonly inrShort = inrShort;
+  readonly axisShort = axisShort;
   readonly initials = initials;
   readonly displayDate = displayDate;
 
-  readonly employees = computed(() => this.branch() ? this.store.employees(this.branch()!.name) : []);
-  readonly monthlySales = computed(() => this.branch() ? this.store.sales(this.branch()!.name, isoDate().slice(0, 7)) : 0);
-  readonly chart = computed(() => {
-    const b = this.branch();
-    if (!b) return [];
-    const days = this.store.dailySales(b.name, 7);
-    const max = Math.max(1, ...days.map(d => d.value));
-    return days.map(d => ({ ...d, height: Math.max(2, (d.value / max) * 100) }));
+  private readonly name = computed(() => this.branch()?.name ?? '');
+  readonly employees = computed(() => (this.name() ? this.store.employees(this.name()) : []));
+  readonly monthlySales = computed(() => (this.name() ? this.store.sales(this.name(), isoDate().slice(0, 7)) : 0));
+  readonly inventoryValue = computed(() => (this.name() ? this.store.inventoryValue(this.name()) : 0));
+  readonly stock = computed(() => (this.name() ? this.store.stock(this.name()) : []));
+  readonly activities = computed(() => (this.name() ? this.store.activities(this.name()) : []));
+
+  /** Sales vs target bars for the last 7 months. */
+  readonly series = computed(() => (this.name() ? this.store.monthlySeries(this.name()) : []));
+  readonly hasTarget = computed(() => this.series().some(m => m.target > 0));
+  readonly ticks = computed(() => chartTicks(Math.max(...this.series().map(m => Math.max(m.sales, m.target)), 0)));
+  readonly bars = computed(() => {
+    const top = this.ticks()[this.ticks().length - 1] || 1;
+    return this.series().map(m => ({ ...m, salesH: (m.sales / top) * 100, targetH: (m.target / top) * 100 }));
   });
-  readonly activities = computed(() => this.branch() ? this.store.activities(this.branch()!.name) : []);
 
   readonly customers = computed(() => {
-    const b = this.branch();
-    if (!b) return [];
+    const name = this.name();
+    if (!name) return [];
     const byName = new Map<string, { name: string; phone: string; bills: number; billed: number; last: string }>();
-    for (const bill of this.acc.bills().filter(x => x.branch === b.name && x.kind === 'Service')) {
+    for (const bill of this.acc.bills().filter(x => x.branch === name && x.kind === 'Service')) {
       const key = bill.customerName.toLowerCase();
       const row = byName.get(key) ?? { name: bill.customerName, phone: bill.customerPhone, bills: 0, billed: 0, last: '' };
       row.bills++;
@@ -67,9 +77,22 @@ export class BranchDetails {
   });
 
   readonly sales = computed(() => {
-    const b = this.branch();
-    return b ? this.acc.vouchers().filter(v => v.branch === b.name && (v.type === 'Sales' || v.type === 'Receipt')).sort((a, c) => c.date.localeCompare(a.date) || c.createdAt.localeCompare(a.createdAt)).slice(0, 15) : [];
+    const name = this.name();
+    return name ? this.acc.vouchers().filter(v => v.branch === name && (v.type === 'Sales' || v.type === 'Receipt')).sort((a, c) => c.date.localeCompare(a.date) || c.createdAt.localeCompare(a.createdAt)).slice(0, 15) : [];
   });
+
+  /** CRM workflow data is held in memory by CrmFlowService (not signals), so read it when the tab renders. */
+  leads() {
+    return this.crm.getFollowUps().filter(l => l.branch === this.name());
+  }
+
+  appointments() {
+    return this.crm.getAppointments().filter(a => a.branch === this.name());
+  }
+
+  achievement(sales: number, target: number): string {
+    return target ? `${Math.round((sales / target) * 100)}%` : '-';
+  }
 
   amount(voucher: { entries: { debit: number }[] }): number {
     return voucher.entries.reduce((s, e) => s + e.debit, 0);

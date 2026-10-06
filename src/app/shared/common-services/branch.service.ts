@@ -1,8 +1,10 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { BranchRecord } from '../models/branch-franchise.model';
+import { BranchRecord, lastMonths, timeAgo } from '../models/branch-franchise.model';
 import { addDays, isoDate, loadState, saveState, uid } from '../utils/format.util';
 import { AccountsService } from './accounts.service';
 import { HrService } from './hr.service';
+import { PurchaseService } from './purchase.service';
+import { TargetsService } from './targets.service';
 
 const STORAGE_KEY = 'zelora_branches_store_v1';
 
@@ -12,7 +14,7 @@ interface BranchState {
 
 export interface BranchActivity {
   icon: string;
-  tone: 'blue' | 'green' | 'red' | 'orange';
+  tone: 'blue' | 'green' | 'red' | 'orange' | 'purple';
   title: string;
   detail: string;
   when: string;
@@ -26,6 +28,8 @@ export interface BranchActivity {
 export class BranchService {
   private readonly acc = inject(AccountsService);
   private readonly hr = inject(HrService);
+  private readonly purchase = inject(PurchaseService);
+  private readonly targets = inject(TargetsService);
   private readonly state = signal<BranchState>(loadState(STORAGE_KEY, seedState));
 
   readonly branches = computed(() => this.state().branches);
@@ -69,22 +73,44 @@ export class BranchService {
     });
   }
 
+  /** Monthly collections against the branch's revenue target (Targets module), oldest first. */
+  monthlySeries(name: string, months = 7): { key: string; label: string; sales: number; target: number }[] {
+    return lastMonths(months).map(m => ({ ...m, sales: this.sales(name, m.key), target: this.targets.targetFor(name, m.key).revenueTarget }));
+  }
+
+  /** Value of stock held at the branch store (Purchase / Inventory). */
+  inventoryValue(name: string): number {
+    return this.purchase.stock().filter(b => b.store === name).reduce((s, b) => s + b.qty * b.unitPrice, 0);
+  }
+
+  stock(name: string) {
+    return this.purchase.stock().filter(b => b.store === name && b.qty > 0);
+  }
+
+  /** Vouchers posted to the branch plus staff who joined it, newest first. */
   activities(name: string, limit = 6): BranchActivity[] {
-    return this.acc.vouchers()
+    const rupees = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+    const vouchers = this.acc.vouchers()
       .filter(v => v.branch === name)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, limit)
       .map(v => {
         const received = v.type === 'Receipt';
         const sale = v.type === 'Sales';
+        const amount = v.entries.reduce((s, e) => s + e.debit, 0);
         return {
-          icon: received ? 'bi-cash-coin' : sale ? 'bi-bag-check-fill' : 'bi-journal-text',
-          tone: received ? 'green' : sale ? 'blue' : v.type === 'Payment' ? 'red' : 'orange',
-          title: received ? 'Payment received' : sale ? 'Sale completed' : `${v.type} voucher`,
+          at: v.createdAt,
+          icon: received ? 'bi-cash-coin' : sale ? 'bi-bag-check-fill' : v.type === 'Payment' ? 'bi-wallet2' : 'bi-journal-text',
+          tone: received ? 'green' : sale ? 'red' : v.type === 'Payment' ? 'orange' : 'purple',
+          title: `${received ? 'Payment received' : sale ? 'Sale completed' : `${v.type} voucher`} ${rupees(amount)}`,
           detail: v.narration,
-          when: new Date(v.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-        } as BranchActivity;
+        };
       });
+    const joins = this.employees(name).filter(e => e.joinDate).map(e => ({
+      at: `${e.joinDate}T09:00:00`, icon: 'bi-person-plus-fill', tone: 'blue', title: 'New employee joined', detail: `${e.name} · ${e.designation}`,
+    }));
+    return [...vouchers, ...joins]
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, limit)
+      .map(({ at, ...a }) => ({ ...a, when: timeAgo(at) }) as BranchActivity);
   }
 
   add(input: Omit<BranchRecord, 'id' | 'code'>): BranchRecord | string {

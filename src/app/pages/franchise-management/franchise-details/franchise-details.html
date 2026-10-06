@@ -3,62 +3,68 @@
 
     <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
       <div>
-        <div class="crumbs"><a routerLink="/app/franchises">Franchise Management</a> <span>›</span> <span>Franchise Details</span></div>
-        <h6 class="page-title"><i class="bi bi-shop"></i> Franchise Details - {{ f.name }}</h6>
+        <h6 class="page-title">Franchise Details - {{ f.name }}</h6>
+        <div class="crumbs"><a routerLink="/app/franchises">Franchise Management</a> <span>›</span> <span class="current">Franchise Details</span></div>
       </div>
       <div class="header-actions">
         <button type="button" class="add-lead-btn" (click)="edit()"><i class="bi bi-pencil-square"></i> Edit</button>
-        <button type="button" class="ghost-btn" (click)="back()"><i class="bi bi-arrow-left"></i> Back</button>
+        <button type="button" class="ghost-btn" (click)="back()">Back</button>
       </div>
     </div>
 
-    <div class="detail-grid">
-      <div class="panel">
-        <div class="identity">
+    <div class="top-grid">
+      <div class="panel photo-card">
+        <div class="photo">
+          @if (f.photo) { <img [src]="f.photo" [alt]="f.name + ' franchise'" /> } @else { <i class="bi bi-shop" aria-hidden="true"></i> }
+        </div>
+        <div class="identity-row">
           <div>
-            <div class="photo"><i class="bi bi-shop"></i></div>
             <p class="code">{{ f.code }}</p>
             <p class="name">{{ f.name }}</p>
             <p class="sub">Franchise Partner</p>
-            <span class="status-pill" [ngClass]="f.status.toLowerCase()">{{ f.status }}</span>
           </div>
-          <div>
-            <h4><i class="bi bi-info-circle"></i> Basic Information</h4>
-            <dl class="kv">
-              <dt>Franchise Code</dt><dd>{{ f.code }}</dd>
-              <dt>Franchise Name</dt><dd>{{ f.name }}</dd>
-              <dt>Owner Name</dt><dd>{{ f.ownerCompany }}</dd>
-              <dt>City</dt><dd>{{ f.city }}</dd>
-              <dt>State</dt><dd>{{ f.state }}</dd>
-              <dt>Phone</dt><dd>{{ f.ownerPhone || '-' }}</dd>
-              <dt>Email</dt><dd>{{ f.ownerEmail || '-' }}</dd>
-              <dt>GST No</dt><dd>{{ f.gstin || '-' }}</dd>
-              <dt>Agreement Period</dt><dd>{{ displayDate(f.agreementFrom) }} to {{ displayDate(f.agreementTo) }}</dd>
-            </dl>
-          </div>
+          <span class="status-pill" [ngClass]="f.status.toLowerCase()">{{ f.status }}</span>
         </div>
       </div>
 
       <div class="panel">
-        <h4><i class="bi bi-person-badge"></i> Franchise Owner</h4>
+        <h4>Basic Information</h4>
+        <dl class="kv">
+          <dt>Franchise Code</dt><dd>{{ f.code }}</dd>
+          <dt>Franchise Name</dt><dd>{{ f.name }}</dd>
+          <dt>Owner Name</dt><dd>{{ f.ownerCompany }}</dd>
+          <dt>City</dt><dd>{{ f.city }}</dd>
+          <dt>State</dt><dd>{{ f.state }}</dd>
+          <dt>Phone</dt><dd>{{ f.ownerPhone || '-' }}</dd>
+          <dt>Email</dt><dd>{{ f.ownerEmail || '-' }}</dd>
+          <dt>GST No</dt><dd>{{ f.gstin || '-' }}</dd>
+          <dt>Agreement Period</dt><dd>{{ displayDate(f.agreementFrom) }} to {{ displayDate(f.agreementTo) }}</dd>
+        </dl>
+      </div>
+
+      <div class="panel">
+        <h4>Franchise Owner</h4>
         <div class="person"><div class="avatar">{{ initials(f.ownerName) }}</div><div><strong>{{ f.ownerName }}</strong><small>Owner</small></div></div>
         <div class="contact-line"><i class="bi bi-telephone"></i> {{ f.ownerPhone || '-' }}</div>
         <div class="contact-line"><i class="bi bi-envelope"></i> {{ f.ownerEmail || '-' }}</div>
 
-        <h4 style="margin-top: 14px"><i class="bi bi-sliders"></i> Share Configuration</h4>
-        <dl class="kv">
-          <dt>Franchise Share</dt><dd>{{ f.sharePercent }}%</dd>
-          <dt>Renew Company</dt><dd>{{ 100 - f.sharePercent }}%</dd>
-          <dt>Effective From</dt><dd>{{ displayDate(f.shareEffectiveFrom) }}</dd>
-        </dl>
+        <div class="share-config">
+          <div class="share-title"><i class="bi bi-pie-chart-fill"></i> Share Configuration</div>
+          <div class="share-cols">
+            <div><small>Franchise Share</small><strong>{{ f.sharePercent }}%</strong></div>
+            <div><small>Renew Company</small><strong>{{ 100 - f.sharePercent }}%</strong></div>
+            <div><small>Effective From</small><strong>{{ displayDate(f.shareEffectiveFrom) }}</strong></div>
+          </div>
+          <button type="button" class="outline-btn" (click)="tab.set('agreement')"><i class="bi bi-file-earmark-text"></i> View Agreement</button>
+        </div>
       </div>
     </div>
 
     <div class="kpis">
-      <div class="kpi"><span class="ico"><i class="bi bi-people"></i></span><div><small>Total Customers</small><strong>{{ customers() }}</strong></div></div>
-      <div class="kpi"><span class="ico"><i class="bi bi-graph-up-arrow"></i></span><div><small>Monthly Sales</small><strong>{{ inr(monthSales()).replace('.00', '') }}</strong></div></div>
-      <div class="kpi"><span class="ico"><i class="bi bi-person-workspace"></i></span><div><small>Employees</small><strong>{{ f.employees }}</strong></div></div>
-      <div class="kpi"><span class="ico"><i class="bi bi-hourglass-split"></i></span><div><small>Unpaid Invoices</small><strong>{{ inr(unpaid()).replace('.00', '') }}</strong></div></div>
+      <div class="kpi"><div class="kpi-head"><span class="ico tone-blue"><i class="bi bi-people-fill"></i></span> Total Customers</div><strong>{{ customers().length }}</strong></div>
+      <div class="kpi"><div class="kpi-head"><span class="ico tone-orange"><i class="bi bi-clock-history"></i></span> Monthly Sales</div><strong>{{ inr(monthSales()).replace('.00', '') }}</strong></div>
+      <div class="kpi"><div class="kpi-head"><span class="ico tone-purple"><i class="bi bi-person-badge-fill"></i></span> Employees</div><strong>{{ f.employees }}</strong></div>
+      <div class="kpi"><div class="kpi-head"><span class="ico tone-green"><i class="bi bi-box-seam-fill"></i></span> Inventory Value</div><strong>{{ inr(f.inventoryValue ?? 0).replace('.00', '') }}</strong></div>
     </div>
 
     <div class="panel">
@@ -68,65 +74,167 @@
         }
       </div>
 
-      @switch (tab()) {
-        @case ('overview') {
-          <div class="detail-grid" style="margin-top: 10px">
-            <div>
-              <h4><i class="bi bi-graph-up"></i> Sales Trend <small class="muted-note">last 7 months · invoice value</small></h4>
-              <div class="bars">
-                @for (d of chart(); track d.label) {
-                  <div class="col"><span class="val">{{ d.value ? inrShort(d.value) : '' }}</span><div class="bar" [style.height.%]="d.height" [title]="d.label + ': ' + inr(d.value)"></div></div>
+      <div class="tab-body">
+        @switch (tab()) {
+          @case ('overview') {
+            <div class="overview-grid">
+              <div>
+                <div class="chart-head">
+                  <h4>Sales Trend</h4>
+                  <div class="legend">
+                    <span><i class="dot sw-sales"></i> Sales</span>
+                    @if (chart().target) { <span><i class="dot sw-target"></i> Target</span> }
+                  </div>
+                </div>
+                <svg class="line-chart" [attr.viewBox]="'0 0 ' + chartW + ' ' + chartH" role="img" [attr.aria-label]="'Monthly sales trend for ' + f.name">
+                  <defs>
+                    <linearGradient id="salesArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="stop-a" /><stop offset="1" class="stop-b" /></linearGradient>
+                  </defs>
+                  <g class="grid">
+                    @for (g of chart().grid; track $index) {
+                      <line [attr.x1]="chart().left" [attr.x2]="chart().right" [attr.y1]="g.y" [attr.y2]="g.y" />
+                      <text [attr.x]="chart().left - 6" [attr.y]="g.y + 3" text-anchor="end">{{ g.label }}</text>
+                    }
+                  </g>
+                  <path class="area" [attr.d]="chart().area" />
+                  @if (chart().target) { <path class="line-target" [attr.d]="chart().target" /> }
+                  <path class="line-sales" [attr.d]="chart().line" />
+                  @for (p of chart().pts; track $index) {
+                    <circle class="pt" [attr.cx]="p.x" [attr.cy]="p.y" r="3.5"><title>{{ p.label }}: {{ inr(p.value) }}</title></circle>
+                    <text [attr.x]="p.x" [attr.y]="chart().labelY" text-anchor="middle">{{ p.label }}</text>
+                  }
+                </svg>
+              </div>
+              <div>
+                <h4>Recent Activities</h4>
+                @for (i of activities(); track i.id) {
+                  <a class="activity" [routerLink]="['/app/franchises', f.id, 'invoices', i.invoiceNo]">
+                    <span class="dot" [ngClass]="i.status === 'Paid' ? 'tone-green' : 'tone-orange'"><i class="bi" [ngClass]="i.status === 'Paid' ? 'bi-cash-coin' : 'bi-receipt'"></i></span>
+                    <div class="body"><strong>{{ i.status === 'Paid' ? 'Payment received' : 'Invoice generated' }} {{ inr(invoiceTotal(i.items)).replace('.00', '') }}</strong><small>{{ i.invoiceNo }} · {{ i.customer }}</small></div>
+                    <span class="when">{{ timeAgo(i.date + 'T10:00:00') }}</span>
+                  </a>
+                } @empty { <p class="muted-note">No invoices yet.</p> }
+              </div>
+            </div>
+          }
+          @case ('agreement') {
+            <dl class="kv" style="max-width: 560px">
+              <dt>Owner company</dt><dd>{{ f.ownerCompany }}</dd>
+              <dt>Owner</dt><dd>{{ f.ownerName }}</dd>
+              <dt>Agreement from</dt><dd>{{ displayDate(f.agreementFrom) }}</dd>
+              <dt>Agreement to</dt><dd>{{ displayDate(f.agreementTo) }}</dd>
+              <dt>Franchise share</dt><dd>{{ f.sharePercent }}% of every invoice</dd>
+              <dt>Renew share</dt><dd>{{ 100 - f.sharePercent }}% of every invoice</dd>
+              <dt>Share effective</dt><dd>{{ displayDate(f.shareEffectiveFrom) }}</dd>
+              <dt>GST No</dt><dd>{{ f.gstin || '-' }}</dd>
+            </dl>
+          }
+          @case ('employees') {
+            @if (staff().length) {
+              <div class="table-scroll">
+                <table class="simple-table">
+                  <thead><tr><th>ID</th><th>Name</th><th>Designation</th><th>Phone</th><th>Status</th></tr></thead>
+                  <tbody>
+                    @for (e of staff(); track e.id) {
+                      <tr><td>{{ e.empCode }}</td><td><div class="name-cell"><span class="avatar sm" [ngClass]="'tone-' + ($index % 5)">{{ initials(e.name) }}</span><strong>{{ e.name }}</strong></div></td><td>{{ e.designation }}</td><td>{{ e.phone }}</td><td><span class="status-pill active">{{ e.status }}</span></td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <div class="empty-tab"><i class="bi bi-people"></i><strong>{{ f.employees }} employees reported by the partner</strong><span>Franchise staff are employed by {{ f.ownerCompany }} and are not on the Renew HR roll.</span></div>
+            }
+          }
+          @case ('leads') {
+            @if (leads(); as list) {
+              @if (list.length) {
+                <div class="table-scroll">
+                  <table class="simple-table">
+                    <thead><tr><th>Name</th><th>Phone</th><th>Source</th><th>Telecaller</th><th>Follow-up</th><th>Status</th></tr></thead>
+                    <tbody>
+                      @for (l of list; track l.id) {
+                        <tr><td><strong>{{ l.name }}</strong></td><td>{{ l.phone }}</td><td>{{ l.source }}</td><td>{{ l.telecaller }}</td><td>{{ displayDate(l.followUpDate) }}</td><td><span class="status-pill pending">{{ l.status }}</span></td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <div class="empty-tab"><i class="bi bi-person-lines-fill"></i><strong>No open leads for {{ f.name }}</strong><span>Leads routed to this franchise for follow-up show here.</span></div>
+              }
+            }
+          }
+          @case ('customers') {
+            <div class="table-scroll">
+              <table class="simple-table">
+                <thead><tr><th>Customer</th><th class="num">Invoices</th><th class="num">Billed</th><th>Last visit</th></tr></thead>
+                <tbody>
+                  @for (c of customers(); track c.name) {
+                    <tr><td><div class="name-cell"><span class="avatar sm" [ngClass]="'tone-' + ($index % 5)">{{ initials(c.name) }}</span><strong>{{ c.name }}</strong></div></td><td class="num">{{ c.invoices }}</td><td class="num">{{ inr(c.billed) }}</td><td>{{ displayDate(c.last) }}</td></tr>
+                  } @empty { <tr><td colspan="4" class="muted-note">No customers invoiced yet.</td></tr> }
+                </tbody>
+              </table>
+            </div>
+          }
+          @case ('appointments') {
+            @if (appointments(); as list) {
+              @if (list.length) {
+                <div class="table-scroll">
+                  <table class="simple-table">
+                    <thead><tr><th>Customer</th><th>Service</th><th>Date</th><th>Time</th><th>Staff</th><th class="num">Amount</th><th>Payment</th></tr></thead>
+                    <tbody>
+                      @for (a of list; track a.id) {
+                        <tr><td><strong>{{ a.name }}</strong></td><td>{{ a.service }}</td><td>{{ displayDate(a.date) }}</td><td>{{ a.startTime }}</td><td>{{ a.staff }}</td><td class="num">{{ inr(a.total) }}</td><td><span class="status-pill" [ngClass]="a.paymentStatus === 'Paid' ? 'paid' : 'pending'">{{ a.paymentStatus }}</span></td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <div class="empty-tab"><i class="bi bi-calendar2-check"></i><strong>No appointments booked at {{ f.name }}</strong><span>Appointments booked for this franchise show here.</span></div>
+              }
+            }
+          }
+          @case ('sales') {
+            <div class="table-scroll">
+              <table class="simple-table">
+                <thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th class="num">Total</th><th class="num">Franchise ({{ f.sharePercent }}%)</th><th class="num">Renew ({{ 100 - f.sharePercent }}%)</th><th>Status</th></tr></thead>
+                <tbody>
+                  @for (i of invoices(); track i.id) {
+                    <tr class="click" tabindex="0" [routerLink]="['/app/franchises', f.id, 'invoices', i.invoiceNo]">
+                      <td><strong>{{ i.invoiceNo }}</strong></td><td>{{ displayDate(i.date) }}</td><td>{{ i.customer }}</td>
+                      <td class="num">{{ inr(invoiceTotal(i.items)) }}</td>
+                      <td class="num">{{ inr(splitShare(invoiceTotal(i.items), f.sharePercent).franchise) }}</td>
+                      <td class="num">{{ inr(splitShare(invoiceTotal(i.items), f.sharePercent).renew) }}</td>
+                      <td><span class="status-pill" [ngClass]="i.status.toLowerCase()">{{ i.status }}</span></td>
+                    </tr>
+                  } @empty { <tr><td colspan="7" class="muted-note">No invoices yet.</td></tr> }
+                </tbody>
+                @if (invoices().length) {
+                  <tfoot><tr><td colspan="3">Total</td><td class="num">{{ inr(totals().total) }}</td><td class="num">{{ inr(totals().franchise) }}</td><td class="num">{{ inr(totals().renew) }}</td><td></td></tr></tfoot>
                 }
-              </div>
-              <div class="bar-labels">@for (d of chart(); track d.label) { <span>{{ d.label }}</span> }</div>
-              <div class="chips-row" style="margin-top: 12px">
-                <div class="share-box"><small>Total Sales</small><strong>{{ inr(totals().total).replace('.00', '') }}</strong></div>
-                <div class="share-box"><small>Franchise Share ({{ f.sharePercent }}%)</small><strong>{{ inr(totals().franchise).replace('.00', '') }}</strong></div>
-                <div class="share-box"><small>Renew Share ({{ 100 - f.sharePercent }}%)</small><strong>{{ inr(totals().renew).replace('.00', '') }}</strong></div>
-              </div>
+              </table>
             </div>
-            <div>
-              <h4><i class="bi bi-activity"></i> Recent Activities</h4>
-              @for (i of activities(); track i.id) {
-                <a class="activity" [routerLink]="['/app/franchises', f.id, 'invoices', i.invoiceNo]" style="text-decoration: none">
-                  <span class="dot" [ngClass]="i.status === 'Paid' ? 'green' : 'orange'"><i class="bi" [ngClass]="i.status === 'Paid' ? 'bi-receipt' : 'bi-hourglass-split'"></i></span>
-                  <div class="body"><strong>{{ i.status === 'Paid' ? 'Invoice paid' : 'Invoice generated' }} {{ inr(invoiceTotal(i.items)).replace('.00', '') }}</strong><small>{{ i.invoiceNo }} · {{ i.customer }}</small></div>
-                  <span class="when">{{ displayDate(i.date) }}</span>
-                </a>
-              } @empty { <p class="muted-note">No invoices yet.</p> }
+          }
+          @case ('inventory') {
+            <div class="kpis" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))">
+              <div class="share-box"><small>Stock Value (reported)</small><strong>{{ inr(f.inventoryValue ?? 0).replace('.00', '') }}</strong></div>
+              <div class="share-box"><small>Unpaid Invoices</small><strong>{{ inr(unpaid()).replace('.00', '') }}</strong></div>
             </div>
-          </div>
+            <p class="muted-note" style="margin-top: 10px">Franchise stock is held by {{ f.ownerCompany }}; update the reported value from Edit.</p>
+          }
+          @case ('reports') {
+            <div class="table-scroll">
+              <table class="simple-table">
+                <thead><tr><th>Month</th><th class="num">Invoices</th><th class="num">Total Sales</th><th class="num">Franchise ({{ f.sharePercent }}%)</th><th class="num">Renew ({{ 100 - f.sharePercent }}%)</th></tr></thead>
+                <tbody>
+                  @for (m of monthly(); track m.key) {
+                    <tr><td>{{ m.label }} {{ m.key.slice(0, 4) }}</td><td class="num">{{ m.count }}</td><td class="num">{{ inr(m.total) }}</td><td class="num">{{ inr(m.franchise) }}</td><td class="num">{{ inr(m.renew) }}</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
         }
-        @case ('agreement') {
-          <dl class="kv" style="margin-top: 12px; max-width: 520px">
-            <dt>Owner company</dt><dd>{{ f.ownerCompany }}</dd>
-            <dt>Agreement from</dt><dd>{{ displayDate(f.agreementFrom) }}</dd>
-            <dt>Agreement to</dt><dd>{{ displayDate(f.agreementTo) }}</dd>
-            <dt>Franchise share</dt><dd>{{ f.sharePercent }}% of every invoice</dd>
-            <dt>Renew share</dt><dd>{{ 100 - f.sharePercent }}% of every invoice</dd>
-            <dt>Share effective</dt><dd>{{ displayDate(f.shareEffectiveFrom) }}</dd>
-            <dt>GST No</dt><dd>{{ f.gstin || '-' }}</dd>
-          </dl>
-        }
-        @case ('invoices') {
-          <div class="table-scroll" style="margin-top: 10px">
-            <table class="simple-table">
-              <thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th class="num">Total</th><th class="num">Franchise ({{ f.sharePercent }}%)</th><th class="num">Renew ({{ 100 - f.sharePercent }}%)</th><th>Status</th></tr></thead>
-              <tbody>
-                @for (i of invoices(); track i.id) {
-                  <tr class="click" tabindex="0" [routerLink]="['/app/franchises', f.id, 'invoices', i.invoiceNo]">
-                    <td><strong>{{ i.invoiceNo }}</strong></td><td>{{ displayDate(i.date) }}</td><td>{{ i.customer }}</td>
-                    <td class="num">{{ inr(invoiceTotal(i.items)) }}</td>
-                    <td class="num">{{ inr(splitShare(invoiceTotal(i.items), f.sharePercent).franchise) }}</td>
-                    <td class="num">{{ inr(splitShare(invoiceTotal(i.items), f.sharePercent).renew) }}</td>
-                    <td><span class="status-pill" [ngClass]="i.status.toLowerCase()">{{ i.status }}</span></td>
-                  </tr>
-                } @empty { <tr><td colspan="7" class="muted-note">No invoices yet.</td></tr> }
-              </tbody>
-            </table>
-          </div>
-        }
-      }
+      </div>
     </div>
   </div>
 } @else {

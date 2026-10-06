@@ -3,7 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { FranchiseService } from '../../../shared/common-services/franchise.service';
-import { FranchiseRecord } from '../../../shared/models/branch-franchise.model';
+import { FranchiseRecord, readPhoto } from '../../../shared/models/branch-franchise.model';
 import { addDays, isoDate } from '../../../shared/utils/format.util';
 
 type FranchiseInput = Omit<FranchiseRecord, 'id' | 'code'>;
@@ -30,7 +30,7 @@ export class FranchiseForm {
     ? structuredClone((({ id, code, ...rest }) => rest)(this.existing))
     : {
       name: '', ownerCompany: '', ownerName: '', ownerPhone: '', ownerEmail: '', city: '', state: 'Tamil Nadu', gstin: '', status: 'Pending',
-      agreementFrom: isoDate(), agreementTo: addDays(isoDate(), 365 * 3), sharePercent: 70, shareEffectiveFrom: isoDate(), employees: 0,
+      agreementFrom: isoDate(), agreementTo: addDays(isoDate(), 365 * 3), sharePercent: 70, shareEffectiveFrom: isoDate(), employees: 0, inventoryValue: 0,
     };
 
   get renewPercent(): number {
@@ -42,7 +42,7 @@ export class FranchiseForm {
     this.serverError.set(null);
     const share = Number(this.model.sharePercent);
     if (form.invalid || !(share >= 0 && share <= 100)) return;
-    const payload = { ...this.model, sharePercent: share, employees: Number(this.model.employees) || 0, gstin: this.model.gstin.trim().toUpperCase() };
+    const payload = { ...this.model, sharePercent: share, employees: Number(this.model.employees) || 0, inventoryValue: Math.max(0, Number(this.model.inventoryValue) || 0), gstin: this.model.gstin.trim().toUpperCase() };
     if (this.existing) {
       this.store.update(this.existing.id, payload);
       this.dialogRef.close(this.store.franchise(this.existing.id));
@@ -54,6 +54,19 @@ export class FranchiseForm {
       return;
     }
     this.dialogRef.close(result);
+  }
+
+  async onPhoto(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      this.model.photo = await readPhoto(file);
+      this.serverError.set(null);
+    } catch (e) {
+      this.serverError.set((e as Error).message);
+    }
   }
 
   close(): void {

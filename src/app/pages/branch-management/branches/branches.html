@@ -6,7 +6,6 @@
       <p class="page-subtitle">Manage your company owned branches and their operations.</p>
     </div>
     <div class="header-actions">
-      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export</button>
       <button type="button" class="add-lead-btn" (click)="addBranch()"><i class="bi bi-plus-lg"></i> Add Branch</button>
     </div>
   </div>
@@ -20,9 +19,9 @@
   </div>
 
   <app-common-filter-card
-    searchPlaceholder="Search branch, head or city"
+    searchPlaceholder="Search branch..."
     [filters]="filters"
-    [showExport]="false"
+    (exportClick)="onExport($event)"
     (searchChange)="onSearch($event)"
     (filtersChange)="onFiltersChange($event)"
   ></app-common-filter-card>
@@ -43,6 +42,7 @@
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
       (quickActionClick)="onQuickAction($event)"
+      (profileClick)="open($event)"
     ></app-common-table-card>
   </div>
 </div>

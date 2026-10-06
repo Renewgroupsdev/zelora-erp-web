@@ -16,7 +16,8 @@ import { isoDate, uid } from '../../../../shared/utils/format.util';
 })
 export class EmployeeForm {
   private readonly dialogRef = inject(MatDialogRef<EmployeeForm>);
-  private readonly data = inject<{ employee: Employee | null; candidateId?: string }>(MAT_DIALOG_DATA);
+  /** `branch` pre-selects the branch when adding from Branch Management. */
+  private readonly data = inject<{ employee: Employee | null; candidateId?: string; branch?: string }>(MAT_DIALOG_DATA);
   readonly hr = inject(HrService);
 
   readonly departments = DEPARTMENTS;
@@ -29,7 +30,7 @@ export class EmployeeForm {
     ? structuredClone((({ id, empCode, status, ...rest }) => rest)(this.data.employee))
     : this.hr.employeeDraftFor(this.candidateId ?? '') ?? {
       name: '', gender: 'Female', dob: null, phone: '', email: '', address: '', bloodGroup: '',
-      designation: '', department: DEPARTMENTS[0], branch: this.hr.branches[0], reportingTo: '', joinDate: isoDate(),
+      designation: '', department: DEPARTMENTS[0], branch: this.hr.branches.includes(this.data.branch ?? '') ? this.data.branch! : this.hr.branches[0], reportingTo: '', joinDate: isoDate(),
       employmentType: 'Full Time', pan: '', aadhaarLast4: '', uan: '', bankName: '', accountNo: '', ifsc: '',
       emergencyContact: '', secondaryPhone: '', referralSource: '', referredBy: '', referralPhone: '', kycDocuments: [],
       salary: structureFromGross(20000),

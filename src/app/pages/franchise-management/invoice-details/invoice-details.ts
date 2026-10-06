@@ -7,7 +7,7 @@ import { FranchiseService } from '../../../shared/common-services/franchise.serv
 import { invoiceTotal, splitShare } from '../../../shared/models/branch-franchise.model';
 import { displayDate, inr } from '../../../shared/utils/format.util';
 
-type Tab = 'items' | 'share' | 'notes';
+type Tab = 'items' | 'share' | 'payments' | 'notes';
 
 /** One franchise invoice with its 70 / 30 style split between the partner and Renew. */
 @Component({
@@ -25,14 +25,14 @@ export class InvoiceDetails {
   readonly franchise = computed(() => this.store.franchise(this.params().id));
   readonly invoice = computed(() => this.store.invoice(this.params().id, this.params().no));
   readonly tab = signal<Tab>('items');
-  readonly tabs: { key: Tab; label: string }[] = [{ key: 'items', label: 'Invoice Items' }, { key: 'share', label: 'Share Details' }, { key: 'notes', label: 'Notes' }];
+  readonly tabs: { key: Tab; label: string }[] = [{ key: 'items', label: 'Invoice Items' }, { key: 'share', label: 'Share Details' }, { key: 'payments', label: 'Payments' }, { key: 'notes', label: 'Notes' }];
 
   readonly inr = inr;
   readonly displayDate = displayDate;
   readonly total = computed(() => invoiceTotal(this.invoice()?.items ?? []));
   readonly split = computed(() => splitShare(this.total(), this.franchise()?.sharePercent ?? 70));
   /** Doughnut: franchise slice first, Renew slice after. */
-  readonly ring = computed(() => `conic-gradient(var(--primary) 0 ${this.franchise()?.sharePercent ?? 70}%, var(--status-green-text) 0 100%)`);
+  readonly ring = computed(() => `conic-gradient(var(--status-blue-text) 0 ${this.franchise()?.sharePercent ?? 70}%, var(--status-green-text) 0 100%)`);
 
   lineSplit(qty: number, unitPrice: number) {
     return splitShare(qty * unitPrice, this.franchise()?.sharePercent ?? 70);

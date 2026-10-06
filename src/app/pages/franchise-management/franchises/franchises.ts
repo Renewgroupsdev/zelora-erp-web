@@ -7,9 +7,8 @@ import { CommonDetailCard } from '../../../shared/components/common-detail-card/
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
 import { LocalListBase } from '../../../shared/components/local-list-base';
-import { DetailCardData, TableColumn, TableRow } from '../../../shared/models/common-components.model';
-import { inrShort } from '../../../shared/models/branch-franchise.model';
-import { downloadExcel, fileStamp } from '../../../shared/utils/export.util';
+import { DetailCardData, ExportFormat, TableColumn, TableRow } from '../../../shared/models/common-components.model';
+import { inrShort, invoiceTotal, lastMonths } from '../../../shared/models/branch-franchise.model';
 import { FranchiseForm } from '../franchise-form/franchise-form';
 
 /** Franchise Management: partner outlets with their sales and the Renew company share. */
@@ -50,12 +49,15 @@ export class Franchises extends LocalListBase {
   readonly stats = computed<DetailCardData[]>(() => {
     const list = this.store.franchises();
     const overall = this.store.overall();
+    // Month-on-month growth of invoice value across all franchises.
+    const [prev, current] = lastMonths(2).map(m => this.store.invoices().filter(i => i.date.startsWith(m.key)).reduce((s, i) => s + invoiceTotal(i.items), 0));
+    const growth = prev ? Math.round(((current - prev) / prev) * 100) : null;
     return [
-      { label: 'Total Franchises', value: list.length, icon: 'bi-shop', iconVariant: 'primary' },
+      { label: 'Total Franchises', value: list.length, icon: 'bi-shop', iconVariant: 'blue' },
       { label: 'Active Franchises', value: list.filter(f => f.status === 'Active').length, icon: 'bi-check-circle-fill', iconVariant: 'green' },
       { label: 'Pending', value: list.filter(f => f.status === 'Pending').length, icon: 'bi-hourglass-split', iconVariant: 'orange' },
-      { label: 'Total Sales', value: inrShort(overall.total), icon: 'bi-currency-rupee', iconVariant: 'blue' },
-      { label: 'Renew Share (Company)', value: inrShort(overall.renew), trendText: `${overall.renewPercent}% of total`, trendDirection: 'up', icon: 'bi-percent', iconVariant: 'purple' },
+      { label: 'Total Sales', value: inrShort(overall.total), trendText: growth === null ? undefined : `${growth >= 0 ? '+' : ''}${growth}% growth`, trendDirection: growth !== null && growth < 0 ? 'down' : 'up', icon: 'bi-graph-up-arrow', iconVariant: 'blue' },
+      { label: 'Renew Share (Company)', value: inrShort(overall.renew), trendText: `${overall.renewPercent}% of total`, trendDirection: 'neutral', icon: 'bi-percent', iconVariant: 'purple' },
     ];
   });
 
@@ -76,8 +78,8 @@ export class Franchises extends LocalListBase {
         sales: `₹${Math.round(t.total).toLocaleString('en-IN')}`, __sales: t.total,
         renew: `₹${Math.round(t.renew).toLocaleString('en-IN')}`, __renew: t.renew,
         actions: [
-          { key: 'view', icon: 'bi-eye-fill', label: 'View franchise', variant: 'primary' },
-          { key: 'edit', icon: 'bi-pencil-fill', label: 'Edit' },
+          { key: 'edit', icon: 'bi-pencil-square', label: 'Edit franchise', variant: 'primary' },
+          { key: 'view', icon: 'bi-eye-fill', label: 'View franchise details' },
         ],
       };
     });
@@ -92,7 +94,11 @@ export class Franchises extends LocalListBase {
     if (event.action === 'edit') this.openDialog(FranchiseForm, { franchiseId: event.row['id'] }, '860px');
   }
 
-  exportExcel(): void {
-    downloadExcel(`franchises-${fileStamp()}`, [this.exportSheet('Franchises')]);
+  open(row: TableRow): void {
+    this.router.navigate(['/app/franchises', row['id']]);
+  }
+
+  onExport(format: ExportFormat): void {
+    this.exportAs(format, 'franchises', 'Franchises');
   }
 }

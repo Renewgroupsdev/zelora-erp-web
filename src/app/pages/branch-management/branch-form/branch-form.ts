@@ -3,7 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { BranchService } from '../../../shared/common-services/branch.service';
-import { BranchRecord } from '../../../shared/models/branch-franchise.model';
+import { BranchRecord, readPhoto } from '../../../shared/models/branch-franchise.model';
 import { isoDate } from '../../../shared/utils/format.util';
 
 type BranchInput = Omit<BranchRecord, 'id' | 'code'>;
@@ -40,6 +40,19 @@ export class BranchForm {
       return;
     }
     this.dialogRef.close(this.existing ? this.store.branch(this.existing.id) : (result as BranchRecord));
+  }
+
+  async onPhoto(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      this.model.photo = await readPhoto(file);
+      this.serverError.set(null);
+    } catch (e) {
+      this.serverError.set((e as Error).message);
+    }
   }
 
   close(): void {

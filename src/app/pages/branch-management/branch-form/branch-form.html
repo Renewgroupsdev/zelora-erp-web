@@ -63,6 +63,14 @@
           <label for="br-opened">Opened On</label>
           <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="br-opened" type="date" name="openedOn" [(ngModel)]="model.openedOn" /></div>
         </div>
+        <div class="form-field full-width">
+          <label for="br-photo">Branch Photo</label>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+            @if (model.photo) { <img [src]="model.photo" alt="Branch photo preview" style="width: 96px; height: 64px; object-fit: cover; border-radius: 8px" /> }
+            <input id="br-photo" type="file" accept="image/*" (change)="onPhoto($event)" />
+            @if (model.photo) { <button type="button" class="cancel-btn" (click)="model.photo = undefined">Remove</button> }
+          </div>
+        </div>
       </div>
 
       <div class="section-title"><i class="bi bi-person-badge"></i> Branch Head</div>
