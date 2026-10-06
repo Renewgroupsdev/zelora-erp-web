@@ -185,3 +185,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+.date-nav.range {
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}

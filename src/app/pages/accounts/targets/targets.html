@@ -1,0 +1,236 @@
+@let t = totals();
+@let canEdit = access().canEdit;
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-bullseye"></i> Targets &amp; Incentives</h6>
+      <p class="page-subtitle">
+        @switch (access().level) {
+          @case ('all') { Admin view: every branch and every employee, split by Hair, Skin, Slimming and Combo. }
+          @case ('branch') { Branch view: {{ access().branch }} and its employees. }
+          @default { Your own targets and achievement. }
+        }
+      </p>
+    </div>
+    <div class="header-actions">
+      <div class="segment" role="tablist" aria-label="Target view">
+        <button type="button" role="tab" [class.active]="view() === 'branches'" (click)="view.set('branches')">Branches</button>
+        <button type="button" role="tab" [class.active]="view() === 'employees'" (click)="view.set('employees')">Employees</button>
+        <button type="button" role="tab" [class.active]="view() === 'treatments'" (click)="view.set('treatments')">Treatments</button>
+      </div>
+      <input class="date-input" type="month" aria-label="Month" [ngModel]="month()" (ngModelChange)="setMonth($event)" />
+      @if (canEdit) {
+        <button type="button" class="ghost-btn" (click)="copyPrevious()"><i class="bi bi-files"></i> Copy last month</button>
+      }
+      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+    </div>
+  </div>
+
+  <app-module-tabs [tabs]="tabs()" label="Accounts"></app-module-tabs>
+
+  @if (!canEdit) {
+    <div class="info-note"><i class="bi bi-eye"></i> View only. Targets and incentive rules are set by an admin or super admin.</div>
+  }
+
+  <!-- ===================== BRANCHES ===================== -->
+  @if (view() === 'branches') {
+    <div class="kpi-row">
+      <div class="kpi"><small>Total target</small><strong>{{ inr(t.target) }}</strong><span>{{ rows().length }} branches</span></div>
+      <div class="kpi in"><small>Achieved</small><strong>{{ inr(t.achieved) }}</strong><span>{{ t.percent.toFixed(1) }}% of target</span></div>
+      <div class="kpi"><small>Branch incentive</small><strong>{{ inr(t.revenueIncentive) }}</strong><span>slab on revenue</span></div>
+      <div class="kpi"><small>Telecaller incentive</small><strong>{{ inr(t.telecallerIncentive) }}</strong><span>{{ t.conversions }} / {{ t.conversionTarget }} conversions</span></div>
+      <div class="kpi close"><small>Total incentive payable</small><strong>{{ inr(t.incentive) }}</strong><span>for {{ month() }}</span></div>
+    </div>
+
+    <div class="card-block">
+      <h4><i class="bi bi-building"></i> Branch-wise performance</h4>
+      <div class="table-scroll">
+        <table class="targets-table">
+          <thead>
+            <tr>
+              <th>Branch</th>
+              <th>Revenue target (₹)</th>
+              <th>Achieved</th>
+              <th class="progress-col">Achievement</th>
+              <th>Slab</th>
+              <th>Branch incentive</th>
+              <th>Conv. target</th>
+              <th>Conversions</th>
+              <th>Telecaller incentive</th>
+              <th>Total incentive</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of rows(); track r.branch) {
+              <tr>
+                <td><strong>{{ r.branch }}</strong></td>
+                <td><input class="num" type="number" min="0" step="1000" [disabled]="!canEdit" [attr.aria-label]="r.branch + ' revenue target'" [ngModel]="r.revenueTarget" (change)="setField(r, 'revenueTarget', $any($event.target).value)" /></td>
+                <td class="amt">{{ inr(r.achieved) }}</td>
+                <td class="progress-col">
+                  <div class="bar" [title]="r.percent.toFixed(1) + '%'"><span [class]="statusClass(r.status)" [style.width.%]="r.percent > 100 ? 100 : r.percent"></span></div>
+                  <small>{{ r.percent.toFixed(1) }}%</small>
+                </td>
+                <td>{{ r.slabRate ? r.slabRate + '%' : '–' }}</td>
+                <td class="amt">{{ inr(r.revenueIncentive) }}</td>
+                <td><input class="num sm" type="number" min="0" [disabled]="!canEdit" [attr.aria-label]="r.branch + ' conversion target'" [ngModel]="r.conversionTarget" (change)="setField(r, 'conversionTarget', $any($event.target).value)" /></td>
+                <td><input class="num sm" type="number" min="0" [disabled]="!canEdit" [attr.aria-label]="r.branch + ' conversions'" [ngModel]="r.conversions" (change)="setField(r, 'conversions', $any($event.target).value)" /></td>
+                <td class="amt">{{ inr(r.telecallerIncentive) }}</td>
+                <td class="amt total">{{ inr(r.totalIncentive) }}</td>
+                <td><span [class]="'pill ' + statusClass(r.status)">{{ r.status }}</span></td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>Total</td>
+              <td class="amt">{{ inr(t.target) }}</td>
+              <td class="amt">{{ inr(t.achieved) }}</td>
+              <td class="progress-col">{{ t.percent.toFixed(1) }}%</td>
+              <td></td>
+              <td class="amt">{{ inr(t.revenueIncentive) }}</td>
+              <td>{{ t.conversionTarget }}</td>
+              <td>{{ t.conversions }}</td>
+              <td class="amt">{{ inr(t.telecallerIncentive) }}</td>
+              <td class="amt total">{{ inr(t.incentive) }}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p class="muted-note">Conversions are entered by hand for now; they will come from the lead conversion report once the API is connected.</p>
+    </div>
+
+    @if (canEdit) {
+      <div class="rules-row">
+        <div class="card-block">
+          <h4><i class="bi bi-graph-up-arrow"></i> Incentive slabs (branches and employees)</h4>
+          @for (s of slabDraft(); track $index) {
+            <div class="slab">
+              <span>Achievement ≥</span>
+              <input class="num sm" type="number" min="0" aria-label="Minimum achievement percent" [ngModel]="s.minPercent" (ngModelChange)="patchSlab($index, 'minPercent', $event)" /> %
+              <span>pays</span>
+              <input class="num sm" type="number" min="0" step="0.5" aria-label="Incentive rate percent" [ngModel]="s.ratePercent" (ngModelChange)="patchSlab($index, 'ratePercent', $event)" /> % of achieved
+              <button type="button" class="icon-btn" aria-label="Remove slab" (click)="removeSlab($index)"><i class="bi bi-x-lg"></i></button>
+            </div>
+          }
+          <button type="button" class="ghost-btn" (click)="addSlab()"><i class="bi bi-plus-lg"></i> Add slab</button>
+        </div>
+
+        <div class="card-block">
+          <h4><i class="bi bi-headset"></i> Telecaller conversion incentive</h4>
+          <label class="field">Per converted lead (₹)
+            <input class="num" type="number" min="0" [ngModel]="perConversion()" (ngModelChange)="perConversion.set($event)" />
+          </label>
+          <label class="field">Bonus when conversion target is met (₹)
+            <input class="num" type="number" min="0" [ngModel]="conversionBonus()" (ngModelChange)="conversionBonus.set($event)" />
+          </label>
+          <button type="button" class="add-lead-btn" (click)="saveRules()"><i class="bi bi-check-lg"></i> Save incentive rules</button>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ===================== EMPLOYEES ===================== -->
+  @if (view() === 'employees') {
+    @let et = employeeTotals();
+    <div class="kpi-row three">
+      <div class="kpi"><small>Employee targets</small><strong>{{ inr(et.target) }}</strong><span>{{ employees().length }} employees</span></div>
+      <div class="kpi in"><small>Achieved</small><strong>{{ inr(et.achieved) }}</strong><span>{{ et.percent.toFixed(1) }}% of target</span></div>
+      <div class="kpi close"><small>Employee incentive</small><strong>{{ inr(et.incentive) }}</strong><span>slab on each employee's total</span></div>
+    </div>
+
+    <div class="card-block">
+      <div class="block-head">
+        <h4><i class="bi bi-people-fill"></i> Employee-wise treatment targets</h4>
+        @if (access().level === 'all') {
+          <select class="num" aria-label="Filter branch" [ngModel]="empBranch()" (ngModelChange)="empBranch.set($event)">
+            <option value="">All branches</option>
+            @for (b of store.branches; track b) { <option [value]="b">{{ b }}</option> }
+          </select>
+        }
+      </div>
+      <div class="table-scroll">
+        <table class="targets-table emp">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              @for (c of categories; track c) { <th><i [class]="'bi ' + icons[c]"></i> {{ c }}</th> }
+              <th>Total</th>
+              <th class="progress-col">Achievement</th>
+              <th>Incentive</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of employees(); track e.employeeId) {
+              <tr>
+                <td><strong>{{ e.name }}</strong><small class="sub">{{ e.designation }} · {{ e.branch }}</small></td>
+                @for (c of categories; track c) {
+                  <td>
+                    <input class="num sm" type="number" min="0" step="1000" [disabled]="!canEdit" [attr.aria-label]="e.name + ' ' + c + ' target'" [ngModel]="e.categories[c].target" (change)="setEmployeeTarget(e.employeeId, c, $any($event.target).value)" />
+                    <small class="sub">{{ inr(e.categories[c].achieved) }} · {{ e.categories[c].target ? e.categories[c].percent.toFixed(0) + '%' : '–' }}</small>
+                  </td>
+                }
+                <td class="amt"><strong>{{ inr(e.target) }}</strong><small class="sub">{{ inr(e.achieved) }}</small></td>
+                <td class="progress-col">
+                  <div class="bar"><span [class]="statusClass(e.status)" [style.width.%]="e.percent > 100 ? 100 : e.percent"></span></div>
+                  <small>{{ e.percent.toFixed(1) }}%{{ e.slabRate ? ' · slab ' + e.slabRate + '%' : '' }}</small>
+                </td>
+                <td class="amt total">{{ inr(e.incentive) }}</td>
+                <td><span [class]="'pill ' + statusClass(e.status)">{{ e.status }}</span></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="9" class="empty">No employees to show for this view.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="muted-note">Each cell: target (editable by admin), then collected amount · achievement %. Collections are credited from the bill's "Sold by" employee; a bill with items from two or more treatment lines counts as Combo.</p>
+    </div>
+  }
+
+  <!-- ===================== TREATMENTS ===================== -->
+  @if (view() === 'treatments') {
+    @let tr = treatments();
+    <div class="kpi-row">
+      @for (c of categories; track c) {
+        <div class="kpi" [class.in]="tr.total.categories[c].percent >= 100">
+          <small><i [class]="'bi ' + icons[c]"></i> {{ c }}</small>
+          <strong>{{ inr(tr.total.categories[c].achieved) }}</strong>
+          <span>of {{ inr(tr.total.categories[c].target) }} · {{ tr.total.categories[c].percent.toFixed(1) }}%</span>
+          <div class="bar thin"><span [class]="statusClass(tr.total.categories[c].target ? (tr.total.categories[c].percent >= 100 ? 'Achieved' : tr.total.categories[c].percent >= 60 ? 'On track' : 'Behind') : 'Not set')" [style.width.%]="tr.total.categories[c].percent > 100 ? 100 : tr.total.categories[c].percent"></span></div>
+        </div>
+      }
+      <div class="kpi close"><small>All treatments</small><strong>{{ inr(tr.total.achieved) }}</strong><span>of {{ inr(tr.total.target) }} · {{ tr.total.percent.toFixed(1) }}%</span></div>
+    </div>
+
+    <div class="card-block">
+      <h4><i class="bi bi-grid-3x3-gap-fill"></i> Branch × treatment</h4>
+      <div class="table-scroll">
+        <table class="targets-table">
+          <thead>
+            <tr>
+              <th>Branch</th>
+              @for (c of categories; track c) { <th>{{ c }} (achieved / target)</th> }
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of tr.rows; track r.branch) {
+              <tr>
+                <td><strong>{{ r.branch }}</strong></td>
+                @for (c of categories; track c) {
+                  <td class="amt">{{ inr(r.categories[c].achieved) }} / {{ inr(r.categories[c].target) }}<small class="sub">{{ r.categories[c].target ? r.categories[c].percent.toFixed(1) + '%' : 'No target' }}</small></td>
+                }
+                <td class="amt total">{{ inr(r.achieved) }} / {{ inr(r.target) }}<small class="sub">{{ r.target ? r.percent.toFixed(1) + '%' : 'No target' }}</small></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="muted-note">Treatment targets are the sum of that branch's employee targets (set them on the Employees view).</p>
+    </div>
+  }
+</div>

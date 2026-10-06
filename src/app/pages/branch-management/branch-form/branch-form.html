@@ -1,0 +1,93 @@
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-building"></i></div>
+      <div class="title-content">
+        <h2>{{ isEdit ? 'Edit Branch' : 'Add Branch' }}</h2>
+        <p>{{ isEdit ? existing!.code + ' · ' + existing!.name : 'A company owned branch with its branch head' }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <form #f="ngForm" (ngSubmit)="save(f)" novalidate>
+    <div class="modal-body-custom">
+      @if (serverError(); as err) { <div class="error-text" role="alert">{{ err }}</div> }
+
+      <div class="section-title"><i class="bi bi-building"></i> Basic Information</div>
+      <div class="form-grid cols-3">
+        <div class="form-field">
+          <label for="br-name">Branch Name <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-shop"></i>
+            <input id="br-name" name="name" required maxlength="80" [(ngModel)]="model.name" #name="ngModel" [class.is-invalid]="submitted() && name.invalid" placeholder="e.g. Anna Nagar" />
+          </div>
+          @if (submitted() && name.invalid) { <small class="error-text">Branch name is required.</small> }
+        </div>
+        <div class="form-field">
+          <label for="br-city">City <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-geo-alt"></i>
+            <input id="br-city" name="city" required maxlength="60" [(ngModel)]="model.city" #city="ngModel" [class.is-invalid]="submitted() && city.invalid" placeholder="City" />
+          </div>
+          @if (submitted() && city.invalid) { <small class="error-text">City is required.</small> }
+        </div>
+        <div class="form-field">
+          <label for="br-state">State</label>
+          <div class="input-wrap"><i class="bi bi-map"></i><input id="br-state" name="state" maxlength="60" [(ngModel)]="model.state" /></div>
+        </div>
+        <div class="form-field">
+          <label for="br-phone">Phone <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-telephone"></i>
+            <input id="br-phone" name="phone" required maxlength="20" [(ngModel)]="model.phone" #phone="ngModel" [class.is-invalid]="submitted() && phone.invalid" placeholder="+91 98765 43210" />
+          </div>
+          @if (submitted() && phone.invalid) { <small class="error-text">Phone is required.</small> }
+        </div>
+        <div class="form-field">
+          <label for="br-email">Email</label>
+          <div class="input-wrap"><i class="bi bi-envelope"></i>
+            <input id="br-email" type="email" name="email" email [(ngModel)]="model.email" #email="ngModel" [class.is-invalid]="submitted() && email.invalid" placeholder="branch@renew.com" />
+          </div>
+          @if (submitted() && email.invalid) { <small class="error-text">Enter a valid email.</small> }
+        </div>
+        <div class="form-field">
+          <label for="br-status">Status</label>
+          <div class="input-wrap"><i class="bi bi-toggle-on"></i>
+            <select id="br-status" name="status" [(ngModel)]="model.status"><option>Active</option><option>Inactive</option></select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+        <div class="form-field full-width">
+          <label for="br-address">Address</label>
+          <div class="input-wrap"><i class="bi bi-pin-map"></i><input id="br-address" name="address" maxlength="255" [(ngModel)]="model.address" placeholder="Street, area, pincode" /></div>
+        </div>
+        <div class="form-field">
+          <label for="br-opened">Opened On</label>
+          <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="br-opened" type="date" name="openedOn" [(ngModel)]="model.openedOn" /></div>
+        </div>
+      </div>
+
+      <div class="section-title"><i class="bi bi-person-badge"></i> Branch Head</div>
+      <div class="form-grid cols-3">
+        <div class="form-field">
+          <label for="br-head">Name <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-person"></i>
+            <input id="br-head" name="headName" required maxlength="80" [(ngModel)]="model.headName" #head="ngModel" [class.is-invalid]="submitted() && head.invalid" placeholder="Branch head name" />
+          </div>
+          @if (submitted() && head.invalid) { <small class="error-text">Branch head is required.</small> }
+        </div>
+        <div class="form-field">
+          <label for="br-headphone">Phone</label>
+          <div class="input-wrap"><i class="bi bi-telephone"></i><input id="br-headphone" name="headPhone" maxlength="20" [(ngModel)]="model.headPhone" /></div>
+        </div>
+        <div class="form-field">
+          <label for="br-heademail">Email</label>
+          <div class="input-wrap"><i class="bi bi-envelope"></i><input id="br-heademail" type="email" name="headEmail" email [(ngModel)]="model.headEmail" /></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn"><i class="bi bi-floppy"></i> {{ isEdit ? 'Update Branch' : 'Save Branch' }}</button>
+    </div>
+  </form>
+</div>

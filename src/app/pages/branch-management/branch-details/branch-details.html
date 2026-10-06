@@ -1,0 +1,133 @@
+@if (branch(); as b) {
+  <div class="purchase-page container-fluid px-0">
+
+    <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+      <div>
+        <div class="crumbs"><a routerLink="/app/branches">Branch Management</a> <span>›</span> <span>Branch Details</span></div>
+        <h6 class="page-title"><i class="bi bi-building"></i> Branch Details - {{ b.name }}</h6>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="add-lead-btn" (click)="edit()"><i class="bi bi-pencil-square"></i> Edit</button>
+        <button type="button" class="ghost-btn" (click)="back()"><i class="bi bi-arrow-left"></i> Back</button>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="panel">
+        <div class="identity">
+          <div>
+            <div class="photo"><i class="bi bi-shop-window"></i></div>
+            <p class="code">{{ b.code }}</p>
+            <p class="name">{{ b.name }}</p>
+            <p class="sub">Company Owned Branch</p>
+            <span class="status-pill" [ngClass]="b.status.toLowerCase()">{{ b.status }}</span>
+          </div>
+          <div>
+            <h4><i class="bi bi-info-circle"></i> Basic Information</h4>
+            <dl class="kv">
+              <dt>Branch Code</dt><dd>{{ b.code }}</dd>
+              <dt>Branch Name</dt><dd>{{ b.name }}</dd>
+              <dt>City</dt><dd>{{ b.city }}</dd>
+              <dt>State</dt><dd>{{ b.state }}</dd>
+              <dt>Phone</dt><dd>{{ b.phone || '-' }}</dd>
+              <dt>Email</dt><dd>{{ b.email || '-' }}</dd>
+              <dt>Address</dt><dd>{{ b.address || '-' }}</dd>
+              <dt>Opened On</dt><dd>{{ displayDate(b.openedOn) }}</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h4><i class="bi bi-person-badge"></i> Branch Head</h4>
+        <div class="person"><div class="avatar">{{ initials(b.headName) }}</div><div><strong>{{ b.headName }}</strong><small>Branch Head</small></div></div>
+        <div class="contact-line"><i class="bi bi-telephone"></i> {{ b.headPhone || '-' }}</div>
+        <div class="contact-line"><i class="bi bi-envelope"></i> {{ b.headEmail || '-' }}</div>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><span class="ico"><i class="bi bi-people"></i></span><div><small>Total Customers</small><strong>{{ store.customers(b.name) }}</strong></div></div>
+      <div class="kpi"><span class="ico"><i class="bi bi-graph-up-arrow"></i></span><div><small>Monthly Sales</small><strong>{{ inr(monthlySales()).replace('.00', '') }}</strong></div></div>
+      <div class="kpi"><span class="ico"><i class="bi bi-person-workspace"></i></span><div><small>Employees</small><strong>{{ employees().length }}</strong></div></div>
+      <div class="kpi"><span class="ico"><i class="bi bi-hourglass-split"></i></span><div><small>Receivables</small><strong>{{ inr(store.receivables(b.name)).replace('.00', '') }}</strong></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="tabs" role="tablist">
+        @for (t of tabs; track t.key) {
+          <button type="button" role="tab" [class.active]="tab() === t.key" [attr.aria-selected]="tab() === t.key" (click)="tab.set(t.key)">{{ t.label }}</button>
+        }
+      </div>
+
+      @switch (tab()) {
+        @case ('overview') {
+          <div class="detail-grid" style="margin-top: 10px">
+            <div>
+              <h4><i class="bi bi-bar-chart"></i> Sales Overview <small class="muted-note">last 7 days · collections</small></h4>
+              <div class="bars">
+                @for (d of chart(); track d.date) {
+                  <div class="col"><span class="val">{{ d.value ? inrShort(d.value) : '' }}</span><div class="bar" [style.height.%]="d.height" [title]="d.label + ': ' + inr(d.value)"></div></div>
+                }
+              </div>
+              <div class="bar-labels">@for (d of chart(); track d.date) { <span>{{ d.label }}</span> }</div>
+            </div>
+            <div>
+              <h4><i class="bi bi-activity"></i> Recent Activities</h4>
+              @for (a of activities(); track $index) {
+                <div class="activity">
+                  <span class="dot" [ngClass]="a.tone"><i class="bi" [ngClass]="a.icon"></i></span>
+                  <div class="body"><strong>{{ a.title }}</strong><small>{{ a.detail }}</small></div>
+                  <span class="when">{{ a.when }}</span>
+                </div>
+              } @empty { <p class="muted-note">No activity recorded for this branch yet.</p> }
+            </div>
+          </div>
+        }
+        @case ('employees') {
+          <div style="margin-top: 10px">
+            <div class="table-scroll">
+              <table class="simple-table">
+                <thead><tr><th>Emp Code</th><th>Name</th><th>Designation</th><th>Phone</th><th>Status</th></tr></thead>
+                <tbody>
+                  @for (e of employees().slice(0, 6); track e.id) {
+                    <tr><td>{{ e.empCode }}</td><td><strong>{{ e.name }}</strong></td><td>{{ e.designation }}</td><td>{{ e.phone }}</td><td><span class="status-pill active">{{ e.status }}</span></td></tr>
+                  } @empty { <tr><td colspan="5" class="muted-note">No employees in this branch.</td></tr> }
+                </tbody>
+              </table>
+            </div>
+            <p style="margin: 10px 0 0"><a class="add-lead-btn" [routerLink]="['/app/branches', b.id, 'employees']"><i class="bi bi-people-fill"></i> View all employees</a></p>
+          </div>
+        }
+        @case ('customers') {
+          <div class="table-scroll" style="margin-top: 10px">
+            <table class="simple-table">
+              <thead><tr><th>Customer</th><th>Phone</th><th class="num">Bills</th><th class="num">Billed</th><th>Last visit</th></tr></thead>
+              <tbody>
+                @for (c of customers(); track c.name) {
+                  <tr><td><strong>{{ c.name }}</strong></td><td>{{ c.phone }}</td><td class="num">{{ c.bills }}</td><td class="num">{{ inr(c.billed) }}</td><td>{{ displayDate(c.last) }}</td></tr>
+                } @empty { <tr><td colspan="5" class="muted-note">No customers billed at this branch yet.</td></tr> }
+              </tbody>
+            </table>
+          </div>
+        }
+        @case ('sales') {
+          <div class="table-scroll" style="margin-top: 10px">
+            <table class="simple-table">
+              <thead><tr><th>Date</th><th>Voucher</th><th>Type</th><th>Narration</th><th class="num">Amount</th></tr></thead>
+              <tbody>
+                @for (v of sales(); track v.id) {
+                  <tr><td>{{ displayDate(v.date) }}</td><td>{{ v.voucherNo }}</td><td>{{ v.type }}</td><td>{{ v.narration }}</td><td class="num">{{ inr(amount(v)) }}</td></tr>
+                } @empty { <tr><td colspan="5" class="muted-note">No sales recorded for this branch yet.</td></tr> }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+    </div>
+  </div>
+} @else {
+  <div class="purchase-page container-fluid px-0">
+    <div class="panel not-found"><i class="bi bi-building-x"></i><strong>Branch not found</strong><span>It may have been removed.</span><a class="add-lead-btn" routerLink="/app/branches">Back to branches</a></div>
+  </div>
+}

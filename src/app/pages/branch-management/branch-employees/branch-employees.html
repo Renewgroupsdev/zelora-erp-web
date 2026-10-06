@@ -1,0 +1,59 @@
+@if (branch(); as b) {
+  <div class="purchase-page container-fluid px-0">
+
+    <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+      <div>
+        <div class="crumbs"><a routerLink="/app/branches">Branch Management</a> <span>›</span> <a [routerLink]="['/app/branches', b.id]">Branch Details</a> <span>›</span> <span>Employees</span></div>
+        <h6 class="page-title"><i class="bi bi-people-fill"></i> Branch Employees - {{ b.name }}</h6>
+      </div>
+      <div class="header-actions">
+        <a class="ghost-btn" [routerLink]="['/app/branches', b.id]"><i class="bi bi-arrow-left"></i> Back</a>
+        <button type="button" class="add-lead-btn" (click)="addEmployee()"><i class="bi bi-plus-lg"></i> Add Employee</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="header-actions" style="margin-bottom: 8px">
+        <input class="date-input" type="search" placeholder="Search employee" aria-label="Search employee" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        <select class="date-input" aria-label="Designation" [ngModel]="designation()" (ngModelChange)="designation.set($event)">
+          <option value="">Designation: All</option>
+          @for (d of designations(); track d) { <option [value]="d">{{ d }}</option> }
+        </select>
+        <select class="date-input" aria-label="Status" [ngModel]="status()" (ngModelChange)="status.set($event)">
+          <option value="">Status: All</option>
+          <option>Active</option><option>Onboarding</option><option>On Notice</option>
+        </select>
+      </div>
+      <div class="table-scroll">
+        <table class="simple-table">
+          <thead><tr><th>ID</th><th>Name</th><th>Designation</th><th>Phone</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            @for (e of rows(); track e.id) {
+              <tr>
+                <td>{{ e.empCode }}</td>
+                <td><div class="person" style="margin: 0"><div class="avatar" style="width: 28px; height: 28px; font-size: 10px">{{ initials(e.name) }}</div><strong>{{ e.name }}</strong></div></td>
+                <td>{{ e.designation }}</td><td>{{ e.phone }}</td><td>{{ e.email }}</td>
+                <td><span class="status-pill" [ngClass]="e.status === 'Active' ? 'active' : 'pending'">{{ e.status }}</span></td>
+                <td><button type="button" class="ghost-btn" (click)="view(e.id)"><i class="bi bi-eye-fill"></i> View</button></td>
+              </tr>
+            } @empty { <tr><td colspan="7" class="muted-note">No employees match.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+      <p class="muted-note" style="margin-top: 8px">Showing {{ rows().length }} of {{ all().length }} employees.</p>
+    </div>
+
+    <div class="panel">
+      <h4><i class="bi bi-diagram-3"></i> Designation Summary</h4>
+      <div class="chips-row">
+        @for (s of summary(); track s.designation) {
+          <div class="designation-card"><span class="ico"><i class="bi bi-person-badge"></i></span><div><small>{{ s.designation }}</small><strong>{{ s.count }}</strong></div></div>
+        } @empty { <p class="muted-note">No employees yet.</p> }
+      </div>
+    </div>
+  </div>
+} @else {
+  <div class="purchase-page container-fluid px-0">
+    <div class="panel not-found"><i class="bi bi-building-x"></i><strong>Branch not found</strong><a class="add-lead-btn" routerLink="/app/branches">Back to branches</a></div>
+  </div>
+}

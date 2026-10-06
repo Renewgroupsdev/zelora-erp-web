@@ -1,0 +1,136 @@
+@if (franchise(); as f) {
+  <div class="purchase-page container-fluid px-0">
+
+    <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+      <div>
+        <div class="crumbs"><a routerLink="/app/franchises">Franchise Management</a> <span>›</span> <span>Franchise Details</span></div>
+        <h6 class="page-title"><i class="bi bi-shop"></i> Franchise Details - {{ f.name }}</h6>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="add-lead-btn" (click)="edit()"><i class="bi bi-pencil-square"></i> Edit</button>
+        <button type="button" class="ghost-btn" (click)="back()"><i class="bi bi-arrow-left"></i> Back</button>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="panel">
+        <div class="identity">
+          <div>
+            <div class="photo"><i class="bi bi-shop"></i></div>
+            <p class="code">{{ f.code }}</p>
+            <p class="name">{{ f.name }}</p>
+            <p class="sub">Franchise Partner</p>
+            <span class="status-pill" [ngClass]="f.status.toLowerCase()">{{ f.status }}</span>
+          </div>
+          <div>
+            <h4><i class="bi bi-info-circle"></i> Basic Information</h4>
+            <dl class="kv">
+              <dt>Franchise Code</dt><dd>{{ f.code }}</dd>
+              <dt>Franchise Name</dt><dd>{{ f.name }}</dd>
+              <dt>Owner Name</dt><dd>{{ f.ownerCompany }}</dd>
+              <dt>City</dt><dd>{{ f.city }}</dd>
+              <dt>State</dt><dd>{{ f.state }}</dd>
+              <dt>Phone</dt><dd>{{ f.ownerPhone || '-' }}</dd>
+              <dt>Email</dt><dd>{{ f.ownerEmail || '-' }}</dd>
+              <dt>GST No</dt><dd>{{ f.gstin || '-' }}</dd>
+              <dt>Agreement Period</dt><dd>{{ displayDate(f.agreementFrom) }} to {{ displayDate(f.agreementTo) }}</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h4><i class="bi bi-person-badge"></i> Franchise Owner</h4>
+        <div class="person"><div class="avatar">{{ initials(f.ownerName) }}</div><div><strong>{{ f.ownerName }}</strong><small>Owner</small></div></div>
+        <div class="contact-line"><i class="bi bi-telephone"></i> {{ f.ownerPhone || '-' }}</div>
+        <div class="contact-line"><i class="bi bi-envelope"></i> {{ f.ownerEmail || '-' }}</div>
+
+        <h4 style="margin-top: 14px"><i class="bi bi-sliders"></i> Share Configuration</h4>
+        <dl class="kv">
+          <dt>Franchise Share</dt><dd>{{ f.sharePercent }}%</dd>
+          <dt>Renew Company</dt><dd>{{ 100 - f.sharePercent }}%</dd>
+          <dt>Effective From</dt><dd>{{ displayDate(f.shareEffectiveFrom) }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><span class="ico"><i class="bi bi-people"></i></span><div><small>Total Customers</small><strong>{{ customers() }}</strong></div></div>
+      <div class="kpi"><span class="ico"><i class="bi bi-graph-up-arrow"></i></span><div><small>Monthly Sales</small><strong>{{ inr(monthSales()).replace('.00', '') }}</strong></div></div>
+      <div class="kpi"><span class="ico"><i class="bi bi-person-workspace"></i></span><div><small>Employees</small><strong>{{ f.employees }}</strong></div></div>
+      <div class="kpi"><span class="ico"><i class="bi bi-hourglass-split"></i></span><div><small>Unpaid Invoices</small><strong>{{ inr(unpaid()).replace('.00', '') }}</strong></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="tabs" role="tablist">
+        @for (t of tabs; track t.key) {
+          <button type="button" role="tab" [class.active]="tab() === t.key" [attr.aria-selected]="tab() === t.key" (click)="tab.set(t.key)">{{ t.label }}</button>
+        }
+      </div>
+
+      @switch (tab()) {
+        @case ('overview') {
+          <div class="detail-grid" style="margin-top: 10px">
+            <div>
+              <h4><i class="bi bi-graph-up"></i> Sales Trend <small class="muted-note">last 7 months · invoice value</small></h4>
+              <div class="bars">
+                @for (d of chart(); track d.label) {
+                  <div class="col"><span class="val">{{ d.value ? inrShort(d.value) : '' }}</span><div class="bar" [style.height.%]="d.height" [title]="d.label + ': ' + inr(d.value)"></div></div>
+                }
+              </div>
+              <div class="bar-labels">@for (d of chart(); track d.label) { <span>{{ d.label }}</span> }</div>
+              <div class="chips-row" style="margin-top: 12px">
+                <div class="share-box"><small>Total Sales</small><strong>{{ inr(totals().total).replace('.00', '') }}</strong></div>
+                <div class="share-box"><small>Franchise Share ({{ f.sharePercent }}%)</small><strong>{{ inr(totals().franchise).replace('.00', '') }}</strong></div>
+                <div class="share-box"><small>Renew Share ({{ 100 - f.sharePercent }}%)</small><strong>{{ inr(totals().renew).replace('.00', '') }}</strong></div>
+              </div>
+            </div>
+            <div>
+              <h4><i class="bi bi-activity"></i> Recent Activities</h4>
+              @for (i of activities(); track i.id) {
+                <a class="activity" [routerLink]="['/app/franchises', f.id, 'invoices', i.invoiceNo]" style="text-decoration: none">
+                  <span class="dot" [ngClass]="i.status === 'Paid' ? 'green' : 'orange'"><i class="bi" [ngClass]="i.status === 'Paid' ? 'bi-receipt' : 'bi-hourglass-split'"></i></span>
+                  <div class="body"><strong>{{ i.status === 'Paid' ? 'Invoice paid' : 'Invoice generated' }} {{ inr(invoiceTotal(i.items)).replace('.00', '') }}</strong><small>{{ i.invoiceNo }} · {{ i.customer }}</small></div>
+                  <span class="when">{{ displayDate(i.date) }}</span>
+                </a>
+              } @empty { <p class="muted-note">No invoices yet.</p> }
+            </div>
+          </div>
+        }
+        @case ('agreement') {
+          <dl class="kv" style="margin-top: 12px; max-width: 520px">
+            <dt>Owner company</dt><dd>{{ f.ownerCompany }}</dd>
+            <dt>Agreement from</dt><dd>{{ displayDate(f.agreementFrom) }}</dd>
+            <dt>Agreement to</dt><dd>{{ displayDate(f.agreementTo) }}</dd>
+            <dt>Franchise share</dt><dd>{{ f.sharePercent }}% of every invoice</dd>
+            <dt>Renew share</dt><dd>{{ 100 - f.sharePercent }}% of every invoice</dd>
+            <dt>Share effective</dt><dd>{{ displayDate(f.shareEffectiveFrom) }}</dd>
+            <dt>GST No</dt><dd>{{ f.gstin || '-' }}</dd>
+          </dl>
+        }
+        @case ('invoices') {
+          <div class="table-scroll" style="margin-top: 10px">
+            <table class="simple-table">
+              <thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th class="num">Total</th><th class="num">Franchise ({{ f.sharePercent }}%)</th><th class="num">Renew ({{ 100 - f.sharePercent }}%)</th><th>Status</th></tr></thead>
+              <tbody>
+                @for (i of invoices(); track i.id) {
+                  <tr class="click" tabindex="0" [routerLink]="['/app/franchises', f.id, 'invoices', i.invoiceNo]">
+                    <td><strong>{{ i.invoiceNo }}</strong></td><td>{{ displayDate(i.date) }}</td><td>{{ i.customer }}</td>
+                    <td class="num">{{ inr(invoiceTotal(i.items)) }}</td>
+                    <td class="num">{{ inr(splitShare(invoiceTotal(i.items), f.sharePercent).franchise) }}</td>
+                    <td class="num">{{ inr(splitShare(invoiceTotal(i.items), f.sharePercent).renew) }}</td>
+                    <td><span class="status-pill" [ngClass]="i.status.toLowerCase()">{{ i.status }}</span></td>
+                  </tr>
+                } @empty { <tr><td colspan="7" class="muted-note">No invoices yet.</td></tr> }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+    </div>
+  </div>
+} @else {
+  <div class="purchase-page container-fluid px-0">
+    <div class="panel not-found"><i class="bi bi-shop-window"></i><strong>Franchise not found</strong><span>It may have been removed.</span><a class="add-lead-btn" routerLink="/app/franchises">Back to franchises</a></div>
+  </div>
+}

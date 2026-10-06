@@ -27,14 +27,16 @@ const DAY_COLUMNS: TableColumn[] = [
 ];
 
 const HISTORY_COLUMNS: TableColumn[] = [
-  { key: 'date', header: 'Date', width: '14%' },
-  { key: 'opening', header: 'Opening Balance', width: '15%' },
-  { key: 'receipts', header: 'Total Collection', width: '15%' },
-  { key: 'payments', header: 'Payments', width: '14%' },
-  { key: 'closing', header: 'Closing Balance', width: '15%' },
-  { key: 'vouchers', header: 'Vouchers', width: '8%' },
-  { key: 'status', header: 'Day Status', type: 'badge', width: '9%' },
-  { key: 'actions', header: '', type: 'quickActions', width: '6%', sortable: false },
+  { key: 'date', header: 'Date', width: '11%' },
+  { key: 'opening', header: 'Opening Balance', width: '13%' },
+  { key: 'receipts', header: 'Total Collection', width: '12%' },
+  { key: 'payments', header: 'Payments', width: '11%' },
+  { key: 'closing', header: 'Closing Balance', width: '13%' },
+  { key: 'cash', header: 'Cash', width: '10%' },
+  { key: 'bank', header: 'Bank', width: '10%' },
+  { key: 'check', header: 'Carry-forward', width: '10%' },
+  { key: 'status', header: 'Day Status', type: 'badge', width: '6%' },
+  { key: 'actions', header: '', type: 'quickActions', width: '4%', sortable: false },
 ];
 
 @Component({
@@ -49,6 +51,8 @@ export class DayBook extends AccountsListBase {
   readonly today = isoDate();
   readonly date = signal(this.today);
   readonly view = signal<'day' | 'history'>('day');
+  readonly histFrom = signal(addDays(this.today, -29));
+  readonly histTo = signal(this.today);
   readonly displayDate = displayDate;
   readonly inr = inr;
 
@@ -83,6 +87,14 @@ export class DayBook extends AccountsListBase {
     this.currentPage = 1;
   }
 
+  setHistRange(from: string, to: string): void {
+    if (!from || !to || from > to || to > this.today) return;
+    this.histFrom.set(from);
+    this.histTo.set(to);
+    this.currentPage = 1;
+    this.refresh();
+  }
+
   setView(view: 'day' | 'history'): void {
     this.view.set(view);
     this.columns = view === 'day' ? DAY_COLUMNS : HISTORY_COLUMNS;
@@ -103,10 +115,14 @@ export class DayBook extends AccountsListBase {
 
   protected allRows(): TableRow[] {
     if (this.view() === 'history') {
-      const dates = new Set(this.acc.vouchers().map(v => v.date));
-      for (let i = 0; i < 14; i++) dates.add(addDays(this.today, -i));
-      return [...dates].filter(d => d <= this.today).sort().reverse().slice(0, 45).map(d => {
+      // Every calendar day in the range (not just days with vouchers) so the carry-forward chain is unbroken.
+      const dates: string[] = [];
+      for (let d = this.histTo(); d >= this.histFrom() && dates.length < 92; d = addDays(d, -1)) dates.push(d);
+      return dates.map(d => {
         const b = this.acc.dayBook(d);
+        const prev = this.acc.dayCloses().find(c => c.date === addDays(d, -1));
+        const changedAfterClose = !!b.closed && Math.abs(b.closed.closing - b.closing) > 0.004;
+        const openingBroken = !!prev && Math.abs(prev.closing - b.opening) > 0.004;
         return {
           id: d,
           date: displayDate(d), __date: d,
@@ -114,7 +130,9 @@ export class DayBook extends AccountsListBase {
           receipts: inr(b.receipts), __receipts: b.receipts,
           payments: inr(b.payments), __payments: b.payments,
           closing: inr(b.closing), __closing: b.closing,
-          vouchers: String(b.vouchers.length), __vouchers: b.vouchers.length,
+          cash: inr(b.cashClosing), __cash: b.cashClosing,
+          bank: inr(b.bankClosing), __bank: b.bankClosing,
+          check: changedAfterClose ? '⚠ Changed after close' : openingBroken ? '⚠ Opening ≠ prev close' : '✓ Ties',
           status: b.closed ? 'Closed' : 'Open',
           actions: [{ key: 'open', icon: 'bi-box-arrow-up-right', label: 'Open day', variant: 'primary' }],
         };

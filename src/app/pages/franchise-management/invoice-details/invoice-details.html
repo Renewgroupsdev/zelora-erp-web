@@ -1,0 +1,80 @@
+@if (invoice(); as inv) {
+  @if (franchise(); as f) {
+    <div class="purchase-page container-fluid px-0">
+
+      <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+        <div>
+          <div class="crumbs"><a routerLink="/app/franchises">Franchise Management</a> <span>›</span> <a [routerLink]="['/app/franchises', f.id]">{{ f.name }}</a> <span>›</span> <span>Invoice Details</span></div>
+          <h6 class="page-title"><i class="bi bi-receipt"></i> Invoice Details - {{ f.code }} ({{ f.name }} Franchise)</h6>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="ghost-btn" (click)="print()"><i class="bi bi-printer"></i> Print Invoice</button>
+          <a class="ghost-btn" [routerLink]="['/app/franchises', f.id]"><i class="bi bi-arrow-left"></i> Back</a>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="share-box"><small>Invoice No</small><strong style="font-size: 15px">{{ inv.invoiceNo }}</strong></div>
+        <div class="share-box"><small>Date</small><strong style="font-size: 15px">{{ displayDate(inv.date) }}</strong></div>
+        <div class="share-box"><small>Customer</small><strong style="font-size: 15px">{{ inv.customer }}</strong></div>
+        <div class="share-box"><small>Location / Payment</small><strong style="font-size: 15px">{{ f.name }} · <span class="status-pill" [ngClass]="inv.status.toLowerCase()">{{ inv.status }}</span></strong></div>
+      </div>
+
+      <div class="panel">
+        <div class="tabs" role="tablist">
+          @for (t of tabs; track t.key) {
+            <button type="button" role="tab" [class.active]="tab() === t.key" [attr.aria-selected]="tab() === t.key" (click)="tab.set(t.key)">{{ t.label }}</button>
+          }
+        </div>
+
+        @switch (tab()) {
+          @case ('items') {
+            <div class="table-scroll" style="margin-top: 10px">
+              <table class="simple-table">
+                <thead><tr><th>#</th><th>Product / Service</th><th class="num">Qty</th><th class="num">Unit Price</th><th class="num">Total</th><th class="num">Franchise ({{ f.sharePercent }}%)</th><th class="num">Renew ({{ 100 - f.sharePercent }}%)</th></tr></thead>
+                <tbody>
+                  @for (i of inv.items; track $index) {
+                    <tr>
+                      <td>{{ $index + 1 }}</td><td>{{ i.name }}</td><td class="num">{{ i.qty }}</td>
+                      <td class="num">{{ inr(i.unitPrice) }}</td><td class="num">{{ inr(i.qty * i.unitPrice) }}</td>
+                      <td class="num">{{ inr(lineSplit(i.qty, i.unitPrice).franchise) }}</td><td class="num">{{ inr(lineSplit(i.qty, i.unitPrice).renew) }}</td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot><tr><td colspan="4">Total</td><td class="num">{{ inr(total()) }}</td><td class="num">{{ inr(split().franchise) }}</td><td class="num">{{ inr(split().renew) }}</td></tr></tfoot>
+              </table>
+            </div>
+          }
+          @case ('share') {
+            <dl class="kv" style="margin-top: 12px; max-width: 460px">
+              <dt>Invoice total</dt><dd>{{ inr(total()) }}</dd>
+              <dt>Franchise share</dt><dd>{{ f.sharePercent }}% · {{ inr(split().franchise) }}</dd>
+              <dt>Renew share</dt><dd>{{ 100 - f.sharePercent }}% · {{ inr(split().renew) }}</dd>
+              <dt>Share effective</dt><dd>{{ displayDate(f.shareEffectiveFrom) }}</dd>
+            </dl>
+          }
+          @case ('notes') {
+            <p class="muted-note" style="margin-top: 12px">{{ inv.notes || 'No notes on this invoice.' }}</p>
+          }
+        }
+      </div>
+
+      <div class="panel">
+        <h4><i class="bi bi-pie-chart"></i> Share Summary</h4>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 18px">
+          <div class="share-box" style="min-width: 190px"><small>Franchise Share ({{ f.sharePercent }}%)</small><strong>{{ inr(split().franchise) }}</strong></div>
+          <div class="share-box" style="min-width: 190px"><small>Renew Company Share ({{ 100 - f.sharePercent }}%)</small><strong>{{ inr(split().renew) }}</strong></div>
+          <div class="doughnut" [style.background]="ring()"><div class="hole">{{ inr(total()).replace('.00', '') }}</div></div>
+          <div class="legend-row">
+            <span><i style="background: var(--primary)"></i> Franchise ({{ f.sharePercent }}%)</span>
+            <span><i style="background: var(--status-green-text)"></i> Renew ({{ 100 - f.sharePercent }}%)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+} @else {
+  <div class="purchase-page container-fluid px-0">
+    <div class="panel not-found"><i class="bi bi-receipt-cutoff"></i><strong>Invoice not found</strong><a class="add-lead-btn" routerLink="/app/franchises">Back to franchises</a></div>
+  </div>
+}

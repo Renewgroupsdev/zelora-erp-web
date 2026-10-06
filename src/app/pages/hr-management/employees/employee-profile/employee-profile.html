@@ -36,8 +36,23 @@
           <div><small>Blood Group</small><strong>{{ e.bloodGroup || '-' }}</strong></div>
           <div><small>Mobile</small><strong>{{ e.phone }}</strong></div>
           <div><small>Email</small><strong>{{ e.email }}</strong></div>
+          <div><small>Secondary Mobile</small><strong>{{ e.secondaryPhone || '-' }}</strong></div>
           <div><small>Emergency</small><strong>{{ e.emergencyContact || '-' }}</strong></div>
           <div class="full-width"><small>Address</small><strong>{{ e.address || '-' }}</strong></div>
+        </div>
+        <div class="section-title"><i class="bi bi-people"></i> Referral</div>
+        <div class="info-grid">
+          <div><small>Source</small><strong>{{ e.referralSource || '-' }}</strong></div>
+          <div><small>Referred By</small><strong>{{ e.referredBy || '-' }}</strong></div>
+          <div><small>Referrer Mobile</small><strong>{{ e.referralPhone || '-' }}</strong></div>
+        </div>
+        <div class="section-title"><i class="bi bi-file-earmark-lock2"></i> KYC Documents</div>
+        <div class="info-grid">
+          @for (d of e.kycDocuments ?? []; track d.id) {
+            <div><small>{{ d.type }}{{ d.number ? ' · ' + kycNo(d) : '' }}</small><strong><a [href]="d.dataUrl" [download]="d.fileName" target="_blank" rel="noopener">{{ d.fileName }}</a></strong></div>
+          } @empty {
+            <div class="full-width"><small>No documents uploaded. Use Edit to add them.</small></div>
+          }
         </div>
         <div class="section-title"><i class="bi bi-briefcase"></i> Job</div>
         <div class="info-grid">
@@ -49,7 +64,7 @@
         <div class="section-title"><i class="bi bi-bank"></i> Statutory &amp; Bank</div>
         <div class="info-grid">
           <div><small>PAN</small><strong>{{ e.pan || '-' }}</strong></div>
-          <div><small>Aadhaar</small><strong>{{ e.aadhaarLast4 ? 'XXXX XXXX ' + e.aadhaarLast4 : '-' }}</strong></div>
+          <div><small>Aadhaar</small><strong>{{ e.aadhaarLast4 ? 'XXXX-XXXX-' + e.aadhaarLast4 : '-' }}</strong></div>
           <div><small>UAN</small><strong>{{ e.uan || '-' }}</strong></div>
           <div><small>Bank</small><strong>{{ e.bankName || '-' }}</strong></div>
           <div><small>Account No</small><strong>{{ e.accountNo ? '••••••' + e.accountNo.slice(-4) : '-' }}</strong></div>
@@ -157,6 +172,33 @@
         </div>
       }
 
+      @case ('tasks') {
+        @let ts = taskStats();
+        <div class="kpis">
+          <div><small>Tasks</small><strong>{{ ts.total }}</strong></div>
+          <div><small>Completed</small><strong>{{ ts.percent }}%</strong></div>
+          <div><small>In progress</small><strong>{{ ts.inProgress }}</strong></div>
+          <div><small>Overdue</small><strong>{{ ts.overdue }}</strong></div>
+        </div>
+        <div class="section-title"><i class="bi bi-list-check"></i> SEO tasks
+          @if (work.canEdit({ empId: e.id })) { <button type="button" class="save-btn" style="margin-left: auto" (click)="openTask()"><i class="bi bi-plus-lg"></i> Log task</button> }
+        </div>
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead><tr><th>Due</th><th>Branch</th><th>Task</th><th>Status</th><th>Result</th><th>Result / metric</th></tr></thead>
+            <tbody>
+              @for (t of tasks(); track t.id) {
+                <tr style="cursor: pointer" (click)="openTask(t.id)">
+                  <td>{{ displayDate(t.dueDate) }}</td><td>{{ t.branch }}</td>
+                  <td><strong>{{ t.title }}</strong><div class="muted">{{ t.type }}</div></td>
+                  <td><span class="pill" [ngClass]="t.status === 'Completed' ? 'green' : isOverdue(t) ? 'red' : t.status === 'Blocked' ? 'orange' : t.status === 'In progress' ? 'blue' : ''">{{ isOverdue(t) ? 'Overdue · ' + t.status : t.status }}</span></td>
+                  <td>{{ t.result }}</td><td class="muted">{{ t.metric || '-' }}</td>
+                </tr>
+              } @empty { <tr><td colspan="6" class="muted">No tasks logged yet.</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      }
       @case ('appraisals') {
         <div class="section-title"><i class="bi bi-award"></i> Appraisals</div>
         <div class="items-table-wrap">

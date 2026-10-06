@@ -115,6 +115,8 @@ export interface Bill {
   convertedFromId?: string;
   convertedToId?: string;
   salesVoucherId?: string;
+  /** HR employee who sold the treatment - drives employee-wise targets. */
+  employeeId?: string;
   createdBy: string;
   createdAt: string;
 }

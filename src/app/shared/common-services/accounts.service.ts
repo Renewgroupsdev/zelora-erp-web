@@ -66,6 +66,7 @@ export interface NewBillInput {
   customerAddress: string;
   customerGstin: string;
   branch: string;
+  employeeId?: string;
   items: BillItem[];
   notes: string;
 }
@@ -88,7 +89,7 @@ export interface NewVoucherInput {
 export class AccountsService {
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
-  private readonly state = signal<AccountsState>(loadState(STORAGE_KEY, seedState));
+  private readonly state = signal<AccountsState>(attributeSeedBills(loadState(STORAGE_KEY, seedState)));
 
   readonly ledgers = computed(() => this.state().ledgers);
   readonly vouchers = computed(() => this.state().vouchers.filter(v => !v.cancelled));
@@ -165,7 +166,14 @@ export class AccountsService {
   dayBook(date: string): DayBookSummary {
     const cashIds = new Set(this.cashLedgers().map(l => l.id));
     const position = (upto: string, before: boolean) => [...cashIds].reduce((s, id) => s + this.balance(id, upto, before), 0);
-    const opening = position(date, true);
+    // Opening = the frozen closing of the latest closed day before this one, plus any cash movement since that close.
+    // With no closed day before it, fall back to the ledger position.
+    const lastClose = this.dayCloses().filter(c => c.date < date).sort((a, b) => b.date.localeCompare(a.date))[0];
+    const opening = lastClose
+      ? round2(lastClose.closing + this.vouchers()
+        .filter(v => v.date > lastClose.date && v.date < date)
+        .reduce((s, v) => s + v.entries.filter(e => cashIds.has(e.ledgerId)).reduce((x, e) => x + e.debit - e.credit, 0), 0))
+      : position(date, true);
     const vouchers = this.vouchers().filter(v => v.date === date).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
     let receipts = 0;
@@ -184,11 +192,13 @@ export class AccountsService {
       }
     }
 
+    const closing = round2(opening + receipts - payments);
+    const bankClosing = [...cashIds].filter(id => id !== LEDGER.cash).reduce((s, id) => s + this.balance(id, date), 0);
     return {
-      date, opening, receipts, payments,
-      closing: opening + receipts - payments,
-      cashClosing: this.balance(LEDGER.cash, date),
-      bankClosing: [...cashIds].filter(id => id !== LEDGER.cash).reduce((s, id) => s + this.balance(id, date), 0),
+      date, opening, receipts, payments, closing,
+      // Cash is the remainder so cash + bank always equals the carried-forward closing.
+      cashClosing: round2(closing - bankClosing),
+      bankClosing,
       byMode, byBranch, vouchers,
       closed: this.dayCloses().find(d => d.date === date),
     };
@@ -472,7 +482,25 @@ export const BILL_CATALOG: Omit<BillItem, 'qty'>[] = [
   { description: 'Anti-Hair-Fall Treatment Package (6 sittings)', sac: '999722', rate: 18000, discountPercent: 15, gstPercent: 18 },
   { description: 'Minoxidil 5% Solution', sac: '3004', rate: 650, discountPercent: 0, gstPercent: 12 },
   { description: 'Sunscreen SPF 50', sac: '3304', rate: 850, discountPercent: 0, gstPercent: 18 },
+  { description: 'Slimming Session - Body Contouring', sac: '999722', rate: 5500, discountPercent: 0, gstPercent: 18 },
+  { description: 'Weight Loss Programme (8 sittings)', sac: '999722', rate: 24000, discountPercent: 10, gstPercent: 18 },
 ];
+
+/** Seeded HR employees (hr.service seed) who sell at each branch. */
+const SEED_SELLERS: Record<string, string[]> = {
+  'Anna Nagar': ['EMP-seed-3'],
+  Velachery: ['EMP-seed-2'],
+  'T. Nagar': ['EMP-seed-4'],
+  Adyar: ['EMP-seed-7', 'EMP-seed-9'],
+};
+
+/** Demo bills saved before employee attribution existed get a seller so targets have data. */
+function attributeSeedBills(s: AccountsState): AccountsState {
+  for (const b of s.bills) {
+    if (b.kind === 'Service' && !b.employeeId && b.createdBy === 'Sneha Krishnan') b.employeeId = SEED_SELLERS[b.branch]?.[0];
+  }
+  return s;
+}
 
 const CUSTOMERS: [string, string][] = [
   ['Ananya Sharma', '9840012345'], ['Arjun Nair', '9884023456'], ['Fathima Begum', '9790034567'], ['Ravi Shankar', '9962045678'],
@@ -520,9 +548,10 @@ function seedState(): AccountsState {
     const count = back === 0 ? 2 : 3 + Math.floor(rand() * 3);
     for (let i = 0; i < count; i++) {
       const [name, phone] = pick(CUSTOMERS);
-      const items: BillItem[] = [{ ...pick(BILL_CATALOG.slice(0, 6)), qty: 1 }];
-      if (rand() > 0.6) items.push({ ...pick(BILL_CATALOG.slice(6)), qty: 1 + Math.floor(rand() * 2) });
-      const bill = addBill(s, { kind: 'Service', date, dueDate: addDays(date, 7), customerName: name, customerPhone: phone, customerAddress: 'Chennai', customerGstin: '', branch: pick(BRANCHES), items, notes: '' }, by);
+      const items: BillItem[] = [{ ...pick(BILL_CATALOG.filter(c => c.sac.startsWith('99'))), qty: 1 }];
+      if (rand() > 0.6) items.push({ ...pick(BILL_CATALOG.filter(c => !c.sac.startsWith('99'))), qty: 1 + Math.floor(rand() * 2) });
+      const branch = pick(BRANCHES);
+      const bill = addBill(s, { kind: 'Service', date, dueDate: addDays(date, 7), customerName: name, customerPhone: phone, customerAddress: 'Chennai', customerGstin: '', branch, employeeId: pick(SEED_SELLERS[branch]), items, notes: '' }, by);
       const total = billTotals(items).grandTotal;
       const r = rand();
       if (r < 0.75) addReceipt(s, bill, total, pick(modes), date, by);

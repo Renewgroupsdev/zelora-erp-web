@@ -12,6 +12,7 @@ export function hrTabs(hr: HrService): ModuleTab[] {
     { label: 'Recruitment', icon: 'bi-person-plus-fill', path: '/app/hr/recruitment', badge: hr.pendingManpower() },
     { label: 'Payroll & Payslips', icon: 'bi-wallet2', path: '/app/hr/payroll' },
     { label: 'Appraisals & Bonus', icon: 'bi-award-fill', path: '/app/hr/appraisals', badge: hr.appraisals().filter(a => a.status === 'Draft').length },
+    { label: 'Tasks and Tracker', icon: 'bi-list-check', path: '/app/hr/tasks' },
     { label: 'Onboarding & Exit', icon: 'bi-door-open-fill', path: '/app/hr/onboarding-exit', badge: hr.exits().filter(x => x.status !== 'Settled').length },
   ];
 }

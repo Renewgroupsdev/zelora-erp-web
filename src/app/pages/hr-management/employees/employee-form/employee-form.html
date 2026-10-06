@@ -61,11 +61,77 @@
           <label for="em-address">Address</label>
           <div class="input-wrap"><i class="bi bi-geo-alt"></i><input id="em-address" name="address" maxlength="255" [(ngModel)]="model.address" placeholder="Residential address" /></div>
         </div>
+        <div class="form-field">
+          <label for="em-phone2">Secondary Mobile</label>
+          <div class="input-wrap"><i class="bi bi-telephone-plus"></i>
+            <input id="em-phone2" name="secondaryPhone" pattern="[6-9][0-9]{9}" maxlength="10" [(ngModel)]="model.secondaryPhone" #phone2="ngModel" [class.is-invalid]="submitted() && (phone2.invalid || sameAsPrimary())" placeholder="Alternate 10-digit mobile" />
+          </div>
+          @if (submitted() && phone2.invalid) { <small class="error-text">Enter a valid 10-digit mobile.</small> }
+          @else if (submitted() && sameAsPrimary()) { <small class="error-text">Must differ from the primary mobile.</small> }
+        </div>
         <div class="form-field full-width">
           <label for="em-emergency">Emergency Contact</label>
           <div class="input-wrap"><i class="bi bi-telephone-plus"></i><input id="em-emergency" name="emergencyContact" maxlength="100" [(ngModel)]="model.emergencyContact" placeholder="Relation - phone" /></div>
         </div>
       </div>
+
+      <div class="section-title"><i class="bi bi-people"></i> Referral</div>
+      <div class="form-grid cols-3">
+        <div class="form-field">
+          <label for="em-refsrc">Referral Source</label>
+          <div class="input-wrap"><i class="bi bi-signpost-split"></i>
+            <select id="em-refsrc" name="referralSource" [(ngModel)]="model.referralSource">
+              <option value="">Not referred</option>
+              @for (s of referralSources; track s) { <option [value]="s">{{ s }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="em-refby">Referred By</label>
+          <div class="input-wrap"><i class="bi bi-person-check"></i><input id="em-refby" name="referredBy" maxlength="100" [(ngModel)]="model.referredBy" placeholder="Name of referrer" /></div>
+        </div>
+        <div class="form-field">
+          <label for="em-refphone">Referrer Mobile</label>
+          <div class="input-wrap"><i class="bi bi-telephone"></i>
+            <input id="em-refphone" name="referralPhone" pattern="[6-9][0-9]{9}" maxlength="10" [(ngModel)]="model.referralPhone" #refphone="ngModel" [class.is-invalid]="submitted() && refphone.invalid" placeholder="10-digit mobile" />
+          </div>
+          @if (submitted() && refphone.invalid) { <small class="error-text">Enter a valid 10-digit mobile.</small> }
+        </div>
+      </div>
+
+      <div class="section-title"><i class="bi bi-file-earmark-lock2"></i> KYC Documents</div>
+      <div class="form-grid cols-3">
+        <div class="form-field">
+          <label for="em-kyctype">Document Type</label>
+          <div class="input-wrap"><i class="bi bi-card-checklist"></i>
+            <select id="em-kyctype" name="kycType" [ngModel]="kycType" (ngModelChange)="onKycTypeChange($event)">@for (d of kycTypes; track d) { <option [value]="d">{{ d }}</option> }</select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="em-kycno">{{ kycType === 'Aadhaar' ? 'Aadhaar No (12 digits)' : kycType === 'PAN' ? 'PAN No' : 'Document No (optional)' }}</label>
+          <div class="input-wrap"><i class="bi bi-123"></i>
+            <input id="em-kycno" name="kycNumber" [attr.maxlength]="kycType === 'Aadhaar' ? 14 : 30" [(ngModel)]="kycNumber" [placeholder]="kycType === 'Aadhaar' ? '1234 5678 9012' : kycType === 'PAN' ? 'ABCDE1234F' : 'ID number'" />
+          </div>
+          @if (kycType === 'Aadhaar' || kycType === 'PAN') { <small class="muted">Required. Statutory &amp; Bank is filled from this.</small> }
+        </div>
+        <div class="form-field">
+          <label for="em-kycfile">File (PDF / JPG / PNG, max 1 MB)</label>
+          <input id="em-kycfile" type="file" [accept]="kycAccept" #kycFile (change)="addKyc(kycFile)" />
+        </div>
+      </div>
+      @if (kycError(); as err) { <small class="error-text">{{ err }}</small> }
+      @for (d of kycDocs; track d.id) {
+        <div class="kyc-row">
+          <i class="bi" [class.bi-file-earmark-pdf]="d.mime === 'application/pdf'" [class.bi-file-earmark-image]="d.mime !== 'application/pdf'"></i>
+          <span><strong>{{ d.type }}</strong>{{ d.number ? ' · ' + kycNo(d) : '' }}<small>{{ d.fileName }} · {{ d.size / 1024 | number:'1.0-0' }} KB</small></span>
+          <a [href]="d.dataUrl" [download]="d.fileName" target="_blank" rel="noopener">View</a>
+          <button type="button" class="kyc-remove" aria-label="Remove document" (click)="removeKyc(d.id)"><i class="bi bi-trash"></i></button>
+        </div>
+      } @empty {
+        <small class="muted">No KYC documents uploaded yet.</small>
+      }
 
       <div class="section-title"><i class="bi bi-briefcase"></i> Job Details</div>
       <div class="form-grid cols-3">
@@ -118,13 +184,12 @@
         <div class="form-field">
           <label for="em-pan">PAN</label>
           <div class="input-wrap"><i class="bi bi-credit-card-2-front"></i>
-            <input id="em-pan" name="pan" maxlength="10" pattern="[A-Za-z]{5}[0-9]{4}[A-Za-z]" [(ngModel)]="model.pan" #pan="ngModel" [class.is-invalid]="submitted() && pan.invalid" placeholder="ABCDE1234F" />
+            <input id="em-pan" name="pan" [(ngModel)]="model.pan" disabled placeholder="From KYC documents" />
           </div>
-          @if (submitted() && pan.invalid) { <small class="error-text">PAN format: ABCDE1234F</small> }
         </div>
         <div class="form-field">
-          <label for="em-aadhaar">Aadhaar (last 4)</label>
-          <div class="input-wrap"><i class="bi bi-person-vcard"></i><input id="em-aadhaar" name="aadhaarLast4" maxlength="4" pattern="[0-9]{4}" [(ngModel)]="model.aadhaarLast4" placeholder="XXXX" /></div>
+          <label for="em-aadhaar">Aadhaar</label>
+          <div class="input-wrap"><i class="bi bi-person-vcard"></i><input id="em-aadhaar" disabled [value]="model.aadhaarLast4 ? 'XXXX-XXXX-' + model.aadhaarLast4 : ''" placeholder="From KYC documents" /></div>
         </div>
         <div class="form-field">
           <label for="em-uan">UAN (PF)</label>

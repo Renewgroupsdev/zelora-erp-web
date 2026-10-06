@@ -82,8 +82,15 @@
 .modal-body-custom {
   padding: 10px 10px 7px;
   max-height: calc(92vh - 110px);
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+
+  input[type="file"] {
+    width: 100%;
+    max-width: 100%;
+    font-size: 12px;
+  }
 
   &::-webkit-scrollbar {
     width: 6px;
@@ -465,4 +472,28 @@
   .muted {
     margin-left: 6px;
   }
+}
+
+.kyc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  margin-top: 6px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--app-surface-solid);
+  font-size: 12px;
+
+  > i { color: var(--primary-dark); font-size: 18px; }
+  > span { flex: 1; min-width: 0; }
+  small { display: block; color: var(--text-muted); font-size: 10px; }
+  a { color: var(--primary-dark); font-weight: 600; }
+}
+
+.kyc-remove {
+  border: 0;
+  background: none;
+  color: var(--status-red-text);
+  cursor: pointer;
 }

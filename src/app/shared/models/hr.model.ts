@@ -7,7 +7,7 @@
 export type EmployeeStatus = 'Onboarding' | 'Active' | 'On Notice' | 'Exited';
 export type Gender = 'Male' | 'Female' | 'Other';
 
-export const DEPARTMENTS = ['Clinical', 'Front Office', 'Tele Calling', 'Sales', 'Accounts', 'HR', 'Operations'];
+export const DEPARTMENTS = ['Clinical', 'Front Office', 'Tele Calling', 'Sales', 'Accounts', 'HR', 'Operations', 'SEO'];
 
 export interface SalaryStructure {
   /** Monthly amounts. */
@@ -45,8 +45,36 @@ export interface Employee {
   accountNo: string;
   ifsc: string;
   emergencyContact: string;
+  /** Alternate contact number (10-digit mobile). */
+  secondaryPhone?: string;
+  referralSource?: ReferralSource | '';
+  /** Who referred this employee (name) and how to reach them. */
+  referredBy?: string;
+  referralPhone?: string;
+  kycDocuments?: KycDocument[];
   salary: SalaryStructure;
   status: EmployeeStatus;
+}
+
+export type ReferralSource = 'Employee' | 'Agency' | 'Job Portal' | 'Walk-in' | 'Social Media' | 'Other';
+export const REFERRAL_SOURCES: ReferralSource[] = ['Employee', 'Agency', 'Job Portal', 'Walk-in', 'Social Media', 'Other'];
+
+export type KycDocType = 'Aadhaar' | 'PAN' | 'Passport' | 'Driving Licence' | 'Voter ID' | 'Address Proof' | 'Education Certificate' | 'Experience Letter' | 'Other';
+export const KYC_DOC_TYPES: KycDocType[] = ['Aadhaar', 'PAN', 'Passport', 'Driving Licence', 'Voter ID', 'Address Proof', 'Education Certificate', 'Experience Letter', 'Other'];
+/** Design stage keeps files in browser storage, so each is capped; the API will store them server side. */
+export const KYC_MAX_BYTES = 1024 * 1024;
+export const KYC_ACCEPT = '.pdf,.jpg,.jpeg,.png';
+
+export interface KycDocument {
+  id: string;
+  type: KycDocType;
+  /** Document number (optional). */
+  number: string;
+  fileName: string;
+  mime: string;
+  size: number;
+  dataUrl: string;
+  uploadedAt: string;
 }
 
 export type AttendanceStatus = 'Present' | 'Late' | 'Half Day' | 'Absent' | 'On Leave' | 'Permission' | 'Holiday';
@@ -428,3 +456,10 @@ export function hoursLabel(hours: number): string {
 /** Shift starts 09:30 with 15 minutes grace. */
 export const SHIFT_START = { hour: 9, minute: 45 };
 export const FULL_DAY_HOURS = 8;
+
+/** KYC number as displayed: Aadhaar is masked to XXXX-XXXX-1234, everything else is shown as entered. */
+export function kycNumberLabel(d: Pick<KycDocument, 'type' | 'number'>): string {
+  if (d.type !== 'Aadhaar') return d.number;
+  const digits = d.number.replace(/\D/g, '');
+  return digits.length >= 4 ? `XXXX-XXXX-${digits.slice(-4)}` : d.number;
+}
