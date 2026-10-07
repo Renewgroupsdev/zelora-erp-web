@@ -65,13 +65,23 @@ export const routes: Routes = [
       { path: 'hr/recruitment', loadComponent: () => import('./pages/hr-management/recruitment/recruitment').then(m => m.Recruitment) },
       { path: 'hr/payroll', loadComponent: () => import('./pages/hr-management/payroll/payroll').then(m => m.Payroll) },
       { path: 'hr/appraisals', loadComponent: () => import('./pages/hr-management/appraisals/appraisals').then(m => m.Appraisals) },
+      { path: 'hr/tasks', loadComponent: () => import('./pages/hr-management/tasks/tasks').then(m => m.Tasks) },
       { path: 'hr/onboarding-exit', loadComponent: () => import('./pages/hr-management/onboarding-exit/onboarding-exit').then(m => m.OnboardingExit) },
+      // Branch Management
+      { path: 'branches', loadComponent: () => import('./pages/branch-management/branches/branches').then(m => m.Branches) },
+      { path: 'branches/:id', loadComponent: () => import('./pages/branch-management/branch-details/branch-details').then(m => m.BranchDetails) },
+      { path: 'branches/:id/employees', loadComponent: () => import('./pages/branch-management/branch-employees/branch-employees').then(m => m.BranchEmployees) },
+      // Franchise Management
+      { path: 'franchises', loadComponent: () => import('./pages/franchise-management/franchises/franchises').then(m => m.Franchises) },
+      { path: 'franchises/:id', loadComponent: () => import('./pages/franchise-management/franchise-details/franchise-details').then(m => m.FranchiseDetails) },
+      { path: 'franchises/:id/invoices/:invoiceNo', loadComponent: () => import('./pages/franchise-management/invoice-details/invoice-details').then(m => m.InvoiceDetails) },
       // Accounts
       { path: 'accounts', pathMatch: 'full', redirectTo: 'accounts/day-book' },
       { path: 'accounts/day-book', loadComponent: () => import('./pages/accounts/day-book/day-book').then(m => m.DayBook) },
       { path: 'accounts/bills', loadComponent: () => import('./pages/accounts/bills/bills').then(m => m.Bills) },
       { path: 'accounts/vouchers', loadComponent: () => import('./pages/accounts/vouchers/vouchers').then(m => m.Vouchers) },
       { path: 'accounts/ledgers', loadComponent: () => import('./pages/accounts/ledgers/ledgers').then(m => m.Ledgers) },
+      { path: 'accounts/targets', loadComponent: () => import('./pages/accounts/targets/targets').then(m => m.Targets) },
       { path: 'reports', loadComponent: () => import('./pages/reports/reports').then(m => m.Reports) },
       { path: 'reports/:id', loadComponent: () => import('./pages/reports/report-detail/report-detail').then(m => m.ReportDetail) },
       { path: 'settings', loadComponent: () => import('./pages/settings-page/settings-page').then(m => m.SettingsPage) },

@@ -3,8 +3,8 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { HrService, NewEmployeeInput } from '../../../../shared/common-services/hr.service';
-import { DEPARTMENTS, Employee, salaryBreakup, structureFromGross } from '../../../../shared/models/hr.model';
-import { isoDate } from '../../../../shared/utils/format.util';
+import { DEPARTMENTS, Employee, KYC_ACCEPT, KYC_DOC_TYPES, KYC_MAX_BYTES, KycDocType, KycDocument, REFERRAL_SOURCES, kycNumberLabel, salaryBreakup, structureFromGross } from '../../../../shared/models/hr.model';
+import { isoDate, uid } from '../../../../shared/utils/format.util';
 
 /** Add / edit an employee: personal, job, statutory + bank and salary structure. */
 @Component({
@@ -16,7 +16,8 @@ import { isoDate } from '../../../../shared/utils/format.util';
 })
 export class EmployeeForm {
   private readonly dialogRef = inject(MatDialogRef<EmployeeForm>);
-  private readonly data = inject<{ employee: Employee | null; candidateId?: string }>(MAT_DIALOG_DATA);
+  /** `branch` pre-selects the branch when adding from Branch Management. */
+  private readonly data = inject<{ employee: Employee | null; candidateId?: string; branch?: string }>(MAT_DIALOG_DATA);
   readonly hr = inject(HrService);
 
   readonly departments = DEPARTMENTS;
@@ -29,10 +30,19 @@ export class EmployeeForm {
     ? structuredClone((({ id, empCode, status, ...rest }) => rest)(this.data.employee))
     : this.hr.employeeDraftFor(this.candidateId ?? '') ?? {
       name: '', gender: 'Female', dob: null, phone: '', email: '', address: '', bloodGroup: '',
-      designation: '', department: DEPARTMENTS[0], branch: this.hr.branches[0], reportingTo: '', joinDate: isoDate(),
+      designation: '', department: DEPARTMENTS[0], branch: this.hr.branches.includes(this.data.branch ?? '') ? this.data.branch! : this.hr.branches[0], reportingTo: '', joinDate: isoDate(),
       employmentType: 'Full Time', pan: '', aadhaarLast4: '', uan: '', bankName: '', accountNo: '', ifsc: '',
-      emergencyContact: '', salary: structureFromGross(20000),
+      emergencyContact: '', secondaryPhone: '', referralSource: '', referredBy: '', referralPhone: '', kycDocuments: [],
+      salary: structureFromGross(20000),
     };
+
+  readonly referralSources = REFERRAL_SOURCES;
+  readonly kycTypes = KYC_DOC_TYPES;
+  readonly kycNo = kycNumberLabel;
+  readonly kycAccept = KYC_ACCEPT;
+  readonly kycError = signal<string | null>(null);
+  kycType: KycDocType = 'Aadhaar';
+  kycNumber = '';
 
   monthlyGross = salaryBreakup(this.model.salary).gross;
 
@@ -45,9 +55,73 @@ export class EmployeeForm {
     this.model.salary = structureFromGross(Number(this.monthlyGross) || 0, this.model.salary);
   }
 
+  get kycDocs(): KycDocument[] {
+    return (this.model.kycDocuments ??= []);
+  }
+
+  /** Reads the chosen file into the employee record (PDF / JPG / PNG, up to 1 MB each). */
+  addKyc(input: HTMLInputElement): void {
+    const file = input.files?.[0];
+    input.value = '';
+    this.kycError.set(null);
+    if (!file) return;
+    if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) return void this.kycError.set('Upload a PDF, JPG or PNG file.');
+    if (file.size > KYC_MAX_BYTES) return void this.kycError.set('File is larger than 1 MB. Compress it and try again.');
+    const number = this.kycNumberValue();
+    if (number === null) {
+      return void this.kycError.set(this.kycType === 'Aadhaar' ? 'Enter the full 12-digit Aadhaar number before choosing the file.' : 'Enter a valid PAN (ABCDE1234F) before choosing the file.');
+    }
+    const reader = new FileReader();
+    reader.onerror = () => this.kycError.set('Could not read the file.');
+    reader.onload = () => {
+      this.kycDocs.push({
+        id: uid('KYC'), type: this.kycType, number, fileName: file.name,
+        mime: file.type, size: file.size, dataUrl: String(reader.result), uploadedAt: new Date().toISOString(),
+      });
+      this.kycNumber = '';
+      this.syncStatutory();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  /** Aadhaar (full 12 digits) and PAN are typed here once; Statutory & Bank only mirrors them. */
+  private kycNumberValue(): string | null {
+    const raw = this.kycNumber.trim().toUpperCase();
+    if (this.kycType === 'Aadhaar') {
+      const digits = raw.replace(/\s|-/g, '');
+      return /^[0-9]{12}$/.test(digits) ? digits.replace(/(\d{4})(?=\d)/g, '$1 ') : null;
+    }
+    if (this.kycType === 'PAN') return /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(raw) ? raw : null;
+    return raw;
+  }
+
+  /** Picking PAN offers the PAN already on the record (older employees) so it isn't retyped. */
+  onKycTypeChange(type: KycDocType): void {
+    this.kycType = type;
+    this.kycError.set(null);
+    this.kycNumber = type === 'PAN' ? this.model.pan : '';
+  }
+
+  /** Statutory & Bank Aadhaar (last 4) and PAN follow the latest KYC document of that type. */
+  private syncStatutory(): void {
+    const latest = (type: KycDocType) => [...this.kycDocs].reverse().find(d => d.type === type)?.number ?? '';
+    const aadhaar = latest('Aadhaar').replace(/\s/g, '');
+    this.model.aadhaarLast4 = aadhaar.slice(-4);
+    this.model.pan = latest('PAN') || (this.kycDocs.some(d => d.type === 'PAN') ? '' : this.model.pan);
+  }
+
+  removeKyc(id: string): void {
+    this.model.kycDocuments = this.kycDocs.filter(d => d.id !== id);
+    this.syncStatutory();
+  }
+
+  sameAsPrimary(): boolean {
+    return !!this.model.secondaryPhone && this.model.secondaryPhone === this.model.phone;
+  }
+
   save(form: NgForm): void {
     this.submitted.set(true);
-    if (form.invalid) return;
+    if (form.invalid || this.sameAsPrimary()) return;
     const payload = { ...this.model, pan: this.model.pan.toUpperCase(), ifsc: this.model.ifsc.toUpperCase() };
     if (this.data.employee) this.hr.updateEmployee(this.data.employee.id, payload);
     else if (this.candidateId) this.hr.createEmployeeFromCandidate(this.candidateId, payload);

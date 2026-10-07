@@ -1,0 +1,85 @@
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-list-check"></i></div>
+      <div class="title-content">
+        <h2>{{ readOnly ? 'Task details' : isEdit ? 'Update task' : 'Log task' }}</h2>
+        <p>{{ owner ? owner.name + ' · ' + owner.designation : 'SEO task' }}{{ readOnly ? ' · view only' : '' }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <form #f="ngForm" (ngSubmit)="save(f)" novalidate>
+    <div class="modal-body-custom">
+      <fieldset [disabled]="readOnly" style="border: 0; padding: 0; margin: 0; min-width: 0">
+        <div class="form-grid cols-3">
+          <div class="form-field">
+            <label for="tk-branch">Branch / Location</label>
+            <div class="input-wrap"><i class="bi bi-building"></i>
+              <select id="tk-branch" name="branch" [(ngModel)]="model.branch">@for (b of hr.branches; track b) { <option [value]="b">{{ b }}</option> }</select>
+              <i class="bi bi-chevron-down select-arrow"></i>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="tk-type">Task type</label>
+            <div class="input-wrap"><i class="bi bi-tag"></i>
+              <select id="tk-type" name="type" [(ngModel)]="model.type">
+                @for (g of typeGroups; track g[0]) { <optgroup [label]="g[0]">@for (t of g[1]; track t) { <option [value]="t">{{ t }}</option> }</optgroup> }
+              </select>
+              <i class="bi bi-chevron-down select-arrow"></i>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="tk-status">Status</label>
+            <div class="input-wrap"><i class="bi bi-activity"></i>
+              <select id="tk-status" name="status" [(ngModel)]="model.status" (ngModelChange)="onStatusChange()">@for (s of statuses; track s) { <option [value]="s">{{ s }}</option> }</select>
+              <i class="bi bi-chevron-down select-arrow"></i>
+            </div>
+          </div>
+          <div class="form-field full-width">
+            <label for="tk-title">Task <span>*</span></label>
+            <div class="input-wrap"><i class="bi bi-pencil"></i>
+              <input id="tk-title" name="title" required maxlength="200" [(ngModel)]="model.title" #title="ngModel" [class.is-invalid]="submitted() && title.invalid" placeholder="e.g. Optimise service page meta tags for hair transplant Chennai" />
+            </div>
+            @if (submitted() && title.invalid) { <small class="error-text">Task is required.</small> }
+          </div>
+          <div class="form-field">
+            <label for="tk-start">Planned start</label>
+            <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="tk-start" type="date" name="plannedDate" [(ngModel)]="model.plannedDate" /></div>
+          </div>
+          <div class="form-field">
+            <label for="tk-due">Due date <span>*</span></label>
+            <div class="input-wrap"><i class="bi bi-calendar-event"></i><input id="tk-due" type="date" name="dueDate" required [(ngModel)]="model.dueDate" #due="ngModel" [class.is-invalid]="submitted() && due.invalid" /></div>
+            @if (submitted() && due.invalid) { <small class="error-text">Due date is required.</small> }
+          </div>
+          <div class="form-field">
+            <label for="tk-done">Completed on</label>
+            <div class="input-wrap"><i class="bi bi-calendar-check"></i><input id="tk-done" type="date" name="completedDate" [(ngModel)]="model.completedDate" /></div>
+          </div>
+          <div class="form-field">
+            <label for="tk-result">Result status</label>
+            <div class="input-wrap"><i class="bi bi-bullseye"></i>
+              <select id="tk-result" name="result" [(ngModel)]="model.result">@for (r of results; track r) { <option [value]="r">{{ r }}</option> }</select>
+              <i class="bi bi-chevron-down select-arrow"></i>
+            </div>
+          </div>
+          <div class="form-field" style="grid-column: span 2">
+            <label for="tk-metric">Result / metric</label>
+            <div class="input-wrap"><i class="bi bi-graph-up"></i><input id="tk-metric" name="metric" maxlength="200" [(ngModel)]="model.metric" placeholder="e.g. Keyword rank 18 to 6, 240 visits, 12 leads" /></div>
+          </div>
+          <div class="form-field full-width">
+            <label for="tk-notes">Notes</label>
+            <div class="input-wrap"><i class="bi bi-chat-left-text"></i><input id="tk-notes" name="notes" maxlength="500" [(ngModel)]="model.notes" placeholder="Blockers, links, next steps" /></div>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+
+    <div class="modal-footer-custom">
+      @if (isEdit && !readOnly) { <button type="button" class="cancel-btn" style="margin-right: auto; color: var(--status-red-text)" (click)="remove()"><i class="bi bi-trash"></i> Delete</button> }
+      <button type="button" class="cancel-btn" (click)="close()">{{ readOnly ? 'Close' : 'Cancel' }}</button>
+      @if (!readOnly) { <button type="submit" class="save-btn"><i class="bi bi-floppy"></i> {{ isEdit ? 'Update task' : 'Save task' }}</button> }
+    </div>
+  </form>
+</div>

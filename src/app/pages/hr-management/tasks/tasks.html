@@ -1,0 +1,202 @@
+@let s = stats();
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i class="bi bi-list-check"></i> Task and Tracker</h6>
+      <p class="page-subtitle">
+        @switch (access().role) {
+          @case ('admin') { Dashboard of every SEO employee's tasks. View only: tasks are logged by the SEO employee. }
+          @case ('seo') { Log your tasks and keep their status and results up to date. Admin sees them on the dashboard. }
+          @default { Only SEO employees and admins can open this page. }
+        }
+      </p>
+    </div>
+    @if (access().role !== 'none') {
+      <div class="header-actions">
+        <select class="date-input" aria-label="Period" [ngModel]="period()" (ngModelChange)="period.set($event)">
+          <option value="thisweek">This week</option>
+          <option value="thismonth">This month</option>
+          <option value="lastmonth">Last month</option>
+          <option value="all">All time</option>
+        </select>
+        <select class="date-input" aria-label="Branch" [ngModel]="branch()" (ngModelChange)="branch.set($event)">
+          <option value="">All branches</option>
+          @for (b of branches; track b) { <option [value]="b">{{ b }}</option> }
+        </select>
+        <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+        @if (access().role === 'seo') {
+          <button type="button" class="add-lead-btn" (click)="open()"><i class="bi bi-plus-lg"></i> Log task</button>
+        }
+      </div>
+    }
+  </div>
+
+  <app-module-tabs [tabs]="tabs()" label="HR Management"></app-module-tabs>
+
+  @if (access().role === 'none') {
+    <div class="card-block empty-state">
+      <i class="bi bi-lock"></i>
+      <strong>No access</strong>
+      <span>This page is for SEO employees and admins. If you work in SEO, ask HR to set your department to SEO in your employee record.</span>
+    </div>
+  } @else {
+    <div class="kpi-row">
+      <div class="kpi"><small>Tasks</small><strong>{{ s.total }}</strong><span>{{ employeeCards().length }} SEO employee{{ employeeCards().length === 1 ? '' : 's' }}</span></div>
+      <div class="kpi in"><small>Completed</small><strong>{{ s.percent }}%</strong><span>{{ s.done }} of {{ s.total }} done</span></div>
+      <div class="kpi"><small>In progress</small><strong>{{ s.inProgress }}</strong><span>{{ s.notStarted }} not started</span></div>
+      <div class="kpi" [class.alert]="s.overdue"><small>Overdue</small><strong>{{ s.overdue }}</strong><span>{{ s.blocked }} blocked</span></div>
+      <div class="kpi close"><small>Results achieved</small><strong>{{ s.resultPercent === null ? '–' : s.resultPercent + '%' }}</strong><span>{{ s.resultsRated ? s.resultsAchieved + ' of ' + s.resultsRated + ' rated' : 'None rated yet' }}</span></div>
+    </div>
+
+    @if (adminDashboard()) {
+      <div class="section-head"><h4><i class="bi bi-geo-alt-fill"></i> Locations</h4>
+        <div class="legend"><span><i class="b-done"></i>Completed</span><span><i class="b-prog"></i>In progress</span><span><i class="b-block"></i>Blocked</span><span><i class="b-late"></i>Overdue</span></div>
+      </div>
+      <div class="loc-grid">
+        @for (l of locationCards(); track l.branch) {
+          <button type="button" class="loc-card" (click)="openLocation(l.branch)" [attr.aria-label]="'Open ' + l.branch + ' tasks'">
+            <div class="emp-head"><strong>{{ l.branch }}</strong><span class="pct">{{ l.stats.percent }}%</span></div>
+            <small class="resp" [class.none]="!l.responsible.length">Responsible: <b>{{ l.responsible.length ? l.responsible.join(', ') : 'Not assigned' }}</b></small>
+            <div class="bar">
+              @if (l.stats.total) {
+                <i class="b-done" [style.width.%]="l.stats.done / l.stats.total * 100"></i><i class="b-prog" [style.width.%]="l.stats.inProgress / l.stats.total * 100"></i>
+                <i class="b-block" [style.width.%]="l.stats.blocked / l.stats.total * 100"></i><i class="b-late" [style.width.%]="l.stats.overdue / l.stats.total * 100"></i>
+              }
+            </div>
+            <div class="loc-foot"><span>{{ l.stats.done }}/{{ l.stats.total }} done · {{ l.members }} member{{ l.members === 1 ? '' : 's' }}</span><span>Results: {{ l.stats.resultPercent === null ? '–' : l.stats.resultPercent + '% achieved' }}</span></div>
+            <div class="chips">
+              @if (!l.stats.total) { <span class="pill grey">No tasks this period</span> }
+              @if (l.stats.overdue) { <span class="pill red">{{ l.stats.overdue }} overdue</span> }
+              @if (l.stats.blocked) { <span class="pill orange">{{ l.stats.blocked }} blocked</span> }
+              @if (l.stats.inProgress) { <span class="pill blue">{{ l.stats.inProgress }} in progress</span> }
+              @if (l.stats.total && l.stats.done === l.stats.total) { <span class="pill green">All done</span> }
+            </div>
+          </button>
+        }
+      </div>
+
+      <div class="card-block">
+        <h4><i class="bi bi-diagram-3"></i> By service <small class="sub inline">Responsible person and their task progress · all locations · selected period</small></h4>
+        <div class="table-scroll">
+          <table class="tk-table">
+            <thead><tr><th>Service</th><th>Responsible person</th><th>Tasks</th><th>Completed</th><th>In progress</th><th>Overdue</th><th>Completion</th><th>Results achieved</th></tr></thead>
+            <tbody>
+              @for (r of serviceRows(); track r.type) {
+                <tr>
+                  <td><strong>{{ r.type }}</strong></td>
+                  <td>
+                    @for (p of r.people; track p.name) { <span class="owner"><b>{{ p.name }}</b> · {{ p.branches }} · {{ p.done }}/{{ p.total }} done{{ p.overdue ? ' · ' + p.overdue + ' overdue' : '' }}</span> }
+                    @empty { <span class="none-text">No responsible person</span> }
+                  </td>
+                  <td>{{ r.stats.total }}</td><td>{{ r.stats.done }}</td><td>{{ r.stats.inProgress }}</td><td [class.bad]="r.stats.overdue">{{ r.stats.overdue }}</td>
+                  <td>{{ r.stats.total ? r.stats.percent + '%' : 'No tasks' }}</td>
+                  <td>{{ r.stats.resultPercent === null ? '–' : r.stats.resultPercent + '%' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    } @else {
+      @if (locationOpen()) {
+        <div class="loc-head">
+          <button type="button" class="ghost-btn" (click)="backToLocations()"><i class="bi bi-arrow-left"></i> All locations</button>
+          <h4><i class="bi bi-geo-alt-fill"></i> {{ branch() }} · tasks &amp; tracker</h4>
+          <span class="sub inline">Click a task to view its full log sheet.</span>
+        </div>
+      } @else {
+    <div class="card-block">
+      <h4><i class="bi bi-people-fill"></i> {{ access().role === 'admin' ? 'SEO employees' : 'My progress' }}</h4>
+      <div class="emp-grid">
+        @for (c of employeeCards(); track c.employee.id) {
+          <button type="button" class="emp-card" (click)="access().role === 'admin' ? employeeId.set(employeeId() === c.employee.id ? '' : c.employee.id) : null" [class.active]="employeeId() === c.employee.id">
+            <div class="emp-head"><strong>{{ c.employee.name }}</strong><span class="pct">{{ c.stats.percent }}%</span></div>
+            <small class="sub">{{ c.employee.designation }} · {{ c.employee.branch }}</small>
+            <div class="bar" [title]="c.stats.done + ' of ' + c.stats.total + ' completed'">
+              @if (c.stats.total) {
+                <i class="b-done" [style.width.%]="c.stats.done / c.stats.total * 100"></i><i class="b-prog" [style.width.%]="c.stats.inProgress / c.stats.total * 100"></i>
+                <i class="b-block" [style.width.%]="c.stats.blocked / c.stats.total * 100"></i><i class="b-late" [style.width.%]="c.stats.overdue / c.stats.total * 100"></i>
+              }
+            </div>
+            <div class="chips">
+              <span class="pill grey">{{ c.stats.total }} tasks</span>
+              @if (c.stats.overdue) { <span class="pill red">{{ c.stats.overdue }} overdue</span> }
+              @if (c.stats.blocked) { <span class="pill orange">{{ c.stats.blocked }} blocked</span> }
+              @if (c.stats.inProgress) { <span class="pill blue">{{ c.stats.inProgress }} in progress</span> }
+              @if (c.stats.resultPercent !== null) { <span class="pill green">Results {{ c.stats.resultPercent }}%</span> }
+            </div>
+          </button>
+        } @empty {
+          <p class="muted-note">No SEO employees yet. Add an employee with department SEO under Employees.</p>
+        }
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card-block">
+        <h4><i class="bi bi-tags"></i> By task type</h4>
+        <div class="table-scroll">
+          <table class="tk-table">
+            <thead><tr><th>Type</th><th>Tasks</th><th>Done</th><th>Overdue</th><th>Completion</th></tr></thead>
+            <tbody>
+              @for (t of byType(); track t.type) {
+                <tr><td><strong>{{ t.type }}</strong></td><td>{{ t.stats.total }}</td><td>{{ t.stats.done }}</td><td [class.bad]="t.stats.overdue">{{ t.stats.overdue }}</td><td>{{ t.stats.percent }}%</td></tr>
+              } @empty { <tr><td colspan="5" class="empty">No tasks in this period.</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card-block">
+        <h4><i class="bi bi-exclamation-triangle"></i> Needs attention</h4>
+        @for (t of attention(); track t.id) {
+          <button type="button" class="attn" (click)="open(t.id)">
+            <span><strong>{{ t.title }}</strong><small class="sub">{{ employeeName(t.empId) }} · {{ t.branch }} · due {{ displayDate(t.dueDate) }}</small></span>
+            <span [class]="'pill ' + statusClass(t)">{{ statusLabel(t) }}</span>
+          </button>
+        } @empty { <p class="muted-note">Nothing overdue or blocked.</p> }
+      </div>
+    </div>
+
+      }
+
+    <div class="card-block">
+      <div class="block-head">
+        <h4><i class="bi bi-table"></i> All tasks</h4>
+        <div class="filters">
+          <select class="date-input" aria-label="Status" [ngModel]="status()" (ngModelChange)="status.set($event)">
+            <option value="">All statuses</option>
+            <option value="Overdue">Overdue</option>
+            @for (st of statuses; track st) { <option [value]="st">{{ st }}</option> }
+          </select>
+          <input class="date-input" type="search" placeholder="Search tasks" aria-label="Search tasks" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="tk-table wide">
+          <thead><tr><th>Due</th><th>Employee</th><th>Branch</th><th>Task</th><th>Status</th><th>Result</th><th>Result / metric</th></tr></thead>
+          <tbody>
+            @for (t of rows(); track t.id) {
+              <tr class="click" tabindex="0" (click)="open(t.id)" (keydown.enter)="open(t.id)">
+                <td class="nowrap">{{ displayDate(t.dueDate) }}</td>
+                <td>{{ employeeName(t.empId) }}</td>
+                <td>{{ t.branch }}</td>
+                <td class="task-col"><strong>{{ t.title }}</strong><small class="sub">{{ t.type }}{{ t.notes ? ' · ' + t.notes : '' }}</small></td>
+                <td><span [class]="'pill ' + statusClass(t)">{{ statusLabel(t) }}</span></td>
+                <td><span [class]="'pill ' + resultClass(t.result)">{{ t.result }}</span></td>
+                <td>{{ t.metric || '–' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="empty">
+                @if (access().role === 'seo') { No tasks yet. Click “Log task” to add your first one. } @else { No tasks match these filters. }
+              </td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+    }
+  }
+</div>

@@ -3,6 +3,8 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { AccountsService, BILL_CATALOG } from '../../../../shared/common-services/accounts.service';
+import { HrService } from '../../../../shared/common-services/hr.service';
+import { isTreatmentStaff } from '../../../../shared/models/targets.model';
 import { Bill, BillItem, BillKind, PAYMENT_MODES, PaymentMode, billTotals, lineAmount } from '../../../../shared/models/accounts.model';
 import { addDays, isoDate } from '../../../../shared/utils/format.util';
 
@@ -19,6 +21,10 @@ export class BillForm {
   private readonly data = inject<{ kind: BillKind }>(MAT_DIALOG_DATA);
   readonly acc = inject(AccountsService);
 
+  private readonly hr = inject(HrService);
+  /** Treatment staff of the selected branch - the person the sale is credited to. */
+  readonly sellers = () => this.hr.activeEmployees().filter(e => isTreatmentStaff(e) && e.branch === this.branch);
+
   readonly catalog = BILL_CATALOG;
   readonly modes = PAYMENT_MODES;
   readonly gstRates = [0, 5, 12, 18, 28];
@@ -30,6 +36,7 @@ export class BillForm {
   date = this.today;
   dueDate: string | null = addDays(this.today, this.data.kind === 'Proforma' ? 15 : 7);
   branch = this.acc.branches[0];
+  employeeId = '';
   customerName = '';
   customerPhone = '';
   customerAddress = '';
@@ -106,7 +113,7 @@ export class BillForm {
     if (this.error()) return;
     const result = this.acc.createBill(
       {
-        kind: this.kind(), date: this.date, dueDate: this.dueDate, branch: this.branch, notes: this.notes.trim(),
+        kind: this.kind(), date: this.date, dueDate: this.dueDate, branch: this.branch, employeeId: this.employeeId || undefined, notes: this.notes.trim(),
         customerName: this.customerName.trim(), customerPhone: this.customerPhone.trim(), customerAddress: this.customerAddress.trim(),
         customerGstin: this.customerGstin.trim().toUpperCase(),
         items: this.items.map(i => ({ ...i, description: i.description.trim(), qty: Number(i.qty), rate: Number(i.rate), discountPercent: Number(i.discountPercent), gstPercent: Number(i.gstPercent) })),

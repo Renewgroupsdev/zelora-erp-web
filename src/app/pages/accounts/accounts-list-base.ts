@@ -13,6 +13,7 @@ export function accountsTabs(acc: AccountsService): ModuleTab[] {
     { label: 'Bills', icon: 'bi-receipt', path: '/app/accounts/bills', badge: acc.bills().filter(b => b.kind === 'Service' && (b.status === 'Unpaid' || b.status === 'Partially Paid')).length, warn: true },
     { label: 'Vouchers', icon: 'bi-arrow-left-right', path: '/app/accounts/vouchers' },
     { label: 'Ledgers & Reports', icon: 'bi-journals', path: '/app/accounts/ledgers' },
+    { label: 'Targets', icon: 'bi-bullseye', path: '/app/accounts/targets' },
   ];
 }
 

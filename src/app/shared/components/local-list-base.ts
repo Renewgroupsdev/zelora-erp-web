@@ -1,8 +1,10 @@
 import { Directive, effect, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
+import { downloadExcel, escapeHtml, fileStamp, printDocument, saveBlob } from '../utils/export.util';
 import {
   CommonFilterState,
+  ExportFormat,
   FilterOption,
   TableColumn,
   TablePageChangeEvent,
@@ -129,9 +131,28 @@ export abstract class LocalListBase {
       .map(c => ({ header: c.header, key: c.key }));
     const rows = this.filteredRows.map(r => Object.fromEntries(columns.map(c => {
       const raw = r[`__${c.key}`];
-      return [c.key, typeof raw === 'number' ? raw : r[c.key]];
+      const cell = r[c.key];
+      // `lead` cells are { name, subtitle } objects - export the name.
+      return [c.key, typeof raw === 'number' ? raw : cell && typeof cell === 'object' && 'name' in cell ? (cell as { name: string }).name : cell];
     })));
     return { name, columns, rows };
+  }
+
+  /** Filter-card export: Excel, CSV or a printable PDF of the filtered rows. */
+  protected exportAs(format: ExportFormat, fileBase: string, title: string): void {
+    const sheet = this.exportSheet(title);
+    const file = `${fileBase}-${fileStamp()}`;
+    if (format === 'xlsx') {
+      downloadExcel(file, [sheet]);
+    } else if (format === 'csv') {
+      const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const lines = [sheet.columns.map(c => esc(c.header)).join(','), ...sheet.rows.map(r => sheet.columns.map(c => esc(r[c.key])).join(','))];
+      saveBlob(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }), `${file}.csv`);
+    } else {
+      const head = sheet.columns.map(c => `<th>${escapeHtml(c.header)}</th>`).join('');
+      const body = sheet.rows.map(r => `<tr>${sheet.columns.map(c => `<td>${escapeHtml(r[c.key])}</td>`).join('')}</tr>`).join('');
+      printDocument(title, `<div class="doc-head"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(fileStamp())}</p></div><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`);
+    }
   }
 
   /** Same sizing every ERP dialog uses. */
