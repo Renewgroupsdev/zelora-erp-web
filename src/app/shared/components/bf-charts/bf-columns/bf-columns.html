@@ -1,0 +1,8 @@
+@if (hasData) {
+  <div class="legend"><span><i class="a"></i>{{ aName }}</span>@if (bName) { <span><i class="b"></i>{{ bName }}</span> }</div>
+  <div class="chart">
+    <canvas #cv role="img" [attr.aria-label]="aName + ' by period'"></canvas>
+  </div>
+} @else {
+  <div class="empty"><i class="bi bi-bar-chart-line"></i><span>{{ emptyText }}</span></div>
+}

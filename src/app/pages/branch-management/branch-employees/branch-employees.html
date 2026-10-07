@@ -1,16 +1,23 @@
 @if (branch(); as b) {
   <div class="purchase-page container-fluid px-0">
 
-    <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
-      <div>
-        <div class="crumbs"><a routerLink="/app/branches">Branch Management</a> <span>›</span> <a [routerLink]="['/app/branches', b.id]">Branch Details</a> <span>›</span> <span class="current">Employees</span></div>
-        <h6 class="page-title">Branch Employees - {{ b.name }}</h6>
+    <header class="bf-hero">
+      <div class="hero-main">
+        <div class="hero-media" aria-hidden="true"><i class="bi bi-people-fill"></i></div>
+        <div class="hero-text">
+          <div class="crumbs"><a routerLink="/app/branches">Branch Management</a> <span>›</span> <a [routerLink]="['/app/branches', b.id]">Branch Details</a> <span>›</span> <span class="current">Employees</span></div>
+          <h6 class="page-title">{{ b.name }} Employees</h6>
+          <div class="hero-chips">
+            <span class="chip"><i class="bi bi-hash"></i>{{ b.code }}</span>
+            <span class="chip"><i class="bi bi-person-badge"></i>{{ all().length }} employees</span>
+          </div>
+        </div>
       </div>
       <div class="header-actions">
-        <a class="ghost-btn" [routerLink]="['/app/branches', b.id]">Back</a>
+        <a class="ghost-btn" [routerLink]="['/app/branches', b.id]"><i class="bi bi-arrow-left"></i> Back</a>
         <button type="button" class="add-lead-btn" (click)="addEmployee()"><i class="bi bi-plus-lg"></i> Add Employee</button>
       </div>
-    </div>
+    </header>
 
     <div class="panel">
       <div class="toolbar">

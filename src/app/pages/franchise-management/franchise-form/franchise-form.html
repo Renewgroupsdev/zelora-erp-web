@@ -55,10 +55,18 @@
         </div>
         <div class="form-field full-width">
           <label for="fr-photo">Franchise Photo</label>
-          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
-            @if (model.photo) { <img [src]="model.photo" alt="Franchise photo preview" style="width: 96px; height: 64px; object-fit: cover; border-radius: 8px" /> }
-            <input id="fr-photo" type="file" accept="image/*" (change)="onPhoto($event)" />
-            @if (model.photo) { <button type="button" class="cancel-btn" (click)="model.photo = undefined">Remove</button> }
+          <div class="photo-upload">
+            <div class="preview">
+              @if (model.photo) { <img [src]="model.photo" alt="Franchise photo preview" /> } @else { <i class="bi bi-image" aria-hidden="true"></i> }
+            </div>
+            <div class="upload-actions">
+              <div class="row-actions">
+                <input id="fr-photo" type="file" accept="image/*" (change)="onPhoto($event)" />
+                <label class="pick-btn" for="fr-photo"><i class="bi bi-upload"></i> {{ model.photo ? 'Change photo' : 'Upload photo' }}</label>
+                @if (model.photo) { <button type="button" class="cancel-btn" (click)="model.photo = undefined">Remove</button> }
+              </div>
+              <small>JPG or PNG, shown on the details page.</small>
+            </div>
           </div>
         </div>
       </div>

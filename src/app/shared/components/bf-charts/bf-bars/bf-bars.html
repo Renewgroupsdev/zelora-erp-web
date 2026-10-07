@@ -1,0 +1,12 @@
+@if (rows.length) {
+  <ul>
+    @for (r of rows; track r.label) {
+      <li [style.--c]="r.color" [style.animation-delay.ms]="$index * 60">
+        <div class="top"><span class="lbl" [title]="r.label"><i class="dot"></i>{{ r.label }}</span><b class="chip">{{ fmt(r.value) }}@if (r.secondary !== undefined) { <em>· {{ fmt(r.secondary) }} {{ secondaryLabel }}</em> }</b></div>
+        <div class="track"><div class="fill" [style.width.%]="r.pct"><div class="inner" [style.width.%]="r.innerPct"></div></div></div>
+      </li>
+    }
+  </ul>
+} @else {
+  <div class="empty"><i class="bi bi-bar-chart"></i><span>{{ emptyText }}</span></div>
+}

@@ -1,48 +1,131 @@
 <div class="purchase-page container-fluid px-0">
+  <div class="bf-split">
 
-  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
-    <div>
-      <h6 class="page-title"><i class="bi bi-shop"></i> Franchise Management</h6>
-      <p class="page-subtitle">Manage your franchise partners and their performance.</p>
-    </div>
-    <div class="header-actions">
-      <button type="button" class="add-lead-btn" (click)="addFranchise()"><i class="bi bi-plus-lg"></i> Add Franchise</button>
-    </div>
-  </div>
-
-  <div class="row g-2 stat-row">
-    @for (stat of stats(); track stat.label) {
-      <div class="col-6 col-md">
-        <app-common-detail-card [label]="stat.label" [value]="stat.value" [trendText]="stat.trendText" [trendDirection]="stat.trendDirection ?? 'neutral'" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'"></app-common-detail-card>
+    <div class="bf-main">
+      <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+        <div>
+          <h6 class="page-title"><i class="bi bi-shop"></i> Franchise Management</h6>
+          <p class="page-subtitle">Manage your franchise partners and their performance.</p>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="ghost-btn" (click)="onExport('xlsx')"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+          <button type="button" class="add-lead-btn" (click)="addFranchise()"><i class="bi bi-plus-lg"></i> Add Franchise</button>
+        </div>
       </div>
-    }
-  </div>
 
-  <app-common-filter-card
-    searchPlaceholder="Search franchise..."
-    [filters]="filters"
-    (exportClick)="onExport($event)"
-    (searchChange)="onSearch($event)"
-    (filtersChange)="onFiltersChange($event)"
-  ></app-common-filter-card>
+      <div class="row g-2 stat-row">
+        @for (stat of stats(); track stat.label) {
+          <div class="col-6 col-md">
+            <app-common-detail-card [label]="stat.label" [value]="stat.value" [trendText]="stat.trendText" [trendDirection]="stat.trendDirection ?? 'neutral'" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'"></app-common-detail-card>
+          </div>
+        }
+      </div>
 
-  <div class="table-col">
-    <app-common-table-card
-      title="Franchises"
-      [recordCountText]="recordCountText"
-      [columns]="columns"
-      [rows]="rows"
-      [totalRecords]="totalRecords"
-      [pageSize]="pageSize"
-      [pageSizeOptions]="pageSizeOptions"
-      [currentPage]="currentPage"
-      [pageInfoText]="pageInfoText"
-      [sortActive]="sortActive"
-      [sortDirection]="sortDirection"
-      (pageChange)="onPageChange($event)"
-      (sortChange)="onSortChange($event)"
-      (quickActionClick)="onQuickAction($event)"
-      (profileClick)="open($event)"
-    ></app-common-table-card>
+      <app-common-filter-card
+        searchPlaceholder="Search franchise by name, owner or code..."
+        [filters]="filters"
+        (exportClick)="onExport($event)"
+        (searchChange)="onSearch($event)"
+        (filtersChange)="onFiltersChange($event)"
+      ></app-common-filter-card>
+
+      <div class="table-col">
+        <app-common-table-card
+          title="Franchises"
+          [recordCountText]="recordCountText"
+          [columns]="columns"
+          [rows]="rows"
+          [totalRecords]="totalRecords"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="pageSizeOptions"
+          [currentPage]="currentPage"
+          [pageInfoText]="pageInfoText"
+          [sortActive]="sortActive"
+          [sortDirection]="sortDirection"
+          [selectedId]="current()?.id ?? null"
+          (pageChange)="onPageChange($event)"
+          (sortChange)="onSortChange($event)"
+          (quickActionClick)="onQuickAction($event)"
+          (rowSelect)="select($event)"
+          (profileClick)="open($event)"
+        ></app-common-table-card>
+      </div>
+    </div>
+
+    <div class="bf-backdrop" [class.open]="panelOpen()" (click)="closePanel()"></div>
+    <aside class="bf-side" [class.open]="panelOpen()" [attr.aria-hidden]="!panelOpen()" aria-label="Franchise details" role="dialog">
+      @if (panel(); as p) {
+        <header class="drawer-hero">
+          <div class="dh-top">
+            <span class="dh-title">Franchise Details</span>
+            <button type="button" class="glass-btn" (click)="onQuickAction({ row: { id: p.franchise.id }, action: 'edit' })"><i class="bi bi-pencil-square"></i> Edit</button>
+            <button type="button" class="glass-btn icon" aria-label="Close details" (click)="closePanel()"><i class="bi bi-x-lg"></i></button>
+          </div>
+          <div class="dh-id">
+            <div class="side-photo">
+              @if (p.franchise.photo) { <img [src]="p.franchise.photo" [alt]="p.franchise.name + ' franchise'" /> } @else { <i class="bi bi-shop" aria-hidden="true"></i> }
+            </div>
+            <div class="side-id-text">
+              <div class="id-top">
+                <strong class="id-name">{{ p.franchise.name }}</strong>
+                <span class="status-pill" [ngClass]="p.franchise.status.toLowerCase()">{{ p.franchise.status }}</span>
+              </div>
+              <span class="id-code">{{ p.franchise.code }} · Franchise partner</span>
+              <span class="id-line"><i class="bi bi-person"></i> {{ p.franchise.ownerName }}</span>
+              <span class="id-line"><i class="bi bi-telephone"></i> {{ p.franchise.ownerPhone || '-' }}</span>
+              <span class="id-line"><i class="bi bi-envelope"></i> {{ p.franchise.ownerEmail || '-' }}</span>
+            </div>
+          </div>
+        </header>
+
+        <div class="drawer-body">
+          <div class="side-tabs" role="tablist">
+            <button type="button" role="tab" class="active" aria-selected="true">Overview</button>
+            @for (t of panelTabs; track t) {
+              <button type="button" role="tab" aria-selected="false" (click)="panelLink(p.franchise.id, t)">{{ t[0].toUpperCase() + t.slice(1) }}</button>
+            }
+          </div>
+
+          <div class="tiles">
+            <div class="tile tile-blue"><span class="mi"><i class="bi bi-graph-up-arrow"></i></span><small>Total Sales</small><strong>₹{{ p.totals.total | number: '1.0-0' }}</strong></div>
+            <div class="tile tile-green"><span class="mi"><i class="bi bi-shop"></i></span><small>Franchise Share</small><strong>₹{{ p.totals.franchise | number: '1.0-0' }}</strong></div>
+            <div class="tile tile-purple"><span class="mi"><i class="bi bi-percent"></i></span><small>Renew Share</small><strong>₹{{ p.totals.renew | number: '1.0-0' }}</strong></div>
+          </div>
+
+          <h5>Franchise Information</h5>
+          <dl class="kv compact card-block">
+            <dt>Franchise Code</dt><dd>{{ p.franchise.code }}</dd>
+            <dt>Owner Name</dt><dd>{{ p.franchise.ownerCompany }}</dd>
+            <dt>City</dt><dd>{{ p.franchise.city }}</dd>
+            <dt>State</dt><dd>{{ p.franchise.state }}</dd>
+            <dt>Phone</dt><dd>{{ p.franchise.ownerPhone || '-' }}</dd>
+            <dt>Email</dt><dd>{{ p.franchise.ownerEmail || '-' }}</dd>
+            <dt>GST No</dt><dd>{{ p.franchise.gstin || '-' }}</dd>
+            <dt>Agreement Period</dt><dd>{{ displayDate(p.franchise.agreementFrom) }} to {{ displayDate(p.franchise.agreementTo) }}</dd>
+          </dl>
+
+          <h5>Share Configuration</h5>
+          <div class="share-split card-block">
+            <div class="share-donut" [style.background]="p.donut" role="img" [attr.aria-label]="p.franchiseShare + '% franchise, ' + p.renewShare + '% Renew company'"><span>{{ p.renewShare }}%</span></div>
+            <ul>
+              <li><i class="dot dot-blue"></i><strong>{{ p.franchiseShare }}%</strong> Franchise</li>
+              <li><i class="dot dot-green"></i><strong>{{ p.renewShare }}%</strong> Renew Company</li>
+              <li class="eff">Effective from {{ displayDate(p.franchise.shareEffectiveFrom) }}</li>
+            </ul>
+          </div>
+        </div>
+
+        <footer class="drawer-foot">
+          <h4>Quick Actions</h4>
+          <div class="quick-grid">
+            <button type="button" class="qa qa-blue" (click)="panelLink(p.franchise.id, 'sales')"><i class="bi bi-receipt"></i><span>View Sales</span></button>
+            <button type="button" class="qa qa-green" (click)="panelLink(p.franchise.id, 'overview')"><i class="bi bi-cash-coin"></i><span>View Settlement</span></button>
+            <button type="button" class="qa qa-purple" (click)="panelLink(p.franchise.id, 'reports')"><i class="bi bi-file-earmark-bar-graph"></i><span>View Report</span></button>
+            <button type="button" class="qa qa-orange" (click)="panelLink(p.franchise.id, 'agreement')"><i class="bi bi-file-earmark-text"></i><span>Agreement</span></button>
+          </div>
+        </footer>
+      }
+    </aside>
+
   </div>
 </div>

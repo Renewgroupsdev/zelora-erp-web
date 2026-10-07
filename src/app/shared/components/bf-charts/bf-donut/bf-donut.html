@@ -1,0 +1,20 @@
+@if (total > 0) {
+  <div class="wrap">
+    <div class="ring">
+      <canvas #cv role="img" [attr.aria-label]="centerLabel + ': ' + fmt(total)"></canvas>
+      <div class="center">
+        <div class="disc">
+          <strong>{{ fmt(hover === null ? total : segments[hover].value) }}</strong>
+          <small>{{ hover === null ? centerLabel : segments[hover].label }}</small>
+        </div>
+      </div>
+    </div>
+    <ul class="legend">
+      @for (s of segments; track s.label) {
+        <li [style.--c]="s.color" [class.on]="hover === $index" [class.dim]="hover !== null && hover !== $index" (mouseenter)="setHover($index)" (mouseleave)="setHover(null)"><i [style.background]="s.color"></i><span class="lbl" [title]="s.label">{{ s.label }}</span><b>{{ fmt(s.value) }}</b><em>{{ s.pct }}%</em><span class="mini"><u [style.width.%]="s.pct"></u></span></li>
+      }
+    </ul>
+  </div>
+} @else {
+  <div class="empty"><i class="bi bi-pie-chart"></i><span>{{ emptyText }}</span></div>
+}

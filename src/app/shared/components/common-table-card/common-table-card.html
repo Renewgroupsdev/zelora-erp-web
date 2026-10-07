@@ -97,9 +97,13 @@
 
             @if (col.type === 'lead') {
               <div class="lead-cell">
-                <span class="avatar" [ngClass]="avatarClass(rowIndex)">
-                  {{ initials(asLeadCell(row[col.key]).name) }}
-                </span>
+                @if (asLeadCell(row[col.key]).photo; as photo) {
+                  <img class="lead-photo" [src]="photo" alt="" />
+                } @else {
+                  <span class="avatar" [ngClass]="avatarClass(rowIndex)">
+                    {{ initials(asLeadCell(row[col.key]).name) }}
+                  </span>
+                }
                 <span class="lead-text">
                   <a class="lead-name lead-name-link" href="javascript:void(0)" role="button"
                      [title]="asLeadCell(row[col.key]).name"
@@ -290,6 +294,9 @@
       <tr
         mat-row
         *matRowDef="let row; columns: displayedColumns; let rowIndex = index"
+        [class.row-selected]="selectedId !== null && row['id'] === selectedId"
+        [class.row-selectable]="rowSelect.observed"
+        (click)="onRowClick($event, row)"
         cdkDrag
         [cdkDragData]="row"
         [cdkDragDisabled]="dragDisabled || !dragDropEnabled"

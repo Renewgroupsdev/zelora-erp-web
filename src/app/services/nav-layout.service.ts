@@ -5,10 +5,10 @@ const MOBILE_BREAKPOINT = '(max-width: 768px)';
 
 export type NavLayoutMode = 'vertical' | 'horizontal';
 export type ThemeMode = 'light' | 'dark';
-export type PrimaryColor = 'burgundy' | 'green' | 'blue' | 'purple' | 'teal' | 'custom';
+export type PrimaryColor = 'renew' | 'green' | 'blue' | 'purple' | 'teal' | 'custom';
 
 const PRIMARY_PRESETS: Record<Exclude<PrimaryColor, 'custom'>, string> = {
-  burgundy: '#7b1e42',
+  renew: '#0d5c4b',
   green: '#18b875',
   blue: '#2d7ff9',
   purple: '#8b5cf6',
@@ -124,7 +124,7 @@ export class NavLayoutService {
 
   private readPrimaryColor(): PrimaryColor {
     const value = localStorage.getItem('renew-plus-primary');
-    return value === 'burgundy' || value === 'green' || value === 'blue' || value === 'purple' || value === 'teal' || value === 'custom' ? value : 'burgundy';
+    return value === 'renew' || value === 'green' || value === 'blue' || value === 'purple' || value === 'teal' || value === 'custom' ? value : 'renew';
   }
 
   private readPrimaryHex(): string {
@@ -135,7 +135,7 @@ export class NavLayoutService {
     }
 
     if (color === 'custom') {
-      return PRIMARY_PRESETS.burgundy;
+      return PRIMARY_PRESETS.renew;
     }
 
     return PRIMARY_PRESETS[color];

@@ -70,7 +70,7 @@
   --avatar-color-4-bg: #f2e8fc;
   --avatar-color-4-text: #7c3aed;
   --avatar-color-5-bg: #fce8f1;
-  --avatar-color-5-text: #c93672;
+  --avatar-color-5-text: #2a8f76;
 
   /* ---------------------------------------------------------
      font-family 
@@ -125,10 +125,10 @@
 
   /* Premium elevation — soft, color-tinted "floating glass" shadows layered
      on top of the plain ones above; used for headers, sidebars & hero surfaces */
-  --shadow-premium-sm: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 6px 16px -8px color-mix(in srgb, var(--primary, #7b1e42) 22%, transparent), 0 2px 6px rgba(16, 40, 36, 0.06);
-  --shadow-premium-md: 0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 16px 32px -14px color-mix(in srgb, var(--primary, #7b1e42) 26%, transparent), 0 4px 14px rgba(16, 40, 36, 0.08);
-  --shadow-premium-lg: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 26px 54px -18px color-mix(in srgb, var(--primary, #7b1e42) 30%, transparent), 0 8px 22px rgba(16, 40, 36, 0.1);
-  --glass-border: color-mix(in srgb, var(--primary, #7b1e42) 14%, rgba(255, 255, 255, 0.6));
+  --shadow-premium-sm: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 6px 16px -8px color-mix(in srgb, var(--primary, #0d5c4b) 22%, transparent), 0 2px 6px rgba(16, 40, 36, 0.06);
+  --shadow-premium-md: 0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 16px 32px -14px color-mix(in srgb, var(--primary, #0d5c4b) 26%, transparent), 0 4px 14px rgba(16, 40, 36, 0.08);
+  --shadow-premium-lg: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 26px 54px -18px color-mix(in srgb, var(--primary, #0d5c4b) 30%, transparent), 0 8px 22px rgba(16, 40, 36, 0.1);
+  --glass-border: color-mix(in srgb, var(--primary, #0d5c4b) 14%, rgba(255, 255, 255, 0.6));
 
   /* ---------------------------------------------------------
      Premium stat-card gradients — one dark, color-coded surface
@@ -303,14 +303,14 @@ h1, h2, h3, h4, h5, h6 {
   --font-family-base: 'Rubik', sans-serif;
   --header-bg: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(255,255,255,.93) 100%);
   --sidebar-bg: rgba(255,255,255,.96);
-  --primary: #7b1e42;
-  --primary-dark: #5c1232;
-  --primary-soft: #f9eef2;
-  --primary-soft-strong: #f2dfe6;
-  --primary-border: rgba(123,30,66,.16);
-  --primary-border-strong: rgba(123,30,66,.35);
-  --primary-shadow: rgba(123,30,66,.22);
-  --brand-rose-gold: #d9a48a;
+  --primary: #0d5c4b;
+  --primary-dark: #073f35;
+  --primary-soft: #eaf4f1;
+  --primary-soft-strong: #dcece6;
+  --primary-border: rgba(13, 92, 75,.16);
+  --primary-border-strong: rgba(13, 92, 75,.35);
+  --primary-shadow: rgba(13, 92, 75,.22);
+  --brand-rose-gold: #c9a45c;
   --shadow-header: 0 5px 24px rgba(18,60,56,.06);
   --shadow-sidebar: 5px 0 24px rgba(18,60,56,.045);
   --shadow-sidebar-horizontal: 0 4px 18px rgba(18,60,56,.05);
@@ -636,3 +636,16 @@ button, a, input, select, textarea {
 div:where(.swal2-container) h2:where(.swal2-title) {
   font-size: 1.2em;
 }
+
+/* Renew Group wordmark: "Renew" in the logo's emerald, "Group" in its gold (used in the top bar and the sidebar). */
+.rg-renew,
+.rg-group {
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.rg-renew { background-image: linear-gradient(135deg, #073f35 0%, #0d5c4b 45%, #1a7a63 100%); }
+.rg-group { background-image: linear-gradient(135deg, #9a7226 0%, #d9b865 48%, #b58a30 100%); }
+:root[data-theme='dark'] .rg-renew { background-image: linear-gradient(135deg, #2f9e83 0%, #6bc4ab 100%); }
+:root[data-theme='dark'] .rg-group { background-image: linear-gradient(135deg, #d9b865 0%, #f0d98f 100%); }

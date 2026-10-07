@@ -14,7 +14,7 @@ type BranchInput = Omit<BranchRecord, 'id' | 'code'>;
   standalone: true,
   imports: [CommonModule, FormsModule, MatDialogModule],
   templateUrl: './branch-form.html',
-  styleUrl: '../../../shared/styles/erp-dialog.scss',
+  styleUrls: ['../../../shared/styles/erp-dialog.scss', '../../../shared/styles/branch-franchise-dialog.scss'],
 })
 export class BranchForm {
   private readonly dialogRef = inject(MatDialogRef<BranchForm, BranchRecord>);

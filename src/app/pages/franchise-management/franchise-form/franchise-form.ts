@@ -14,7 +14,7 @@ type FranchiseInput = Omit<FranchiseRecord, 'id' | 'code'>;
   standalone: true,
   imports: [CommonModule, FormsModule, MatDialogModule],
   templateUrl: './franchise-form.html',
-  styleUrl: '../../../shared/styles/erp-dialog.scss',
+  styleUrls: ['../../../shared/styles/erp-dialog.scss', '../../../shared/styles/branch-franchise-dialog.scss'],
 })
 export class FranchiseForm {
   private readonly dialogRef = inject(MatDialogRef<FranchiseForm, FranchiseRecord>);

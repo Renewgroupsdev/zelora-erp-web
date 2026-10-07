@@ -57,6 +57,8 @@ export class CommonTableCard {
   @Input() dragDropEnabled = false;
   @Input() dropListId = '';
   @Input() connectedTo: string | string[] = [];
+  /** Row `id` to highlight; set it (with `rowSelect`) to turn the table into a master list. */
+  @Input() selectedId: string | number | null = null;
 
   @Output() pageChange = new EventEmitter<TablePageChangeEvent>();
   @Output() sortChange = new EventEmitter<Sort>();
@@ -72,6 +74,7 @@ export class CommonTableCard {
   @Output() rowReorder = new EventEmitter<TableReorderEvent>();
   @Output() quickActionClick = new EventEmitter<{ row: TableRow; action: string }>();
   @Output() profileClick = new EventEmitter<TableRow>();
+  @Output() rowSelect = new EventEmitter<TableRow>();
   @Output() rowTransfer = new EventEmitter<TableTransferEvent>();
 
   @ViewChild(MatTable) table!: MatTable<TableRow>;
@@ -115,6 +118,12 @@ export class CommonTableCard {
 
   hideAvatarTooltip(): void {
     this.avatarTooltip = null;
+  }
+
+  onRowClick(event: Event, row: TableRow): void {
+    // Buttons and links inside a row (quick actions, name link) have their own behaviour.
+    if ((event.target as HTMLElement).closest('button, a')) return;
+    this.rowSelect.emit(row);
   }
 
   initials(name: string): string {
