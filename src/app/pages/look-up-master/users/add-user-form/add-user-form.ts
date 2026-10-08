@@ -53,6 +53,7 @@ export class AddUserForm {
       password: ['', user ? [Validators.minLength(6)] : [Validators.required, Validators.minLength(6)]],
       password_confirmation: [''],
       role_id: [user?.role_id ?? '', Validators.required],
+      user_type: [user?.user_type ?? 'management', Validators.required],
       org_unit_id: [user?.org_unit_id ?? '', Validators.required],
       phone_no: [user?.phone_no ?? '', Validators.maxLength(20)],
       // Telephony extension - only used (and required) for the telecaller role.
@@ -147,6 +148,7 @@ export class AddUserForm {
     payload.append('name', value.name);
     payload.append('email', value.email);
     payload.append('role_id', String(value.role_id));
+    payload.append('user_type', value.user_type);
     payload.append('org_unit_id', String(value.org_unit_id));
     payload.append('phone_no', value.phone_no ?? '');
     payload.append('status', String(value.status));

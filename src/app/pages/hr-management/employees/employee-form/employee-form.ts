@@ -1,9 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { catchError, of } from 'rxjs';
+import { ApiDataService } from '../../../../core/http/api.service';
+import { ApiRoutesConstants } from '../../../../shared/common-services/api-route-constants';
 import { HrService, NewEmployeeInput } from '../../../../shared/common-services/hr.service';
-import { DEPARTMENTS, Employee, KYC_ACCEPT, KYC_DOC_TYPES, KYC_MAX_BYTES, KycDocType, KycDocument, REFERRAL_SOURCES, kycNumberLabel, salaryBreakup, structureFromGross } from '../../../../shared/models/hr.model';
+import { DEPARTMENTS, EMPLOYEE_TYPES, Employee, KYC_ACCEPT, KYC_DOC_TYPES, KYC_MAX_BYTES, KycDocType, KycDocument, REFERRAL_SOURCES, kycNumberLabel, salaryBreakup, structureFromGross } from '../../../../shared/models/hr.model';
 import { isoDate, uid } from '../../../../shared/utils/format.util';
 
 /** Add / edit an employee: personal, job, statutory + bank and salary structure. */
@@ -14,7 +17,8 @@ import { isoDate, uid } from '../../../../shared/utils/format.util';
   templateUrl: './employee-form.html',
   styleUrl: '../../../../shared/styles/erp-dialog.scss',
 })
-export class EmployeeForm {
+export class EmployeeForm implements OnInit {
+  private readonly api = inject(ApiDataService);
   private readonly dialogRef = inject(MatDialogRef<EmployeeForm>);
   /** `branch` pre-selects the branch when adding from Branch Management. */
   private readonly data = inject<{ employee: Employee | null; candidateId?: string; branch?: string }>(MAT_DIALOG_DATA);
@@ -29,12 +33,48 @@ export class EmployeeForm {
   model: NewEmployeeInput = this.data.employee
     ? structuredClone((({ id, empCode, status, ...rest }) => rest)(this.data.employee))
     : this.hr.employeeDraftFor(this.candidateId ?? '') ?? {
-      name: '', gender: 'Female', dob: null, phone: '', email: '', address: '', bloodGroup: '',
+      name: '', gender: 'Female', dob: null, phone: '', email: '', address: '', bloodGroup: '', photo: '', userType: 'Staff',
       designation: '', department: DEPARTMENTS[0], branch: this.hr.branches.includes(this.data.branch ?? '') ? this.data.branch! : this.hr.branches[0], reportingTo: '', joinDate: isoDate(),
       employmentType: 'Full Time', pan: '', aadhaarLast4: '', uan: '', bankName: '', accountNo: '', ifsc: '',
       emergencyContact: '', secondaryPhone: '', referralSource: '', referredBy: '', referralPhone: '', kycDocuments: [],
       salary: structureFromGross(20000),
     };
+
+  readonly employeeTypes = EMPLOYEE_TYPES;
+  /** Designation options are the login roles. */
+  readonly roles = signal<string[]>([]);
+  readonly photoError = signal<string | null>(null);
+
+  ngOnInit(): void {
+    this.model.userType ??= 'Staff';
+    this.api.GetAllPages(ApiRoutesConstants.ROLES_GET_List).pipe(catchError(() => of([]))).subscribe((roles: { name: string }[]) => {
+      const names = roles.map(r => r.name);
+      // Keep a saved designation that is no longer a role selectable instead of blanking it.
+      const current = this.model.designation;
+      this.roles.set(current && !names.includes(current) ? [current, ...names] : names);
+    });
+  }
+
+  initials(): string {
+    return (this.model.name || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase()).join('');
+  }
+
+  onPhotoSelected(input: HTMLInputElement): void {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return void this.photoError.set('Choose an image file (JPG, PNG, WebP).');
+    if (file.size > KYC_MAX_BYTES) return void this.photoError.set('Image must be 1 MB or smaller.');
+    this.photoError.set(null);
+    const reader = new FileReader();
+    reader.onerror = () => this.photoError.set('Could not read the image.');
+    reader.onload = () => (this.model.photo = String(reader.result));
+    reader.readAsDataURL(file);
+  }
+
+  removePhoto(): void {
+    this.model.photo = '';
+  }
 
   readonly referralSources = REFERRAL_SOURCES;
   readonly kycTypes = KYC_DOC_TYPES;
