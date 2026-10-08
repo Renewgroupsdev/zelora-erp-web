@@ -117,11 +117,12 @@
           </div>
         </div>
         <div class="form-field">
-          <label for="em-branch">Branch</label>
+          <label for="em-branch">Branch <span>*</span></label>
           <div class="input-wrap"><i class="bi bi-building"></i>
-            <select id="em-branch" name="branch" [(ngModel)]="model.branch">@for (b of hr.branches; track b) { <option [value]="b">{{ b }}</option> }</select>
+            <select id="em-branch" name="branch" required [(ngModel)]="model.branch" #branch="ngModel" [class.is-invalid]="submitted() && branch.invalid"><option value="">Select branch</option>@for (b of branches(); track b) { <option [value]="b">{{ b }}</option> }</select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
+          @if (submitted() && branch.invalid) { <small class="error-text">Branch is required.</small> }
         </div>
         <div class="form-field">
           <label for="em-join">Joining Date <span>*</span></label>
@@ -202,7 +203,7 @@
         <div class="kyc-row">
           <i class="bi" [class.bi-file-earmark-pdf]="d.mime === 'application/pdf'" [class.bi-file-earmark-image]="d.mime !== 'application/pdf'"></i>
           <span><strong>{{ d.type }}</strong>{{ d.number ? ' · ' + kycNo(d) : '' }}<small>{{ d.fileName }} · {{ d.size / 1024 | number:'1.0-0' }} KB</small></span>
-          <a [href]="d.dataUrl" [download]="d.fileName" target="_blank" rel="noopener">View</a>
+          <a href="javascript:void(0)" (click)="viewKyc(d)">View</a>
           <button type="button" class="kyc-remove" aria-label="Remove document" (click)="removeKyc(d.id)"><i class="bi bi-trash"></i></button>
         </div>
       } @empty {
@@ -281,7 +282,7 @@
 
     <div class="modal-footer-custom">
       <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
-      <button type="submit" class="save-btn"><i class="bi" [class.bi-floppy]="!isEdit" [class.bi-pencil-square]="isEdit"></i> {{ isEdit ? 'Update' : candidateId ? 'Create Employee' : 'Save Employee' }}</button>
+      <button type="submit" class="save-btn" [disabled]="isSaving()"><i class="bi" [class.bi-arrow-repeat]="isSaving()" [class.bi-floppy]="!isSaving() && !isEdit" [class.bi-pencil-square]="!isSaving() && isEdit"></i> {{ isSaving() ? 'Saving...' : isEdit ? 'Update' : candidateId ? 'Create Employee' : 'Save Employee' }}</button>
     </div>
   </form>
 </div>

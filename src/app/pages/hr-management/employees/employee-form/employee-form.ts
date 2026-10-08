@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { catchError, of } from 'rxjs';
+import { catchError, finalize, of } from 'rxjs';
+import { ToastService } from '../../../../shared/common-services/toast.service';
 import { ApiDataService } from '../../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../../shared/common-services/api-route-constants';
 import { HrService, NewEmployeeInput } from '../../../../shared/common-services/hr.service';
@@ -19,6 +20,7 @@ import { isoDate, uid } from '../../../../shared/utils/format.util';
 })
 export class EmployeeForm implements OnInit {
   private readonly api = inject(ApiDataService);
+  private readonly toast = inject(ToastService);
   private readonly dialogRef = inject(MatDialogRef<EmployeeForm>);
   /** `branch` pre-selects the branch when adding from Branch Management. */
   private readonly data = inject<{ employee: Employee | null; candidateId?: string; branch?: string }>(MAT_DIALOG_DATA);
@@ -34,7 +36,7 @@ export class EmployeeForm implements OnInit {
     ? structuredClone((({ id, empCode, status, ...rest }) => rest)(this.data.employee))
     : this.hr.employeeDraftFor(this.candidateId ?? '') ?? {
       name: '', gender: 'Female', dob: null, phone: '', email: '', address: '', bloodGroup: '', photo: '', userType: 'Staff',
-      designation: '', department: DEPARTMENTS[0], branch: this.hr.branches.includes(this.data.branch ?? '') ? this.data.branch! : this.hr.branches[0], reportingTo: '', joinDate: isoDate(),
+      designation: '', department: DEPARTMENTS[0], branch: this.data.branch ?? '', reportingTo: '', joinDate: isoDate(),
       employmentType: 'Full Time', pan: '', aadhaarLast4: '', uan: '', bankName: '', accountNo: '', ifsc: '',
       emergencyContact: '', secondaryPhone: '', referralSource: '', referredBy: '', referralPhone: '', kycDocuments: [],
       salary: structureFromGross(20000),
@@ -44,9 +46,34 @@ export class EmployeeForm implements OnInit {
   /** Designation options are the login roles. */
   readonly roles = signal<string[]>([]);
   readonly photoError = signal<string | null>(null);
+  readonly isSaving = signal(false);
+  /** Branches come from the API; the employee stores the branch by name and the API receives its id. */
+  readonly branches = computed(() => {
+    const names = this.hr.branchOptions().map(b => b.name);
+    const current = this.model.branch;
+    return current && !names.includes(current) ? [current, ...names] : names;
+  });
+  private photoFile: File | null = null;
+  private photoRemoved = false;
+  private removedKycIds: string[] = [];
 
   ngOnInit(): void {
     this.model.userType ??= 'Staff';
+    // List rows mask the bank account and omit KYC files, so an edit starts from the full record.
+    if (this.data.employee) {
+      this.hr.fetchEmployee(this.data.employee.id).subscribe({
+        next: full => {
+          this.model.accountNo = full.accountNo;
+          this.model.kycDocuments = full.kycDocuments ?? [];
+        },
+        error: () => this.toast.error('Failed to load the full employee details. Please close and try again.'),
+      });
+    }
+    this.hr.loadBranches().subscribe(list => {
+      if (!this.model.branch || !list.some(b => b.name === this.model.branch)) {
+        if (!this.isEdit && list.length) this.model.branch = list.find(b => b.name === this.data.branch)?.name ?? list[0].name;
+      }
+    });
     this.api.GetAllPages(ApiRoutesConstants.ROLES_GET_List).pipe(catchError(() => of([]))).subscribe((roles: { name: string }[]) => {
       const names = roles.map(r => r.name);
       // Keep a saved designation that is no longer a role selectable instead of blanking it.
@@ -66,6 +93,8 @@ export class EmployeeForm implements OnInit {
     if (!file.type.startsWith('image/')) return void this.photoError.set('Choose an image file (JPG, PNG, WebP).');
     if (file.size > KYC_MAX_BYTES) return void this.photoError.set('Image must be 1 MB or smaller.');
     this.photoError.set(null);
+    this.photoFile = file;
+    this.photoRemoved = false;
     const reader = new FileReader();
     reader.onerror = () => this.photoError.set('Could not read the image.');
     reader.onload = () => (this.model.photo = String(reader.result));
@@ -74,6 +103,8 @@ export class EmployeeForm implements OnInit {
 
   removePhoto(): void {
     this.model.photo = '';
+    this.photoFile = null;
+    this.photoRemoved = !!this.data.employee?.photo;
   }
 
   readonly referralSources = REFERRAL_SOURCES;
@@ -116,7 +147,7 @@ export class EmployeeForm implements OnInit {
     reader.onload = () => {
       this.kycDocs.push({
         id: uid('KYC'), type: this.kycType, number, fileName: file.name,
-        mime: file.type, size: file.size, dataUrl: String(reader.result), uploadedAt: new Date().toISOString(),
+        mime: file.type, size: file.size, dataUrl: String(reader.result), file, uploadedAt: new Date().toISOString(),
       });
       this.kycNumber = '';
       this.syncStatutory();
@@ -150,7 +181,13 @@ export class EmployeeForm implements OnInit {
     this.model.pan = latest('PAN') || (this.kycDocs.some(d => d.type === 'PAN') ? '' : this.model.pan);
   }
 
+  viewKyc(doc: KycDocument): void {
+    this.hr.viewKycDocument(this.data.employee?.id ?? '', doc);
+  }
+
   removeKyc(id: string): void {
+    // Documents already saved on the server are deleted when the form is saved; picked-but-unsaved ones are just dropped.
+    if (!this.kycDocs.find(d => d.id === id)?.file) this.removedKycIds.push(id);
     this.model.kycDocuments = this.kycDocs.filter(d => d.id !== id);
     this.syncStatutory();
   }
@@ -161,12 +198,21 @@ export class EmployeeForm implements OnInit {
 
   save(form: NgForm): void {
     this.submitted.set(true);
-    if (form.invalid || this.sameAsPrimary()) return;
+    if (form.invalid || this.sameAsPrimary() || this.isSaving()) return;
     const payload = { ...this.model, pan: this.model.pan.toUpperCase(), ifsc: this.model.ifsc.toUpperCase() };
-    if (this.data.employee) this.hr.updateEmployee(this.data.employee.id, payload);
-    else if (this.candidateId) this.hr.createEmployeeFromCandidate(this.candidateId, payload);
-    else this.hr.addEmployee(payload);
-    this.dialogRef.close(true);
+    this.isSaving.set(true);
+    this.hr.saveEmployee(this.data.employee?.id ?? null, payload, {
+      photo: this.photoFile, removePhoto: this.photoRemoved, removedKycIds: this.removedKycIds, candidateId: this.candidateId,
+    }).pipe(finalize(() => this.isSaving.set(false))).subscribe({
+      next: () => {
+        this.toast.success(this.isEdit ? 'Employee updated successfully' : 'Employee added successfully');
+        this.dialogRef.close(true);
+      },
+      error: (err: any) => {
+        const firstError = err?.error?.errors ? (Object.values(err.error.errors)[0] as string[])?.[0] : null;
+        this.toast.error(firstError || err?.error?.message || 'Failed to save employee. Please try again.');
+      },
+    });
   }
 
   close(): void {

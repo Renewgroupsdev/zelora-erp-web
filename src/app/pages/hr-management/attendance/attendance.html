@@ -21,48 +21,6 @@
 
   <app-module-tabs [tabs]="tabs()" label="HR Management"></app-module-tabs>
 
-  @if (canPunch()) {
-  <div class="punch-card">
-    <div class="clock">
-      <span class="time">{{ now() | date:'hh:mm:ss a' }}</span>
-      <span class="day">{{ now() | date:'EEEE, d MMMM y' }}</span>
-    </div>
-    <div class="punch-who">
-      <label>My attendance</label>
-      @if (myEmployee(); as me) {
-        <strong>{{ me.empCode }} · {{ me.name }}</strong>
-      } @else {
-        <span class="muted">Your login is not linked to an employee record.</span>
-      }
-    </div>
-    <div class="punch-times">
-      <div><small>Check In</small><strong>{{ displayTime(punchRecord()?.checkIn) }}</strong></div>
-      <div><small>Check Out</small><strong>{{ displayTime(punchRecord()?.checkOut) }}</strong></div>
-      <div><small>Worked</small><strong>{{ liveHours() }}</strong></div>
-    </div>
-    <div class="punch-actions">
-      @if (!myEmployee()) {
-        <span class="punch-done"><i class="bi bi-info-circle"></i> Check in is for employees only</span>
-      } @else if (!punchRecord()?.checkIn) {
-        <button type="button" class="punch-btn in" (click)="checkIn()"><i class="bi bi-box-arrow-in-right"></i> Check In</button>
-      } @else if (!punchRecord()?.checkOut) {
-        @if (openBreak(); as b) {
-          <button type="button" class="punch-btn brk" (click)="endBreak()"><i class="bi bi-play-circle"></i> End {{ b.type }} · {{ breakDuration() }}</button>
-        } @else {
-          <div class="break-btns">
-            @for (t of breakTypes; track t) {
-              <button type="button" class="break-btn" [disabled]="breakTaken(t)" (click)="startBreak(t)"><i class="bi bi-cup-hot"></i> {{ t }}</button>
-            }
-          </div>
-        }
-        <button type="button" class="punch-btn out" [disabled]="!!openBreak()" (click)="checkOut()"><i class="bi bi-box-arrow-right"></i> Check Out</button>
-      } @else {
-        <span class="punch-done"><i class="bi bi-check2-circle"></i> Day complete</span>
-      }
-    </div>
-  </div>
-  }
-
   @if (view() === 'daily') {
     <div class="row g-2 stat-row">
       @for (stat of stats(); track stat.label) {

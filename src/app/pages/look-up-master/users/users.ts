@@ -50,12 +50,13 @@ export class Users implements OnInit {
   };
 
   columns: TableColumn[] = [
-    { key: 'name', header: 'Name', type: 'text', width: '16%' },
-    { key: 'email', header: 'Email', type: 'text', width: '20%' },
-    { key: 'phone_no', header: 'Phone', type: 'text', width: '11%' },
-    { key: 'extension', header: 'Extension', type: 'text', width: '8%' },
-    { key: 'role', header: 'Role', type: 'text', width: '12%' },
-    { key: 'branch', header: 'Branch', type: 'text', width: '13%' },
+    { key: 'name', header: 'Name', type: 'text', width: '14%' },
+    { key: 'email', header: 'Email', type: 'text', width: '18%' },
+    { key: 'phone_no', header: 'Phone', type: 'text', width: '10%' },
+    { key: 'extension', header: 'Extension', type: 'text', width: '7%' },
+    { key: 'user_type', header: 'Type', type: 'text', width: '8%' },
+    { key: 'role', header: 'Role', type: 'text', width: '11%' },
+    { key: 'branch', header: 'Branch', type: 'text', width: '12%' },
     { key: 'status', header: 'Status', type: 'badge', width: '9%' },
     { key: 'action', header: 'Action', type: 'rowActions', width: '11%', sortable: false },
   ];
@@ -125,6 +126,7 @@ export class Users implements OnInit {
       email: user.email ?? '',
       phone_no: user.phone_no ?? '-',
       extension: user.telephony_extension?.extension ?? '-',
+      user_type: user.user_type === 'management' ? 'Management' : 'Staff',
       role: user.role?.name ?? '',
       branch: user.branch?.name ?? '-',
       status: this.formatStatus(user.status),

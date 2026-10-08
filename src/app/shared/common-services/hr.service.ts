@@ -1,5 +1,8 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import Swal from 'sweetalert2';
+import { Observable, catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
+import { ApiDataService } from '../../core/http/api.service';
+import { ApiRoutesConstants } from './api-route-constants';
 import { AuthService } from '../../core/auth/auth.service';
 import { isTelecallerRole } from '../../core/auth/auth.model';
 import {
@@ -20,6 +23,7 @@ import {
   CandidateStage,
   DEPARTMENTS,
   Employee,
+  KycDocument,
   EXIT_CHECKLIST,
   ExitCase,
   FULL_DAY_HOURS,
@@ -71,6 +75,7 @@ export type NewAppraisalInput = Omit<Appraisal, 'id' | 'status' | 'createdAt' | 
 export class HrService {
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
+  private readonly api = inject(ApiDataService);
   private readonly state = signal<HrState>(loadState(STORAGE_KEY, seedState));
 
   readonly employees = computed(() => this.state().employees);
@@ -110,7 +115,11 @@ export class HrService {
 
   // ---- Employees ----
   addEmployee(input: NewEmployeeInput, candidateId?: string): Employee {
-    const employee: Employee = { ...input, id: uid('EMP'), empCode: this.nextEmpCode(), status: 'Onboarding' };
+    return this.registerEmployee({ ...input, id: uid('EMP'), empCode: this.nextEmpCode(), status: 'Onboarding' }, candidateId);
+  }
+
+  /** Puts a new employee in the store and starts their onboarding checklist. */
+  private registerEmployee(employee: Employee, candidateId?: string): Employee {
     const onboarding: Onboarding = {
       id: uid('ONB'),
       empId: employee.id,
@@ -120,9 +129,151 @@ export class HrService {
       checklist: ONBOARDING_CHECKLIST.map(label => ({ label, done: label === 'Offer letter signed' && !!candidateId })),
       status: 'In Progress',
     };
-    this.patch({ employees: [employee, ...this.employees()], onboarding: [onboarding, ...this.onboarding()] });
+    this.patch({ employees: [employee, ...this.employees().filter(e => e.id !== employee.id)], onboarding: [onboarding, ...this.onboarding()] });
     this.alert('New employee onboarding', `${employee.name} (${employee.empCode}) joins ${employee.branch} on ${employee.joinDate}.`, '/app/hr/onboarding-exit');
     return employee;
+  }
+
+  // ---- Employees API (hr/employees) ----
+
+  /** Branch names <-> ids for the employee form (employees reference a branch by id). */
+  readonly branchOptions = signal<{ id: number; name: string }[]>([]);
+
+  loadBranches(): Observable<{ id: number; name: string }[]> {
+    return (this.api.GetAllPages(ApiRoutesConstants.Branch_List_Options) as Observable<{ id: number; name: string }[]>).pipe(
+      catchError(() => of([])),
+      tap(list => this.branchOptions.set(list.map(b => ({ id: b.id, name: b.name })))),
+    );
+  }
+
+  /** Replaces the store's employees with every employee from the API (all pages). */
+  loadEmployees(): Observable<Employee[]> {
+    const page = (n: number) => this.api.GET(`${ApiRoutesConstants.HR_EMPLOYEES}?per_page=200&page=${n}`) as Observable<any>;
+    return page(1).pipe(
+      switchMap(first => {
+        const last = Number(first?.pagination?.last_page ?? 1);
+        const rest = last > 1 ? forkJoin(Array.from({ length: last - 1 }, (_, i) => page(i + 2))) : of([] as any[]);
+        return rest.pipe(map(more => [first, ...more].flatMap(r => (r?.data ?? []) as any[])));
+      }),
+      map(rows => rows.map(r => this.employeeFromApi(r))),
+      tap(list => this.patch({ employees: list })),
+    );
+  }
+
+  /** One employee with the full bank account number and KYC documents (the list masks the account). */
+  fetchEmployee(id: string): Observable<Employee> {
+    return (this.api.GET(`${ApiRoutesConstants.HR_EMPLOYEES}/${id}`) as Observable<any>).pipe(
+      map(res => this.employeeFromApi(res.data)),
+      tap(emp => this.patch({ employees: this.employees().some(e => e.id === emp.id) ? this.employees().map(e => (e.id === emp.id ? emp : e)) : [emp, ...this.employees()] })),
+    );
+  }
+
+  /**
+   * Creates (id = null) or updates an employee, then syncs the KYC documents: documents picked in the form
+   * (with a `file`) are uploaded and those in `removedKycIds` are deleted. Emits the refreshed employee.
+   */
+  saveEmployee(id: string | null, input: NewEmployeeInput, opts: { photo: File | null; removePhoto: boolean; removedKycIds: string[]; candidateId?: string | null }): Observable<Employee> {
+    const body = this.employeeFormData(input, opts.photo, opts.removePhoto);
+    const save$: Observable<any> = id
+      ? this.api.POST(`${ApiRoutesConstants.HR_EMPLOYEES}/${id}`, (body.append('_method', 'PUT'), body))
+      : this.api.POST(ApiRoutesConstants.HR_EMPLOYEES, body);
+
+    return save$.pipe(
+      switchMap(res => {
+        const empId = String(res.data.id);
+        const uploads = (input.kycDocuments ?? []).filter(d => d.file).map(d => {
+          const form = new FormData();
+          form.append('type', d.type);
+          form.append('number', d.number ?? '');
+          form.append('file', d.file!);
+          return this.api.POST(`${ApiRoutesConstants.HR_EMPLOYEES}/${empId}/kyc-documents`, form) as Observable<any>;
+        });
+        const removals = opts.removedKycIds.map(docId => this.api.Delete(`${ApiRoutesConstants.HR_EMPLOYEES}/${empId}/kyc-documents/${docId}`, {}) as Observable<any>);
+        const sync$ = uploads.length || removals.length ? forkJoin([...uploads, ...removals]) : of([]);
+        return sync$.pipe(switchMap(() => this.fetchEmployee(empId)));
+      }),
+      tap(emp => {
+        if (id) return;
+        const candidate = opts.candidateId ? this.candidates().find(c => c.id === opts.candidateId) : null;
+        if (candidate && this.awaitingJoining(candidate)) {
+          this.updateCandidate(candidate.id, x => this.advance(x, 'Hired', 'Employee record created, onboarding started'));
+          this.registerEmployee(emp, candidate.id);
+        } else {
+          this.registerEmployee(emp);
+        }
+      }),
+    );
+  }
+
+  deleteEmployee(id: string): Observable<unknown> {
+    return (this.api.Delete(`${ApiRoutesConstants.HR_EMPLOYEES}/${id}`, {}) as Observable<unknown>).pipe(
+      tap(() => this.patch({ employees: this.employees().filter(e => e.id !== id) })),
+    );
+  }
+
+  /** Opens a KYC document in a new tab: a freshly picked file from memory, a saved one streamed from the API. */
+  viewKycDocument(empId: string, doc: KycDocument): void {
+    if (doc.dataUrl) return void window.open(doc.dataUrl, '_blank', 'noopener');
+    const tab = window.open('', '_blank');
+    (this.api.GET_BLOB(`${ApiRoutesConstants.HR_EMPLOYEES}/${empId}/kyc-documents/${doc.id}/download`) as Observable<Blob>).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(new Blob([blob], { type: doc.mime || blob.type }));
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+      },
+      error: () => {
+        tab?.close();
+        Swal.fire({ icon: 'error', title: 'Could not open the document', confirmButtonColor: '#6C63FF' });
+      },
+    });
+  }
+
+  private employeeFromApi(r: any): Employee {
+    const s = r.salary ?? {};
+    return {
+      id: String(r.id), empCode: r.emp_code, name: r.name, gender: r.gender, dob: r.dob ?? null,
+      phone: r.phone ?? '', secondaryPhone: r.secondary_phone ?? '', email: r.email ?? '', address: r.address ?? '', bloodGroup: r.blood_group ?? '',
+      photo: r.profile_photo ? r.profile_photo_url : '',
+      userType: r.user_type === 'management' ? 'Management' : 'Staff',
+      designation: r.designation ?? '', department: r.department ?? '', branch: r.branch?.name ?? '', reportingTo: r.reporting_to ?? '',
+      joinDate: r.join_date, employmentType: r.employment_type,
+      pan: r.pan ?? '', aadhaarLast4: r.aadhaar_last4 ?? '', uan: r.uan ?? '', bankName: r.bank_name ?? '',
+      accountNo: r.account_no ?? r.account_no_masked ?? '', ifsc: r.ifsc ?? '', emergencyContact: r.emergency_contact ?? '',
+      referralSource: r.referral_source ?? '', referredBy: r.referred_by ?? '', referralPhone: r.referral_phone ?? '',
+      kycDocuments: (r.kyc_documents ?? []).map((d: any): KycDocument => ({
+        id: String(d.id), type: d.type, number: d.number ?? '', fileName: d.file_name, mime: d.mime ?? '', size: d.size ?? 0, uploadedAt: d.uploaded_at ?? '',
+      })),
+      salary: {
+        basic: Number(s.basic ?? 0), hra: Number(s.hra ?? 0), conveyance: Number(s.conveyance ?? 0), special: Number(s.special ?? 0),
+        pfPercent: Number(s.pf_percent ?? 12), esiApplicable: !!s.esi_applicable, professionalTax: Number(s.professional_tax ?? 0),
+      },
+      status: r.status,
+    };
+  }
+
+  /** Multipart body (the photo travels with the fields); empty values go as '' which the API reads as null. */
+  private employeeFormData(e: NewEmployeeInput, photo: File | null, removePhoto: boolean): FormData {
+    const f = new FormData();
+    const put = (key: string, value: unknown) => f.append(key, value === null || value === undefined ? '' : String(value));
+    const orgUnit = this.branchOptions().find(b => b.name === e.branch);
+
+    put('name', e.name); put('gender', e.gender); put('dob', e.dob);
+    put('phone', e.phone); put('secondary_phone', e.secondaryPhone); put('email', e.email);
+    put('address', e.address); put('blood_group', e.bloodGroup);
+    put('user_type', (e.userType ?? 'Staff').toLowerCase());
+    put('designation', e.designation); put('department', e.department); put('org_unit_id', orgUnit?.id);
+    put('reporting_to', e.reportingTo); put('join_date', e.joinDate); put('employment_type', e.employmentType);
+    put('pan', e.pan); put('aadhaar_last4', e.aadhaarLast4); put('uan', e.uan);
+    put('bank_name', e.bankName); put('account_no', e.accountNo); put('ifsc', e.ifsc);
+    put('emergency_contact', e.emergencyContact);
+    put('referral_source', e.referralSource); put('referred_by', e.referredBy); put('referral_phone', e.referralPhone);
+    put('salary[basic]', e.salary.basic || 0); put('salary[hra]', e.salary.hra || 0);
+    put('salary[conveyance]', e.salary.conveyance || 0); put('salary[special]', e.salary.special || 0);
+    put('salary[pf_percent]', e.salary.pfPercent ?? 12); put('salary[esi_applicable]', e.salary.esiApplicable ? 1 : 0);
+    put('salary[professional_tax]', e.salary.professionalTax || 0);
+    if (photo) f.append('profile_photo', photo);
+    else if (removePhoto) f.append('remove_profile_photo', '1');
+    return f;
   }
 
   /**
