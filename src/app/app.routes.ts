@@ -74,7 +74,6 @@ export const routes: Routes = [
       // Franchise Management
       { path: 'franchises', loadComponent: () => import('./pages/franchise-management/franchises/franchises').then(m => m.Franchises) },
       { path: 'franchises/:id', loadComponent: () => import('./pages/franchise-management/franchise-details/franchise-details').then(m => m.FranchiseDetails) },
-      { path: 'franchises/:id/invoices/:invoiceNo', loadComponent: () => import('./pages/franchise-management/invoice-details/invoice-details').then(m => m.InvoiceDetails) },
       // Accounts
       { path: 'accounts', pathMatch: 'full', redirectTo: 'accounts/day-book' },
       { path: 'accounts/day-book', loadComponent: () => import('./pages/accounts/day-book/day-book').then(m => m.DayBook) },

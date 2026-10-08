@@ -1,18 +1,18 @@
 :host {
-  /* Pre-login pages always use the burgundy brand color, regardless of the in-app theme choice. */
-  --primary: #7b1e42;
-  --primary-dark: #5c1532;
-  --primary-soft: #f7ecf0;
-  --primary-soft-strong: #efdbe3;
-  --primary-border: rgba(123, 30, 66, .18);
-  --primary-border-strong: rgba(123, 30, 66, .38);
-  --primary-shadow: rgba(123, 30, 66, .24);
-  --brand-blue: #9c2a58;
-  --brand-blue-dark: #5c1532;
-  --brand-green: #7b1e42;
-  --brand-green-dark: #5c1532;
-  --brand-teal-dark: #5c1532;
-  --bg-light-green: #f7ecf0;
+  /* Pre-login pages always use the Renew Group green brand color, regardless of the in-app theme choice. */
+  --primary: #0d5c4b;
+  --primary-dark: #073f35;
+  --primary-soft: #e9f3f0;
+  --primary-soft-strong: #dcece6;
+  --primary-border: rgba(13, 92, 75, .18);
+  --primary-border-strong: rgba(13, 92, 75, .38);
+  --primary-shadow: rgba(13, 92, 75, .24);
+  --brand-blue: #1a7a63;
+  --brand-blue-dark: #073f35;
+  --brand-green: #0d5c4b;
+  --brand-green-dark: #073f35;
+  --brand-teal-dark: #073f35;
+  --bg-light-green: #e9f3f0;
   display: block;
   width: 100%;
   min-height: 100%;
@@ -31,9 +31,9 @@
   justify-content: center;
   padding: 20px;
   background:
-    radial-gradient(circle at 14% -2%, rgba(233, 196, 210, .34) 0 10%, transparent 22%),
-    radial-gradient(circle at 84% 34%, rgba(226, 178, 196, .30) 0 9%, transparent 24%),
-    linear-gradient(180deg, #ffffff 0%, #fdf7f9 50%, #f7ecf0 100%);
+    radial-gradient(circle at 14% -2%, rgba(159, 208, 194, .34) 0 10%, transparent 22%),
+    radial-gradient(circle at 84% 34%, rgba(95, 176, 154, .30) 0 9%, transparent 24%),
+    linear-gradient(180deg, #ffffff 0%, #f5faf8 50%, #e9f3f0 100%);
   cursor: pointer;
 }
 
@@ -62,7 +62,7 @@
   background: rgba(255, 255, 255, .975);
   border: 1px solid rgba(255, 255, 255, .96);
   border-radius: 31px;
-  box-shadow: 0 22px 55px rgba(123, 30, 66, .12), 0 8px 24px rgba(92, 21, 50, .08);
+  box-shadow: 0 22px 55px rgba(13, 92, 75, .12), 0 8px 24px rgba(7, 63, 53, .08);
   animation: splash-in .62s cubic-bezier(.22, 1, .36, 1) both;
 }
 
@@ -88,18 +88,18 @@
 
 .splash-title {
   margin: 3px 0 2px;
-  color: #7b1e42;
+  color: #0d5c4b;
   font-size: 25px;
   line-height: 1.2;
   font-weight: 500;
   letter-spacing: -.35px;
 }
 
-.splash-title span { color: #a63a62; font-weight: 700; }
+.splash-title span { color: #13705c; font-weight: 700; }
 
 .splash-subtitle {
   margin: 0 0 15px;
-  color: #9a7f8b;
+  color: #7f9a92;
   font-size: 15px;
   line-height: 1.35;
   font-weight: 400;
@@ -116,8 +116,8 @@
   border-radius: 28px;
   text-decoration: none;
   color: #fff;
-  background: linear-gradient(100deg, #9c2a58 0%, #7b1e42 52%, #5c1532 100%);
-  box-shadow: 0 9px 20px rgba(123, 30, 66, .22);
+  background: linear-gradient(100deg, #1a7a63 0%, #0d5c4b 52%, #073f35 100%);
+  box-shadow: 0 9px 20px rgba(13, 92, 75, .22);
   font-size: 15px;
   font-weight: 700;
   letter-spacing: .05px;
@@ -126,11 +126,11 @@
 
 .splash-cta-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 13px 25px rgba(123, 30, 66, .30);
+  box-shadow: 0 13px 25px rgba(13, 92, 75, .30);
 }
 
 .splash-cta-btn:focus-visible {
-  outline: 3px solid rgba(123, 30, 66, .25);
+  outline: 3px solid rgba(13, 92, 75, .25);
   outline-offset: 3px;
 }
 
@@ -144,19 +144,19 @@
   margin-top: 18px;
 }
 
-.trust-line { flex: 1; height: 1px; background: #f0dfe5; }
+.trust-line { flex: 1; height: 1px; background: #dcece6; }
 
 .trust-text {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
-  color: #a8949d;
+  color: #9db3ab;
   font-size: 12px;
   font-weight: 500;
 }
 
-.trust-text i { color: #a8949d; font-size: 11px; }
+.trust-text i { color: #9db3ab; font-size: 11px; }
 
 .page-features {
   display: flex;
@@ -179,15 +179,15 @@
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  border: 1.5px solid #7b1e42;
+  border: 1.5px solid #0d5c4b;
   border-radius: 50%;
-  color: #7b1e42;
+  color: #0d5c4b;
   background: rgba(255, 255, 255, .20);
   font-size: 18px;
 }
 
 .page-feature-label {
-  color: #7b6470;
+  color: #4d6860;
   font-size: 11.5px;
   line-height: 1.28;
   font-weight: 600;

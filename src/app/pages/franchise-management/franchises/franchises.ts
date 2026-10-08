@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatDialogModule } from '@angular/material/dialog';
 import { FranchiseService } from '../../../shared/common-services/franchise.service';
@@ -9,6 +9,7 @@ import { CommonTableCard } from '../../../shared/components/common-table-card/co
 import { LocalListBase } from '../../../shared/components/local-list-base';
 import { DetailCardData, ExportFormat, TableColumn, TableRow } from '../../../shared/models/common-components.model';
 import { inrShort, invoiceTotal, lastMonths } from '../../../shared/models/branch-franchise.model';
+import { displayDate } from '../../../shared/utils/format.util';
 import { FranchiseForm } from '../franchise-form/franchise-form';
 
 /** Franchise Management: partner outlets with their sales and the Renew company share. */
@@ -17,7 +18,7 @@ import { FranchiseForm } from '../franchise-form/franchise-form';
   standalone: true,
   imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard],
   templateUrl: './franchises.html',
-  styleUrl: '../../../shared/styles/erp-page.scss',
+  styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise-list.scss'],
 })
 export class Franchises extends LocalListBase {
   private readonly store = inject(FranchiseService);
@@ -46,6 +47,41 @@ export class Franchises extends LocalListBase {
   override sortActive = 'code';
   override sortDirection: 'asc' | 'desc' = 'asc';
 
+  /** Franchise shown in the details panel; falls back to the first row on screen. */
+  readonly selectedId = signal<string | null>(null);
+  /** The details panel slides in over the page when a row is clicked. */
+  readonly panelOpen = signal(false);
+  /** Tabs after Overview open the matching tab on the full details page. */
+  readonly panelTabs = ['agreement', 'employees', 'sales'] as const;
+  readonly displayDate = displayDate;
+
+  current() {
+    const all = this.store.franchises();
+    return all.find(f => f.id === this.selectedId());
+  }
+
+  panel() {
+    const f = this.current();
+    if (!f) return null;
+    const t = this.store.totalsFor(f.id);
+    const share = f.sharePercent;
+    return { franchise: f, totals: t, franchiseShare: share, renewShare: 100 - share, donut: `conic-gradient(var(--status-blue-text) 0 ${share}%, var(--status-green-text) ${share}% 100%)` };
+  }
+
+  select(row: TableRow): void {
+    this.selectedId.set(String(row['id']));
+    this.panelOpen.set(true);
+  }
+
+  @HostListener('document:keydown.escape')
+  closePanel(): void {
+    this.panelOpen.set(false);
+  }
+
+  panelLink(id: string, tab: string): void {
+    this.router.navigate(['/app/franchises', id], { queryParams: { tab } });
+  }
+
   readonly stats = computed<DetailCardData[]>(() => {
     const list = this.store.franchises();
     const overall = this.store.overall();
@@ -67,7 +103,7 @@ export class Franchises extends LocalListBase {
       return {
         id: f.id,
         code: f.code,
-        franchiseName: { name: f.name, subtitle: f.ownerCompany },
+        franchiseName: { name: f.name, subtitle: f.ownerCompany, photo: f.photo },
         __franchiseName: f.name,
         searchText: `${f.name} ${f.ownerCompany} ${f.ownerName} ${f.city} ${f.code}`,
         name: f.name,
@@ -90,8 +126,12 @@ export class Franchises extends LocalListBase {
   }
 
   onQuickAction(event: { row: TableRow; action: string }): void {
+    this.selectedId.set(String(event.row['id']));
     if (event.action === 'view') this.router.navigate(['/app/franchises', event.row['id']]);
-    if (event.action === 'edit') this.openDialog(FranchiseForm, { franchiseId: event.row['id'] }, '860px');
+    if (event.action === 'edit') {
+      this.closePanel();
+      this.openDialog(FranchiseForm, { franchiseId: event.row['id'] }, '860px');
+    }
   }
 
   open(row: TableRow): void {

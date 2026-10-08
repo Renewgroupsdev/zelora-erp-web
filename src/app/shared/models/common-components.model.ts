@@ -64,6 +64,8 @@ export interface TableColumn {
 export interface LeadCell {
   name: string;
   subtitle?: string;
+  /** Optional thumbnail shown in place of the initials avatar. */
+  photo?: string;
 }
 
 export interface CallerAvatar {

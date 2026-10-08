@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatDialogModule } from '@angular/material/dialog';
 import { BranchService } from '../../../shared/common-services/branch.service';
@@ -9,7 +9,7 @@ import { CommonTableCard } from '../../../shared/components/common-table-card/co
 import { LocalListBase } from '../../../shared/components/local-list-base';
 import { DetailCardData, ExportFormat, TableColumn, TableRow } from '../../../shared/models/common-components.model';
 import { inrShort } from '../../../shared/models/branch-franchise.model';
-import { addDays, isoDate } from '../../../shared/utils/format.util';
+import { addDays, displayDate, initials, isoDate } from '../../../shared/utils/format.util';
 import { BranchForm } from '../branch-form/branch-form';
 
 /** Branch Management: every company owned branch with its head, customers and monthly sales. */
@@ -18,7 +18,7 @@ import { BranchForm } from '../branch-form/branch-form';
   standalone: true,
   imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard],
   templateUrl: './branches.html',
-  styleUrl: '../../../shared/styles/erp-page.scss',
+  styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise-list.scss'],
 })
 export class Branches extends LocalListBase {
   private readonly store = inject(BranchService);
@@ -47,6 +47,45 @@ export class Branches extends LocalListBase {
   override sortActive = 'code';
   override sortDirection: 'asc' | 'desc' = 'asc';
 
+  /** Branch shown in the details panel; falls back to the first row on screen. */
+  readonly selectedId = signal<string | null>(null);
+  /** The details panel slides in over the page when a row is clicked. */
+  readonly panelOpen = signal(false);
+  /** Tabs after Overview open the matching tab on the full details page. */
+  readonly panelTabs = ['employees', 'customers', 'sales', 'inventory'] as const;
+  readonly initials = initials;
+  readonly displayDate = displayDate;
+
+  current() {
+    const all = this.store.branches();
+    return all.find(b => b.id === this.selectedId());
+  }
+
+  panel() {
+    const b = this.current();
+    if (!b) return null;
+    return {
+      branch: b,
+      customers: this.store.customers(b.name),
+      employees: this.store.employees(b.name).length,
+      sales: this.store.sales(b.name, isoDate().slice(0, 7)),
+    };
+  }
+
+  select(row: TableRow): void {
+    this.selectedId.set(String(row['id']));
+    this.panelOpen.set(true);
+  }
+
+  @HostListener('document:keydown.escape')
+  closePanel(): void {
+    this.panelOpen.set(false);
+  }
+
+  panelLink(id: string, tab: string): void {
+    this.router.navigate(['/app/branches', id], { queryParams: { tab } });
+  }
+
   readonly stats = computed<DetailCardData[]>(() => {
     const list = this.store.branches();
     const active = list.filter(b => b.status === 'Active');
@@ -73,7 +112,7 @@ export class Branches extends LocalListBase {
       return {
         id: b.id,
         code: b.code,
-        branchName: { name: b.name, subtitle: b.phone },
+        branchName: { name: b.name, subtitle: b.phone, photo: b.photo },
         __branchName: b.name,
         searchText: `${b.name} ${b.headName} ${b.city} ${b.code}`,
         name: b.name,
@@ -101,8 +140,12 @@ export class Branches extends LocalListBase {
   }
 
   onQuickAction(event: { row: TableRow; action: string }): void {
+    this.selectedId.set(String(event.row['id']));
     if (event.action === 'view') this.open(event.row);
-    if (event.action === 'edit') this.openDialog(BranchForm, { branchId: event.row['id'] }, '860px');
+    if (event.action === 'edit') {
+      this.closePanel();
+      this.openDialog(BranchForm, { branchId: event.row['id'] }, '860px');
+    }
     if (event.action === 'employees') this.router.navigate(['/app/branches', event.row['id'], 'employees']);
   }
 

@@ -226,6 +226,17 @@
 .avatar-color-4 { background: var(--avatar-color-4-bg); color: var(--avatar-color-4-text); }
 .avatar-color-5 { background: var(--avatar-color-5-bg); color: var(--avatar-color-5-text); }
 
+.lead-photo {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px var(--border-soft);
+}
+
+.row-selectable { cursor: pointer; }
+
 .lead-text {
   min-width: 0;
   max-width: 100%;
@@ -252,7 +263,7 @@
 
   &:hover,
   &:focus-visible {
-    color: var(--brand-green, #7b1e42);
+    color: var(--brand-green, #0d5c4b);
     text-decoration: underline;
   }
 }

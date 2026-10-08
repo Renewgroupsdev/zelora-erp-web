@@ -1,0 +1,139 @@
+/* Extra premium touches for the Branch / Franchise add-edit dialogs. Loaded after erp-dialog.scss. */
+
+.lead-modal { overflow: hidden; }
+
+.modal-header-custom {
+  position: relative;
+  padding: 12px 14px;
+  border-bottom: 0;
+  background:
+    radial-gradient(120% 200% at 100% 0%, rgba(255, 255, 255, 0.22), transparent 55%),
+    linear-gradient(135deg, var(--primary-dark), var(--primary));
+  color: #fff;
+
+  .title-icon {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: none;
+
+    i { font-size: 16px; }
+  }
+
+  .title-content {
+    h2 { color: #fff; font-size: 17px; letter-spacing: -0.2px; }
+    p { color: rgba(255, 255, 255, 0.82); }
+  }
+
+  .modal-close-btn {
+    border-color: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+
+    &:hover { background: rgba(255, 255, 255, 0.28); color: #fff; border-color: rgba(255, 255, 255, 0.6); }
+  }
+}
+
+.modal-body-custom { padding: 12px 16px 8px; }
+
+.section-title {
+  margin: 14px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-soft);
+  letter-spacing: 0.02em;
+
+  &:first-child { margin-top: 2px; }
+
+  i {
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border-radius: 7px;
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+    font-size: 11px;
+  }
+}
+
+.form-grid { gap: 10px; }
+
+.form-field label { color: var(--text-dark); letter-spacing: 0.01em; }
+
+.input-wrap input, .input-wrap select, .input-wrap textarea { border-radius: 10px; }
+.input-wrap input, .input-wrap select { height: 38px; }
+
+.error-banner, [role='alert'].error-text {
+  padding: 8px 12px;
+  border: 1px solid rgba(208, 57, 44, 0.25);
+  border-left: 4px solid var(--status-red-text);
+  border-radius: 10px;
+  background: var(--status-red-bg);
+  color: var(--status-red-text);
+  font-size: 12px;
+}
+
+/* ---------- Photo uploader (replaces the old inline-styled <input type=file>) ---------- */
+.photo-upload {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border: 1.5px dashed var(--primary-border-strong);
+  border-radius: 14px;
+  background: var(--primary-soft);
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover { border-color: var(--primary); }
+
+  .preview {
+    width: 96px;
+    height: 64px;
+    flex: none;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--app-surface-solid);
+    color: var(--primary);
+    font-size: 22px;
+    box-shadow: var(--shadow-premium-sm);
+
+    img { width: 100%; height: 100%; object-fit: cover; }
+  }
+
+  .upload-actions { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .upload-actions small { color: var(--text-muted); font-size: 10.5px; }
+  .upload-actions .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+  /* hide the native control, show a styled label button */
+  input[type='file'] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+  .pick-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--primary-border-strong);
+    border-radius: 9px;
+    background: var(--app-surface-solid);
+    color: var(--primary-dark);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover { background: var(--primary-soft); }
+  }
+
+  input[type='file']:focus-visible + .pick-btn { outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+.modal-footer-custom {
+  padding: 10px 16px;
+  background: var(--app-surface-solid);
+  border-top: 1px solid var(--border-soft);
+}

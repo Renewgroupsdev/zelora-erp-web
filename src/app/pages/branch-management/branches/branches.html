@@ -1,48 +1,117 @@
 <div class="purchase-page container-fluid px-0">
+  <div class="bf-split">
 
-  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
-    <div>
-      <h6 class="page-title"><i class="bi bi-building"></i> Branch Management</h6>
-      <p class="page-subtitle">Manage your company owned branches and their operations.</p>
-    </div>
-    <div class="header-actions">
-      <button type="button" class="add-lead-btn" (click)="addBranch()"><i class="bi bi-plus-lg"></i> Add Branch</button>
-    </div>
-  </div>
-
-  <div class="row g-2 stat-row">
-    @for (stat of stats(); track stat.label) {
-      <div class="col-6 col-md-3">
-        <app-common-detail-card [label]="stat.label" [value]="stat.value" [trendText]="stat.trendText" [trendDirection]="stat.trendDirection ?? 'neutral'" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'"></app-common-detail-card>
+    <div class="bf-main">
+      <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+        <div>
+          <h6 class="page-title"><i class="bi bi-building"></i> Branch Management</h6>
+          <p class="page-subtitle">Manage your company owned branches and their operations.</p>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="ghost-btn" (click)="onExport('xlsx')"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+          <button type="button" class="add-lead-btn" (click)="addBranch()"><i class="bi bi-plus-lg"></i> Add Branch</button>
+        </div>
       </div>
-    }
-  </div>
 
-  <app-common-filter-card
-    searchPlaceholder="Search branch..."
-    [filters]="filters"
-    (exportClick)="onExport($event)"
-    (searchChange)="onSearch($event)"
-    (filtersChange)="onFiltersChange($event)"
-  ></app-common-filter-card>
+      <div class="row g-2 stat-row">
+        @for (stat of stats(); track stat.label) {
+          <div class="col-6 col-md-3">
+            <app-common-detail-card [label]="stat.label" [value]="stat.value" [trendText]="stat.trendText" [trendDirection]="stat.trendDirection ?? 'neutral'" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'"></app-common-detail-card>
+          </div>
+        }
+      </div>
 
-  <div class="table-col">
-    <app-common-table-card
-      title="Branches"
-      [recordCountText]="recordCountText"
-      [columns]="columns"
-      [rows]="rows"
-      [totalRecords]="totalRecords"
-      [pageSize]="pageSize"
-      [pageSizeOptions]="pageSizeOptions"
-      [currentPage]="currentPage"
-      [pageInfoText]="pageInfoText"
-      [sortActive]="sortActive"
-      [sortDirection]="sortDirection"
-      (pageChange)="onPageChange($event)"
-      (sortChange)="onSortChange($event)"
-      (quickActionClick)="onQuickAction($event)"
-      (profileClick)="open($event)"
-    ></app-common-table-card>
+      <app-common-filter-card
+        searchPlaceholder="Search branch by name, code or city..."
+        [filters]="filters"
+        (exportClick)="onExport($event)"
+        (searchChange)="onSearch($event)"
+        (filtersChange)="onFiltersChange($event)"
+      ></app-common-filter-card>
+
+      <div class="table-col">
+        <app-common-table-card
+          title="Branches"
+          [recordCountText]="recordCountText"
+          [columns]="columns"
+          [rows]="rows"
+          [totalRecords]="totalRecords"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="pageSizeOptions"
+          [currentPage]="currentPage"
+          [pageInfoText]="pageInfoText"
+          [sortActive]="sortActive"
+          [sortDirection]="sortDirection"
+          [selectedId]="current()?.id ?? null"
+          (pageChange)="onPageChange($event)"
+          (sortChange)="onSortChange($event)"
+          (quickActionClick)="onQuickAction($event)"
+          (rowSelect)="select($event)"
+          (profileClick)="open($event)"
+        ></app-common-table-card>
+      </div>
+    </div>
+
+    <div class="bf-backdrop" [class.open]="panelOpen()" (click)="closePanel()"></div>
+    <aside class="bf-side" [class.open]="panelOpen()" [attr.aria-hidden]="!panelOpen()" aria-label="Branch details" role="dialog">
+      @if (panel(); as p) {
+        <header class="drawer-hero">
+          <div class="dh-top">
+            <span class="dh-title">Branch Details</span>
+            <button type="button" class="glass-btn" (click)="onQuickAction({ row: { id: p.branch.id }, action: 'edit' })"><i class="bi bi-pencil-square"></i> Edit</button>
+            <button type="button" class="glass-btn icon" aria-label="Close details" (click)="closePanel()"><i class="bi bi-x-lg"></i></button>
+          </div>
+          <div class="dh-id">
+            <div class="side-photo">
+              @if (p.branch.photo) { <img [src]="p.branch.photo" [alt]="p.branch.name + ' branch'" /> } @else { <i class="bi bi-shop-window" aria-hidden="true"></i> }
+            </div>
+            <div class="side-id-text">
+              <div class="id-top">
+                <strong class="id-name">{{ p.branch.name }}</strong>
+                <span class="status-pill" [ngClass]="p.branch.status.toLowerCase()">{{ p.branch.status }}</span>
+              </div>
+              <span class="id-code">{{ p.branch.code }} · Company owned</span>
+              <span class="id-line"><i class="bi bi-person"></i> {{ p.branch.headName }}</span>
+              <span class="id-line"><i class="bi bi-telephone"></i> {{ p.branch.headPhone || p.branch.phone || '-' }}</span>
+              <span class="id-line"><i class="bi bi-envelope"></i> {{ p.branch.email || p.branch.headEmail || '-' }}</span>
+            </div>
+          </div>
+        </header>
+
+        <div class="drawer-body">
+          <div class="side-tabs" role="tablist">
+            <button type="button" role="tab" class="active" aria-selected="true">Overview</button>
+            @for (t of panelTabs; track t) {
+              <button type="button" role="tab" aria-selected="false" (click)="panelLink(p.branch.id, t)">{{ t[0].toUpperCase() + t.slice(1) }}</button>
+            }
+          </div>
+
+          <div class="tiles">
+            <div class="tile tile-blue"><span class="mi"><i class="bi bi-people-fill"></i></span><small>Total Customers</small><strong>{{ p.customers }}</strong></div>
+            <div class="tile tile-purple"><span class="mi"><i class="bi bi-person-badge-fill"></i></span><small>Employees</small><strong>{{ p.employees }}</strong></div>
+            <div class="tile tile-orange"><span class="mi"><i class="bi bi-graph-up-arrow"></i></span><small>Monthly Sales</small><strong>₹{{ p.sales | number: '1.0-0' }}</strong></div>
+          </div>
+
+          <dl class="facts">
+            <div><span class="mi tone-blue"><i class="bi bi-hash"></i></span><dt>Branch Code</dt><dd>{{ p.branch.code }}</dd></div>
+            <div><span class="mi tone-green"><i class="bi bi-geo-alt-fill"></i></span><dt>City</dt><dd>{{ p.branch.city }}</dd></div>
+            <div><span class="mi tone-purple"><i class="bi bi-map"></i></span><dt>State</dt><dd>{{ p.branch.state }}</dd></div>
+            <div><span class="mi tone-orange"><i class="bi bi-calendar3"></i></span><dt>Opened</dt><dd>{{ displayDate(p.branch.openedOn) }}</dd></div>
+            <div class="wide"><span class="mi tone-orange"><i class="bi bi-pin-map"></i></span><dt>Address</dt><dd>{{ p.branch.address || '-' }}</dd></div>
+          </dl>
+        </div>
+
+        <footer class="drawer-foot">
+          <h4>Quick Actions</h4>
+          <div class="quick-grid">
+            <button type="button" class="qa qa-blue" (click)="onQuickAction({ row: { id: p.branch.id }, action: 'employees' })"><i class="bi bi-people-fill"></i><span>View Employees</span></button>
+            <button type="button" class="qa qa-green" (click)="panelLink(p.branch.id, 'customers')"><i class="bi bi-person-lines-fill"></i><span>View Customers</span></button>
+            <button type="button" class="qa qa-purple" (click)="panelLink(p.branch.id, 'reports')"><i class="bi bi-file-earmark-bar-graph"></i><span>Branch Reports</span></button>
+            <button type="button" class="qa qa-orange" (click)="panelLink(p.branch.id, 'inventory')"><i class="bi bi-box-seam"></i><span>Inventory</span></button>
+          </div>
+        </footer>
+      }
+    </aside>
+
   </div>
 </div>
