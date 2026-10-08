@@ -6,6 +6,8 @@
 
 export type EmployeeStatus = 'Onboarding' | 'Active' | 'On Notice' | 'Exited';
 export type Gender = 'Male' | 'Female' | 'Other';
+export type EmployeeType = 'Management' | 'Staff';
+export const EMPLOYEE_TYPES: EmployeeType[] = ['Management', 'Staff'];
 
 export const DEPARTMENTS = ['Clinical', 'Front Office', 'Tele Calling', 'Sales', 'Accounts', 'HR', 'Operations', 'SEO'];
 
@@ -32,6 +34,10 @@ export interface Employee {
   email: string;
   address: string;
   bloodGroup: string;
+  /** Profile photo as a data URL (design stage keeps it in browser storage). */
+  photo?: string;
+  /** Login type; HR employees are Staff. */
+  userType?: EmployeeType;
   designation: string;
   department: string;
   branch: string;

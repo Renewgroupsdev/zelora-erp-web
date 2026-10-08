@@ -14,6 +14,20 @@
     <div class="modal-body-custom">
 
       <div class="section-title"><i class="bi bi-person"></i> Personal Details</div>
+      <div class="photo-upload">
+        <div class="photo-preview">
+          @if (model.photo) { <img [src]="model.photo" alt="Profile photo preview" /> } @else { <span>{{ initials() }}</span> }
+        </div>
+        <div class="photo-actions">
+          <label class="photo-btn">
+            <i class="bi bi-camera"></i> {{ model.photo ? 'Change photo' : 'Upload photo' }}
+            <input type="file" accept="image/*" hidden #photoFile (change)="onPhotoSelected(photoFile)" />
+          </label>
+          @if (model.photo) { <button type="button" class="photo-btn remove" (click)="removePhoto()"><i class="bi bi-trash"></i> Remove</button> }
+          <small>JPG, PNG or WebP, up to 1 MB.</small>
+          @if (photoError(); as err) { <small class="error-text">{{ err }}</small> }
+        </div>
+      </div>
       <div class="form-grid cols-3">
         <div class="form-field">
           <label for="em-name">Full Name <span>*</span></label>
@@ -21,6 +35,13 @@
             <input id="em-name" name="name" required maxlength="100" [(ngModel)]="model.name" #name="ngModel" [class.is-invalid]="submitted() && name.invalid" placeholder="Employee name" />
           </div>
           @if (submitted() && name.invalid) { <small class="error-text">Name is required.</small> }
+        </div>
+        <div class="form-field">
+          <label for="em-usertype">Type</label>
+          <div class="input-wrap"><i class="bi bi-person-lines-fill"></i>
+            <select id="em-usertype" name="userType" [(ngModel)]="model.userType" disabled>@for (t of employeeTypes; track t) { <option [value]="t">{{ t }}</option> }</select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
         </div>
         <div class="form-field">
           <label for="em-gender">Gender</label>
@@ -57,10 +78,6 @@
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
         </div>
-        <div class="form-field full-width">
-          <label for="em-address">Address</label>
-          <div class="input-wrap"><i class="bi bi-geo-alt"></i><input id="em-address" name="address" maxlength="255" [(ngModel)]="model.address" placeholder="Residential address" /></div>
-        </div>
         <div class="form-field">
           <label for="em-phone2">Secondary Mobile</label>
           <div class="input-wrap"><i class="bi bi-telephone-plus"></i>
@@ -69,9 +86,64 @@
           @if (submitted() && phone2.invalid) { <small class="error-text">Enter a valid 10-digit mobile.</small> }
           @else if (submitted() && sameAsPrimary()) { <small class="error-text">Must differ from the primary mobile.</small> }
         </div>
-        <div class="form-field full-width">
+        <div class="form-field">
           <label for="em-emergency">Emergency Contact</label>
           <div class="input-wrap"><i class="bi bi-telephone-plus"></i><input id="em-emergency" name="emergencyContact" maxlength="100" [(ngModel)]="model.emergencyContact" placeholder="Relation - phone" /></div>
+        </div>
+        <div class="form-field full-width">
+          <label for="em-address">Address</label>
+          <div class="input-wrap"><i class="bi bi-geo-alt"></i><input id="em-address" name="address" maxlength="255" [(ngModel)]="model.address" placeholder="Residential address" /></div>
+        </div>
+      </div>
+
+      <div class="section-title"><i class="bi bi-briefcase"></i> Job Details</div>
+      <div class="form-grid cols-3">
+        <div class="form-field">
+          <label for="em-desig">Designation <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-person-workspace"></i>
+            <select id="em-desig" name="designation" required [(ngModel)]="model.designation" #desig="ngModel" [class.is-invalid]="submitted() && desig.invalid">
+              <option value="">Select role</option>
+              @for (r of roles(); track r) { <option [value]="r">{{ r }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+          @if (submitted() && desig.invalid) { <small class="error-text">Designation is required.</small> }
+        </div>
+        <div class="form-field">
+          <label for="em-dept">Department</label>
+          <div class="input-wrap"><i class="bi bi-diagram-3"></i>
+            <select id="em-dept" name="department" [(ngModel)]="model.department">@for (d of departments; track d) { <option [value]="d">{{ d }}</option> }</select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="em-branch">Branch</label>
+          <div class="input-wrap"><i class="bi bi-building"></i>
+            <select id="em-branch" name="branch" [(ngModel)]="model.branch">@for (b of hr.branches; track b) { <option [value]="b">{{ b }}</option> }</select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="em-join">Joining Date <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-calendar-check"></i><input id="em-join" type="date" name="joinDate" required [(ngModel)]="model.joinDate" /></div>
+        </div>
+        <div class="form-field">
+          <label for="em-type">Employment Type</label>
+          <div class="input-wrap"><i class="bi bi-clock"></i>
+            <select id="em-type" name="employmentType" [(ngModel)]="model.employmentType"><option>Full Time</option><option>Part Time</option><option>Contract</option><option>Intern</option></select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="em-report">Reporting To</label>
+          <div class="input-wrap"><i class="bi bi-person-up"></i>
+            <select id="em-report" name="reportingTo" [(ngModel)]="model.reportingTo">
+              <option value="">Select</option>
+              <option value="Managing Director">Managing Director</option>
+              @for (e of hr.activeEmployees(); track e.id) { <option [value]="e.name">{{ e.name }} ({{ e.designation }})</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
         </div>
       </div>
 
@@ -118,7 +190,11 @@
         </div>
         <div class="form-field">
           <label for="em-kycfile">File (PDF / JPG / PNG, max 1 MB)</label>
-          <input id="em-kycfile" type="file" [accept]="kycAccept" #kycFile (change)="addKyc(kycFile)" />
+          <div class="kyc-upload">
+            <div class="preview"><i class="bi bi-file-earmark-arrow-up" aria-hidden="true"></i></div>
+            <input id="em-kycfile" type="file" [accept]="kycAccept" #kycFile (change)="addKyc(kycFile)" />
+            <label class="pick-btn" for="em-kycfile"><i class="bi bi-upload"></i> Choose file</label>
+          </div>
         </div>
       </div>
       @if (kycError(); as err) { <small class="error-text">{{ err }}</small> }
@@ -132,52 +208,6 @@
       } @empty {
         <small class="muted">No KYC documents uploaded yet.</small>
       }
-
-      <div class="section-title"><i class="bi bi-briefcase"></i> Job Details</div>
-      <div class="form-grid cols-3">
-        <div class="form-field">
-          <label for="em-desig">Designation <span>*</span></label>
-          <div class="input-wrap"><i class="bi bi-person-workspace"></i>
-            <input id="em-desig" name="designation" required [(ngModel)]="model.designation" #desig="ngModel" [class.is-invalid]="submitted() && desig.invalid" placeholder="e.g. Skin Therapist" />
-          </div>
-        </div>
-        <div class="form-field">
-          <label for="em-dept">Department</label>
-          <div class="input-wrap"><i class="bi bi-diagram-3"></i>
-            <select id="em-dept" name="department" [(ngModel)]="model.department">@for (d of departments; track d) { <option [value]="d">{{ d }}</option> }</select>
-            <i class="bi bi-chevron-down select-arrow"></i>
-          </div>
-        </div>
-        <div class="form-field">
-          <label for="em-branch">Branch</label>
-          <div class="input-wrap"><i class="bi bi-building"></i>
-            <select id="em-branch" name="branch" [(ngModel)]="model.branch">@for (b of hr.branches; track b) { <option [value]="b">{{ b }}</option> }</select>
-            <i class="bi bi-chevron-down select-arrow"></i>
-          </div>
-        </div>
-        <div class="form-field">
-          <label for="em-join">Joining Date <span>*</span></label>
-          <div class="input-wrap"><i class="bi bi-calendar-check"></i><input id="em-join" type="date" name="joinDate" required [(ngModel)]="model.joinDate" /></div>
-        </div>
-        <div class="form-field">
-          <label for="em-type">Employment Type</label>
-          <div class="input-wrap"><i class="bi bi-clock"></i>
-            <select id="em-type" name="employmentType" [(ngModel)]="model.employmentType"><option>Full Time</option><option>Part Time</option><option>Contract</option><option>Intern</option></select>
-            <i class="bi bi-chevron-down select-arrow"></i>
-          </div>
-        </div>
-        <div class="form-field">
-          <label for="em-report">Reporting To</label>
-          <div class="input-wrap"><i class="bi bi-person-up"></i>
-            <select id="em-report" name="reportingTo" [(ngModel)]="model.reportingTo">
-              <option value="">Select</option>
-              <option value="Managing Director">Managing Director</option>
-              @for (e of hr.activeEmployees(); track e.id) { <option [value]="e.name">{{ e.name }} ({{ e.designation }})</option> }
-            </select>
-            <i class="bi bi-chevron-down select-arrow"></i>
-          </div>
-        </div>
-      </div>
 
       <div class="section-title"><i class="bi bi-bank"></i> Statutory &amp; Bank</div>
       <div class="form-grid cols-3">
