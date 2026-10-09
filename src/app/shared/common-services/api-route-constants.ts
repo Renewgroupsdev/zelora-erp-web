@@ -116,6 +116,9 @@ export class ApiRoutesConstants {
    public static USER_ADD = "users";
    public static USER_DELETE = "users";
 
+   //HR Management
+   public static HR_EMPLOYEES = "hr/employees";
+
    //Settings (key-value)
    public static SETTINGS_GET = "settings";
    public static SETTINGS_UPDATE = "settings";

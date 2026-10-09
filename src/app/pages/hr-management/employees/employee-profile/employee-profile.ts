@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { HrService } from '../../../../shared/common-services/hr.service';
 import { WorkTaskService } from '../../../../shared/common-services/work-task.service';
@@ -20,7 +20,7 @@ type ProfileTab = 'overview' | 'salary' | 'attendance' | 'leave' | 'payslips' | 
   templateUrl: './employee-profile.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', './employee-profile.scss'],
 })
-export class EmployeeProfile {
+export class EmployeeProfile implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<EmployeeProfile>);
   private readonly dialog = inject(MatDialog);
   private readonly data = inject<{ empId: string; tab?: ProfileTab }>(MAT_DIALOG_DATA);
@@ -76,6 +76,11 @@ export class EmployeeProfile {
 
   openTask(taskId?: string): void {
     this.dialog.open(TaskForm, { width: '860px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, disableClose: true, data: { taskId } });
+  }
+
+  /** The list masks the bank account and omits KYC files; the profile loads the full record. */
+  ngOnInit(): void {
+    this.hr.fetchEmployee(this.data.empId).subscribe({ error: () => undefined });
   }
 
   edit(): void {

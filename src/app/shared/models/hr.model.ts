@@ -79,7 +79,10 @@ export interface KycDocument {
   fileName: string;
   mime: string;
   size: number;
-  dataUrl: string;
+  /** Set for files picked in the form (preview only); documents already on the server are fetched on demand. */
+  dataUrl?: string;
+  /** The picked file, uploaded when the employee is saved. */
+  file?: File;
   uploadedAt: string;
 }
 

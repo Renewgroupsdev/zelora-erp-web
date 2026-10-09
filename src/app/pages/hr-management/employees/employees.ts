@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed } from '@angular/core';
+import { Component, OnInit, computed, inject } from '@angular/core';
 import { MatDialogModule } from '@angular/material/dialog';
+import { ToastService } from '../../../shared/common-services/toast.service';
 import { CommonDetailCard } from '../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
@@ -20,13 +21,14 @@ import { EmployeeProfile } from './employee-profile/employee-profile';
   templateUrl: './employees.html',
   styleUrl: '../../../shared/styles/erp-page.scss',
 })
-export class Employees extends HrListBase {
+export class Employees extends HrListBase implements OnInit {
+  private readonly toast = inject(ToastService);
   protected readonly noun = 'employees';
 
   override filters = [
     { key: 'status', label: 'Status', options: ['Active', 'Onboarding', 'On Notice', 'Exited'] },
     { key: 'source', label: 'Department', options: DEPARTMENTS },
-    { key: 'branch', label: 'Branch', options: this.hr.branches, multiSelect: true },
+    { key: 'branch', label: 'Branch', options: [] as string[], multiSelect: true },
   ];
 
   columns: TableColumn[] = [
@@ -64,7 +66,7 @@ export class Employees extends HrListBase {
         id: e.id,
         empCode: e.empCode,
         __empCode: Number(e.empCode.replace(/\D/g, '')),
-        name: { name: e.name, subtitle: e.designation },
+        name: { name: e.name, subtitle: e.designation, photo: e.photo || undefined },
         __name: e.name,
         searchText: `${e.name} ${e.designation} ${e.email}`,
         department: e.department,
@@ -78,6 +80,7 @@ export class Employees extends HrListBase {
         actions: [
           { key: 'view', icon: 'bi-person-vcard-fill', label: 'Full details', variant: 'primary' },
           { key: 'edit', icon: 'bi-pencil-fill', label: 'Edit' },
+          { key: 'delete', icon: 'bi-trash-fill', label: 'Delete', variant: 'danger' },
         ],
       };
     });
@@ -91,9 +94,33 @@ export class Employees extends HrListBase {
     this.openDialog(EmployeeProfile, { empId: row['id'] }, '920px');
   }
 
+  ngOnInit(): void {
+    this.hr.loadBranches().subscribe(branches => {
+      this.filters = this.filters.map(f => (f.key === 'branch' ? { ...f, options: branches.map(b => b.name) } : f));
+    });
+    this.hr.loadEmployees().subscribe({
+      error: (err: any) => this.toast.error(err?.error?.message || 'Failed to load employees. Please try again.'),
+    });
+  }
+
   onQuickAction(event: { row: TableRow; action: string }): void {
     if (event.action === 'view') this.openProfile(event.row);
-    if (event.action === 'edit') this.openDialog(EmployeeForm, { employee: this.hr.employee(String(event.row['id'])) }, '900px');
+    if (event.action === 'edit') this.editEmployee(event.row);
+    if (event.action === 'delete') void this.deleteEmployee(event.row);
+  }
+
+  private editEmployee(row: TableRow): void {
+    this.openDialog(EmployeeForm, { employee: this.hr.employee(String(row['id'])) }, '900px');
+  }
+
+  private async deleteEmployee(row: TableRow): Promise<void> {
+    const name = (row['__name'] as string) || 'This employee';
+    if (!(await this.toast.confirm('Delete this employee?', `${name} will be removed from HR records.`))) return;
+
+    this.hr.deleteEmployee(String(row['id'])).subscribe({
+      next: () => this.toast.success('Employee deleted successfully'),
+      error: (err: any) => this.toast.error(err?.error?.message || 'Failed to delete employee. Please try again.'),
+    });
   }
 
   exportExcel(): void {

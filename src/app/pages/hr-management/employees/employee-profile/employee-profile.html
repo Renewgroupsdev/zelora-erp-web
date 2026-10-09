@@ -3,7 +3,7 @@
 <div class="lead-modal">
   <div class="modal-header-custom">
     <div class="modal-title-wrap">
-      <div class="avatar">{{ initials(e.name) }}</div>
+      <div class="avatar">@if (e.photo) { <img [src]="e.photo" alt="" /> } @else { {{ initials(e.name) }} }</div>
       <div class="title-content">
         <h2>{{ e.name }} <span class="pill" [ngClass]="statusClass(e.status)">{{ e.status }}</span></h2>
         <p>{{ e.empCode }} · {{ e.designation }} · {{ e.department }} · {{ e.branch }}</p>
@@ -49,7 +49,7 @@
         <div class="section-title"><i class="bi bi-file-earmark-lock2"></i> KYC Documents</div>
         <div class="info-grid">
           @for (d of e.kycDocuments ?? []; track d.id) {
-            <div><small>{{ d.type }}{{ d.number ? ' · ' + kycNo(d) : '' }}</small><strong><a [href]="d.dataUrl" [download]="d.fileName" target="_blank" rel="noopener">{{ d.fileName }}</a></strong></div>
+            <div><small>{{ d.type }}{{ d.number ? ' · ' + kycNo(d) : '' }}</small><strong><a href="javascript:void(0)" (click)="hr.viewKycDocument(e.id, d)">{{ d.fileName }}</a></strong></div>
           } @empty {
             <div class="full-width"><small>No documents uploaded. Use Edit to add them.</small></div>
           }
