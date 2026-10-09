@@ -119,6 +119,9 @@ export class ApiRoutesConstants {
    //HR Management
    public static HR_EMPLOYEES = "hr/employees";
 
+   //Direct file uploads (POST/DELETE uploads/{folder})
+   public static UPLOADS = "uploads";
+
    //Settings (key-value)
    public static SETTINGS_GET = "settings";
    public static SETTINGS_UPDATE = "settings";

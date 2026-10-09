@@ -71,11 +71,11 @@
             </div>
             <div class="upload-actions">
               <div class="row-actions">
-                <input id="br-photo" type="file" accept="image/*" (change)="onPhoto($event)" />
-                <label class="pick-btn" for="br-photo"><i class="bi bi-upload"></i> {{ model.photo ? 'Change photo' : 'Upload photo' }}</label>
-                @if (model.photo) { <button type="button" class="cancel-btn" (click)="model.photo = undefined">Remove</button> }
+                <input id="br-photo" type="file" accept="image/*" [disabled]="uploading()" (change)="onPhoto($event)" />
+                <label class="pick-btn" for="br-photo" [class.disabled]="uploading()"><i class="bi" [class.bi-upload]="!uploading()" [class.bi-arrow-repeat]="uploading()"></i> {{ uploading() ? 'Uploading...' : model.photo ? 'Change photo' : 'Upload photo' }}</label>
+                @if (model.photo && !uploading()) { <button type="button" class="cancel-btn" (click)="removePhoto()">Remove</button> }
               </div>
-              <small>JPG or PNG, shown on the details page.</small>
+              <small>Any image - resized to JPEG and saved to the server; shown on the details page.</small>
             </div>
           </div>
         </div>
@@ -103,7 +103,7 @@
 
     <div class="modal-footer-custom">
       <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
-      <button type="submit" class="save-btn"><i class="bi bi-floppy"></i> {{ isEdit ? 'Update Branch' : 'Save Branch' }}</button>
+      <button type="submit" class="save-btn" [disabled]="uploading()"><i class="bi bi-floppy"></i> {{ isEdit ? 'Update Branch' : 'Save Branch' }}</button>
     </div>
   </form>
 </div>

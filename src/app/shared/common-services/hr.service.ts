@@ -3,6 +3,7 @@ import Swal from 'sweetalert2';
 import { Observable, catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from './api-route-constants';
+import { FileUploadService } from './file-upload.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { isTelecallerRole } from '../../core/auth/auth.model';
 import {
@@ -76,6 +77,7 @@ export class HrService {
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
   private readonly api = inject(ApiDataService);
+  private readonly uploads = inject(FileUploadService);
   private readonly state = signal<HrState>(loadState(STORAGE_KEY, seedState));
 
   readonly employees = computed(() => this.state().employees);
@@ -217,7 +219,7 @@ export class HrService {
 
   /** Opens a KYC document in a new tab: a freshly picked file from memory, a saved one streamed from the API. */
   viewKycDocument(empId: string, doc: KycDocument): void {
-    if (doc.dataUrl) return void window.open(doc.dataUrl, '_blank', 'noopener');
+    if (doc.dataUrl || doc.url) return void window.open(doc.dataUrl || doc.url, '_blank', 'noopener');
     const tab = window.open('', '_blank');
     (this.api.GET_BLOB(`${ApiRoutesConstants.HR_EMPLOYEES}/${empId}/kyc-documents/${doc.id}/download`) as Observable<Blob>).subscribe({
       next: blob => {
@@ -245,7 +247,7 @@ export class HrService {
       accountNo: r.account_no ?? r.account_no_masked ?? '', ifsc: r.ifsc ?? '', emergencyContact: r.emergency_contact ?? '',
       referralSource: r.referral_source ?? '', referredBy: r.referred_by ?? '', referralPhone: r.referral_phone ?? '',
       kycDocuments: (r.kyc_documents ?? []).map((d: any): KycDocument => ({
-        id: String(d.id), type: d.type, number: d.number ?? '', fileName: d.file_name, mime: d.mime ?? '', size: d.size ?? 0, uploadedAt: d.uploaded_at ?? '',
+        id: String(d.id), type: d.type, number: d.number ?? '', fileName: d.file_name, url: d.url ?? undefined, mime: d.mime ?? '', size: d.size ?? 0, uploadedAt: d.uploaded_at ?? '',
       })),
       salary: {
         basic: Number(s.basic ?? 0), hra: Number(s.hra ?? 0), conveyance: Number(s.conveyance ?? 0), special: Number(s.special ?? 0),
@@ -537,10 +539,12 @@ export class HrService {
     });
   }
 
-  /** Design stage: only the file name is kept - upload the file itself once the document API exists. */
-  uploadCandidateDocument(id: string, type: string, fileName: string): void {
-    const doc: CandidateDocument = { type, fileName, uploadedAt: new Date().toISOString(), uploadedBy: this.userName, status: 'Uploaded' };
+  /** Records a verification document; the file itself is already on the server (`url`, uploads/candidate_document). A replaced file is deleted. */
+  uploadCandidateDocument(id: string, type: string, fileName: string, url?: string): void {
+    const replaced = this.candidates().find(c => c.id === id)?.verification?.documents.find(d => d.type === type)?.url;
+    const doc: CandidateDocument = { type, fileName, url, uploadedAt: new Date().toISOString(), uploadedBy: this.userName, status: 'Uploaded' };
     this.withVerification(id, v => ({ ...v, documents: [...v.documents.filter(d => d.type !== type), doc] }), `${type} uploaded`, fileName);
+    if (replaced && replaced !== url) this.uploads.remove('candidate_document', replaced);
   }
 
   verifyCandidateDocument(id: string, type: string, verified: boolean, remarks: string): void {

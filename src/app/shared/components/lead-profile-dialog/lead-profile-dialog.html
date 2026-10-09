@@ -237,6 +237,8 @@
               </label>
             </div>
           </div>
+          @if (photoUploads > 0) { <small class="photo-status"><i class="bi bi-arrow-repeat"></i> Uploading {{ photoUploads }} photo{{ photoUploads === 1 ? '' : 's' }}...</small> }
+          @if (photoError) { <small class="photo-status error" role="alert">{{ photoError }}</small> }
         </div>
 
         <div class="field-grid">
@@ -338,9 +340,9 @@
         <button type="button" class="footer-btn book-btn" (click)="save('followup')">Save Follow-up <i class="bi bi-check2"></i></button>
       }
     } @else if (isNewBooking) {
-      <button type="button" class="footer-btn book-btn" (click)="bookNewAppointment()">Book Appointment <i class="bi bi-calendar2-check"></i></button>
+      <button type="button" class="footer-btn book-btn" [disabled]="photoUploads > 0" (click)="bookNewAppointment()">Book Appointment <i class="bi bi-calendar2-check"></i></button>
     } @else {
-      <button type="button" class="footer-btn book-btn" (click)="confirmAsClient()">Confirm as Client <i class="bi bi-person-check-fill"></i></button>
+      <button type="button" class="footer-btn book-btn" [disabled]="photoUploads > 0" (click)="confirmAsClient()">Confirm as Client <i class="bi bi-person-check-fill"></i></button>
     }
   </div>
 

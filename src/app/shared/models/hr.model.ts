@@ -81,6 +81,8 @@ export interface KycDocument {
   size: number;
   /** Set for files picked in the form (preview only); documents already on the server are fetched on demand. */
   dataUrl?: string;
+  /** Server URL of a saved document (uploads/employee_kyc). */
+  url?: string;
   /** The picked file, uploaded when the employee is saved. */
   file?: File;
   uploadedAt: string;
@@ -202,6 +204,8 @@ export type DocumentStatus = 'Uploaded' | 'Verified' | 'Rejected';
 export interface CandidateDocument {
   type: string;
   fileName: string;
+  /** Server URL of the uploaded file (uploads/candidate_document); missing on documents recorded before uploads. */
+  url?: string;
   uploadedAt: string;
   uploadedBy: string;
   status: DocumentStatus;

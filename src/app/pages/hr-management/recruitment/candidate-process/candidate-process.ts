@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { finalize } from 'rxjs';
+import { FileUploadService, uploadError } from '../../../../shared/common-services/file-upload.service';
 import { HrService } from '../../../../shared/common-services/hr.service';
 import {
   BackgroundCheckStatus,
@@ -47,6 +49,9 @@ export class CandidateProcess {
   private readonly data = inject<{ candidateId: string }>(MAT_DIALOG_DATA);
   private readonly dialog = inject(MatDialog);
   readonly hr = inject(HrService);
+  private readonly uploads = inject(FileUploadService);
+  /** Document type whose file is uploading right now. */
+  readonly uploadingDoc = signal<string | null>(null);
 
   readonly steps = STEPS;
   readonly modes = INTERVIEW_MODES;
@@ -178,7 +183,13 @@ export class CandidateProcess {
     if (!file) return;
     if (file.size > MAX_FILE_BYTES) return void this.fail(`${file.name} is larger than 5 MB.`);
     if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) return void this.fail('Upload a PDF, JPG or PNG file.');
-    this.hr.uploadCandidateDocument(this.candidate().id, type, file.name);
+
+    const candidateId = this.candidate().id;
+    this.uploadingDoc.set(type);
+    this.uploads.upload('candidate_document', file).pipe(finalize(() => this.uploadingDoc.set(null))).subscribe({
+      next: up => this.hr.uploadCandidateDocument(candidateId, type, file.name, up.url),
+      error: err => this.fail(uploadError(err, `Could not upload ${file.name}. Please try again.`)),
+    });
   }
 
   verifyDoc(type: string, verified: boolean): void {

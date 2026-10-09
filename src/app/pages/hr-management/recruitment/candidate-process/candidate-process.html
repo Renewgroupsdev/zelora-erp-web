@@ -175,7 +175,7 @@
                     <tr>
                       <td><strong>{{ d.type }}</strong>@if (d.required) { <span class="req"> *</span> }</td>
                       <td>
-                        @if (up) { <i class="bi bi-file-earmark-check"></i> {{ up.fileName }}<div class="muted">{{ up.uploadedBy }} · {{ displayDate(up.uploadedAt) }}</div> }
+                        @if (up) { <i class="bi bi-file-earmark-check"></i> @if (up.url) { <a [href]="up.url" target="_blank" rel="noopener" [attr.aria-label]="'View ' + d.type">{{ up.fileName }}</a> } @else { {{ up.fileName }} }<div class="muted">{{ up.uploadedBy }} · {{ displayDate(up.uploadedAt) }}</div> }
                         @else { <span class="muted">Not uploaded</span> }
                       </td>
                       <td>
@@ -189,8 +189,8 @@
                       </td>
                       <td class="row-actions">
                         <label class="link-btn upload">
-                          <i class="bi bi-upload"></i> {{ up ? 'Replace' : 'Upload' }}
-                          <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png" (change)="upload(d.type, $event)" />
+                          <i class="bi" [class.bi-upload]="uploadingDoc() !== d.type" [class.bi-arrow-repeat]="uploadingDoc() === d.type"></i> {{ uploadingDoc() === d.type ? 'Uploading...' : up ? 'Replace' : 'Upload' }}
+                          <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png" [disabled]="uploadingDoc() !== null" (change)="upload(d.type, $event)" />
                         </label>
                         @if (up && canAct && up.status !== 'Verified') {
                           <button type="button" class="icon-btn add" title="Verify" aria-label="Verify document" (click)="verifyDoc(d.type, true)"><i class="bi bi-check-lg"></i></button>

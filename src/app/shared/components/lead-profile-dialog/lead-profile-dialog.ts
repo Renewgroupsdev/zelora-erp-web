@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Inject } from '@angular/core';
+import { Component, HostListener, Inject, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { FlowAppointment, FlowLead, FollowUpEntry } from '../../common-services/crm-flow.service';
+import { FileUploadService, UploadDraft, uploadError } from '../../common-services/file-upload.service';
+import { shrinkPhoto } from '../../models/branch-franchise.model';
 import { CallerLogEntry } from '../../models/common-components.model';
 import { CallLogHistoryDialog } from '../call-log-history-dialog/call-log-history-dialog';
 import { DatePickerDirective } from '../../directives/date-picker.directive';
@@ -95,10 +97,15 @@ export class LeadProfileDialog {
   bookingType: AppointmentBookingType = 'single';
   activeCategory: TreatmentCategory = TREATMENT_CATEGORIES[0];
 
-  // Appointment stage - clinical examination photos (before/after), captured or uploaded.
+  // Appointment stage - clinical examination photos (before/after), captured or uploaded to the server.
   beforeImages: string[] = [];
   afterImages: string[] = [];
   imageViewer: ImageViewerState | null = null;
+  photoUploads = 0;
+  photoError: string | null = null;
+  private readonly uploads = inject(FileUploadService);
+  /** Removed / unused clinical photos are deleted from the server once the appointment is saved (or the dialog is closed). */
+  private readonly photoDraft: UploadDraft;
 
   constructor(
     private fb: FormBuilder,
@@ -141,6 +148,13 @@ export class LeadProfileDialog {
 
     this.beforeImages = [...(appointment?.beforeImages ?? [])];
     this.afterImages = [...(appointment?.afterImages ?? [])];
+
+    this.photoDraft = this.uploads.draft('appointment_clinical', [...this.beforeImages, ...this.afterImages]);
+    this.dialogRef.afterClosed().subscribe(result => {
+      const saved = result?.action === 'confirm-client' || result?.action === 'book-appointment';
+      if (saved) this.photoDraft.commit([...this.beforeImages, ...this.afterImages]);
+      else this.photoDraft.discard();
+    });
 
     (appointment?.treatmentKeys ?? []).forEach(key => this.selectedTreatmentKeys.add(key));
     this.selectedComboKey = appointment?.comboKey ?? null;
@@ -409,22 +423,34 @@ export class LeadProfileDialog {
     return target === 'before' ? this.beforeImages : this.afterImages;
   }
 
-  /** Reads every selected file (from either the camera capture or the plain file picker,
-   *  both of which land here through the same `<input type="file">`) into a data URL so the
-   *  photo can be previewed/stored without a real upload backend. */
+  /** Uploads every selected file (camera capture or file picker - both land on the same `<input type="file">`)
+   *  to the server (uploads/appointment_clinical) and keeps the returned URL on the appointment. */
   onPhotoSelected(event: Event, target: ClinicalPhotoTarget): void {
     const input = event.target as HTMLInputElement;
     const files = input.files ? Array.from(input.files) : [];
     input.value = '';
+    this.photoError = null;
 
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        if (target === 'before') this.beforeImages = [...this.beforeImages, dataUrl];
-        else this.afterImages = [...this.afterImages, dataUrl];
-      };
-      reader.readAsDataURL(file);
+    files.forEach(async file => {
+      this.photoUploads++;
+      try {
+        const photo = await shrinkPhoto(file, 1600);
+        this.uploads.upload('appointment_clinical', photo).subscribe({
+          next: up => {
+            this.photoDraft.track(up.url);
+            if (target === 'before') this.beforeImages = [...this.beforeImages, up.url];
+            else this.afterImages = [...this.afterImages, up.url];
+            this.photoUploads--;
+          },
+          error: err => {
+            this.photoError = uploadError(err, 'Could not upload the photo. Please try again.');
+            this.photoUploads--;
+          },
+        });
+      } catch (e) {
+        this.photoError = (e as Error).message;
+        this.photoUploads--;
+      }
     });
   }
 

@@ -114,7 +114,14 @@ export function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
-/** Reads an image file and downscales it to a JPEG data URL small enough for local storage. */
+/** Downscales an image file to a JPEG (max `maxSize` px) ready to upload - keeps the server copy small. */
+export async function shrinkPhoto(file: File, maxSize = 1280): Promise<File> {
+  const dataUrl = await readPhoto(file, maxSize);
+  const blob = await (await fetch(dataUrl)).blob();
+  return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+}
+
+/** Reads an image file and downscales it to a JPEG data URL. */
 export function readPhoto(file: File, maxSize = 640): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) return reject(new Error('Please choose an image file.'));

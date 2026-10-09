@@ -660,6 +660,19 @@ textarea {
   gap: 12px;
 }
 
+.photo-status {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+
+  &.error {
+    color: #dc3545;
+  }
+}
+
 .photo-group-title {
   display: flex;
   align-items: center;
