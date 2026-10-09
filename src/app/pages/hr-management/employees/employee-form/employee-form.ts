@@ -32,6 +32,17 @@ export class EmployeeForm implements OnInit {
   readonly candidateId = this.data.candidateId ?? null;
   readonly submitted = signal(false);
 
+  readonly steps = [
+    { label: 'Personal Details', icon: 'bi-person' },
+    { label: 'Job Details', icon: 'bi-briefcase' },
+    { label: 'KYC Document', icon: 'bi-file-earmark-lock2' },
+    { label: 'Statutory & Bank', icon: 'bi-bank' },
+    { label: 'Salary Structure', icon: 'bi-cash-stack' },
+  ];
+  readonly step = signal(0);
+  password = '';
+  confirmPassword = '';
+
   model: NewEmployeeInput = this.data.employee
     ? structuredClone((({ id, empCode, status, ...rest }) => rest)(this.data.employee))
     : this.hr.employeeDraftFor(this.candidateId ?? '') ?? {
@@ -196,13 +207,51 @@ export class EmployeeForm implements OnInit {
     return !!this.model.secondaryPhone && this.model.secondaryPhone === this.model.phone;
   }
 
-  save(form: NgForm): void {
+  passwordMismatch(): boolean {
+    return this.password !== this.confirmPassword;
+  }
+
+  /** Form controls (by `name`) that belong to each step, used to validate a step before moving on. */
+  private readonly stepControls: string[][] = [
+    ['name', 'phone', 'email', 'secondaryPhone', 'password', 'confirmPassword'],
+    ['designation', 'branch', 'joinDate', 'referralPhone'],
+    [],
+    ['ifsc'],
+    [],
+  ];
+
+  private stepValid(form: NgForm, index: number): boolean {
+    const controlsOk = this.stepControls[index].every(n => !form.controls[n] || form.controls[n].valid);
+    return controlsOk && (index !== 0 || (!this.sameAsPrimary() && !this.passwordMismatch()));
+  }
+
+  goTo(index: number): void {
+    this.step.set(index);
+  }
+
+  back(): void {
+    this.step.update(s => Math.max(0, s - 1));
+  }
+
+  next(form: NgForm): void {
     this.submitted.set(true);
-    if (form.invalid || this.sameAsPrimary() || this.isSaving()) return;
+    if (!this.stepValid(form, this.step())) return;
+    this.submitted.set(false);
+    this.step.update(s => Math.min(this.steps.length - 1, s + 1));
+  }
+
+  save(form: NgForm): void {
+    // Enter inside an earlier step advances instead of saving.
+    if (this.step() < this.steps.length - 1) return this.next(form);
+    this.submitted.set(true);
+    const invalidStep = this.steps.findIndex((_, i) => !this.stepValid(form, i));
+    if (invalidStep >= 0) return this.step.set(invalidStep);
+    if (form.invalid || this.isSaving()) return;
     const payload = { ...this.model, pan: this.model.pan.toUpperCase(), ifsc: this.model.ifsc.toUpperCase() };
     this.isSaving.set(true);
     this.hr.saveEmployee(this.data.employee?.id ?? null, payload, {
       photo: this.photoFile, removePhoto: this.photoRemoved, removedKycIds: this.removedKycIds, candidateId: this.candidateId,
+      password: this.password || undefined, passwordConfirmation: this.confirmPassword || undefined,
     }).pipe(finalize(() => this.isSaving.set(false))).subscribe({
       next: () => {
         this.toast.success(this.isEdit ? 'Employee updated successfully' : 'Employee added successfully');

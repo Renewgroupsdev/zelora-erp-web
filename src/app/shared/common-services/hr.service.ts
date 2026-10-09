@@ -172,8 +172,12 @@ export class HrService {
    * Creates (id = null) or updates an employee, then syncs the KYC documents: documents picked in the form
    * (with a `file`) are uploaded and those in `removedKycIds` are deleted. Emits the refreshed employee.
    */
-  saveEmployee(id: string | null, input: NewEmployeeInput, opts: { photo: File | null; removePhoto: boolean; removedKycIds: string[]; candidateId?: string | null }): Observable<Employee> {
+  saveEmployee(id: string | null, input: NewEmployeeInput, opts: { photo: File | null; removePhoto: boolean; removedKycIds: string[]; candidateId?: string | null; password?: string; passwordConfirmation?: string }): Observable<Employee> {
     const body = this.employeeFormData(input, opts.photo, opts.removePhoto);
+    if (opts.password) {
+      body.append('password', opts.password);
+      body.append('password_confirmation', opts.passwordConfirmation ?? '');
+    }
     const save$: Observable<any> = id
       ? this.api.POST(`${ApiRoutesConstants.HR_EMPLOYEES}/${id}`, (body.append('_method', 'PUT'), body))
       : this.api.POST(ApiRoutesConstants.HR_EMPLOYEES, body);

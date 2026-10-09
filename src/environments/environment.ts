@@ -3,7 +3,7 @@ export const environment = {
   envName: 'local',
 
   // apiBaseUrl: `http://192.168.1.155:8000/api/`,
-  apiBaseUrl: `http://192.168.0.10:8000/api/`,
+  apiBaseUrl: `http://192.168.0.211:8000/api/`,
   disableDevTools: false,
   rememberMeKey: 'remember_me',
 };

@@ -382,6 +382,82 @@
   }
 }
 
+/* ---------- Step progress (add / edit employee) ---------- */
+.emp-stepper {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 2px 0 10px;
+  padding: 0;
+  list-style: none;
+
+  li {
+    position: relative;
+
+    &:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 17px;
+      left: calc(50% + 22px);
+      right: calc(-50% + 22px);
+      height: 2px;
+      background: var(--card-border);
+    }
+
+    &.done:not(:last-child)::after { background: var(--primary); }
+
+    .step-btn {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 0;
+      border: 0;
+      background: none;
+      cursor: pointer;
+      font-family: inherit;
+
+      &:disabled { cursor: default; }
+    }
+
+    .dot {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--card-border);
+      border-radius: 50%;
+      background: var(--app-surface-solid);
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+
+    small {
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    &.done .dot { background: var(--primary); border-color: var(--primary); color: #fff; }
+    &.current .dot { border-color: var(--primary); color: var(--primary-dark); box-shadow: 0 0 0 3px var(--primary-soft); }
+    &.current small { color: var(--primary-dark); }
+  }
+}
+
+.show-pwd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .emp-stepper li small { font-size: 9px; }
+}
+
 /* ---------- Footer ---------- */
 .modal-footer-custom {
   display: flex;
