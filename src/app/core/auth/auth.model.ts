@@ -12,8 +12,12 @@ export interface AuthUser {
   id: number;
   name: string;
   email: string;
-  role_id: number;
+  /** Which table the profile came from: users, employees (hr_employees) or customers. */
+  login_type?: 'user' | 'employee' | 'customer';
+  role_id: number | null;
   role?: AuthUserRole | null;
+  /** Role name sent by the login API (Branch Manager, Staff, ...); shown in the top bar. */
+  role_name?: string | null;
   org_unit_id: number | null;
   phone_no: string | null;
   status: string;
@@ -59,8 +63,10 @@ export function isAdmin(roleId: number | null | undefined): boolean {
 
 const CALL_CENTER_SUPERVISOR_SLUGS = ['branch_manager', 'branch_head', 'super_admin', 'admin', 'franchise_owner'];
 
-export function isTelecallerRole(user: Pick<AuthUser, 'role_id' | 'role'> | null | undefined): boolean {
+export function isTelecallerRole(user: Pick<AuthUser, 'role_id' | 'role' | 'login_type'> | null | undefined): boolean {
   if (!user) return false;
+  // Customers are not staff; employee logins run as staff and follow their role like any user.
+  if (user.login_type === 'customer') return false;
   if (isAdmin(user.role_id)) return false;
   const slug = user.role?.slug;
   if (!slug) return true; 

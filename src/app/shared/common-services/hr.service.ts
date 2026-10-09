@@ -858,67 +858,7 @@ function seedState(): HrState {
   const ago = (days: number) => addDays(today, -days);
   const at = (date: string, h: number, m: number) => new Date(`${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`).toISOString();
 
-  const people: [string, Employee['gender'], string, string, string, number, string][] = [
-    ['Anitha Mohan', 'Female', 'Branch Head', 'Operations', 'Anna Nagar', 65000, '2019-04-10'],
-    ['Dr. Priya Sharma', 'Female', 'Senior Dermatologist', 'Clinical', 'Velachery', 120000, '2020-08-01'],
-    ['Karthik Raman', 'Male', 'Hair Transplant Technician', 'Clinical', 'Anna Nagar', 32000, '2022-01-17'],
-    ['Meena Iyer', 'Female', 'Front Office Executive', 'Front Office', 'T. Nagar', 19500, '2023-06-05'],
-    ['Rahul Nair', 'Male', 'Tele Caller', 'Tele Calling', 'Velachery', 16500, '2024-02-12'],
-    ['Sneha Krishnan', 'Female', 'Accounts Executive', 'Accounts', 'Anna Nagar', 28000, '2021-11-22'],
-    ['Vignesh Kumar', 'Male', 'Sales Counsellor', 'Sales', 'Adyar', 24000, '2023-09-18'],
-    ['Lakshmi Pillai', 'Female', 'HR Executive', 'HR', 'Anna Nagar', 30000, '2020-03-02'],
-    ['Suresh Reddy', 'Male', 'Skin Therapist', 'Clinical', 'Adyar', 22000, '2024-07-01'],
-  ];
-
-  const employees: Employee[] = people.map(([name, gender, designation, department, branch, gross, joinDate], i) => ({
-    id: `EMP-seed-${i + 1}`,
-    empCode: `RP${1001 + i}`,
-    name, gender, designation, department, branch, joinDate,
-    dob: `19${88 + (i % 9)}-0${(i % 9) + 1}-1${i % 9}`,
-    phone: `98400${String(11111 + i * 1371).slice(0, 5)}`,
-    email: `${name.toLowerCase().replace(/dr\.\s*/, '').split(' ')[0]}@renewplus.in`,
-    address: `${12 + i}, ${['Gandhi Street', 'Lake View Road', 'Nehru Nagar', 'Temple Road'][i % 4]}, Chennai`,
-    bloodGroup: ['O+', 'B+', 'A+', 'AB+', 'O-'][i % 5],
-    reportingTo: i === 0 ? 'Managing Director' : 'Anitha Mohan',
-    employmentType: 'Full Time',
-    pan: `ABCPK${1234 + i}L`,
-    aadhaarLast4: String(4821 + i * 7).slice(-4),
-    uan: `1009${String(87654321 + i * 911)}`,
-    bankName: ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank'][i % 4],
-    accountNo: `50100${String(23456789 + i * 1234)}`,
-    ifsc: ['HDFC0001234', 'ICIC0004567', 'SBIN0007890', 'UTIB0002345'][i % 4],
-    emergencyContact: `Spouse - 9840${String(222333 + i * 17)}`,
-    salary: structureFromGross(gross),
-    status: 'Active',
-  }));
-  employees[8].status = 'On Notice';
-
-  // Attendance: last 20 days (Sundays off), today partially punched.
-  const attendance: AttendanceRecord[] = [];
-  for (let back = 20; back >= 0; back--) {
-    const date = ago(back);
-    if (new Date(`${date}T00:00:00`).getDay() === 0) continue;
-    for (const e of employees) {
-      const r = rand();
-      const id = uid('ATT');
-      if (back === 0) {
-        if (r < 0.75) attendance.push({ id, empId: e.id, date, checkIn: at(date, 9, 10 + Math.floor(r * 40)), checkOut: null, status: r > 0.6 ? 'Late' : 'Present', source: 'Biometric' });
-        continue;
-      }
-      if (r < 0.04) attendance.push({ id, empId: e.id, date, checkIn: null, checkOut: null, status: 'Absent', source: 'Biometric' });
-      else if (r < 0.1) attendance.push({ id, empId: e.id, date, checkIn: at(date, 9, 30), checkOut: at(date, 13, 40), status: 'Half Day', source: 'Biometric' });
-      else if (r < 0.2) attendance.push({ id, empId: e.id, date, checkIn: at(date, 9, 50 + Math.floor(rand() * 9)), checkOut: at(date, 18, 30 + Math.floor(rand() * 29)), status: 'Late', source: 'Biometric' });
-      else attendance.push({ id, empId: e.id, date, checkIn: at(date, 9, 5 + Math.floor(rand() * 35)), checkOut: at(date, 18, Math.floor(rand() * 59)), status: 'Present', source: 'Biometric' });
-    }
-  }
-
   const year = new Date().getFullYear();
-  const leaves: LeaveRequest[] = [
-    { id: 'LV-seed-1', requestNo: `LV-${year}-0003`, empId: employees[3].id, kind: 'Leave', leaveType: 'Sick Leave', fromDate: addDays(today, 1), toDate: addDays(today, 2), halfDay: false, fromTime: null, toTime: null, reason: 'Viral fever - doctor advised rest.', appliedAt: new Date().toISOString(), status: 'Pending' },
-    { id: 'LV-seed-2', requestNo: `PM-${year}-0002`, empId: employees[4].id, kind: 'Permission', leaveType: null, fromDate: today, toDate: today, halfDay: false, fromTime: '16:00', toTime: '18:00', reason: 'Bank work.', appliedAt: new Date().toISOString(), status: 'Pending' },
-    { id: 'LV-seed-3', requestNo: `LV-${year}-0001`, empId: employees[2].id, kind: 'Leave', leaveType: 'Casual Leave', fromDate: ago(9), toDate: ago(8), halfDay: false, fromTime: null, toTime: null, reason: 'Family function.', appliedAt: at(ago(12), 10, 0), status: 'Approved', reviewedBy: 'Lakshmi Pillai', reviewedAt: at(ago(11), 11, 0), reviewRemarks: 'Approved' },
-  ];
-
   const manpower: ManpowerRequest[] = [
     { id: 'MR-seed-2', requestNo: `MR-${year}-0002`, branch: 'Adyar', department: 'Front Office', designation: 'Front Office Executive', positions: 1, employmentType: 'Full Time', experience: '1-3 years', budgetMin: 18000, budgetMax: 22000, skills: 'Customer handling, billing, English & Tamil', justification: 'Weekend footfall increased by 40%.', replacementFor: '', requiredBy: addDays(today, 20), requestedBy: 'Anitha Mohan', requestedAt: at(ago(1), 11, 0), status: 'Pending', postedTo: [], hired: 0 },
     { id: 'MR-seed-1', requestNo: `MR-${year}-0001`, branch: 'Velachery', department: 'Clinical', designation: 'Skin Therapist', positions: 2, employmentType: 'Full Time', experience: '2-5 years', budgetMin: 20000, budgetMax: 28000, skills: 'Chemical peels, laser, HydraFacial', justification: 'New laser room opening + replacement for Suresh Reddy.', replacementFor: 'Suresh Reddy', requiredBy: addDays(today, 10), requestedBy: 'Dr. Priya Sharma', requestedAt: at(ago(10), 10, 0), status: 'Approved', reviewedBy: 'Lakshmi Pillai', reviewRemarks: 'Approved within budget', vacancyStatus: 'Open', postedTo: ['Indeed', 'LinkedIn', 'Naukri'], hired: 0 },
@@ -957,51 +897,5 @@ function seedState(): HrState {
     candidates.push(c);
   });
 
-  const lastMonth = monthKey(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1));
-  const workingDays = (() => {
-    let d = 0;
-    for (let i = 1; i <= daysInMonth(lastMonth); i++) if (new Date(`${lastMonth}-${String(i).padStart(2, '0')}T00:00:00`).getDay() !== 0) d++;
-    return d;
-  })();
-  const payslips = employees.map((e, i) => ({ ...buildPayslip(e, lastMonth, workingDays, i === 4 ? 1 : 0, i === 1 ? 10000 : 0), status: 'Paid' as const, paidAt: at(`${lastMonth}-28`, 17, 0) }));
-
-  const cycle = `FY ${year - 1}-${String(year).slice(2)}`;
-  const appraisals: Appraisal[] = [
-    { id: 'APR-seed-1', empId: employees[2].id, cycle, rating: 4, kpiScore: 86, strengths: 'Excellent graft handling, punctual.', improvements: 'Mentor juniors.', reviewer: 'Anitha Mohan', incrementPercent: 10, oldMonthlyGross: 32000, newMonthlyGross: 35200, effectiveFrom: `${year}-04-01`, status: 'Approved', createdAt: at(ago(5), 10, 0) },
-    { id: 'APR-seed-2', empId: employees[3].id, cycle, rating: 3, kpiScore: 72, strengths: 'Friendly with customers.', improvements: 'Billing accuracy.', reviewer: 'Anitha Mohan', incrementPercent: 6, oldMonthlyGross: 19500, newMonthlyGross: 20670, effectiveFrom: `${year}-04-01`, status: 'Draft', createdAt: at(ago(3), 10, 0) },
-  ];
-  const bonuses: BonusRecord[] = [
-    { id: 'BON-seed-1', empId: employees[1].id, type: 'Performance', amount: 10000, payMonth: lastMonth, reason: 'Highest procedure revenue', status: 'Paid' },
-    { id: 'BON-seed-2', empId: employees[2].id, type: 'Performance', amount: 5000, payMonth: monthKey(), reason: `${cycle} appraisal`, status: 'Approved', appraisalId: 'APR-seed-1' },
-  ];
-
-  const newJoiner: Employee = {
-    ...employees[3], id: 'EMP-seed-10', empCode: 'RP1010', name: 'Nithya Joseph', gender: 'Female', designation: 'Tele Caller', department: 'Tele Calling',
-    branch: 'Anna Nagar', joinDate: addDays(today, 3), email: 'nithya@renewplus.in', salary: structureFromGross(17000), status: 'Onboarding',
-  };
-  employees.push(newJoiner);
-  const onboarding: Onboarding[] = [{
-    id: 'ONB-seed-1', empId: newJoiner.id, joinDate: newJoiner.joinDate, buddy: 'Rahul Nair', status: 'In Progress',
-    checklist: ONBOARDING_CHECKLIST.map((label, i) => ({ label, done: i < 3 })),
-  }];
-
-  const exitEmp = employees[8];
-  const exits: ExitCase[] = [{
-    id: 'EXT-seed-1', empId: exitEmp.id, exitType: 'Resignation', resignationDate: ago(12), lastWorkingDay: addDays(today, 18),
-    reason: 'Relocating to Bengaluru.', status: 'Notice Period',
-    checklist: EXIT_CHECKLIST.map((label, i) => ({ label, done: i < 2 })),
-    fnf: { pendingSalary: 15000, leaveEncashment: 4200, bonus: 0, gratuity: 0, recoveries: 1500 },
-  }];
-
-  // Sample breaks on worked days: morning break, lunch and evening break (today only has the morning one).
-  attendance.forEach(a => {
-    if (!a.checkIn || a.status === 'Half Day') return;
-    const mk = (type: BreakType, h: number, m: number, minutes: number): AttendanceBreak => {
-      const start = at(a.date, h, m);
-      return { type, start, end: new Date(new Date(start).getTime() + minutes * 60000).toISOString() };
-    };
-    a.breaks = a.date === today ? [mk('Morning Break', 11, 0, 12)] : [mk('Morning Break', 11, 0, 10 + Math.floor(rand() * 6)), mk('Lunch', 13, 15, 30 + Math.floor(rand() * 16)), mk('Evening Break', 16, 30, 10 + Math.floor(rand() * 6))];
-  });
-
-  return { employees, attendance, leaves, manpower, candidates, payslips, appraisals, bonuses, onboarding, exits };
+  return { employees: [], attendance: [], leaves: [], manpower, candidates, payslips: [], appraisals: [], bonuses: [], onboarding: [], exits: [] };
 }

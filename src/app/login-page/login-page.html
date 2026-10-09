@@ -20,23 +20,33 @@
         <button type="button" class="alert-close" (click)="clearError()" aria-label="Dismiss">&times;</button>
       </div>
 
-      <form name="login-form" class="login-form" [formGroup]="loginForm">
+      <div class="login-mode" role="tablist" aria-label="Sign in as">
+        <button type="button" role="tab" [attr.aria-selected]="mode === 'user'" [class.active]="mode === 'user'" (click)="setMode('user')"><i class="bi bi-person-badge"></i> User</button>
+        <button type="button" role="tab" [attr.aria-selected]="mode === 'employee'" [class.active]="mode === 'employee'" (click)="setMode('employee')"><i class="bi bi-person-vcard"></i> Employee</button>
+        <button type="button" role="tab" [attr.aria-selected]="mode === 'customer'" [class.active]="mode === 'customer'" (click)="setMode('customer')"><i class="bi bi-phone"></i> Customer</button>
+      </div>
+
+      @if (info) { <div class="alert-info-box" role="status">{{ info }}</div> }
+
+      <form name="login-form" class="login-form" [formGroup]="loginForm" (ngSubmit)="Onsubmit()">
 
         @if(loading){
            <app-preloader [display]="loading"></app-preloader>
         }
 
         <div class="form-group">
-          <label for="user_name" class="form-label">User Name</label>
+          <label for="user_name" class="form-label">{{ identifierLabel }}</label>
           <div class="input-group">
-            <span class="input-icon"><i class="bi bi-person"></i></span>
+            <span class="input-icon"><i class="bi" [ngClass]="mode === 'customer' ? 'bi-phone' : mode === 'employee' ? 'bi-person-vcard' : 'bi-person'"></i></span>
             <input
               class="form-control"
               type="text"
               id="user_name"
               autocomplete="off"
-              placeholder="Enter your user name"
+              [placeholder]="identifierPlaceholder"
               formControlName="user_name"
+              [readonly]="mode === 'customer' && otpSent"
+              [attr.inputmode]="mode === 'customer' ? 'numeric' : null"
               [ngClass]="{ 'is-invalid': formSubmitted && formValues['user_name'].invalid }"
             >
           </div>
@@ -45,6 +55,7 @@
           </div>
         </div>
 
+        @if (mode !== 'customer') {
         <div class="form-group">
           <label for="password" class="form-label">Password</label>
           <div class="input-group">
@@ -55,17 +66,31 @@
               class="form-control"
               placeholder="Enter your password"
               formControlName="password"
-              [ngClass]="{ 'is-invalid': formSubmitted && formValues['password'].invalid }"
+              [ngClass]="{ 'is-invalid': formSubmitted && !formValues['password'].value }"
             >
             <button type="button" class="input-group-append" (click)="showPassword = !showPassword" aria-label="Toggle password visibility">
               <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
             </button>
           </div>
-          <div *ngIf="formSubmitted && formValues['password'].invalid" class="invalid-feedback">
-            <div *ngIf="formValues['password'].errors?.['required']">Password is required.</div>
+          @if (formSubmitted && !formValues['password'].value) { <div class="invalid-feedback"><div>Password is required.</div></div> }
+        </div>
+        }
+
+        @if (mode === 'customer' && otpSent) {
+        <div class="form-group">
+          <label for="otp" class="form-label">OTP</label>
+          <div class="input-group">
+            <span class="input-icon"><i class="bi bi-shield-lock"></i></span>
+            <input class="form-control" type="text" id="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="Enter the 6-digit OTP" formControlName="otp">
+          </div>
+          <div class="otp-actions">
+            <button type="button" class="link-btn" [disabled]="resendIn > 0 || loading" (click)="sendOtp()">{{ resendIn > 0 ? 'Resend OTP in ' + resendIn + 's' : 'Resend OTP' }}</button>
+            <button type="button" class="link-btn" (click)="otpSent = false; info = ''">Change number</button>
           </div>
         </div>
+        }
 
+        @if (mode === 'user') {
         <div class="form-check-row">
           <div class="form-check">
             <input type="checkbox" class="form-check-input" id="checkbox-signin" formControlName="rememberMe">
@@ -74,11 +99,12 @@
 
           <a href="javascript:void(0)" class="forgot-password-link" (click)="goToForgotPassword()">Forgot password?</a>
         </div>
+        }
 
         <div class="submit-row">
-          <button class="btn btn-primary" type="button" (click)="Onsubmit()" [disabled]="loading">
-            <span *ngIf="!loading">Log In</span>
-            <span *ngIf="loading">Signing in...</span>
+          <button class="btn btn-primary" type="submit" [disabled]="loading">
+            <span *ngIf="!loading">{{ mode === 'customer' ? (otpSent ? 'Verify OTP' : 'Send OTP') : 'Log In' }}</span>
+            <span *ngIf="loading">{{ mode === 'customer' && !otpSent ? 'Sending...' : 'Signing in...' }}</span>
           </button>
         </div>
 

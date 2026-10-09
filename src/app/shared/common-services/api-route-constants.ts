@@ -3,6 +3,9 @@ export class ApiRoutesConstants {
   public static AUTH_REGISTER = "users";
   public static AUTH_LOGIN = "login";
   public static AUTH_REFRESH = "refresh-token";
+  public static AUTH_EMPLOYEE_LOGIN = "employee/login";
+  public static AUTH_CUSTOMER_OTP_SEND = "customer/otp/send";
+  public static AUTH_CUSTOMER_OTP_VERIFY = "customer/otp/verify";
   public static AUTH_LOGOUT = "logout";
   public static AUTH_FORGOT_PASSWORD = "forgot-password";
   public static AUTH_RESET_PASSWORD = "reset-password";

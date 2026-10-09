@@ -18,7 +18,10 @@ export class TopNavbar {
   private readonly authService = inject(AuthService);
 
   readonly currentUser = this.authService.currentUser;
-  readonly currentUserRole = computed(() => roleLabel(this.currentUser()?.role_id));
+  readonly currentUserRole = computed(() => {
+    const user = this.currentUser();
+    return user?.role_name || user?.role?.name || roleLabel(user?.role_id);
+  });
 
   constructor(
     public navLayout: NavLayoutService,

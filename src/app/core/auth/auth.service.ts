@@ -46,6 +46,25 @@ export class AuthService {
       .pipe(tap((response: LoginResponse) => this.handleAuthResponse(response)));
   }
 
+  /** Employee sign-in: employee ID (emp_code) + password, checked against hr_employees. */
+  loginEmployee(empCode: string, password: string, deviceName = 'web'): Observable<LoginResponse> {
+    return this.api
+      .POST(ApiRoutesConstants.AUTH_EMPLOYEE_LOGIN, { emp_code: empCode, password, device_name: deviceName })
+      .pipe(tap((response: LoginResponse) => this.handleAuthResponse(response)));
+  }
+
+  /** Customer sign-in step 1: send an OTP to a registered mobile number (customers table). */
+  sendCustomerOtp(phone: string): Observable<ApiResponse<unknown>> {
+    return this.api.POST(ApiRoutesConstants.AUTH_CUSTOMER_OTP_SEND, { phone });
+  }
+
+  /** Customer sign-in step 2: verify the OTP and start the session. */
+  verifyCustomerOtp(phone: string, otp: string, deviceName = 'web'): Observable<LoginResponse> {
+    return this.api
+      .POST(ApiRoutesConstants.AUTH_CUSTOMER_OTP_VERIFY, { phone, otp, device_name: deviceName })
+      .pipe(tap((response: LoginResponse) => this.handleAuthResponse(response)));
+  }
+
   refreshAccessToken(): Observable<LoginResponse> {
     return this.api
       .POST(ApiRoutesConstants.AUTH_REFRESH, { refresh_token: this.readRefreshToken() })
@@ -122,7 +141,8 @@ export class AuthService {
     const refreshUrl = `${environment.apiBaseUrl}${ApiRoutesConstants.AUTH_REFRESH}`;
     const forgotPasswordUrl = `${environment.apiBaseUrl}${ApiRoutesConstants.AUTH_FORGOT_PASSWORD}`;
     const resetPasswordUrl = `${environment.apiBaseUrl}${ApiRoutesConstants.AUTH_RESET_PASSWORD}`;
-    return url === loginUrl || url === refreshUrl || url === forgotPasswordUrl || url === resetPasswordUrl;
+    const portalUrls = [ApiRoutesConstants.AUTH_EMPLOYEE_LOGIN, ApiRoutesConstants.AUTH_CUSTOMER_OTP_SEND, ApiRoutesConstants.AUTH_CUSTOMER_OTP_VERIFY].map(r => `${environment.apiBaseUrl}${r}`);
+    return url === loginUrl || url === refreshUrl || url === forgotPasswordUrl || url === resetPasswordUrl || portalUrls.includes(url);
   }
 
   private handleAuthResponse(response: LoginResponse): void {
