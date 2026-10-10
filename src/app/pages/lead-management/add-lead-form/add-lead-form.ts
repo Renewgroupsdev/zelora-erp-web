@@ -75,6 +75,7 @@ export class AddLeadForm implements OnInit{
       source: [data?.source_id ?? '', Validators.required],
       gender: [data?.gender ?? '', Validators.required],
       type: [data?.service_category_id ?? data?.category_id ?? '', Validators.required],
+      sub_category: [data?.treatment_id ?? ''],
       status: [data?.status_id ?? '', Validators.required],
       reason: [data?.reason ?? '', Validators.maxLength(250)],
       organization_id: ['1'],
@@ -85,6 +86,40 @@ export class AddLeadForm implements OnInit{
   ngOnInit(): void {
     this.loadTelecallers();
     this.applyPreloadedLookups();
+    this.loadSubCategories();
+
+    // Picking another category clears the previous sub-category and reloads the list for it.
+    this.leadForm.get('type')?.valueChanges.subscribe(() => {
+      this.leadForm.get('sub_category')?.setValue('');
+      this.refreshSubCategoryOptions();
+    });
+  }
+
+  /** Sub-categories of the selected service category (its treatments from Treatment Management). */
+  subCategoryOptions: { id: number; name: string }[] = [];
+  private treatmentsByCategory = new Map<string, { id: number; name: string }[]>();
+
+  private loadSubCategories(): void {
+    this.apiDataService.GetAllPages(ApiRoutesConstants.SERVICE_CATEGORY_TREE_LIST).subscribe({
+      next: (categories: any[]) => {
+        categories.forEach((category: any) =>
+          this.treatmentsByCategory.set(
+            String(category.id),
+            (category.treatments ?? []).filter((t: any) => t.is_active).map((t: any) => ({ id: t.id, name: t.name })),
+          ));
+
+        // Edit: keep the saved sub-category while the options are filled in.
+        const saved = this.leadForm.get('sub_category')?.value;
+        this.refreshSubCategoryOptions();
+        if (saved) this.leadForm.get('sub_category')?.setValue(saved, { emitEvent: false });
+      },
+      error: () => (this.subCategoryOptions = []),
+    });
+  }
+
+  private refreshSubCategoryOptions(): void {
+    const categoryId = String(this.leadForm.get('type')?.value ?? '');
+    this.subCategoryOptions = this.treatmentsByCategory.get(categoryId) ?? [];
   }
 
   private applyPreloadedLookups(): void {

@@ -26,6 +26,8 @@ const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue'> =
   'notice period': 'orange', clearance: 'blue', settled: 'green',
   // Accounts
   unpaid: 'red', 'partially paid': 'orange', sent: 'blue',
+  // Appointments
+  'in consultation': 'orange', 'awaiting terms': 'orange', invoiced: 'blue',
   receipt: 'green', payment: 'red', sales: 'blue', purchase: 'orange', contra: 'gray', journal: 'gray',
 };
 
@@ -67,6 +69,7 @@ export class CommonTableCard {
   @Output() appointmentClick = new EventEmitter<TableRow>();
   @Output() followUpClick = new EventEmitter<TableRow>();
   @Output() callClick = new EventEmitter<TableRow>();
+  @Output() validateClick = new EventEmitter<{ row: TableRow; valid: boolean }>();
   @Output() sendToBranchClick = new EventEmitter<TableRow>();
   @Output() viewCallLogClick = new EventEmitter<TableRow>();
   @Output() editClick = new EventEmitter<TableRow>();

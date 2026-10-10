@@ -8,8 +8,8 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AddServiceCategoryForm } from './add-service-category-form/add-service-category-form';
 
-/** One category node in the parent/child tree - a top-level category carries its sub-categories
- *  in `children`; a sub-category's `children` array stays empty (this schema is only 2 levels deep). */
+/** One node in the tree - a top-level category carries its sub-categories (the treatments created
+ *  under it in Treatment Management) in `children`; a sub-category's `children` stays empty. */
 interface CategoryNode {
   id: number;
   name: string;
@@ -64,10 +64,9 @@ export class ServiceCategory implements OnInit {
   loadCategories(): void {
     this.isLoading = true;
 
-    // GetAllPages walks every page of the (paginated) endpoint - a category only nests under
-    // its parent if the parent's page was fetched too, otherwise a parent pushed onto page 2+
-    // leaves its children looking like top-level rows.
-    this.apiDataService.GetAllPages(ApiRoutesConstants.SERVICE_CATEGORY_GET_List).subscribe({
+    // Top-level categories only; each carries the treatments created under it in Treatment
+    // Management, which are shown as its (read-only) sub-categories.
+    this.apiDataService.GetAllPages(ApiRoutesConstants.SERVICE_CATEGORY_TREE_LIST).subscribe({
       next: (categories: any[]) => {
         this.isLoading = false;
 
@@ -86,40 +85,27 @@ export class ServiceCategory implements OnInit {
     });
   }
 
-  /** Groups the flat API list into top-level categories with their sub-categories nested
-   *  underneath - `nodesById` is keyed by id so a repeated id in the payload collapses to one
-   *  node instead of showing twice. */
+  /** Each API category becomes a top-level node; its treatments become the sub-category rows. */
   private buildTree(categories: any[]): CategoryNode[] {
-    const nodesById = new Map<number, CategoryNode>();
+    const seen = new Set<number>();
 
-    categories.forEach((category) => {
-      if (nodesById.has(category.id)) return;
-
-      nodesById.set(category.id, {
+    return categories
+      .filter((category) => !seen.has(category.id) && !!seen.add(category.id))
+      .map((category) => ({
         id: category.id,
         name: category.name ?? '',
         statusLabel: this.formatStatus(category.status),
         createdAt: this.formatDate(category.created_at),
-        children: [],
         expanded: false,
-      });
-    });
-
-    const roots: CategoryNode[] = [];
-
-    categories.forEach((category) => {
-      const node = nodesById.get(category.id);
-      if (!node) return;
-
-      const parentNode = category.parent_id ? nodesById.get(category.parent_id) : undefined;
-      if (parentNode) {
-        parentNode.children.push(node);
-      } else {
-        roots.push(node);
-      }
-    });
-
-    return roots;
+        children: (category.treatments ?? []).map((treatment: any): CategoryNode => ({
+          id: treatment.id,
+          name: treatment.name ?? '',
+          statusLabel: treatment.is_active ? 'Active' : 'Inactive',
+          createdAt: this.formatDate(treatment.created_at),
+          children: [],
+          expanded: false,
+        })),
+      }));
   }
 
   /** status comes back as 1/0 - map to the Active/Inactive labels the badge and filter use. */
@@ -195,11 +181,6 @@ export class ServiceCategory implements OnInit {
     this.openAddPopup(null);
   }
 
-  onAddSubCategory(parent: CategoryNode, event: Event): void {
-    event.stopPropagation();
-    this.openAddPopup({ parent_id: parent.id });
-  }
-
   onEditCategory(node: CategoryNode, event: Event): void {
     event.stopPropagation();
     const category = this.categoriesById.get(node.id);
@@ -211,9 +192,7 @@ export class ServiceCategory implements OnInit {
 
     const confirmed = await this.toast.confirm(
       'Delete this category?',
-      node.children.length
-        ? `${node.name} and its ${node.children.length} sub-categories will be permanently removed.`
-        : `${node.name} will be permanently removed.`
+      `${node.name} will be permanently removed.`
     );
 
     if (!confirmed) {

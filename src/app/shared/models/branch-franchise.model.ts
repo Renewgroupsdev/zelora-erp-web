@@ -22,6 +22,9 @@ export interface BranchRecord {
   openedOn: string;
   /** Storefront photo (downscaled data URL) shown on the details page. */
   photo?: string;
+  /** Geo location (decimal degrees), set from the form's map tools. */
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export type FranchiseStatus = 'Active' | 'Pending' | 'Inactive';
@@ -51,6 +54,9 @@ export interface FranchiseRecord {
   inventoryValue?: number;
   /** Storefront photo (downscaled data URL) shown on the details page. */
   photo?: string;
+  /** Geo location (decimal degrees), set from the form's map tools. */
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface FranchiseInvoiceItem {

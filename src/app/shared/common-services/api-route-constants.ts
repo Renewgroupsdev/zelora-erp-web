@@ -28,6 +28,7 @@ export class ApiRoutesConstants {
 
    //Service Category (CURD)
    public static SERVICE_CATEGORY_GET_List = "service-category-requests/2";
+   public static SERVICE_CATEGORY_TREE_LIST = "service-category-requests/3";
    public static SERVICE_CATEGORY_ADD = "service-category-requests";
    public static SERVICE_CATEGORY_DELETE = "service-category-requests";
 
@@ -56,6 +57,11 @@ export class ApiRoutesConstants {
 
    //Treatments (CURD)
    public static TREATMENT_GET_List = "treatments";
+
+   // Appointment wizard -> invoice -> customer, and the treatment sittings
+   public static APPOINTMENT_FLOW = "appointment-flow";
+   public static SITTINGS = "sittings";
+   public static SITTING_PHOTOS = "sitting-photos";
    public static TREATMENT_ADD = "treatments";
    public static TREATMENT_DELETE = "treatments";
    public static TREATMENT_CATEGORY_OPTIONS = "service-category-requests/1";
@@ -113,6 +119,8 @@ export class ApiRoutesConstants {
    public static CALL_DISPOSITIONS = "telephony/dispositions";
    public static CALL_REPORTS = "telephony/reports";
    public static LEAD_ASSIGN = "telephony/leads/assign";
+   public static LEAD_VALIDATE = "telephony/leads";
+   public static LEAD_AUTO_ASSIGN = "telephony/leads/auto-assign";
    public static LEAD_WORK_STATS = "telephony/leads/stats";
    public static LEAD_FOLLOWUPS = "telephony/leads/followups";
    public static USER_LIST = "users";

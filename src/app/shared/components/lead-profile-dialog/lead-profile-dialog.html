@@ -95,13 +95,28 @@
           }
 
           <div class="field-grid">
-            <label>Follow-up date<input type="text" appDatePicker formControlName="entryDate" placeholder="Select date"></label>
-            <label>Follow-up time<input type="text" appTimePicker formControlName="entryTime" placeholder="Select time"></label>
             <label>Next follow-up date<input type="text" appDatePicker formControlName="nextFollowUpDate" placeholder="Select date"></label>
             <label>Next follow-up time<input type="text" appTimePicker formControlName="nextFollowUpTime" placeholder="Select time"></label>
             <label class="full">Follow-up note<textarea rows="3" formControlName="notes" [class.is-invalid]="isInvalid('notes')" placeholder="Record the call outcome, needs, and next action"></textarea></label>
+            @if (pendingEntries.length) {
+              <div class="full pending-entries">
+                @for (entry of pendingEntries; track $index) {
+                  <div class="pending-entry">
+                    <div class="pending-entry-text">
+                      <p>{{ entry.notes }}</p>
+                      <span class="next-followup-chip">
+                        <i class="bi bi-calendar2-week"></i> Next follow-up: {{ formatDateDisplay(entry.date) }}{{ entry.time ? ', ' + formatTime(entry.time) : '' }}
+                      </span>
+                    </div>
+                    <button type="button" class="pending-entry-delete" (click)="removePendingEntry($index)" aria-label="Remove this follow-up note" title="Remove">
+                      <i class="bi bi-trash3-fill"></i>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
             <div class="full add-followup-row">
-              <button type="button" class="secondary" (click)="addFollowUpEntry()"><i class="bi bi-plus-lg"></i> Add follow-up note</button>
+              <a href="#add-follow-up-note" class="secondary add-note-link" role="button" [class.disabled]="saving" (click)="$event.preventDefault(); !saving && addFollowUpEntry()"><i class="bi bi-plus-lg"></i> Add follow-up note</a>
             </div>
           </div>
         }
@@ -333,9 +348,9 @@
       <button type="button" class="footer-btn book-btn" (click)="save('followup')">Move to Follow-Ups <i class="bi bi-arrow-right"></i></button>
     } @else if (isFollowUp) {
       @if (followupMode === 'schedule') {
-        <button type="button" class="footer-btn book-btn" (click)="save('appointment')">Book Appointment <i class="bi bi-calendar2-check"></i></button>
+        <button type="button" class="footer-btn book-btn" [disabled]="saving" (click)="save('appointment')">Book Appointment <i class="bi bi-calendar2-check"></i></button>
       } @else {
-        <button type="button" class="footer-btn book-btn" (click)="save('followup')">Save Follow-up <i class="bi bi-check2"></i></button>
+        <button type="button" class="footer-btn book-btn" [disabled]="saving" (click)="save('followup')">Save Follow-up <i class="bi bi-check2"></i></button>
       }
     } @else if (isNewBooking) {
       <button type="button" class="footer-btn book-btn" (click)="bookNewAppointment()">Book Appointment <i class="bi bi-calendar2-check"></i></button>

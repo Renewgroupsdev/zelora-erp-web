@@ -7,6 +7,10 @@ import { CallerLogEntry } from '../../models/common-components.model';
 import { CallLogHistoryDialog } from '../call-log-history-dialog/call-log-history-dialog';
 import { DatePickerDirective } from '../../directives/date-picker.directive';
 import { TimePickerDirective } from '../../directives/time-picker.directive';
+import { ApiDataService } from '../../../core/http/api.service';
+import { AuthService } from '../../../core/auth/auth.service';
+import { ApiRoutesConstants } from '../../common-services/api-route-constants';
+import { ToastService } from '../../common-services/toast.service';
 import {
   BaldnessType,
   ComboOffer,
@@ -69,6 +73,8 @@ export interface LeadProfileDialogResult {
   appointment?: FlowAppointment;
   /** Set when action === 'confirm-client' or 'book-appointment' - the amount paid entered for this booking. */
   amountPaid?: number;
+  /** Follow-up stage - true when the next step was already saved to the database by the dialog. */
+  saved?: boolean;
 }
 
 @Component({
@@ -104,9 +110,14 @@ export class LeadProfileDialog {
     private fb: FormBuilder,
     private dialog: MatDialog,
     private dialogRef: MatDialogRef<LeadProfileDialog, LeadProfileDialogResult>,
+    private api: ApiDataService,
+    private toast: ToastService,
+    private auth: AuthService,
     @Inject(MAT_DIALOG_DATA) public data: LeadProfileDialogData,
   ) {
-    this.branches = data.branches?.length ? data.branches : ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'];
+    // Branch names come from the API; the lead's own branch is always selectable.
+    const branchNames = new Set([...(data.branches ?? []), ...(data.lead.branch ? [data.lead.branch] : [])]);
+    this.branches = [...branchNames];
     const lead = data.lead;
     const appointment = data.appointment;
     this.history = [...(lead.history ?? [])];
@@ -138,6 +149,12 @@ export class LeadProfileDialog {
       apptDate: [appointment?.date || ''],
       apptTime: [appointment?.startTime || ''],
     });
+
+    // Follow-up stage: the lead keeps the telecaller and branch it was assigned to, so they are shown but not editable.
+    if (data.stage === 'followup') {
+      this.form.get('telecaller')?.disable();
+      this.form.get('branch')?.disable();
+    }
 
     this.beforeImages = [...(appointment?.beforeImages ?? [])];
     this.afterImages = [...(appointment?.afterImages ?? [])];
@@ -246,18 +263,85 @@ export class LeadProfileDialog {
     return { date: this.composeEntryDate(), telecaller, notes, nextFollowUpDate, nextFollowUpTime };
   }
 
+  saving = false;
+
+  /** Follow-up notes added with "+ Add follow-up note". They only live here until "Save Follow-up" sends them all in one request. */
+  pendingEntries: { notes: string; date: string; time: string }[] = [];
+
+  /** "Add follow-up note": puts the note + next call-back on the list below (no API call yet). */
   addFollowUpEntry(): void {
-    const telecaller = this.form.get('telecaller')?.value;
-    const notes = this.form.get('notes')?.value;
-    if (!telecaller || !notes) {
+    const value = this.form.getRawValue();
+    const notes = String(value.notes ?? '').trim();
+    const date = value.nextFollowUpDate;
+
+    if (!notes || !date) {
       this.form.markAllAsTouched();
+      this.toast.error('Add a follow-up note and the next follow-up date.');
       return;
     }
 
-    this.history = [...this.history, this.buildEntryFromForm(telecaller, notes)];
+    this.pendingEntries = [...this.pendingEntries, { notes, date, time: value.nextFollowUpTime ?? '' }];
     this.form.get('notes')?.reset('');
     this.form.get('nextFollowUpDate')?.reset('');
     this.form.get('nextFollowUpTime')?.reset('');
+  }
+
+  removePendingEntry(index: number): void {
+    this.pendingEntries = this.pendingEntries.filter((_, i) => i !== index);
+  }
+
+  /** Who is saving, by login type: employee -> `employee_id` (hr_employees id), customer -> `customer_id`, otherwise `user_id` (users id). */
+  private get actor(): { user_id: number } | { employee_id: number } | { customer_id: number } {
+    const user = this.auth.currentUser();
+    const employeeId = user?.['employee_id'] as number | undefined;
+    if (user?.login_type === 'employee' && employeeId) return { employee_id: employeeId };
+    if (user?.login_type === 'customer') return { customer_id: user.id };
+    return { user_id: user?.id as number };
+  }
+
+  /**
+   * Follow-up stage: ONE call to POST telephony/leads/{id}/next-step stores the telecaller's next step in the
+   * database - every added follow-up note (follow_ups + call history, lead.next_follow_up_at = the soonest) or an
+   * appointment slot (schedules) - together with the saving user's id / employee id.
+   */
+  private saveNextStep(kind: 'follow_up' | 'appointment'): void {
+    const value = this.form.getRawValue();
+    const isAppointment = kind === 'appointment';
+    let body: Record<string, unknown>;
+
+    if (isAppointment) {
+      if (!value.scheduleDate || !value.scheduleTime) {
+        this.form.markAllAsTouched();
+        this.toast.error('Pick the appointment date and time.');
+        return;
+      }
+      body = { kind, date: value.scheduleDate, time: value.scheduleTime, notes: String(value.notes ?? '').trim() || null };
+    } else {
+      // A note typed in the form but not added yet is saved too.
+      const entries = [...this.pendingEntries];
+      const notes = String(value.notes ?? '').trim();
+      if (notes && value.nextFollowUpDate) entries.push({ notes, date: value.nextFollowUpDate, time: value.nextFollowUpTime ?? '' });
+
+      if (!entries.length) {
+        this.form.markAllAsTouched();
+        this.toast.error('Add a follow-up note and the next follow-up date.');
+        return;
+      }
+      body = { kind, entries: entries.map(e => ({ notes: e.notes, date: e.date, time: e.time || null })) };
+    }
+
+    this.saving = true;
+    this.api.POST(`${ApiRoutesConstants.LEAD_VALIDATE}/${this.data.lead.id}/next-step`, { ...body, ...this.actor }).subscribe({
+      next: (res: any) => {
+        this.saving = false;
+        this.toast.success(res?.message || (isAppointment ? 'Appointment booked.' : 'Next follow-up saved.'));
+        this.dialogRef.close({ action: isAppointment ? 'appointment' : 'followup', lead: this.data.lead, saved: true });
+      },
+      error: (err: any) => {
+        this.saving = false;
+        this.toast.error(err?.error?.message || 'Unable to save. Please try again.');
+      },
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -549,6 +633,11 @@ export class LeadProfileDialog {
   close(): void { this.dialogRef.close({ action: 'close', lead: this.data.lead }); }
 
   save(action: 'followup' | 'appointment'): void {
+    if (this.isFollowUp) {
+      this.saveNextStep(action === 'appointment' ? 'appointment' : 'follow_up');
+      return;
+    }
+
     const value = this.form.getRawValue();
 
     if (!value.telecaller || !value.branch) {

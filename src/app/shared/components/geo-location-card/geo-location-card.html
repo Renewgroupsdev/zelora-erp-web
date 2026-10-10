@@ -1,0 +1,45 @@
+@if (point(); as p) {
+  <div class="geo-card">
+    <iframe class="geo-map" [src]="embedUrl() | safeUrl" title="Location map" loading="lazy"></iframe>
+
+    <div class="geo-facts">
+      <div class="geo-fact">
+        <span class="mi tone-green"><i class="bi bi-geo-alt-fill"></i></span>
+        <div><small>Latitude</small><strong>{{ p.latitude.toFixed(6) }}</strong></div>
+      </div>
+
+      <div class="geo-fact">
+        <span class="mi tone-blue"><i class="bi bi-compass"></i></span>
+        <div><small>Longitude</small><strong>{{ p.longitude.toFixed(6) }}</strong></div>
+      </div>
+
+      <div class="geo-fact">
+        <span class="mi tone-orange"><i class="bi bi-pin-map-fill"></i></span>
+        <div><small>Address</small><strong class="wrap" [title]="address()">{{ address() || '-' }}</strong></div>
+      </div>
+
+      <div class="geo-fact geo-actions">
+        <span class="mi tone-purple"><i class="bi bi-signpost-split-fill"></i></span>
+        <div>
+          <small>Actions</small>
+          <div class="geo-links">
+            <a class="geo-link primary" [href]="mapsUrl()" target="_blank" rel="noopener" title="Open in Maps"><i class="bi bi-map"></i> Maps</a>
+            <a class="geo-link" [href]="routeUrl()" target="_blank" rel="noopener" title="Directions"><i class="bi bi-sign-turn-right"></i> Directions</a>
+            <button type="button" class="geo-link icon-only" (click)="copy()" [title]="copied() ? 'Copied' : 'Copy coordinates'" [attr.aria-label]="copied() ? 'Copied' : 'Copy coordinates'">
+              <i class="bi" [class.bi-clipboard]="!copied()" [class.bi-clipboard-check]="copied()"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+} @else {
+  <div class="geo-none">
+    <i class="bi bi-geo-alt"></i>
+    <div>
+      <strong>No geo location saved</strong>
+      <small>Add the latitude / longitude so staff and customers can find this location on the map.</small>
+    </div>
+    <button type="button" class="geo-link primary" (click)="addLocation.emit()"><i class="bi bi-plus-lg"></i> Add location</button>
+  </div>
+}

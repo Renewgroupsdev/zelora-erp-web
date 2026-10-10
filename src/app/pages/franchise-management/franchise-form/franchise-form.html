@@ -71,6 +71,10 @@
         </div>
       </div>
 
+      <div class="section-title"><i class="bi bi-geo-alt"></i> Geo Location</div>
+      <app-geo-location-field idPrefix="fr-geo" [(latitude)]="model.latitude" [(longitude)]="model.longitude"
+        [address]="model.city + (model.state ? ', ' + model.state : '')"></app-geo-location-field>
+
       <div class="section-title"><i class="bi bi-person-badge"></i> Franchise Owner</div>
       <div class="form-grid cols-3">
         <div class="form-field">

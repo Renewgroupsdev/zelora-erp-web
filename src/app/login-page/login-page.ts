@@ -11,7 +11,8 @@ import { firstModulePath } from '../shared/models/permission.model';
 import { LoginResponse } from '../core/auth/auth.model';
 
 const REMEMBER_ME_DAYS = 30;
-const OTP_RESEND_SECONDS = 30;
+const OTP_RESEND_SECONDS = 59;
+const OTP_LENGTH = 6;
 
 export type LoginMode = 'user' | 'employee' | 'customer';
 
@@ -33,6 +34,8 @@ export class LoginPage implements OnInit, OnDestroy {
   /** user = email/phone + password (users), employee = employee ID + password (hr_employees), customer = mobile + OTP (customers). */
   mode: LoginMode = 'user';
   otpSent = false;
+  otpDigits: string[] = Array(OTP_LENGTH).fill('');
+  readonly otpIndexes = Array.from({ length: OTP_LENGTH }, (_, i) => i);
   info = '';
   resendIn = 0;
   private resendTimer?: ReturnType<typeof setInterval>;
@@ -124,6 +127,8 @@ export class LoginPage implements OnInit, OnDestroy {
         this.loading = false;
         this.otpSent = true;
         this.formSubmitted = false;
+        this.resetOtpBoxes();
+        setTimeout(() => this.focusOtpBox(0));
         this.info = response.message || 'OTP sent to your mobile number.';
         this.startResendTimer();
       },
@@ -132,6 +137,65 @@ export class LoginPage implements OnInit, OnDestroy {
         this.error = err?.error?.message || 'Unable to send the OTP. Please try again.';
       },
     });
+  }
+
+  /** "00:59s" style countdown shown on the OTP screen. */
+  get resendLabel(): string {
+    return `00:${String(this.resendIn).padStart(2, '0')}s`;
+  }
+
+  private syncOtpControl(): void {
+    this.loginForm.patchValue({ otp: this.otpDigits.join('') });
+  }
+
+  private focusOtpBox(index: number): void {
+    (document.getElementById(`otp-${index}`) as HTMLInputElement | null)?.focus();
+  }
+
+  onOtpInput(index: number, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const digit = input.value.replace(/\D/g, '').slice(-1);
+    input.value = digit;
+    this.otpDigits[index] = digit;
+    this.syncOtpControl();
+    this.error = '';
+    if (digit && index < OTP_LENGTH - 1) this.focusOtpBox(index + 1);
+  }
+
+  onOtpKeydown(index: number, event: KeyboardEvent): void {
+    if (event.key === 'Backspace' && !this.otpDigits[index] && index > 0) {
+      this.otpDigits[index - 1] = '';
+      this.syncOtpControl();
+      this.focusOtpBox(index - 1);
+    } else if (event.key === 'ArrowLeft' && index > 0) {
+      this.focusOtpBox(index - 1);
+    } else if (event.key === 'ArrowRight' && index < OTP_LENGTH - 1) {
+      this.focusOtpBox(index + 1);
+    }
+  }
+
+  onOtpPaste(event: ClipboardEvent): void {
+    event.preventDefault();
+    const pasted = (event.clipboardData?.getData('text') ?? '').replace(/\D/g, '').slice(0, OTP_LENGTH);
+    if (!pasted) return;
+    this.otpDigits = Array.from({ length: OTP_LENGTH }, (_, i) => pasted[i] ?? '');
+    this.syncOtpControl();
+    this.focusOtpBox(Math.min(pasted.length, OTP_LENGTH - 1));
+  }
+
+  /** Cancel on the OTP screen: back to the mobile number step. */
+  cancelOtp(): void {
+    clearInterval(this.resendTimer);
+    this.resendIn = 0;
+    this.otpSent = false;
+    this.info = '';
+    this.error = '';
+    this.resetOtpBoxes();
+  }
+
+  private resetOtpBoxes(): void {
+    this.otpDigits = Array(OTP_LENGTH).fill('');
+    this.syncOtpControl();
   }
 
   private startResendTimer(): void {

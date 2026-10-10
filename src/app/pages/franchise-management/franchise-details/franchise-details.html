@@ -71,6 +71,12 @@
       </div>
     </div>
 
+    <div class="panel geo-panel">
+      <h4>Geo Location</h4>
+      <app-geo-location-card [latitude]="f.latitude" [longitude]="f.longitude"
+        [address]="f.city + (f.state ? ', ' + f.state : '')" (addLocation)="edit()"></app-geo-location-card>
+    </div>
+
     <div class="panel tabs-panel">
       <div class="tabs-wrap">
         <button type="button" class="tabs-arrow left" [class.show]="hs.canLeft()" (click)="hs.scrollBy(-1)" aria-label="Scroll tabs left" tabindex="-1"><i class="bi bi-chevron-left"></i></button>

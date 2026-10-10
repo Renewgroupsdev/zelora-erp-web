@@ -34,6 +34,7 @@
            <app-preloader [display]="loading"></app-preloader>
         }
 
+        @if (!(mode === 'customer' && otpSent)) {
         <div class="form-group">
           <label for="user_name" class="form-label">{{ identifierLabel }}</label>
           <div class="input-group">
@@ -54,6 +55,7 @@
             <div *ngIf="formValues['user_name'].errors?.['required']">User Name is required.</div>
           </div>
         </div>
+        }
 
         @if (mode !== 'customer') {
         <div class="form-group">
@@ -77,16 +79,28 @@
         }
 
         @if (mode === 'customer' && otpSent) {
-        <div class="form-group">
-          <label for="otp" class="form-label">OTP</label>
-          <div class="input-group">
-            <span class="input-icon"><i class="bi bi-shield-lock"></i></span>
-            <input class="form-control" type="text" id="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="Enter the 6-digit OTP" formControlName="otp">
+        <div class="otp-verify">
+          <h2 class="otp-title">OTP verification</h2>
+          <p class="otp-desc">Please enter the OTP (One-Time Password) sent to your registered phone number to complete your verification.</p>
+
+          <div class="otp-boxes" (paste)="onOtpPaste($event)">
+            @for (i of otpIndexes; track i) {
+              <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code"
+                [id]="'otp-' + i" [value]="otpDigits[i]" [attr.aria-label]="'OTP digit ' + (i + 1)"
+                [class.filled]="otpDigits[i]"
+                (input)="onOtpInput(i, $event)" (keydown)="onOtpKeydown(i, $event)" (focus)="$any($event.target).select()">
+            }
           </div>
-          <div class="otp-actions">
-            <button type="button" class="link-btn" [disabled]="resendIn > 0 || loading" (click)="sendOtp()">{{ resendIn > 0 ? 'Resend OTP in ' + resendIn + 's' : 'Resend OTP' }}</button>
-            <button type="button" class="link-btn" (click)="otpSent = false; info = ''">Change number</button>
+
+          <div class="otp-meta">
+            <span>Remaining time: <strong class="otp-timer">{{ resendLabel }}</strong></span>
+            <span>Didn't get the code?
+              <button type="button" class="otp-resend" [disabled]="resendIn > 0 || loading" (click)="sendOtp()">Resend</button>
+            </span>
           </div>
+
+          <button type="submit" class="otp-verify-btn" [disabled]="loading">{{ loading ? 'Verifying...' : 'Verify' }}</button>
+          <button type="button" class="otp-cancel-btn" [disabled]="loading" (click)="cancelOtp()">Cancel</button>
         </div>
         }
 
@@ -101,12 +115,14 @@
         </div>
         }
 
+        @if (!(mode === 'customer' && otpSent)) {
         <div class="submit-row">
           <button class="btn btn-primary" type="submit" [disabled]="loading">
-            <span *ngIf="!loading">{{ mode === 'customer' ? (otpSent ? 'Verify OTP' : 'Send OTP') : 'Log In' }}</span>
-            <span *ngIf="loading">{{ mode === 'customer' && !otpSent ? 'Sending...' : 'Signing in...' }}</span>
+            <span *ngIf="!loading">{{ mode === 'customer' ? 'Send OTP' : 'Log In' }}</span>
+            <span *ngIf="loading">{{ mode === 'customer' ? 'Sending...' : 'Signing in...' }}</span>
           </button>
         </div>
+        }
 
       </form>
 

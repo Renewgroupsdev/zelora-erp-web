@@ -1,0 +1,405 @@
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-clipboard2-pulse-fill"></i></div>
+      <div class="title-content">
+        <h2>Consultation Form</h2>
+        @if (appt(); as a) {
+          <p>{{ a.name }} · {{ a.mobile_no }} · {{ formatDate(a.appointment_date) }} {{ (a.appointment_time || "").slice(0, 5) }} · {{ a.branch?.name || 'No branch' }}</p>
+        }
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    @if (loading()) {
+      <div class="wz-loading"><i class="bi bi-arrow-repeat spin"></i> Loading appointment…</div>
+    } @else if (appt(); as a) {
+
+      <ol class="emp-stepper" aria-label="Consultation steps">
+        @for (s of steps; track s.label; let i = $index) {
+          <li [class.done]="i < a.current_step - 1 || (i === 4 && !!a.invoice_no)" [class.current]="i === step()">
+            <button type="button" class="step-btn" [disabled]="i > a.current_step - 1" [attr.aria-current]="i === step() ? 'step' : null" (click)="goTo(i)">
+              <span class="dot"><i class="bi" [class]="i < a.current_step - 1 ? 'bi-check-lg' : s.icon"></i></span>
+              <small>{{ s.label }}</small>
+            </button>
+          </li>
+        }
+      </ol>
+
+      @if (locked()) {
+        <div class="wz-banner"><i class="bi bi-lock-fill"></i> Terms accepted and invoice {{ a.invoice_no }} issued - the consultation is read-only.</div>
+      }
+
+      <fieldset [disabled]="locked() || saving()" class="wz-fieldset">
+
+      <!-- ================= Step 1: Profile & patient history ================= -->
+      @if (step() === 0) {
+        <div class="section-title"><i class="bi bi-person-vcard"></i> Profile</div>
+        <div class="wz-profile">
+          <div class="photo-upload">
+            <div class="photo-preview">
+              @if (photoPreview) { <img [src]="photoPreview" alt="Profile photo" /> } @else { <span><i class="bi bi-person"></i></span> }
+            </div>
+            <div class="photo-actions">
+              <label class="photo-btn">
+                <i class="bi bi-camera"></i> {{ photoPreview ? 'Change photo' : 'Add profile photo' }}
+                <input type="file" accept="image/*" capture="user" hidden #photoInput (change)="onPhoto(photoInput)" />
+              </label>
+              <small>JPG / PNG up to 2 MB. On a phone this opens the camera.</small>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="wz-name">Name <span>*</span></label>
+              <div class="input-wrap"><i class="bi bi-person"></i><input id="wz-name" name="name" [(ngModel)]="profile.name" maxlength="150" /></div>
+            </div>
+            <div class="form-field">
+              <label for="wz-mobile">Mobile No</label>
+              <div class="input-wrap"><i class="bi bi-telephone"></i><input id="wz-mobile" [value]="a.mobile_no" readonly /></div>
+            </div>
+            <div class="form-field">
+              <label for="wz-age">Age</label>
+              <div class="input-wrap"><i class="bi bi-hourglass-split"></i><input id="wz-age" type="number" min="1" max="120" name="age" [(ngModel)]="profile.age" /></div>
+            </div>
+            <div class="form-field">
+              <label for="wz-gender">Gender</label>
+              <div class="input-wrap"><i class="bi bi-gender-ambiguous"></i>
+                <select id="wz-gender" name="gender" [(ngModel)]="profile.gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select>
+                <i class="bi bi-chevron-down select-arrow"></i>
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="wz-email">E-mail ID</label>
+              <div class="input-wrap"><i class="bi bi-envelope"></i><input id="wz-email" type="email" name="email" [(ngModel)]="profile.email" /></div>
+            </div>
+            <div class="form-field">
+              <label for="wz-heard">How did you hear about us?</label>
+              <div class="input-wrap"><i class="bi bi-megaphone"></i>
+                <select id="wz-heard" name="heard" [(ngModel)]="profile.heard_from">
+                  <option value="">Select</option>
+                  @if (profile.heard_from && !heardFrom.includes(profile.heard_from)) { <option [value]="profile.heard_from">{{ profile.heard_from }}</option> }
+                  @for (h of heardFrom; track h) { <option [value]="h">{{ h }}</option> }
+                </select>
+                <i class="bi bi-chevron-down select-arrow"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title"><i class="bi bi-file-earmark-medical"></i> Patient History Documents</div>
+        <div class="wz-docs">
+          @for (d of a.documents ?? []; track d.id) {
+            <div class="wz-doc">
+              <i class="bi" [class.bi-file-earmark-pdf]="d.mime?.includes('pdf')" [class.bi-file-earmark-image]="!d.mime?.includes('pdf')"></i>
+              <a [href]="d.url" target="_blank" rel="noopener">{{ d.title }}</a>
+              <span class="muted">Saved</span>
+              <button type="button" class="icon-btn danger" (click)="deleteSavedDoc(d.id)" aria-label="Remove document"><i class="bi bi-trash3"></i></button>
+            </div>
+          }
+          @for (d of newDocs; track $index; let i = $index) {
+            <div class="wz-doc new">
+              <i class="bi bi-file-earmark-arrow-up"></i>
+              <input class="doc-title" [(ngModel)]="d.title" [name]="'doc' + i" maxlength="150" aria-label="Document title" />
+              <span class="muted">New</span>
+              <button type="button" class="icon-btn danger" (click)="removeNewDoc(i)" aria-label="Remove document"><i class="bi bi-x-lg"></i></button>
+            </div>
+          }
+          <label class="photo-btn wz-add-doc">
+            <i class="bi bi-upload"></i> Upload reports / prescriptions
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple hidden #docInput (change)="onDocs(docInput)" />
+          </label>
+          <small class="muted">PDF, JPG or PNG, up to 5 MB each. Lab reports, earlier prescriptions, scans.</small>
+        </div>
+      }
+
+      <!-- ================= Step 2: Clinical examination ================= -->
+      @if (step() === 1) {
+        <div class="section-title"><i class="bi bi-ui-checks"></i> Examination For</div>
+        <div class="wz-choice-row">
+          <div class="wz-seg">
+            @for (g of ['Male', 'Female', 'Other']; track g) {
+              <button type="button" [class.on]="profile.gender === g" (click)="profile.gender = g; c.grade = ''"><i class="bi" [class.bi-gender-male]="g === 'Male'" [class.bi-gender-female]="g === 'Female'" [class.bi-gender-ambiguous]="g === 'Other'"></i> {{ g }}</button>
+            }
+          </div>
+          <div class="wz-seg">
+            <button type="button" [class.on]="category === 'Hair'" (click)="category = 'Hair'"><i class="bi bi-scissors"></i> Hair</button>
+            <button type="button" [class.on]="category === 'Skin'" (click)="category = 'Skin'"><i class="bi bi-droplet-half"></i> Skin</button>
+          </div>
+        </div>
+
+        <div class="section-title"><i class="bi bi-journal-medical"></i> Patient History</div>
+        <div class="form-grid">
+          <div class="form-field full-width">
+            <label>Family History</label>
+            <div class="wz-chips">
+              @for (o of familyHistoryOptions; track o) { <button type="button" [class.on]="c.familyHistory === o" (click)="c.familyHistory = o">{{ o }}</button> }
+            </div>
+            @if (c.familyHistory === 'Other') { <div class="input-wrap mt"><i class="bi bi-pencil"></i><input name="fhOther" [(ngModel)]="c.familyHistoryOther" placeholder="Describe" /></div> }
+          </div>
+          <div class="form-field">
+            <label for="wz-ph">Personal History</label>
+            <div class="input-wrap"><i class="bi bi-person-lines-fill"></i><input id="wz-ph" name="ph" [(ngModel)]="c.personalHistory" /></div>
+          </div>
+          <div class="form-field">
+            <label for="wz-dh">Drug History</label>
+            <div class="input-wrap"><i class="bi bi-capsule-pill"></i><input id="wz-dh" name="dh" [(ngModel)]="c.drugHistory" /></div>
+          </div>
+          <div class="form-field full-width">
+            <label>Hair / Cosmetic Procedures</label>
+            <div class="wz-chips">
+              <button type="button" [class.on]="c.cosmeticProcedures === 'Negative'" (click)="c.cosmeticProcedures = 'Negative'">Negative</button>
+              <button type="button" [class.on]="c.cosmeticProcedures === 'Positive'" (click)="c.cosmeticProcedures = 'Positive'">Positive</button>
+            </div>
+            @if (c.cosmeticProcedures === 'Positive') { <div class="input-wrap mt"><i class="bi bi-pencil"></i><input name="cosDetails" [(ngModel)]="c.cosmeticDetails" placeholder="Which procedures, when" /></div> }
+          </div>
+          <div class="form-field">
+            <label for="wz-bp">BP</label>
+            <div class="input-wrap"><i class="bi bi-heart-pulse"></i><input id="wz-bp" name="bp" [(ngModel)]="vitals.bp" placeholder="120/80" maxlength="20" /></div>
+          </div>
+          <div class="form-field">
+            <label for="wz-wt">Weight (kg)</label>
+            <div class="input-wrap"><i class="bi bi-speedometer2"></i><input id="wz-wt" type="number" min="0" max="400" step="0.1" name="wt" [(ngModel)]="vitals.weight" /></div>
+          </div>
+        </div>
+
+        @if (category === 'Hair') {
+          <div class="section-title"><i class="bi bi-scissors"></i> Clinical Examination - Hair</div>
+          <div class="form-grid">
+            <div class="form-field full-width">
+              <label>Hair Loss Pattern</label>
+              <div class="wz-chips">
+                @for (o of lossPatterns; track o) { <button type="button" [class.on]="c.lossPattern.includes(o)" (click)="toggle(c.lossPattern, o)">{{ o }}</button> }
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="wz-scalp">Scalp Examination</label>
+              <div class="input-wrap"><i class="bi bi-search"></i><input id="wz-scalp" name="scalp" [(ngModel)]="c.scalpExam" /></div>
+            </div>
+            <div class="form-field">
+              <label for="wz-felt">Felt Examination</label>
+              <div class="input-wrap"><i class="bi bi-hand-index"></i><input id="wz-felt" name="felt" [(ngModel)]="c.feltExam" /></div>
+            </div>
+            <div class="form-field">
+              <label for="wz-part">Part Width Assessment</label>
+              <div class="input-wrap"><i class="bi bi-rulers"></i><input id="wz-part" name="part" [(ngModel)]="c.partWidth" /></div>
+            </div>
+            <div class="form-field">
+              <label>Hair Feathering</label>
+              <div class="wz-chips">
+                <button type="button" [class.on]="c.hairFeathering === 'Normal'" (click)="c.hairFeathering = 'Normal'">Normal</button>
+                <button type="button" [class.on]="c.hairFeathering === 'Abnormal'" (click)="c.hairFeathering = 'Abnormal'">Abnormal</button>
+              </div>
+            </div>
+            <div class="form-field full-width">
+              <label>Hair Pull (hairs out of 50)</label>
+              <div class="wz-pull">
+                <div class="input-wrap"><span class="pre">Frontal</span><input type="number" min="0" max="50" name="pf" [(ngModel)]="c.hairPull.frontal" /><span class="post">/50</span></div>
+                <div class="input-wrap"><span class="pre">Occipital</span><input type="number" min="0" max="50" name="po" [(ngModel)]="c.hairPull.occipital" /><span class="post">/50</span></div>
+                <div class="input-wrap"><span class="pre">Lesional</span><input type="number" min="0" max="50" name="pl" [(ngModel)]="c.hairPull.lesional" /><span class="post">/50</span></div>
+              </div>
+            </div>
+            <div class="form-field full-width">
+              <label>{{ profile.gender === 'Female' ? 'Female pattern grade (Ludwig)' : 'Male pattern grade (Norwood)' }} <span>*</span></label>
+              <div class="wz-grades" [class.female]="profile.gender === 'Female'">
+                @for (g of gradeOptions; track g) {
+                  <button type="button" [class.on]="c.grade === g" (click)="c.grade = g">
+                    <i class="bi" [class.bi-circle-fill]="c.grade === g" [class.bi-circle]="c.grade !== g"></i> {{ g }}
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (category === 'Skin') {
+          <div class="section-title"><i class="bi bi-droplet-half"></i> Aesthetic Information - Skin</div>
+          <div class="form-grid">
+            <div class="form-field full-width">
+              <label>What type of skin do you have? <span>*</span></label>
+              <div class="wz-chips">
+                @for (o of skinTypes; track o) { <button type="button" [class.on]="c.skinType === o" (click)="c.skinType = o">{{ o }}</button> }
+              </div>
+            </div>
+            <div class="form-field full-width">
+              <label>Areas of concern</label>
+              <div class="wz-chips">
+                @for (o of skinConcerns; track o) { <button type="button" [class.on]="c.concerns.includes(o)" (click)="toggle(c.concerns, o)">{{ o }}</button> }
+              </div>
+              <div class="input-wrap mt"><i class="bi bi-pencil"></i><input name="concOther" [(ngModel)]="c.concernsOther" placeholder="Others" /></div>
+            </div>
+            <div class="form-field full-width">
+              <label>Under the care of a dermatologist within the past year?</label>
+              <div class="wz-chips">
+                <button type="button" [class.on]="c.dermatologist === 'Yes'" (click)="c.dermatologist = 'Yes'">Yes</button>
+                <button type="button" [class.on]="c.dermatologist === 'No'" (click)="c.dermatologist = 'No'">No</button>
+              </div>
+              @if (c.dermatologist === 'Yes') { <div class="input-wrap mt"><i class="bi bi-pencil"></i><input name="dermDetails" [(ngModel)]="c.dermatologistDetails" placeholder="Please explain" /></div> }
+            </div>
+            <div class="form-field full-width">
+              <label>Allergic reaction to any of the following?</label>
+              <div class="wz-chips">
+                @for (o of allergyOptions; track o) { <button type="button" [class.on]="c.allergies.includes(o)" (click)="toggle(c.allergies, o)">{{ o }}</button> }
+              </div>
+              <div class="input-wrap mt"><i class="bi bi-pencil"></i><input name="algOther" [(ngModel)]="c.allergiesOther" placeholder="Others" /></div>
+            </div>
+            <div class="form-field full-width">
+              <label for="wz-ret">Retin-A, Renova, AHAs or Retinol / Vitamin A derivative products in the last 3 months?</label>
+              <div class="input-wrap"><i class="bi bi-pencil"></i><input id="wz-ret" name="ret" [(ngModel)]="c.retinoids" placeholder="If yes, please describe" /></div>
+            </div>
+            <div class="form-field full-width">
+              <label>Botox, Restylane or collagen injections in the last 6 months?</label>
+              <div class="wz-chips">
+                <button type="button" [class.on]="c.botox === 'Yes'" (click)="c.botox = 'Yes'">Yes</button>
+                <button type="button" [class.on]="c.botox === 'No'" (click)="c.botox = 'No'">No</button>
+              </div>
+              @if (c.botox === 'Yes') { <div class="input-wrap mt"><i class="bi bi-pencil"></i><input name="botoxDetails" [(ngModel)]="c.botoxDetails" placeholder="Please specify" /></div> }
+            </div>
+          </div>
+        }
+      }
+
+      <!-- ================= Step 3: Treatment ================= -->
+      @if (step() === 2) {
+        <div class="section-title"><i class="bi bi-capsule"></i> Treatment Details</div>
+        <div class="form-grid">
+          <div class="form-field full-width">
+            <label for="wz-treat">Treatment <span>*</span></label>
+            <div class="input-wrap"><i class="bi bi-magic"></i>
+              <select id="wz-treat" name="treat" [(ngModel)]="plan.treatment_id" (ngModelChange)="onTreatmentChange()">
+                <option [ngValue]="null">Select treatment</option>
+                @for (t of filteredTreatments; track t.id) { <option [ngValue]="t.id">{{ t.name }} - {{ inr(t.total_amount) }} / sitting ({{ t.category }})</option> }
+              </select>
+              <i class="bi bi-chevron-down select-arrow"></i>
+            </div>
+            @if (!filteredTreatments.length) { <small class="error-text">No treatments found. Add them in Treatment Management.</small> }
+          </div>
+          <div class="form-field">
+            <label for="wz-sit">Number of Sittings <span>*</span></label>
+            <div class="input-wrap"><i class="bi bi-list-ol"></i><input id="wz-sit" type="number" min="1" max="60" name="sit" [(ngModel)]="plan.sittings_count" /></div>
+          </div>
+          <div class="form-field">
+            <label for="wz-gap">Gap between sittings (days)</label>
+            <div class="input-wrap"><i class="bi bi-calendar2-range"></i><input id="wz-gap" type="number" min="1" max="180" name="gap" [(ngModel)]="plan.sitting_interval_days" /></div>
+          </div>
+        </div>
+
+        <div class="wz-calc">
+          <div><small>Price / sitting</small><strong>{{ inr(selectedTreatment?.total_amount ?? 0) }}</strong></div>
+          <span class="op">×</span>
+          <div><small>Sittings</small><strong>{{ plan.sittings_count || 0 }}</strong></div>
+          <span class="op">=</span>
+          <div class="total"><small>Total treatment price</small><strong>{{ inr(treatmentTotal) }}</strong></div>
+        </div>
+
+        <div class="section-title"><i class="bi bi-chat-square-text"></i> Doctor Suggestion</div>
+        <div class="form-field full-width">
+          <textarea class="wz-textarea" rows="4" name="sugg" [(ngModel)]="plan.doctor_suggestion" maxlength="2000" placeholder="Diagnosis, recommended plan, home care, precautions"></textarea>
+        </div>
+      }
+
+      <!-- ================= Step 4: Payment ================= -->
+      @if (step() === 3) {
+        <div class="wz-calc compact">
+          <div><small>Treatment</small><strong>{{ a.treatment?.name }}</strong></div>
+          <div><small>Sittings</small><strong>{{ a.sittings_count }} × {{ inr(a.price_per_sitting) }}</strong></div>
+          <div class="total"><small>Total</small><strong>{{ inr(total) }}</strong></div>
+        </div>
+
+        <div class="section-title"><i class="bi bi-credit-card"></i> Payment Mode</div>
+        <div class="wz-paymodes">
+          @for (m of paymentModes; track m.value) {
+            <button type="button" [class.on]="pay.payment_mode === m.value" (click)="pay.payment_mode = m.value"><i class="bi" [ngClass]="m.icon"></i> {{ m.label }}</button>
+          }
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="wz-paid">{{ pay.payment_mode === 'EMI' ? 'Down payment' : 'Amount paying now' }}</label>
+            <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input id="wz-paid" type="number" min="0" [max]="total" name="paid" [(ngModel)]="pay.paid_amount" /></div>
+          </div>
+          @if (needsReference) {
+            <div class="form-field">
+              <label for="wz-ref">{{ pay.payment_mode === 'UPI' ? 'UPI transaction ID' : 'Bank reference no' }} <span>*</span></label>
+              <div class="input-wrap"><i class="bi bi-hash"></i><input id="wz-ref" name="ref" [(ngModel)]="pay.transaction_no" maxlength="100" /></div>
+            </div>
+          }
+          @if (pay.payment_mode === 'EMI') {
+            <div class="form-field">
+              <label for="wz-emi">EMI tenure</label>
+              <div class="input-wrap"><i class="bi bi-calendar2-range"></i>
+                <select id="wz-emi" name="emi" [(ngModel)]="pay.emi_months">@for (m of emiMonths; track m) { <option [ngValue]="m">{{ m }} months</option> }</select>
+                <i class="bi bi-chevron-down select-arrow"></i>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="wz-summary">
+          <div><span>Total</span><strong>{{ inr(total) }}</strong></div>
+          <div><span>Paying now</span><strong>{{ inr(pay.paid_amount) }}</strong></div>
+          @if (pay.payment_mode === 'EMI') { <div><span>EMI</span><strong>{{ pay.emi_months }} × {{ inr(emiInstalment) }}</strong></div> }
+          <div class="grand"><span>Balance</span><strong>{{ inr(balance) }}</strong></div>
+        </div>
+        <p class="muted wz-note"><i class="bi bi-chat-dots"></i> On "Next" the payment is saved and the terms &amp; conditions are sent to {{ a.mobile_no }} by SMS.</p>
+      }
+
+      </fieldset>
+
+      <!-- ================= Step 5: Terms & invoice (outside the lock - actions stay usable) ================= -->
+      @if (step() === 4) {
+        <div class="section-title"><i class="bi bi-shield-check"></i> Terms &amp; Conditions</div>
+        <div class="wz-track">
+          <div class="wz-track-item" [class.ok]="!!a.terms_sent_at">
+            <i class="bi" [class.bi-check-circle-fill]="!!a.terms_sent_at" [class.bi-circle]="!a.terms_sent_at"></i>
+            <div><strong>SMS sent</strong><small>{{ a.terms_sent_at ? formatDateTime(a.terms_sent_at) : 'Not sent yet' }}</small></div>
+          </div>
+          <div class="wz-track-item" [class.ok]="!!a.terms_accepted_at">
+            <i class="bi" [class.bi-check-circle-fill]="!!a.terms_accepted_at" [class.bi-hourglass-split]="!a.terms_accepted_at"></i>
+            <div><strong>Terms accepted</strong><small>{{ a.terms_accepted_at ? formatDateTime(a.terms_accepted_at) + (a.terms_accepted_via === 'in_person' ? ' (in person)' : ' (SMS link)') : 'Waiting for the customer' }}</small></div>
+          </div>
+          <div class="wz-track-item" [class.ok]="!!a.invoice_no">
+            <i class="bi" [class.bi-check-circle-fill]="!!a.invoice_no" [class.bi-receipt]="!a.invoice_no"></i>
+            <div><strong>Invoice</strong><small>{{ a.invoice_no ? a.invoice_no + ' · ' + formatDate(a.invoiced_at) : 'Generated after acceptance' }}</small></div>
+          </div>
+          <div class="wz-track-item" [class.ok]="a.status === 'Converted'">
+            <i class="bi" [class.bi-check-circle-fill]="a.status === 'Converted'" [class.bi-person-plus]="a.status !== 'Converted'"></i>
+            <div><strong>Customer</strong><small>{{ a.customer?.customer_code || 'Not created yet' }}</small></div>
+          </div>
+        </div>
+
+        @if (!a.terms_accepted_at) {
+          <div class="wz-actions">
+            <button type="button" class="cancel-btn" [disabled]="saving()" (click)="refreshStatus()"><i class="bi bi-arrow-clockwise"></i> Check status</button>
+            <button type="button" class="cancel-btn" [disabled]="saving() || !a.terms_sent_at" (click)="resendTerms()"><i class="bi bi-send"></i> Resend SMS</button>
+            <button type="button" class="save-btn" [disabled]="saving() || !a.terms_sent_at" (click)="acceptInPerson()"><i class="bi bi-pen"></i> Accepted in person</button>
+          </div>
+          @if (a.terms_url) { <p class="muted wz-note">Customer link: <a [href]="a.terms_url" target="_blank" rel="noopener">{{ a.terms_url }}</a></p> }
+        } @else {
+          <div class="wz-actions">
+            <button type="button" class="cancel-btn" (click)="downloadInvoice()"><i class="bi bi-download"></i> Download invoice</button>
+            @if (a.status !== 'Converted') {
+              <button type="button" class="save-btn" [disabled]="saving()" (click)="convert()"><i class="bi bi-person-check"></i> Generate customer &amp; sittings</button>
+            }
+          </div>
+        }
+      }
+
+      @if (error(); as err) { <div class="wz-error"><i class="bi bi-exclamation-triangle-fill"></i> {{ err }}</div> }
+    }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+    @if (step() > 0) { <button type="button" class="cancel-btn" (click)="back()"><i class="bi bi-arrow-left"></i> Back</button> }
+    @if (step() < 4) {
+      <button type="button" class="save-btn" [disabled]="saving() || loading()" (click)="next()">
+        <i class="bi" [class.bi-arrow-repeat]="saving()" [class.spin]="saving()"></i>
+        {{ saving() ? 'Saving…' : locked() ? 'Next' : step() === 3 ? 'Save & send terms' : 'Save & next' }}
+        @if (!saving()) { <i class="bi bi-arrow-right"></i> }
+      </button>
+    }
+  </div>
+</div>

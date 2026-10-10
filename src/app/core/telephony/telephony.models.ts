@@ -37,6 +37,7 @@ export interface CallLead {
   status_name?: string;
   assigned_to?: number | null;
   assigned_to_name?: string | null;
+  assigned_to_emp_code?: string | null;
   source_name?: string;
   service_category_name?: string;
 }
@@ -148,7 +149,7 @@ export interface CallerHistoryEntry {
   notes: string | null;
   call_record: string | null;
   created_at: string;
-  telecaller: { id: number; name: string } | null;
+  telecaller: { id: number; name: string; emp_code?: string | null } | null;
 }
 
 /** A lead with an open or past follow-up, as returned by GET /telephony/leads/followups. */
@@ -164,6 +165,8 @@ export interface FollowUpLead {
   organization_name: string | null;
   assigned_to: number | null;
   assigned_to_name: string | null;
+  /** HR employee code (hr_employees.emp_code) of the assigned telecaller. */
+  assigned_to_emp_code?: string | null;
   assigned_to_photo?: string | null;
   next_follow_up_at: string | null;
   last_contacted_at: string | null;

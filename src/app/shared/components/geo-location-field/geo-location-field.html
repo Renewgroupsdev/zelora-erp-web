@@ -1,0 +1,42 @@
+<div class="form-grid geo-grid">
+  <div class="form-field">
+    <label [for]="idPrefix() + '-lat'">Latitude</label>
+    <div class="input-wrap"><i class="bi bi-compass"></i>
+      <input [id]="idPrefix() + '-lat'" type="number" step="any" min="-90" max="90" placeholder="e.g. 10.072800"
+        [ngModel]="latitude()" (ngModelChange)="setLatitude($event)" [ngModelOptions]="{ standalone: true }" [class.is-invalid]="latInvalid()" />
+    </div>
+    @if (latInvalid()) { <small class="error-text">Latitude must be between -90 and 90.</small> }
+  </div>
+
+  <div class="form-field">
+    <label [for]="idPrefix() + '-lng'">Longitude</label>
+    <div class="input-wrap"><i class="bi bi-compass"></i>
+      <input [id]="idPrefix() + '-lng'" type="number" step="any" min="-180" max="180" placeholder="e.g. 78.780000"
+        [ngModel]="longitude()" (ngModelChange)="setLongitude($event)" [ngModelOptions]="{ standalone: true }" [class.is-invalid]="lngInvalid()" />
+    </div>
+    @if (lngInvalid()) { <small class="error-text">Longitude must be between -180 and 180.</small> }
+  </div>
+
+  <div class="form-field full-width">
+    <div class="geo-actions">
+      <button type="button" class="geo-btn" [disabled]="busy() !== null" (click)="useCurrentLocation()">
+        <i class="bi" [class.bi-crosshair]="busy() !== 'gps'" [class.bi-arrow-repeat]="busy() === 'gps'"></i>
+        {{ busy() === 'gps' ? 'Locating…' : 'Use current location' }}
+      </button>
+      <button type="button" class="geo-btn" [disabled]="busy() !== null" (click)="findFromAddress()">
+        <i class="bi" [class.bi-search]="busy() !== 'address'" [class.bi-arrow-repeat]="busy() === 'address'"></i>
+        {{ busy() === 'address' ? 'Searching…' : 'Find from address' }}
+      </button>
+      @if (hasPoint()) {
+        <button type="button" class="geo-btn geo-btn-clear" (click)="clear()"><i class="bi bi-x-circle"></i> Clear</button>
+      }
+    </div>
+    @if (error()) { <small class="error-text">{{ error() }}</small> }
+
+    @if (hasPoint()) {
+      <iframe class="geo-preview" [src]="previewUrl() | safeUrl" title="Location preview" loading="lazy"></iframe>
+    } @else {
+      <div class="geo-empty"><i class="bi bi-geo-alt"></i> No location set yet - use the buttons above or type the coordinates.</div>
+    }
+  </div>
+</div>

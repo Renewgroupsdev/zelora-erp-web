@@ -101,7 +101,8 @@ export class Users implements OnInit {
   loadUsers(): void {
     this.isLoading = true;
 
-    this.apiDataService.GetAllPages(ApiRoutesConstants.USER_LIST).subscribe({
+    // Only management-type users are managed on this screen; staff rows belong to HR employees.
+    this.apiDataService.GetAllPages(`${ApiRoutesConstants.USER_LIST}?user_type=management`).subscribe({
       next: (users: any[]) => {
         this.isLoading = false;
 

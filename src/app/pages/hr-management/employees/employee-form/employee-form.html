@@ -182,6 +182,43 @@
         </div>
       </div>
 
+      @if (isTelecaller()) {
+        <div class="section-title"><i class="bi bi-headset"></i> Telephony Extension</div>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="em-ext">Extension <span>*</span></label>
+            <div class="input-wrap"><i class="bi bi-hash"></i>
+              <input id="em-ext" name="extension" type="text" maxlength="30" placeholder="e.g. 1001" [(ngModel)]="model.extension" [class.is-invalid]="submitted() && extensionInvalid()" />
+            </div>
+            @if (submitted() && extensionInvalid()) { <small class="error-text">Extension is required (letters, digits, * # _ - only).</small> }
+          </div>
+          <div class="form-field">
+            <label for="em-device">Device Type</label>
+            <div class="input-wrap"><i class="bi bi-phone"></i>
+              <select id="em-device" name="deviceType" [(ngModel)]="model.deviceType">
+                <option value="sip">SIP phone / softphone</option>
+                <option value="webrtc">WebRTC (browser)</option>
+                <option value="desk">Desk phone</option>
+                <option value="mobile">Mobile</option>
+              </select>
+              <i class="bi bi-chevron-down select-arrow"></i>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="em-sip-user">SIP Username</label>
+            <div class="input-wrap"><i class="bi bi-person-lines-fill"></i>
+              <input id="em-sip-user" name="sipUsername" type="text" placeholder="Defaults to the extension" [(ngModel)]="model.sipUsername" />
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="em-sip-domain">SIP Domain</label>
+            <div class="input-wrap"><i class="bi bi-globe2"></i>
+              <input id="em-sip-domain" name="sipDomain" type="text" placeholder="Defaults to the PBX domain" [(ngModel)]="model.sipDomain" />
+            </div>
+          </div>
+        </div>
+      }
+
       <div class="section-title"><i class="bi bi-people"></i> Referral</div>
       <div class="form-grid cols-3">
         <div class="form-field">

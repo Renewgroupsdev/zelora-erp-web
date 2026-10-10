@@ -172,8 +172,14 @@ export class HrService {
    * Creates (id = null) or updates an employee, then syncs the KYC documents: documents picked in the form
    * (with a `file`) are uploaded and those in `removedKycIds` are deleted. Emits the refreshed employee.
    */
-  saveEmployee(id: string | null, input: NewEmployeeInput, opts: { photo: File | null; removePhoto: boolean; removedKycIds: string[]; candidateId?: string | null; password?: string; passwordConfirmation?: string }): Observable<Employee> {
+  saveEmployee(id: string | null, input: NewEmployeeInput, opts: { photo: File | null; removePhoto: boolean; removedKycIds: string[]; candidateId?: string | null; password?: string; passwordConfirmation?: string; telecaller?: boolean }): Observable<Employee> {
     const body = this.employeeFormData(input, opts.photo, opts.removePhoto);
+    if (opts.telecaller) {
+      body.append('extension', input.extension ?? '');
+      body.append('device_type', input.deviceType || 'sip');
+      body.append('sip_username', input.sipUsername ?? '');
+      body.append('sip_domain', input.sipDomain ?? '');
+    }
     if (opts.password) {
       body.append('password', opts.password);
       body.append('password_confirmation', opts.passwordConfirmation ?? '');
@@ -239,6 +245,8 @@ export class HrService {
       phone: r.phone ?? '', secondaryPhone: r.secondary_phone ?? '', email: r.email ?? '', address: r.address ?? '', bloodGroup: r.blood_group ?? '',
       photo: r.profile_photo ? r.profile_photo_url : '',
       userType: r.user_type === 'management' ? 'Management' : 'Staff',
+      extension: r.telephony_extension?.extension ?? '', deviceType: r.telephony_extension?.device_type ?? 'sip',
+      sipUsername: r.telephony_extension?.sip_username ?? '', sipDomain: r.telephony_extension?.sip_domain ?? '',
       designation: r.designation ?? '', department: r.department ?? '', branch: r.branch?.name ?? '', reportingTo: r.reporting_to ?? '',
       joinDate: r.join_date, employmentType: r.employment_type,
       pan: r.pan ?? '', aadhaarLast4: r.aadhaar_last4 ?? '', uan: r.uan ?? '', bankName: r.bank_name ?? '',

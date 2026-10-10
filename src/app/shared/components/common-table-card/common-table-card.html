@@ -213,6 +213,26 @@
                     <i class="bi bi-telephone-outbound-fill"></i>
                   </button>
 
+                  <!-- Telecaller check: is this lead genuine? -->
+                  @if (row['canValidate']) {
+                    <button
+                      type="button"
+                      class="row-action-btn action-valid"
+                      (click)="validateClick.emit({ row, valid: true })"
+                      aria-label="Mark lead valid"
+                      title="Valid lead">
+                      <i class="bi bi-check-lg"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="row-action-btn action-invalid"
+                      (click)="validateClick.emit({ row, valid: false })"
+                      aria-label="Mark lead invalid"
+                      title="Invalid lead">
+                      <i class="bi bi-x-lg"></i>
+                    </button>
+                  }
+
                   <!-- Edit -->
                   <button
                     type="button"
@@ -296,6 +316,8 @@
         *matRowDef="let row; columns: displayedColumns; let rowIndex = index"
         [class.row-selected]="selectedId !== null && row['id'] === selectedId"
         [class.row-selectable]="rowSelect.observed"
+        [class.row-followup-soon]="row['_urgency'] === 'soon'"
+        [class.row-followup-urgent]="row['_urgency'] === 'urgent'"
         (click)="onRowClick($event, row)"
         cdkDrag
         [cdkDragData]="row"

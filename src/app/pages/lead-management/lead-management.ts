@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import Swal from 'sweetalert2';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Component, OnInit } from '@angular/core';
 import { Sort, SortDirection } from '@angular/material/sort';
@@ -265,14 +266,16 @@ export class LeadManagement implements OnInit {
       contact: lead.mobile_no ?? '',
       source: lead.source_name ?? '',
       service_category: lead.service_category_name ?? '',
-      service_request: lead.reason ?? '',
+      service_request: lead.service_request_name ?? '',
       branch: lead.organization_name ?? lead.location ?? '',
       status: lead.status_name || 'Lead',
+      // A telecaller checks each lead assigned to them (the API only returns theirs) before following it up.
+      canValidate: this.telephony.isTelecaller() && ['New Lead', 'Lead'].includes(lead.status_name || 'Lead') && !!lead.assigned_to ? 1 : 0,
       created_at: this.formatDate(lead.created_at),
       gender: lead.gender ?? '',
       telecaller: lead.assigned_to_name || 'Unassigned',
       telecaller_avatar: lead.assigned_to_name
-        ? [{ name: lead.assigned_to_name, empNo: `EMP-${lead.assigned_to}`, image: lead.assigned_to_photo ?? undefined }]
+        ? [{ name: lead.assigned_to_name, empNo: lead.assigned_to_emp_code ?? '', image: lead.assigned_to_photo ?? undefined }]
         : [],
       next_follow_up: lead.next_follow_up_at ? this.formatDate(lead.next_follow_up_at) : '-',
       action: 'menu',
@@ -431,6 +434,33 @@ export class LeadManagement implements OnInit {
 
     this.telephony.dial({ lead_id: Number(row['id']) }).subscribe({
       error: (err: any) => this.toast.error(err?.error?.message || 'Unable to start the call.'),
+    });
+  }
+
+  /** Telecaller verdict on an assigned lead. Invalid leads go back to Lead Management (unassigned) for the branch manager. */
+  async onValidateLead(row: TableRow, valid: boolean): Promise<void> {
+    let reason = '';
+    if (!valid) {
+      const result = await Swal.fire({
+        title: 'Mark this lead as invalid?',
+        input: 'text',
+        inputLabel: 'Note (required)',
+        inputPlaceholder: 'e.g. wrong number, not interested',
+        inputValidator: (value: string) => (value.trim() ? null : 'Add a note explaining why this lead is invalid.'),
+        showCancelButton: true,
+        confirmButtonText: 'Mark invalid',
+        confirmButtonColor: '#dc2626',
+      });
+      if (!result.isConfirmed) return;
+      reason = String(result.value ?? '').trim();
+    }
+
+    this.ApiDataService.POST(`${ApiRoutesConstants.LEAD_VALIDATE}/${row['id']}/validate`, { valid, reason }).subscribe({
+      next: (res: any) => {
+        this.toast.success(res?.message || (valid ? 'Lead marked valid.' : 'Lead marked invalid.'));
+        this.loadLeadData();
+      },
+      error: (err: any) => this.toast.error(err?.error?.message || 'Unable to update the lead. Please try again.'),
     });
   }
 
@@ -638,7 +668,26 @@ export class LeadManagement implements OnInit {
     this.openLeadProfile(row, 'appointment');
   }
 
-  sendToBranch(row: TableRow): void {
-    console.log('Send to branch:', row);
+  /** Hands the lead to one of the branch's telecallers (batches of 10 per telecaller - see the API). */
+  async sendToBranch(row: TableRow): Promise<void> {
+    const confirmed = await this.toast.confirm(
+      'Send this lead to the branch telecallers?',
+      'It is assigned automatically; each telecaller gets leads in batches of 10.',
+      'Yes, send',
+    );
+    if (!confirmed) return;
+
+    const branchId = this.branchIdByName.get(String(row['branch'] ?? ''));
+    this.ApiDataService.POST(ApiRoutesConstants.LEAD_AUTO_ASSIGN, {
+      lead_ids: [Number(row['id'])],
+      ...(branchId ? { organization_id: branchId } : {}),
+    }).subscribe({
+      next: (res: any) => {
+        this.toast.success(res?.message || 'Lead sent to the branch.');
+        this.loadLeadData();
+        this.loadFilterList();
+      },
+      error: (err: any) => this.toast.error(err?.error?.message || 'Unable to send the lead. Please try again.'),
+    });
   }
 }

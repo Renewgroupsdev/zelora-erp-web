@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import Swal from 'sweetalert2';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { CommonDetailCard } from '../../shared/components/common-detail-card/common-detail-card';
@@ -20,7 +21,8 @@ import {
 import { CallLogHistoryDialog } from '../../shared/components/call-log-history-dialog/call-log-history-dialog';
 import { ToastService } from '../../shared/common-services/toast.service';
 import { Router } from '@angular/router';
-import { CrmFlowService, FlowAppointment, FlowLead, FollowUpEntry } from '../../shared/common-services/crm-flow.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FlowLead, FollowUpEntry } from '../../shared/common-services/crm-flow.service';
 import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
 import { TelephonyService } from '../../core/telephony/telephony.service';
 import { FollowUpLead } from '../../core/telephony/telephony.models';
@@ -33,6 +35,12 @@ const QUICK_ACTIONS: QuickAction[] = [
   { key: 'call-log', icon: 'bi-clock-history', label: 'View Call Log', variant: 'default' },
 ];
 
+/** A freshly assigned (Contacted) lead is checked by the telecaller first: genuine lead or not. */
+const VALIDATION_ACTIONS: QuickAction[] = [
+  { key: 'valid', icon: 'bi-check-lg', label: 'Valid lead', variant: 'default' },
+  { key: 'invalid', icon: 'bi-x-lg', label: 'Invalid lead', variant: 'danger' },
+];
+
 @Component({
   selector: 'app-followups',
   standalone: true,
@@ -40,34 +48,49 @@ const QUICK_ACTIONS: QuickAction[] = [
   templateUrl: './followups.html',
   styleUrl: './followups.scss',
 })
-export class Followups implements OnInit {
+export class Followups implements OnInit, OnDestroy {
 
   constructor(
     private dialog: MatDialog,
     private toast: ToastService,
     private router: Router,
-    private crmFlow: CrmFlowService,
     private telephony: TelephonyService,
     private apiDataService: ApiDataService,
-  ) { }
+  ) {
+    // A call outcome (follow-up / callback / appointment) changes this list, so reload it when one is saved.
+    this.telephony.outcomeSaved$.pipe(takeUntilDestroyed()).subscribe(() => this.loadFollowUps());
+  }
 
-
-  readonly staffOptions = ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S', 'Meera Nair'];
 
   stats: DetailCardData[] = [
-    { label: 'Total Leads', value: '1', trendText: '8.4% this month', trendDirection: 'up', icon: 'bi-person-lines-fill', iconVariant: 'primary' },
-    { label: 'Total Follow-Ups', value: 1, trendText: 'Across all telecallers', trendDirection: 'neutral', icon: 'bi-arrow-repeat', iconVariant: 'blue' },
-    { label: 'Due Today', value: 0, trendText: 'Needs attention', trendDirection: 'up', icon: 'bi-alarm', iconVariant: 'orange' },
-    { label: 'Completed', value: 0, trendText: 'Follow-up closed', trendDirection: 'up', icon: 'bi-check-circle', iconVariant: 'green' },
-    { label: 'Appointment', value: 0, trendText: 'Confirmed appointments', trendDirection: 'up', icon: 'bi-calendar-check', iconVariant: 'purple' },
+    { label: 'Total Leads', value: 0, trendText: 'In your follow-up queue', trendDirection: 'neutral', icon: 'bi-person-lines-fill', iconVariant: 'primary' },
+    { label: 'Total Follow-Ups', value: 0, trendText: 'Across all telecallers', trendDirection: 'neutral', icon: 'bi-arrow-repeat', iconVariant: 'blue' },
+    { label: 'Due Today', value: 0, trendText: 'Needs attention', trendDirection: 'neutral', icon: 'bi-alarm', iconVariant: 'orange' },
+    { label: 'Completed', value: 0, trendText: 'Converted to customers', trendDirection: 'neutral', icon: 'bi-check-circle', iconVariant: 'green' },
+    { label: 'Appointment', value: 0, trendText: 'Appointments booked', trendDirection: 'neutral', icon: 'bi-calendar-check', iconVariant: 'purple' },
   ];
+
+  /** Cards are counted from the rows the API returned - no made-up numbers. */
+  private updateStats(): void {
+    const rows = this.allRows;
+    const today = new Date().toDateString();
+    const count = (fn: (r: TableRow) => boolean) => rows.filter(fn).length;
+    const values = [
+      rows.length,
+      count(r => !!r['follow_up_at']),
+      count(r => !!r['follow_up_at'] && new Date(String(r['follow_up_at'])).toDateString() === today),
+      count(r => r['status'] === 'Customer'),
+      count(r => r['status'] === 'Schedule'),
+    ];
+    this.stats = this.stats.map((stat, i) => ({ ...stat, value: values[i] }));
+  }
 
   filters: FilterOption[] = [
     { key: 'status', label: 'Status', options: ['Follow-Ups', 'Cool-Follow-Ups', 'Hot-Leads', 'Schedule', 'Customer'] },
     { key: 'type', label: 'Follow-up Type', options: ['General', 'Cool', 'Hot'] },
-    { key: 'source', label: 'Source', options: ['Website', 'Instagram', 'Facebook', 'Google Ads', 'Referral', 'Walk-in', 'Call Center', 'Campaign'] },
-    { key: 'branch', label: 'Branch', multiSelect: true, options: ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'] },
-    { key: 'telecaller', label: 'Telecaller', options: ['Priya', 'Karthik Iyer', 'Meera Nair'] },
+    { key: 'source', label: 'Source', options: [] },
+    { key: 'branch', label: 'Branch', multiSelect: true, options: [] },
+    { key: 'telecaller', label: 'Telecaller', options: [] },
     { key: 'date', label: 'Date' },
   ];
 
@@ -109,16 +132,57 @@ export class Followups implements OnInit {
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
-  sortActive = 'lead';
+  /** 'priority' is not a column: it puts the calls due soonest first (red, then orange, then the rest by time). */
+  sortActive = 'priority';
   sortDirection: SortDirection = 'asc';
   private searchTerm = '';
 
   /** Real lead_status name -> id, so the Status filter can be sent server-side as `status_id`. */
   private statusIdByName = new Map<string, number>();
 
+  private urgencyTimer?: ReturnType<typeof setInterval>;
+
+  /** Source / Branch / Telecaller filter options come from the API instead of a fixed list. */
+  private loadFilterOptions(): void {
+    const setOptions = (key: string, names: string[]) =>
+      (this.filters = this.filters.map(f => (f.key === key ? { ...f, options: [...new Set(names.filter(Boolean))] } : f)));
+
+    this.apiDataService.GET(`${ApiRoutesConstants.Source_List_Options}?per_page=100`).subscribe({
+      next: (res: any) => setOptions('source', (res?.data?.data ?? res?.data ?? []).map((s: any) => s?.source_name)),
+      error: () => undefined,
+    });
+    this.apiDataService.GET(`${ApiRoutesConstants.Branch_List_Options}?per_page=100`).subscribe({
+      next: (res: any) => setOptions('branch', (res?.data?.data ?? res?.data ?? []).map((b: any) => b?.name)),
+      error: () => undefined,
+    });
+    this.telephony.telecallers().subscribe({
+      next: rows => setOptions('telecaller', rows.map(r => r.name)),
+      error: () => undefined,
+    });
+  }
+
   ngOnInit(): void {
+    this.loadFilterOptions();
     this.loadStatusOptions();
     this.loadFollowUps();
+
+    // Row colours change as the call-back time approaches, so re-evaluate them every 30 seconds.
+    this.urgencyTimer = setInterval(() => {
+      this.allRows.forEach(row => (row['_urgency'] = this.urgencyOf(row['follow_up_at'])));
+      this.refreshRows();
+    }, 30_000);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.urgencyTimer);
+  }
+
+  /** red = due in 5 minutes or less (or overdue), orange = due within 30 minutes. */
+  private urgencyOf(value: unknown): '' | 'soon' | 'urgent' {
+    const at = value ? new Date(String(value)).getTime() : NaN;
+    if (Number.isNaN(at)) return '';
+    const minutes = (at - Date.now()) / 60_000;
+    return minutes <= 5 ? 'urgent' : minutes <= 30 ? 'soon' : '';
   }
 
   /** Loads the real lead_status names (Follow-Ups, Cool-Follow-Ups, Hot-Leads, ...) for the
@@ -158,9 +222,8 @@ export class Followups implements OnInit {
     }).subscribe({
       next: (leads) => {
         const rows = leads.map((lead) => this.leadToRow(lead));
-        const imported = this.crmFlow.getFollowUps().map((lead, index) => this.flowLeadToRow(lead, index));
-        this.allRows = [...imported, ...rows.filter(row => !imported.some(item => item['id'] === row['id']))];
-        this.stats[1] = { ...this.stats[1], value: this.allRows.length };
+        this.allRows = rows;
+        this.updateStats();
         this.refreshRows();
       },
       error: (err: any) => {
@@ -172,12 +235,12 @@ export class Followups implements OnInit {
 
   private leadToRow(lead: FollowUpLead): TableRow {
     const callers: CallerAvatar[] = lead.assigned_to_name
-      ? [{ name: lead.assigned_to_name, empNo: `EMP-${lead.assigned_to}`, image: lead.assigned_to_photo ?? undefined }]
+      ? [{ name: lead.assigned_to_name, empNo: lead.assigned_to_emp_code ?? '', image: lead.assigned_to_photo ?? undefined }]
       : [];
 
     const callLog: CallerLogEntry[] = (lead.caller_histories ?? []).map((history) => ({
       telecallerName: history.telecaller?.name ?? lead.assigned_to_name ?? 'Unknown',
-      empNo: history.telecaller ? `EMP-${history.telecaller.id}` : '',
+      empNo: history.telecaller?.emp_code ?? '',
       dateTime: this.formatDateTime(history.created_at),
       notes: history.notes ?? '',
     }));
@@ -191,6 +254,8 @@ export class Followups implements OnInit {
       service_category: lead.service_category_name ?? '',
       service_request: lead.reason ?? '',
       followup_count: lead.follow_ups_count,
+      follow_up_at: lead.next_follow_up_at ?? '',
+      _urgency: this.urgencyOf(lead.next_follow_up_at),
       follow_up_date: lead.next_follow_up_at
         ? this.formatDateTime(lead.next_follow_up_at)
         : (callLog.length ? callLog[callLog.length - 1].dateTime : ''),
@@ -198,7 +263,7 @@ export class Followups implements OnInit {
       telecaller: callers,
       status: lead.status_name ?? '',
       follow_up_type_label: this.FOLLOW_UP_TYPE_LABELS[lead.follow_up_type ?? 0] ?? '',
-      action: QUICK_ACTIONS,
+      action: lead.status_name === 'Contacted' ? [...QUICK_ACTIONS, ...VALIDATION_ACTIONS] : QUICK_ACTIONS,
       callLogEntries: callLog,
     };
   }
@@ -270,6 +335,7 @@ export class Followups implements OnInit {
     if (action === 'appointment') this.openFollowUpProfile(row);
     else if (action === 'call-log') this.viewCallLog(row);
     else if (action === 'call') this.callLead(row);
+    else if (action === 'valid' || action === 'invalid') void this.validateLead(row, action === 'valid');
   }
 
   /** Dials over the telephony backend (the number is matched to its CRM lead there). The
@@ -292,6 +358,33 @@ export class Followups implements OnInit {
     });
   }
 
+  /** Telecaller verdict. Invalid (note required) unassigns the lead and sends it back to Lead Management. */
+  private async validateLead(row: TableRow, valid: boolean): Promise<void> {
+    let reason = '';
+    if (!valid) {
+      const result = await Swal.fire({
+        title: 'Mark this lead as invalid?',
+        input: 'text',
+        inputLabel: 'Note (required)',
+        inputPlaceholder: 'e.g. wrong number, not interested',
+        inputValidator: (value: string) => (value.trim() ? null : 'Add a note explaining why this lead is invalid.'),
+        showCancelButton: true,
+        confirmButtonText: 'Mark invalid',
+        confirmButtonColor: '#dc2626',
+      });
+      if (!result.isConfirmed) return;
+      reason = String(result.value ?? '').trim();
+    }
+
+    this.apiDataService.POST(`${ApiRoutesConstants.LEAD_VALIDATE}/${row['id']}/validate`, { valid, reason }).subscribe({
+      next: (res: any) => {
+        this.toast.success(res?.message || (valid ? 'Lead marked valid.' : 'Lead marked invalid.'));
+        this.loadFollowUps();
+      },
+      error: (err: any) => this.toast.error(err?.error?.message || 'Unable to update the lead. Please try again.'),
+    });
+  }
+
   viewCallLog(row: TableRow): void {
     const lead = row['lead'] as LeadCell;
     const entries = (row['callLogEntries'] as CallerLogEntry[]) ?? [];
@@ -311,51 +404,24 @@ export class Followups implements OnInit {
     });
   }
 
+  /** Opens the lead's follow-up card. The telecaller and branch come from the lead itself (shown, not editable),
+   *  and the next call-back / appointment is saved to the database by the dialog. */
   openFollowUpProfile(row: TableRow): void {
+    const flowLead = this.toFlowLead(row);
     const dialogRef = this.dialog.open(LeadProfileDialog, {
       width: '600px', maxWidth: 'calc(100vw - 24px)', maxHeight: '92vh', autoFocus: false,
       panelClass: 'lead-profile-dialog',
-      data: { lead: this.toFlowLead(row), stage: 'followup', telecallers: this.staffOptions, callLogEntries: (row['callLogEntries'] as CallerLogEntry[]) ?? [] },
+      data: {
+        lead: flowLead,
+        stage: 'followup',
+        telecallers: flowLead.telecaller ? [flowLead.telecaller] : [],
+        branches: flowLead.branch ? [flowLead.branch] : [],
+        callLogEntries: (row['callLogEntries'] as CallerLogEntry[]) ?? [],
+      },
     });
     dialogRef.afterClosed().subscribe((result: LeadProfileDialogResult | undefined) => {
-      if (!result || result.action === 'close') return;
-
-      if (result.action === 'appointment') {
-        this.moveToAppointments(result.lead, result.scheduledDate, result.scheduledTime);
-        return;
-      }
-
-      // Just logging a follow-up note - update the row's history in place without moving it out of the table.
-      this.crmFlow.addFollowUp(result.lead);
-      this.allRows = this.allRows.map(existing => {
-        if (this.rowId(existing) !== result.lead.id) return existing;
-        return {
-          ...existing,
-          branch: result.lead.branch,
-          follow_up_date: result.lead.followUpDate || existing['follow_up_date'],
-          followUpHistory: result.lead.history ?? [],
-        };
-      });
-      this.refreshRows();
+      if (result?.saved) this.loadFollowUps();
     });
-  }
-
-  /** "Book Appointment" from the follow-up's Schedule mode moves the record straight to the
-   *  Appointment page with just the date/time set - no separate booking popup. Treatment, payment
-   *  and other details get filled in from there via the appointment profile's "Confirm as Client" step. */
-  private moveToAppointments(leadData: FlowLead, scheduledDate?: string, scheduledTime?: string): void {
-    const appointment: FlowAppointment = {
-      ...leadData,
-      service: '', date: scheduledDate ?? '', startTime: scheduledTime ?? '', staff: leadData.telecaller,
-      total: 0, paymentMethod: '', paymentStatus: 'Pending', status: 'Appointment',
-    };
-
-    this.crmFlow.addAppointment(appointment);
-    this.crmFlow.removeFollowUp(leadData.id);
-    this.allRows = this.allRows.filter(row => this.rowId(row) !== leadData.id);
-    this.refreshRows();
-    this.toast.success('Appointment booked', `${appointment.name} has been moved to Appointments.`);
-    this.router.navigate(['/app/appointments']);
   }
 
   private rowId(row: TableRow): string {
@@ -367,10 +433,6 @@ export class Followups implements OnInit {
     const lead = row['lead'] as LeadCell;
     const caller = ((row['telecaller'] as CallerAvatar[]) ?? [])[0]?.name ?? '';
     return { id: this.rowId(row), name: lead.name, phone: String(row['contact'] ?? ''), gender: String(row['gender'] ?? ''), source: String(row['source'] ?? ''), category: String(row['service_category'] ?? ''), request: String(row['service_request'] ?? ''), branch: String(row['branch'] ?? ''), telecaller: caller, notes: String(row['notes'] ?? ''), followUpDate: String(row['follow_up_date'] ?? ''), status: 'Follow-Up', history: (row['followUpHistory'] as FollowUpEntry[]) ?? [] };
-  }
-
-  private flowLeadToRow(lead: FlowLead, index: number): TableRow {
-    return { id: lead.id, lead: { name: lead.name, subtitle: `FU-${String(index + 1).padStart(4, '0')}` }, contact: lead.phone, gender: lead.gender, source: lead.source, service_category: lead.category, service_request: lead.request, follow_up_date: lead.followUpDate || 'Not scheduled', branch: lead.branch, telecaller: lead.telecaller ? [{ name: lead.telecaller, empNo: lead.telecaller }] : [], status: 'Contacted', follow_up_type_label: 'General', action: QUICK_ACTIONS, callLogEntries: lead.notes ? [{ telecallerName: lead.telecaller, empNo: lead.telecaller, dateTime: 'Today', notes: lead.notes }] : [], followUpHistory: lead.history ?? [] };
   }
 
   private refreshRows(): void {
@@ -441,6 +503,12 @@ export class Followups implements OnInit {
   private getSortedRows(rows: TableRow[]): TableRow[] {
     if (!this.sortActive || !this.sortDirection) {
       return rows;
+    }
+
+    if (this.sortActive === 'priority') {
+      const rank = (row: TableRow) => ({ urgent: 0, soon: 1 } as Record<string, number>)[String(row['_urgency'])] ?? 2;
+      const time = (row: TableRow) => (row['follow_up_at'] ? new Date(String(row['follow_up_at'])).getTime() : Infinity);
+      return [...rows].sort((a, b) => rank(a) - rank(b) || time(a) - time(b));
     }
 
     const direction = this.sortDirection === 'asc' ? 1 : -1;

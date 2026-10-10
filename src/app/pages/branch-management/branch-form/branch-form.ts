@@ -1,3 +1,4 @@
+import { GeoLocationField } from '../../../shared/components/geo-location-field/geo-location-field';
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
@@ -12,7 +13,7 @@ type BranchInput = Omit<BranchRecord, 'id' | 'code'>;
 @Component({
   selector: 'app-branch-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatDialogModule, GeoLocationField],
   templateUrl: './branch-form.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', '../../../shared/styles/branch-franchise-dialog.scss'],
 })
