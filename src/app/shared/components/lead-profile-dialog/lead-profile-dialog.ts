@@ -123,7 +123,7 @@ export class LeadProfileDialog {
     this.history = [...(lead.history ?? [])];
 
     const today = new Date();
-    const isoToday = today.toISOString().slice(0, 10);
+    const isoToday = this.today;
     const nowTime = today.toTimeString().slice(0, 5);
 
     this.form = this.fb.group({
@@ -268,6 +268,17 @@ export class LeadProfileDialog {
   /** Follow-up notes added with "+ Add follow-up note". They only live here until "Save Follow-up" sends them all in one request. */
   pendingEntries: { notes: string; date: string; time: string }[] = [];
 
+  /** Today as local "yyyy-MM-dd" - the earliest follow-up / appointment day (the API rejects earlier ones).
+   *  Built from local time, not toISOString(), which is UTC and gives yesterday before 05:30 IST. */
+  get today(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  private isPast(date: string | null | undefined): boolean {
+    return !!date && date < this.today;
+  }
+
   /** "Add follow-up note": puts the note + next call-back on the list below (no API call yet). */
   addFollowUpEntry(): void {
     const value = this.form.getRawValue();
@@ -277,6 +288,10 @@ export class LeadProfileDialog {
     if (!notes || !date) {
       this.form.markAllAsTouched();
       this.toast.error('Add a follow-up note and the next follow-up date.');
+      return;
+    }
+    if (this.isPast(date)) {
+      this.toast.error('The next follow-up date must be today or later.');
       return;
     }
 
@@ -315,6 +330,10 @@ export class LeadProfileDialog {
         this.toast.error('Pick the appointment date and time.');
         return;
       }
+      if (this.isPast(value.scheduleDate)) {
+        this.toast.error('The appointment date must be today or later.');
+        return;
+      }
       body = { kind, date: value.scheduleDate, time: value.scheduleTime, notes: String(value.notes ?? '').trim() || null };
     } else {
       // A note typed in the form but not added yet is saved too.
@@ -325,6 +344,12 @@ export class LeadProfileDialog {
       if (!entries.length) {
         this.form.markAllAsTouched();
         this.toast.error('Add a follow-up note and the next follow-up date.');
+        return;
+      }
+      // Notes added earlier can have gone stale (e.g. the dialog was left open past midnight).
+      const past = entries.find(e => this.isPast(e.date));
+      if (past) {
+        this.toast.error(`Follow-up date ${this.formatDateDisplay(past.date)} is in the past. Pick today or a later date.`);
         return;
       }
       body = { kind, entries: entries.map(e => ({ notes: e.notes, date: e.date, time: e.time || null })) };

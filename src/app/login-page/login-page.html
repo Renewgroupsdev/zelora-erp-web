@@ -99,8 +99,10 @@
             </span>
           </div>
 
-          <button type="submit" class="otp-verify-btn" [disabled]="loading">{{ loading ? 'Verifying...' : 'Verify' }}</button>
-          <button type="button" class="otp-cancel-btn" [disabled]="loading" (click)="cancelOtp()">Cancel</button>
+          <div class="otp-buttons">
+            <button type="button" class="otp-cancel-btn" [disabled]="loading" (click)="cancelOtp()">Cancel</button>
+            <button type="submit" class="otp-verify-btn" [disabled]="loading">{{ loading ? 'Verifying...' : 'Verify' }}</button>
+          </div>
         </div>
         }
 

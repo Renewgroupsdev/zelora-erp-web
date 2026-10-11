@@ -205,8 +205,9 @@
               <label>{{ profile.gender === 'Female' ? 'Female pattern grade (Ludwig)' : 'Male pattern grade (Norwood)' }} <span>*</span></label>
               <div class="wz-grades" [class.female]="profile.gender === 'Female'">
                 @for (g of gradeOptions; track g) {
-                  <button type="button" [class.on]="c.grade === g" (click)="c.grade = g">
-                    <i class="bi" [class.bi-circle-fill]="c.grade === g" [class.bi-circle]="c.grade !== g"></i> {{ g }}
+                  <button type="button" [class.on]="c.grade === g" (click)="c.grade = g" [attr.aria-pressed]="c.grade === g">
+                    <app-hair-grade-icon [grade]="g" />
+                    <span><i class="bi" [class.bi-circle-fill]="c.grade === g" [class.bi-circle]="c.grade !== g"></i> {{ g }}</span>
                   </button>
                 }
               </div>

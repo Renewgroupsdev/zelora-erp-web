@@ -74,7 +74,7 @@
 
         @if (followupMode === 'schedule') {
           <div class="field-grid">
-            <label>Appointment date<input type="text" appDatePicker formControlName="scheduleDate" placeholder="Select date" [class.is-invalid]="isInvalid('scheduleDate')"></label>
+            <label>Appointment date<input type="text" appDatePicker [minDate]="today" formControlName="scheduleDate" placeholder="Select date" [class.is-invalid]="isInvalid('scheduleDate')"></label>
             <label>Appointment time<input type="text" appTimePicker formControlName="scheduleTime" placeholder="Select time" [class.is-invalid]="isInvalid('scheduleTime')"></label>
           </div>
         } @else {
@@ -95,7 +95,7 @@
           }
 
           <div class="field-grid">
-            <label>Next follow-up date<input type="text" appDatePicker formControlName="nextFollowUpDate" placeholder="Select date"></label>
+            <label>Next follow-up date<input type="text" appDatePicker [minDate]="today" formControlName="nextFollowUpDate" placeholder="Select date"></label>
             <label>Next follow-up time<input type="text" appTimePicker formControlName="nextFollowUpTime" placeholder="Select time"></label>
             <label class="full">Follow-up note<textarea rows="3" formControlName="notes" [class.is-invalid]="isInvalid('notes')" placeholder="Record the call outcome, needs, and next action"></textarea></label>
             @if (pendingEntries.length) {

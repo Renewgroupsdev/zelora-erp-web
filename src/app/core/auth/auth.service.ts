@@ -37,7 +37,22 @@ export class AuthService {
       // fresh login. The cached copy from readMenus() is still shown immediately in the
       // meantime so the sidebar isn't empty while this request is in flight.
       this.refreshMenus();
+      this.refreshProfile();
     }
+  }
+
+  /** Re-reads the signed-in account (name, role, profile photo) so the top bar is never stuck on
+   *  the copy saved at login - e.g. a photo uploaded afterwards shows on the next reload. */
+  refreshProfile(): void {
+    this.api.GET(ApiRoutesConstants.AUTH_ME).subscribe({
+      next: (res: ApiResponse<AuthUser>) => {
+        if (!res?.success || !res.data) return;
+        const user = { ...this.currentUser(), ...res.data } as AuthUser;
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+        this.currentUser.set(user);
+      },
+      error: () => undefined,
+    });
   }
 
   login(username: string, password: string, deviceName = 'web'): Observable<LoginResponse> {

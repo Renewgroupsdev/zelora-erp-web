@@ -592,6 +592,14 @@
   &:disabled { opacity: .5; cursor: default; }
 }
 
+// Cancel and Verify share one row.
+.otp-buttons {
+  display: flex;
+  gap: 12px;
+
+  > button { flex: 1 1 0; min-width: 0; }
+}
+
 .otp-verify-btn,
 .otp-cancel-btn {
   width: 100%;
@@ -606,7 +614,6 @@
 }
 
 .otp-verify-btn {
-  margin-bottom: 12px;
   border: 0;
   color: #fff;
   background: linear-gradient(135deg, var(--primary, #0f8a6a), var(--primary-dark, #0b4533));

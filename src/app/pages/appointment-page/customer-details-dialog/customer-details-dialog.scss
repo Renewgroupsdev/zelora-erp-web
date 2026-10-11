@@ -1,0 +1,146 @@
+:host { display: block; }
+
+.cd-avatar {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+
+  &.initials {
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--primary, #0f8a6a) 18%, #fff);
+    color: var(--primary-dark, #0b4533);
+    font-weight: 800;
+    font-size: 15px;
+  }
+}
+
+.cd-status { font-weight: 700; }
+
+.cd-section {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft, #e2e8e5);
+  border-radius: 12px;
+  background: var(--app-surface-solid, #fff);
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--primary-dark, #0b4533);
+    small { font-weight: 500; color: var(--text-muted, #6b7280); }
+  }
+}
+
+.cd-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px 14px;
+  margin: 0;
+
+  dt { font-size: 11px; font-weight: 600; color: var(--text-muted, #6b7280); }
+  dd { margin: 1px 0 0; font-size: 12.5px; font-weight: 600; word-break: break-word; }
+}
+
+.cd-note { margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--app-surface-bg, #f4f8f6); font-size: 12.5px; white-space: pre-wrap; }
+
+.cd-docs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  a { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid var(--border-soft-strong, #cfd8d3); border-radius: 14px; font-size: 12px; text-decoration: none; color: var(--primary-dark, #0b4533); }
+}
+
+.cd-money {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+
+  div { padding: 6px 10px; border-radius: 10px; background: var(--app-surface-bg, #f4f8f6); }
+  small { display: block; font-size: 11px; color: var(--text-muted, #6b7280); }
+  strong { font-size: 13px; }
+  .ok { color: var(--status-green-text, #1f9d55); }
+  .due { color: var(--status-red-text, #e0392f); }
+}
+
+.cd-table-wrap { overflow-x: auto; }
+
+.cd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--border-soft, #e2e8e5); text-align: left; white-space: nowrap; }
+  th { font-size: 11px; color: var(--text-muted, #6b7280); font-weight: 700; }
+}
+
+.cd-sitting {
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft, #e2e8e5);
+  border-radius: 10px;
+  & + & { margin-top: 8px; }
+  &.done { background: var(--app-surface-bg, #f6faf8); }
+}
+
+.cd-sitting-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  span:first-of-type { flex: 1; color: var(--text-muted, #6b7280); }
+}
+
+.cd-pill {
+  padding: 2px 9px;
+  border-radius: 12px;
+  background: var(--status-blue-bg, #e6effc);
+  color: var(--status-blue-text, #2563eb);
+  font-size: 11px;
+  font-weight: 700;
+  &.done { background: var(--status-green-bg, #e3f9ee); color: var(--status-green-text, #1f9d55); }
+}
+
+.cd-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 6px;
+  small { display: block; margin-bottom: 3px; font-size: 11px; font-weight: 700; color: var(--text-muted, #6b7280); }
+}
+
+.cd-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; cursor: zoom-in; }
+}
+
+.cd-loading { padding: 24px 0; text-align: center; }
+
+.cd-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.82);
+
+  img { max-width: 92vw; max-height: 88vh; border-radius: 10px; }
+  .nav { position: absolute; top: 50%; width: 42px; height: 42px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.85); font-size: 20px; cursor: pointer; transform: translateY(-50%); }
+  .prev { left: 16px; }
+  .next { right: 16px; }
+  .close { top: 28px; right: 16px; }
+  .caption { position: absolute; bottom: 16px; left: 50%; padding: 4px 12px; border-radius: 12px; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 12px; transform: translateX(-50%); }
+}
+
+@media (max-width: 640px) {
+  .cd-grid { grid-template-columns: 1fr 1fr; }
+}

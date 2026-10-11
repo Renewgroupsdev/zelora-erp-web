@@ -6,6 +6,7 @@ import { finalize } from 'rxjs';
 import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
+import { HairGradeIcon } from '../../../shared/components/hair-grade-icon/hair-grade-icon';
 import {
   ALLERGIES, EMI_MONTHS, FAMILY_HISTORY, FlowAppointmentRecord, FlowCategory, HAIR_LOSS_PATTERN, HEARD_FROM, LUDWIG_GRADES,
   NORWOOD_GRADES, PAYMENT_MODES, PaymentMode, SKIN_CONCERNS, SKIN_TYPES, inr,
@@ -64,7 +65,7 @@ const emptyConsultation = (): Consultation => ({
 @Component({
   selector: 'app-appointment-wizard',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatDialogModule, HairGradeIcon],
   templateUrl: './appointment-wizard.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', './appointment-wizard.scss'],
 })

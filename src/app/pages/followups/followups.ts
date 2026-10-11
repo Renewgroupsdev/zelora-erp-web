@@ -162,9 +162,11 @@ export class Followups implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // List first: the API serves requests one after another, so the table shouldn't queue
+    // behind the filter-option calls.
+    this.loadFollowUps();
     this.loadFilterOptions();
     this.loadStatusOptions();
-    this.loadFollowUps();
 
     // Row colours change as the call-back time approaches, so re-evaluate them every 30 seconds.
     this.urgencyTimer = setInterval(() => {

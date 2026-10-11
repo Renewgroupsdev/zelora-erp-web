@@ -60,7 +60,25 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   &.female { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  button { justify-content: flex-start; border-radius: 10px; min-height: 34px; }
+  // Each grade is a card: the head drawing above the radio + name, like the printed consultation form.
+  button {
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 6px;
+    border-radius: 10px;
+    min-height: 34px;
+    text-align: center;
+
+    span { display: inline-flex; align-items: center; gap: 5px; }
+    &.on app-hair-grade-icon { transform: scale(1.06); }
+  }
+
+  app-hair-grade-icon { transition: transform 0.15s ease; }
+}
+
+@media (max-width: 640px) {
+  .wz-grades { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .wz-pull {

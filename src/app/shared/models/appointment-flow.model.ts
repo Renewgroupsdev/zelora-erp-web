@@ -29,6 +29,49 @@ export interface Sitting {
   notes: string | null;
   doctor?: { id: number; name: string } | null;
   photos: SittingPhoto[];
+  requirements?: SittingRequirements;
+}
+
+/** What a sitting still needs before it can be completed (computed by the API). */
+export interface SittingRequirements {
+  /** Sitting no. that must be completed first; null when this sitting can be worked on. */
+  waiting_for: number | null;
+  has_before_photos: boolean;
+  has_after_photos: boolean;
+  has_notes: boolean;
+  required_paid: number;
+  paid: number;
+  amount_due: number;
+  balance: number;
+  materials: { product_id: number; name: string; needed: number; available: number }[];
+}
+
+export interface FlowCustomer {
+  id: number;
+  customer_code: string;
+  first_name: string;
+  last_name?: string | null;
+  gender?: string | null;
+  date_of_birth?: string | null;
+  mobile_no?: string | null;
+  alternate_mobile_no?: string | null;
+  email?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  occupation?: string | null;
+  referred_by?: string | null;
+  created_at?: string | null;
+}
+
+export interface FlowPayment {
+  id: number;
+  payment_mode: string;
+  paid_amount: string;
+  transaction_no: string | null;
+  payment_date: string | null;
+  remarks: string | null;
 }
 
 export interface FlowAppointmentRecord {
@@ -69,7 +112,11 @@ export interface FlowAppointmentRecord {
   invoiced_at: string | null;
   branch?: { id: number; name: string } | null;
   counselor?: { id: number; name: string } | null;
-  customer?: { id: number; customer_code: string; first_name: string } | null;
+  location?: string | null;
+  pincode?: string | null;
+  notes?: string | null;
+  customer?: FlowCustomer | null;
+  payments?: FlowPayment[];
   customer_treatment?: { id: number; sittings_count: number; completed_sittings: number; sittings: Sitting[] } | null;
   documents?: FlowDocument[];
   lead?: { source?: { source_name: string } | null; service_category?: { name: string } | null } | null;

@@ -20,6 +20,7 @@ import { ApiRoutesConstants } from '../../shared/common-services/api-route-const
 import { FlowAppointmentRecord, FlowStatus, inr } from '../../shared/models/appointment-flow.model';
 import { AppointmentWizard } from './appointment-wizard/appointment-wizard';
 import { SittingsDialog } from './sittings-dialog/sittings-dialog';
+import { CustomerDetailsDialog } from './customer-details-dialog/customer-details-dialog';
 
 const STATUSES: FlowStatus[] = ['Scheduled', 'In Consultation', 'Awaiting Terms', 'Invoiced', 'Converted', 'Cancelled'];
 
@@ -291,11 +292,14 @@ export class AppointmentPage implements OnInit, AfterViewInit {
     else if (action === 'call') window.location.href = `tel:${appt.mobile_no}`;
   }
 
+  /** Customer name link: the full customer record, view only (editing stays in the form / sittings actions). */
   openAppointmentProfile(row: TableRow): void {
     const appt = this.appointments.find(a => a.id === Number(row['id']));
     if (!appt) return;
-    if (appt.status === 'Converted') this.openSittings(appt);
-    else this.openWizard(appt);
+    this.dialog.open(CustomerDetailsDialog, {
+      width: '960px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false,
+      panelClass: 'customer-details-dialog', data: { appointmentId: appt.id },
+    });
   }
 
   openWizard(appt: FlowAppointmentRecord): void {

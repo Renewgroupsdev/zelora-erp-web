@@ -1,0 +1,145 @@
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      @if (appt()?.photo_url) {
+        <img class="cd-avatar" [src]="appt()!.photo_url" alt="Customer photo" />
+      } @else {
+        <div class="cd-avatar initials">{{ initials() || '?' }}</div>
+      }
+      <div class="title-content">
+        <h2>{{ appt()?.name ?? 'Customer details' }}</h2>
+        @if (appt(); as a) {
+          <p>{{ a.customer?.customer_code ?? 'Not a customer yet' }} · {{ a.mobile_no }} · <span class="cd-status">{{ a.status }}</span></p>
+        }
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    @if (appt(); as a) {
+      <section class="cd-section">
+        <h3><i class="bi bi-person-vcard"></i> Personal details</h3>
+        <dl class="cd-grid">
+          @for (item of personal(); track item.label) { <div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div> }
+        </dl>
+      </section>
+
+      <section class="cd-section">
+        <h3><i class="bi bi-calendar2-check"></i> Appointment &amp; treatment</h3>
+        <dl class="cd-grid">
+          @for (item of visit(); track item.label) { <div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div> }
+        </dl>
+        @if (a.doctor_suggestion) {
+          <p class="cd-note"><strong>Doctor suggestion:</strong> {{ a.doctor_suggestion }}</p>
+        }
+      </section>
+
+      @if (clinical().length) {
+        <section class="cd-section">
+          <h3><i class="bi bi-clipboard2-pulse"></i> Clinical examination</h3>
+          <dl class="cd-grid">
+            @for (item of clinical(); track item.label) { <div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div> }
+          </dl>
+        </section>
+      }
+
+      @if (a.documents?.length) {
+        <section class="cd-section">
+          <h3><i class="bi bi-folder2-open"></i> Patient history documents</h3>
+          <div class="cd-docs">
+            @for (doc of a.documents; track doc.id) {
+              <a [href]="doc.url" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> {{ doc.title }}</a>
+            }
+          </div>
+        </section>
+      }
+
+      <section class="cd-section">
+        <h3><i class="bi bi-receipt"></i> Billing &amp; payments</h3>
+        <div class="cd-money">
+          <div><small>Total</small><strong>{{ inr(a.total_amount) }}</strong></div>
+          <div><small>Paid</small><strong class="ok">{{ inr(a.paid_amount) }}</strong></div>
+          <div><small>Balance</small><strong [class.due]="balance() > 0">{{ inr(balance()) }}</strong></div>
+          <div><small>Invoice</small><strong>{{ a.invoice_no || '-' }}</strong></div>
+          <div><small>Terms accepted</small><strong>{{ a.terms_accepted_at ? formatDateTime(a.terms_accepted_at) : 'Not yet' }}</strong></div>
+        </div>
+        @if (a.payments?.length) {
+          <div class="cd-table-wrap">
+            <table class="cd-table">
+              <thead><tr><th>Date</th><th>Mode</th><th>Amount</th><th>Transaction no.</th><th>Remarks</th></tr></thead>
+              <tbody>
+                @for (p of a.payments; track p.id) {
+                  <tr>
+                    <td>{{ formatDateTime(p.payment_date) }}</td>
+                    <td>{{ p.payment_mode }}</td>
+                    <td>{{ inr(p.paid_amount) }}</td>
+                    <td>{{ p.transaction_no || '-' }}</td>
+                    <td>{{ p.remarks || '-' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="muted">No payments recorded yet.</p>
+        }
+      </section>
+
+      @if (sittings().length) {
+        <section class="cd-section">
+          <h3><i class="bi bi-collection"></i> Treatment sittings <small>· {{ completedSittings() }} of {{ sittings().length }} completed</small></h3>
+          @for (s of sittings(); track s.id) {
+            <div class="cd-sitting" [class.done]="s.status === 'completed'">
+              <div class="cd-sitting-head">
+                <strong>Sitting {{ s.sitting_no }}</strong>
+                <span>
+                  @if (s.status === 'completed') { Completed {{ formatDate(s.actual_date) }} }
+                  @else { Scheduled {{ formatDate(s.scheduled_date) }} {{ formatTime(s.scheduled_time) }} }
+                </span>
+                <span class="cd-pill" [class.done]="s.status === 'completed'">{{ s.status === 'completed' ? 'Completed' : 'Scheduled' }}</span>
+              </div>
+              @if (s.photos.length) {
+                <div class="cd-photos">
+                  @for (type of ['before', 'after']; track type) {
+                    @if (photos(s, $any(type)).length) {
+                      <div>
+                        <small>{{ type === 'before' ? 'Before' : 'After' }}</small>
+                        <div class="cd-thumbs">
+                          @for (p of photos(s, $any(type)); track p.id; let i = $index) {
+                            <img [src]="p.url" [alt]="type + ' photo ' + (i + 1)" title="Click to view" (click)="openViewer(photos(s, $any(type)), i)" />
+                          }
+                        </div>
+                      </div>
+                    }
+                  }
+                </div>
+              }
+              @if (s.notes) {
+                <p class="cd-note"><strong>Doctor notes{{ s.doctor ? ' (' + s.doctor.name + ')' : '' }}:</strong> {{ s.notes }}</p>
+              }
+            </div>
+          }
+        </section>
+      }
+    } @else {
+      <p class="muted cd-loading">Loading customer details…</p>
+    }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+  </div>
+</div>
+
+@if (viewer(); as v) {
+  <div class="cd-viewer" (click)="viewer.set(null)">
+    <img [src]="v.photos[v.index].url" alt="Sitting photo" (click)="$event.stopPropagation()" />
+    <button type="button" class="nav close" (click)="viewer.set(null)" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+    @if (v.photos.length > 1) {
+      <button type="button" class="nav prev" (click)="$event.stopPropagation(); step(-1)" aria-label="Previous"><i class="bi bi-chevron-left"></i></button>
+      <button type="button" class="nav next" (click)="$event.stopPropagation(); step(1)" aria-label="Next"><i class="bi bi-chevron-right"></i></button>
+    }
+    <span class="caption">{{ v.photos[v.index].type === 'before' ? 'Before' : 'After' }} · {{ v.index + 1 }} / {{ v.photos.length }}</span>
+  </div>
+}

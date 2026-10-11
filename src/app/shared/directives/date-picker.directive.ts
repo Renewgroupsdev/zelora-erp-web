@@ -1,4 +1,4 @@
-import { AfterViewInit, Directive, ElementRef, OnDestroy, forwardRef } from '@angular/core';
+import { AfterViewInit, Directive, ElementRef, Input, OnChanges, OnDestroy, SimpleChanges, forwardRef } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { DateTime, Namespace, TempusDominus } from '@eonasdan/tempus-dominus';
 import { TEMPUS_DOMINUS_ICONS } from './tempus-dominus-icons';
@@ -18,7 +18,10 @@ import { TEMPUS_DOMINUS_ICONS } from './tempus-dominus-icons';
     },
   ],
 })
-export class DatePickerDirective implements AfterViewInit, ControlValueAccessor, OnDestroy {
+export class DatePickerDirective implements AfterViewInit, OnChanges, ControlValueAccessor, OnDestroy {
+  /** Earliest selectable day as ISO "yyyy-MM-dd" (e.g. today for follow-ups / appointments); earlier days are greyed out. */
+  @Input() minDate: string | null = null;
+
   private picker?: TempusDominus;
   private pendingValue: string | null = null;
   private onChange: (value: string) => void = () => {};
@@ -37,6 +40,7 @@ export class DatePickerDirective implements AfterViewInit, ControlValueAccessor,
       localization: {
         format: 'MM/dd/yyyy',
       },
+      restrictions: this.restrictions(),
     });
 
     this.picker.subscribe(Namespace.events.change, (event: { date?: DateTime }) => {
@@ -49,6 +53,17 @@ export class DatePickerDirective implements AfterViewInit, ControlValueAccessor,
       this.applyValue(this.pendingValue);
       this.pendingValue = null;
     }
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['minDate'] && this.picker) {
+      this.picker.updateOptions({ restrictions: this.restrictions() });
+    }
+  }
+
+  private restrictions(): { minDate?: DateTime } {
+    const [year, month, day] = (this.minDate ?? '').split('-').map(Number);
+    return year && month && day ? { minDate: DateTime.convert(new Date(year, month - 1, day)) } : {};
   }
 
   private handleBlur = (): void => this.onTouched();

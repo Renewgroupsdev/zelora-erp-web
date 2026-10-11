@@ -2,13 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
+import { Subscription } from 'rxjs';
 import { CommonDetailCard } from '../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../shared/components/common-table-card/common-table-card';
-import {
-  BookingFormDialog,
-  BookingFormResult,
-} from '../../shared/components/booking-form-dialog/booking-form-dialog';
 import {
   CommonFilterState,
   DetailCardData,
@@ -20,20 +17,21 @@ import {
   TableRow,
 } from '../../shared/models/common-components.model';
 import { ToastService } from '../../shared/common-services/toast.service';
-import { CrmFlowService, FlowAppointment } from '../../shared/common-services/crm-flow.service';
-import { Customer, CustomerSegment } from './customer.model';
-import {
-  CustomerProfileDialog,
-  CustomerProfileDialogResult,
-} from './customer-profile-dialog/customer-profile-dialog';
-import { AddCustomerForm, AddCustomerFormResult } from './add-customer-form/add-customer-form';
-import { COMBO_OFFERS, PAYMENT_METHODS, PaymentStatus, TREATMENTS, treatmentByName } from '../../shared/data/treatment-catalog';
+import { ApiDataService } from '../../core/http/api.service';
+import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
+import { CustomerDetailsDialog } from '../appointment-page/customer-details-dialog/customer-details-dialog';
+import { Customer, CustomerSegment, CustomerStats } from './customer.model';
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'view', icon: 'bi-eye', label: 'View Profile', variant: 'primary' },
   { key: 'call', icon: 'bi-telephone', label: 'Call', variant: 'default' },
 ];
 
+/**
+ * Customer Management. The list, the stat cards and the Branch / Preferred service filter options all come from
+ * the API (GET /customers, GET /customers/stats); search, filters, sorting and paging run server-side.
+ * "View" opens the read-only customer details (profile, clinical exam, billing, sittings).
+ */
 @Component({
   selector: 'app-customer-portal-page',
   standalone: true,
@@ -42,21 +40,18 @@ const QUICK_ACTIONS: QuickAction[] = [
   styleUrl: './customer-portal-page.scss',
 })
 export class CustomerPortalPage implements OnInit {
-  constructor(private dialog: MatDialog, private toast: ToastService, private crmFlow: CrmFlowService) { }
+  constructor(private dialog: MatDialog, private toast: ToastService, private api: ApiDataService) { }
 
-  readonly branches = ['Anna Nagar', 'Velachery', 'Indiranagar', 'Coimbatore', 'T Nagar', 'Bengaluru'];
   readonly segments: CustomerSegment[] = ['Regular', 'New'];
-  readonly treatments = TREATMENTS;
-  readonly combos = COMBO_OFFERS;
-  readonly serviceOptions = TREATMENTS.map((t) => t.name);
 
   viewMode: 'grid' | 'table' = 'table';
 
+  // The common filter card has fixed keys: "source" carries the Segment and "telecaller" the Preferred service.
   filters: FilterOption[] = [
     { key: 'status', label: 'Status', options: ['Active', 'Inactive'] },
     { key: 'source', label: 'Segment', options: this.segments },
-    { key: 'branch', label: 'Branch', multiSelect: true, options: this.branches },
-    { key: 'telecaller', label: 'Preferred Service', options: this.serviceOptions },
+    { key: 'branch', label: 'Branch', multiSelect: true, options: [] },
+    { key: 'telecaller', label: 'Preferred Service', options: [] },
     { key: 'date', label: 'Last Visit' },
   ];
 
@@ -84,10 +79,11 @@ export class CustomerPortalPage implements OnInit {
 
   readonly pageSizeOptions = [12, 24, 48];
 
+  /** The page of customers on screen (table and grid view share it). */
   customers: Customer[] = [];
-  pagedCustomers: Customer[] = [];
   rows: TableRow[] = [];
   loading = false;
+  stats: DetailCardData[] = this.buildStats(null);
 
   currentPage = 1;
   pageSize = 12;
@@ -96,30 +92,82 @@ export class CustomerPortalPage implements OnInit {
   sortDirection: SortDirection = 'asc';
   private searchTerm = '';
 
+  private branchIdByName = new Map<string, number>();
+  private serviceIdByName = new Map<string, number>();
+  private listSub?: Subscription;
+
   ngOnInit(): void {
-    this.customers = this.buildSeedCustomers();
-    const imported = this.crmFlow.getClients().map((client, index) => this.flowClientToCustomer(client, index));
-    this.customers = [...imported, ...this.customers.filter(customer => !imported.some(client => client.phone === customer.phone))];
-    this.refreshRows();
+    this.loadCustomers();
+    this.loadStats();
   }
 
-  private flowClientToCustomer(client: FlowAppointment, index: number): Customer {
-    return {
-      id: `CUS-FLOW-${client.id}-${index}`,
-      name: client.name,
-      phone: client.phone,
-      email: '-',
-      gender: client.gender,
-      branch: client.branch,
-      segment: 'New',
-      status: 'Active',
-      memberSince: client.date,
-      totalVisits: 1,
-      lastVisit: client.date,
-      totalAmount: client.total,
-      preferredService: client.service,
-      visitHistory: [{ date: client.date, service: client.service, branch: client.branch, amount: client.total, discount: 0, amountPaid: client.paymentStatus === 'Paid' ? client.total : 0, paymentMethod: client.paymentMethod, paymentStatus: client.paymentStatus }],
-    };
+  // ---------------------------------------------------------------------
+  // API
+  // ---------------------------------------------------------------------
+
+  private loadStats(): void {
+    this.api.GET(ApiRoutesConstants.CUSTOMER_STATS).subscribe({
+      next: (res: any) => {
+        const s: CustomerStats | undefined = res?.data;
+        if (!s) return;
+        this.stats = this.buildStats(s);
+        this.branchIdByName = new Map(s.branches.map(b => [b.name, b.id]));
+        this.serviceIdByName = new Map(s.services.map(t => [t.name, t.id]));
+        this.filters = this.filters.map(f =>
+          f.key === 'branch' ? { ...f, options: s.branches.map(b => b.name) }
+            : f.key === 'telecaller' ? { ...f, options: s.services.map(t => t.name) }
+              : f);
+      },
+      error: () => undefined,
+    });
+  }
+
+  private loadCustomers(): void {
+    const params = new URLSearchParams({
+      page: String(this.currentPage),
+      per_page: String(this.pageSize),
+      sort_by: this.sortActive,
+      sort_dir: this.sortDirection || 'asc',
+    });
+    if (this.searchTerm) params.set('search', this.searchTerm);
+    if (this.filterState.status) params.set('status', this.filterState.status);
+    if (this.filterState.source) params.set('segment', this.filterState.source);
+    this.filterState.branch
+      .map(name => this.branchIdByName.get(name))
+      .filter((id): id is number => id !== undefined)
+      .forEach(id => params.append('branch_id[]', String(id)));
+    const serviceId = this.filterState.telecaller ? this.serviceIdByName.get(this.filterState.telecaller) : undefined;
+    if (serviceId) params.set('treatment_id', String(serviceId));
+    if (this.filterState.dateFrom) params.set('date_from', this.filterState.dateFrom);
+    if (this.filterState.dateTo) params.set('date_to', this.filterState.dateTo);
+
+    this.loading = true;
+    // A newer search / filter / page request supersedes one still in flight.
+    this.listSub?.unsubscribe();
+    this.listSub = this.api.GET(`${ApiRoutesConstants.CUSTOMERS}?${params}`).subscribe({
+      next: (res: any) => {
+        const page = res?.data;
+        this.customers = page?.data ?? [];
+        this.totalRecords = Number(page?.total ?? this.customers.length);
+        this.rows = this.customers.map(c => this.mapCustomerToRow(c));
+        this.loading = false;
+      },
+      error: (err: any) => {
+        this.loading = false;
+        this.toast.error(err?.error?.message || 'Could not load customers.');
+      },
+    });
+  }
+
+  private buildStats(s: CustomerStats | null): DetailCardData[] {
+    const total = s?.total ?? 0;
+    const activePct = total ? Math.round(((s?.active ?? 0) / total) * 100) : 0;
+    return [
+      { label: 'Total Customers', value: total.toLocaleString(), trendText: 'Across all branches', trendDirection: 'neutral', icon: 'bi-people-fill', iconVariant: 'primary' },
+      { label: 'New This Month', value: s?.new_this_month ?? 0, trendText: 'Recently onboarded', trendDirection: 'up', icon: 'bi-person-plus-fill', iconVariant: 'green' },
+      { label: 'Active Customers', value: s?.active ?? 0, trendText: `${activePct}% of base`, trendDirection: 'up', icon: 'bi-check-circle', iconVariant: 'blue' },
+      { label: 'Avg. Total Amount', value: this.formatCurrency(s?.avg_total_amount ?? 0), trendText: 'Per customer', trendDirection: 'neutral', icon: 'bi-cash-stack', iconVariant: 'orange' },
+    ];
   }
 
   setViewMode(mode: 'grid' | 'table'): void {
@@ -156,16 +204,12 @@ export class CustomerPortalPage implements OnInit {
   }
 
   formatCurrency(value: number): string {
-    return `₹${value.toLocaleString('en-IN')}`;
+    return `₹${Number(value ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   }
 
-  /** Sum of amount still owed across every recorded visit (Partial/Pending payments). */
-  balanceAmount(customer: Customer): number {
-    return customer.visitHistory.reduce((sum, visit) => sum + Math.max(0, visit.amount - visit.amountPaid), 0);
-  }
-
-  formatDate(iso: string): string {
-    const date = new Date(`${iso}T00:00:00`);
+  formatDate(iso: string | null): string {
+    if (!iso) return '-';
+    const date = new Date(`${iso.slice(0, 10)}T00:00:00`);
     if (Number.isNaN(date.getTime())) return iso;
 
     const day = String(date.getDate()).padStart(2, '0');
@@ -173,43 +217,14 @@ export class CustomerPortalPage implements OnInit {
     return `${day}-${month}-${date.getFullYear()}`;
   }
 
-  private toIso(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-
   // ---------------------------------------------------------------------
-  // Stats
-  // ---------------------------------------------------------------------
-
-  get stats(): DetailCardData[] {
-    const now = new Date();
-    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-    const newThisMonth = this.customers.filter((c) => c.memberSince.startsWith(monthKey));
-    const active = this.customers.filter((c) => c.status === 'Active');
-    const avgLifetime = this.customers.length
-      ? Math.round(this.customers.reduce((sum, c) => sum + c.totalAmount, 0) / this.customers.length)
-      : 0;
-
-    return [
-      { label: 'Total Customers', value: this.customers.length.toLocaleString(), trendText: 'Across all branches', trendDirection: 'neutral', icon: 'bi-people-fill', iconVariant: 'primary' },
-      { label: 'New This Month', value: newThisMonth.length, trendText: 'Recently onboarded', trendDirection: 'up', icon: 'bi-person-plus-fill', iconVariant: 'green' },
-      { label: 'Active Customers', value: active.length, trendText: `${this.customers.length ? Math.round((active.length / this.customers.length) * 100) : 0}% of base`, trendDirection: 'up', icon: 'bi-check-circle', iconVariant: 'blue' },
-      { label: 'Avg. Total Amount', value: this.formatCurrency(avgLifetime), trendText: 'Per customer', trendDirection: 'neutral', icon: 'bi-cash-stack', iconVariant: 'orange' },
-    ];
-  }
-
-  // ---------------------------------------------------------------------
-  // Filtering, sorting, pagination
+  // Filtering, sorting, pagination (all server-side)
   // ---------------------------------------------------------------------
 
   onSearch(term: string): void {
-    this.searchTerm = term.trim().toLowerCase();
+    this.searchTerm = term.trim();
     this.currentPage = 1;
-    this.refreshRows();
+    this.loadCustomers();
   }
 
   onFilterClick(key: string): void {
@@ -219,7 +234,7 @@ export class CustomerPortalPage implements OnInit {
   onFiltersChange(filters: CommonFilterState): void {
     this.filterState = { ...filters, branch: [...filters.branch] };
     this.currentPage = 1;
-    this.refreshRows();
+    this.loadCustomers();
   }
 
   onExport(): void {
@@ -243,7 +258,7 @@ export class CustomerPortalPage implements OnInit {
   onPageChange(event: TablePageChangeEvent): void {
     this.currentPage = event.page;
     this.pageSize = event.pageSize;
-    this.refreshRows();
+    this.loadCustomers();
   }
 
   get totalPages(): number {
@@ -262,87 +277,20 @@ export class CustomerPortalPage implements OnInit {
     this.sortActive = sort.active;
     this.sortDirection = sort.direction || 'asc';
     this.currentPage = 1;
-    this.refreshRows();
-  }
-
-  private getFilteredCustomers(): Customer[] {
-    return this.customers.filter((customer) => {
-      if (this.searchTerm) {
-        const haystack = `${customer.name} ${customer.phone} ${customer.email}`.toLowerCase();
-        if (!haystack.includes(this.searchTerm)) return false;
-      }
-
-      if (this.filterState.status && customer.status !== this.filterState.status) return false;
-      if (this.filterState.source && customer.segment !== this.filterState.source) return false;
-      if (this.filterState.branch.length > 0 && !this.filterState.branch.includes(customer.branch)) return false;
-      if (this.filterState.telecaller && customer.preferredService !== this.filterState.telecaller) return false;
-      if (this.filterState.dateFrom && customer.lastVisit < this.filterState.dateFrom) return false;
-      if (this.filterState.dateTo && customer.lastVisit > this.filterState.dateTo) return false;
-
-      return true;
-    });
-  }
-
-  private getSortedCustomers(customers: Customer[]): Customer[] {
-    if (!this.sortActive || !this.sortDirection) return customers;
-
-    const direction = this.sortDirection === 'asc' ? 1 : -1;
-
-    return [...customers].sort((left, right) => {
-      const leftValue = this.getSortableValue(left, this.sortActive);
-      const rightValue = this.getSortableValue(right, this.sortActive);
-
-      if (leftValue < rightValue) return -1 * direction;
-      if (leftValue > rightValue) return 1 * direction;
-      return 0;
-    });
-  }
-
-  private getSortableValue(customer: Customer, key: string): string | number {
-    if (key === 'lead') return customer.name.toLowerCase();
-    if (key === 'totalVisits') return customer.totalVisits;
-    if (key === 'totalAmount') return customer.totalAmount;
-    if (key === 'balanceAmount') return this.balanceAmount(customer);
-    if (key === 'lastVisit') return customer.lastVisit;
-
-    const value = (customer as unknown as Record<string, unknown>)[key];
-    if (typeof value === 'number') return value;
-    return String(value ?? '').toLowerCase();
-  }
-
-  private refreshRows(): void {
-    this.loading = true;
-
-    const filtered = this.getFilteredCustomers();
-    const sorted = this.getSortedCustomers(filtered);
-
-    this.totalRecords = sorted.length;
-
-    const totalPages = Math.max(1, Math.ceil(this.totalRecords / this.pageSize));
-    if (this.currentPage > totalPages) {
-      this.currentPage = totalPages;
-    }
-
-    const startIndex = (this.currentPage - 1) * this.pageSize;
-    const endIndex = startIndex + this.pageSize;
-
-    this.pagedCustomers = sorted.slice(startIndex, endIndex);
-    this.rows = this.pagedCustomers.map((customer) => this.mapCustomerToRow(customer));
-
-    this.loading = false;
+    this.loadCustomers();
   }
 
   private mapCustomerToRow(customer: Customer): TableRow {
     return {
       id: customer.id,
-      lead: { name: customer.name, subtitle: customer.id } as LeadCell,
-      contact: customer.phone,
-      branch: customer.branch,
+      lead: { name: customer.name, subtitle: customer.customer_code } as LeadCell,
+      contact: customer.mobile_no,
+      branch: customer.branch_name ?? '-',
       segment: customer.segment,
-      totalVisits: customer.totalVisits,
-      lastVisit: this.formatDate(customer.lastVisit),
-      totalAmount: this.formatCurrency(customer.totalAmount),
-      balanceAmount: this.formatCurrency(this.balanceAmount(customer)),
+      totalVisits: customer.visits,
+      lastVisit: this.formatDate(customer.last_visit),
+      totalAmount: this.formatCurrency(customer.total_amount),
+      balanceAmount: this.formatCurrency(customer.balance_amount),
       status: customer.status,
       actions: QUICK_ACTIONS,
     };
@@ -353,187 +301,33 @@ export class CustomerPortalPage implements OnInit {
   // ---------------------------------------------------------------------
 
   onQuickAction({ row, action }: { row: TableRow; action: string }): void {
-    const id = row['id'] as string;
-    const customer = this.customers.find((c) => c.id === id);
+    const customer = this.customers.find((c) => c.id === Number(row['id']));
     if (!customer) return;
 
     if (action === 'view') this.openProfile(customer);
-    else if (action === 'call') window.location.href = `tel:${customer.phone.replace(/\s+/g, '')}`;
+    else if (action === 'call') window.location.href = `tel:${customer.mobile_no.replace(/\s+/g, '')}`;
   }
 
   openProfileFromRow(row: TableRow): void {
-    const id = String(row['id'] ?? '');
-    const customer = this.customers.find(item => item.id === id);
+    const customer = this.customers.find(item => item.id === Number(row['id']));
     if (customer) this.openProfile(customer);
   }
 
+  /** Read-only customer details: profile, clinical examination, billing & payments and treatment sittings. */
   openProfile(customer: Customer): void {
-    const dialogRef = this.dialog.open(CustomerProfileDialog, {
-      width: '480px',
-      maxWidth: 'calc(100vw - 32px)',
-      maxHeight: '90vh',
+    if (!customer.latest_appointment_id) {
+      this.toast.warning(`${customer.name} has no appointment yet, so there are no details to show.`);
+      return;
+    }
+
+    this.dialog.open(CustomerDetailsDialog, {
+      width: '960px',
+      maxWidth: 'calc(100vw - 24px)',
+      maxHeight: '94vh',
       autoFocus: false,
       restoreFocus: true,
-      panelClass: 'customer-profile-dialog',
-      data: { customer },
-    });
-
-    dialogRef.afterClosed().subscribe((result: CustomerProfileDialogResult | undefined) => {
-      if (result?.action === 'book') {
-        this.openBookingFor(result.customer);
-      }
-    });
-  }
-
-  private openBookingFor(customer: Customer): void {
-    const dialogRef = this.dialog.open(BookingFormDialog, {
-      width: '640px',
-      maxWidth: 'calc(100vw - 32px)',
-      maxHeight: '92vh',
-      autoFocus: false,
-      restoreFocus: true,
-      disableClose: true,
-      panelClass: 'booking-form-dialog',
-      data: {
-        mode: 'appointment',
-        branches: this.branches,
-        staffOptions: ['Priya Sharma', 'Arun Kumar', 'Divya Raj', 'Karthik S', 'Meera Nair'],
-        treatments: this.treatments,
-        combos: this.combos,
-        initial: {
-          customerName: customer.name,
-          phone: customer.phone,
-          branch: customer.branch,
-          service: customer.preferredService,
-        },
-      },
-    });
-
-    dialogRef.afterClosed().subscribe((result: BookingFormResult | undefined) => {
-      if (!result) return;
-
-      // Reflect the new booking straight onto this customer's visit history/lifetime
-      // value so the profile the staff member just booked from stays in sync.
-      customer.visitHistory = [
-        {
-          date: result.date,
-          service: result.service,
-          branch: result.branch,
-          amount: result.total,
-          discount: result.discountAmount,
-          amountPaid: result.amountPaid,
-          paymentMethod: result.paymentMethod,
-          paymentStatus: result.paymentStatus,
-        },
-        ...customer.visitHistory,
-      ];
-      customer.totalVisits += 1;
-      customer.lastVisit = result.date;
-      customer.totalAmount += result.total;
-
-      this.refreshRows();
-      this.toast.success('Appointment booked', `${result.customerName} - ${result.date}`);
-    });
-  }
-
-  openAddCustomer(): void {
-    const dialogRef = this.dialog.open(AddCustomerForm, {
-      width: '640px',
-      maxWidth: 'calc(100vw - 32px)',
-      maxHeight: '92vh',
-      autoFocus: false,
-      restoreFocus: true,
-      disableClose: true,
-      panelClass: 'add-customer-dialog',
-      data: { branches: this.branches, segments: this.segments, serviceOptions: this.serviceOptions },
-    });
-
-    dialogRef.afterClosed().subscribe((result: AddCustomerFormResult | undefined) => {
-      if (!result) return;
-
-      const today = this.toIso(new Date());
-      const newCustomer: Customer = {
-        id: `CUS-${Date.now()}`,
-        name: result.name,
-        phone: result.phone,
-        email: result.email || '-',
-        gender: result.gender,
-        branch: result.branch,
-        segment: (result.segment as CustomerSegment) || 'New',
-        status: 'Active',
-        memberSince: today,
-        totalVisits: 0,
-        lastVisit: today,
-        totalAmount: 0,
-        preferredService: result.preferredService,
-        visitHistory: [],
-      };
-
-      this.customers = [newCustomer, ...this.customers];
-      this.currentPage = 1;
-      this.toast.success('Customer added', `${newCustomer.name} has been registered.`);
-      this.refreshRows();
-    });
-  }
-
-  // ---------------------------------------------------------------------
-  // Seed data
-  // ---------------------------------------------------------------------
-
-  private buildSeedCustomers(): Customer[] {
-    const addDays = (days: number): string => {
-      const d = new Date();
-      d.setDate(d.getDate() + days);
-      return this.toIso(d);
-    };
-
-    const seeds: Omit<Customer, 'id' | 'visitHistory'>[] = [
-      { name: 'Ananya Sharma', phone: '+91 98765 43210', email: 'ananya.sharma@example.com', gender: 'F', branch: 'Anna Nagar', segment: 'Regular', status: 'Active', memberSince: addDays(-420), totalVisits: 18, lastVisit: addDays(-2), totalAmount: 84500, preferredService: 'Hair Loss Consultation' },
-      { name: 'Rahul Kumar', phone: '+91 91234 56780', email: 'rahul.kumar@example.com', gender: 'M', branch: 'Velachery', segment: 'Regular', status: 'Active', memberSince: addDays(-260), totalVisits: 9, lastVisit: addDays(-8), totalAmount: 32800, preferredService: 'Acne Treatment' },
-      { name: 'Sneha Menon', phone: '+91 98867 66554', email: 'sneha.menon@example.com', gender: 'F', branch: 'Indiranagar', segment: 'Regular', status: 'Active', memberSince: addDays(-540), totalVisits: 26, lastVisit: addDays(-1), totalAmount: 121000, preferredService: 'Anti-Aging Therapy' },
-      { name: 'Vikram Patel', phone: '+91 90123 45678', email: 'vikram.patel@example.com', gender: 'M', branch: 'Coimbatore', segment: 'Regular', status: 'Inactive', memberSince: addDays(-610), totalVisits: 5, lastVisit: addDays(-180), totalAmount: 15200, preferredService: 'Dermatology Review' },
-      { name: 'Neha Prasad', phone: '+91 93450 78920', email: 'neha.prasad@example.com', gender: 'F', branch: 'Anna Nagar', segment: 'New', status: 'Active', memberSince: addDays(-12), totalVisits: 2, lastVisit: addDays(-3), totalAmount: 6400, preferredService: 'Skin Rejuvenation' },
-      { name: 'Kavin Raj', phone: '+91 99520 13840', email: 'kavin.raj@example.com', gender: 'M', branch: 'T Nagar', segment: 'Regular', status: 'Active', memberSince: addDays(-190), totalVisits: 7, lastVisit: addDays(-15), totalAmount: 27300, preferredService: 'Laser Toning' },
-      { name: 'Divya Bala', phone: '+91 90876 54321', email: 'divya.bala@example.com', gender: 'F', branch: 'Bengaluru', segment: 'Regular', status: 'Active', memberSince: addDays(-700), totalVisits: 34, lastVisit: addDays(-5), totalAmount: 156000, preferredService: 'Bridal Package' },
-      { name: 'Arjun Nair', phone: '+91 91987 65432', email: 'arjun.nair@example.com', gender: 'M', branch: 'Velachery', segment: 'New', status: 'Active', memberSince: addDays(-20), totalVisits: 1, lastVisit: addDays(-20), totalAmount: 3200, preferredService: 'Hair Loss Consultation' },
-      { name: 'Meera Iyer', phone: '+91 97654 32109', email: 'meera.iyer@example.com', gender: 'F', branch: 'Indiranagar', segment: 'Regular', status: 'Active', memberSince: addDays(-310), totalVisits: 11, lastVisit: addDays(-9), totalAmount: 39600, preferredService: 'Acne Treatment' },
-      { name: 'Suresh Babu', phone: '+91 96543 21098', email: 'suresh.babu@example.com', gender: 'M', branch: 'Coimbatore', segment: 'Regular', status: 'Inactive', memberSince: addDays(-500), totalVisits: 6, lastVisit: addDays(-210), totalAmount: 19800, preferredService: 'Anti-Aging Therapy' },
-      { name: 'Lakshmi Narayan', phone: '+91 95432 10987', email: 'lakshmi.narayan@example.com', gender: 'F', branch: 'T Nagar', segment: 'Regular', status: 'Active', memberSince: addDays(-480), totalVisits: 21, lastVisit: addDays(-4), totalAmount: 98700, preferredService: 'Dermatology Review' },
-      { name: 'Ganesh Prasad', phone: '+91 94321 09876', email: 'ganesh.prasad@example.com', gender: 'M', branch: 'Anna Nagar', segment: 'New', status: 'Active', memberSince: addDays(-25), totalVisits: 2, lastVisit: addDays(-6), totalAmount: 5400, preferredService: 'Skin Rejuvenation' },
-      { name: 'Priyanka Rao', phone: '+91 93210 98765', email: 'priyanka.rao@example.com', gender: 'F', branch: 'Bengaluru', segment: 'Regular', status: 'Active', memberSince: addDays(-220), totalVisits: 8, lastVisit: addDays(-11), totalAmount: 28900, preferredService: 'Laser Toning' },
-      { name: 'Manoj Verma', phone: '+91 92109 87654', email: 'manoj.verma@example.com', gender: 'M', branch: 'Velachery', segment: 'Regular', status: 'Active', memberSince: addDays(-160), totalVisits: 6, lastVisit: addDays(-18), totalAmount: 22100, preferredService: 'Bridal Package' },
-      { name: 'Anitha Krishnan', phone: '+91 91098 76543', email: 'anitha.krishnan@example.com', gender: 'F', branch: 'Coimbatore', segment: 'Regular', status: 'Active', memberSince: addDays(-650), totalVisits: 29, lastVisit: addDays(-7), totalAmount: 134500, preferredService: 'Hair Loss Consultation' },
-      { name: 'Deepak Chandran', phone: '+91 90987 65432', email: 'deepak.chandran@example.com', gender: 'M', branch: 'T Nagar', segment: 'Regular', status: 'Inactive', memberSince: addDays(-390), totalVisits: 4, lastVisit: addDays(-240), totalAmount: 12600, preferredService: 'Acne Treatment' },
-      { name: 'Revathi Sundaram', phone: '+91 89876 54321', email: 'revathi.sundaram@example.com', gender: 'F', branch: 'Anna Nagar', segment: 'New', status: 'Active', memberSince: addDays(-6), totalVisits: 1, lastVisit: addDays(-6), totalAmount: 2800, preferredService: 'Skin Rejuvenation' },
-      { name: 'Harish Kumar', phone: '+91 88765 43210', email: 'harish.kumar@example.com', gender: 'M', branch: 'Indiranagar', segment: 'Regular', status: 'Active', memberSince: addDays(-280), totalVisits: 10, lastVisit: addDays(-13), totalAmount: 35200, preferredService: 'Dermatology Review' },
-    ];
-
-    return seeds.map((seed, index) => {
-      const id = `CUS-${3000 + index}`;
-      const visitHistory = Array.from({ length: Math.min(seed.totalVisits, 3) }, (_, i) => {
-        const serviceName = this.serviceOptions[(index + i) % this.serviceOptions.length];
-        const amount = treatmentByName(serviceName)?.price ?? 1000;
-        // Every 4th visit had a small discount applied; the most recent visit for every
-        // 6th customer is still awaiting the balance, to give the profile dialog some
-        // realistic payment variety instead of everything looking "Paid".
-        const discount = (index + i) % 4 === 0 ? Math.round(amount * 0.1) : 0;
-        const billed = amount - discount;
-        const paymentStatus: PaymentStatus = i === 0 && index % 6 === 0 ? 'Partial' : 'Paid';
-        const amountPaid = paymentStatus === 'Partial' ? Math.round(billed / 2) : billed;
-
-        return {
-          date: addDays(-(i + 1) * 30 - index),
-          service: serviceName,
-          branch: seed.branch,
-          amount: billed,
-          discount,
-          amountPaid,
-          paymentMethod: PAYMENT_METHODS[(index + i) % PAYMENT_METHODS.length],
-          paymentStatus,
-        };
-      });
-
-      return { id, ...seed, visitHistory };
+      panelClass: 'customer-details-dialog',
+      data: { appointmentId: customer.latest_appointment_id },
     });
   }
 }
