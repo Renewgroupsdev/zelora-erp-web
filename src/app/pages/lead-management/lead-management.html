@@ -60,6 +60,7 @@
         (followUpClick)="openFollowUp($event)"
         (sendToBranchClick)="sendToBranch($event)"
         (callClick)="onCallLead($event)"
+        (validateClick)="onValidateLead($event.row, $event.valid)"
         (editClick)="onEditLead($event)"
         (deleteClick)="onDeleteLead($event)"
       ></app-common-table-card>

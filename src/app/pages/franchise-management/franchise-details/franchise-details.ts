@@ -1,3 +1,4 @@
+import { GeoLocationCard } from '../../../shared/components/geo-location-card/geo-location-card';
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -45,7 +46,7 @@ const pct = (part: number, whole: number) => (whole ? Math.round((part / whole) 
 @Component({
   selector: 'app-franchise-details',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatDialogModule, HScroll, BfDonut, BfBars, BfColumns],
+  imports: [CommonModule, RouterLink, MatDialogModule, HScroll, BfDonut, BfBars, BfColumns, GeoLocationCard],
   templateUrl: './franchise-details.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise.scss'],
 })

@@ -80,7 +80,8 @@ export class TelephonyService {
   private recordingStartedAt = 0;
 
   constructor() {
-    effect(() => (this.auth.isAuthenticated() ? this.startPolling() : this.stopPolling()));
+    // Telephony is for staff sessions (users and employee logins); customers never poll it.
+    effect(() => (this.auth.isAuthenticated() && this.auth.currentUser()?.login_type !== 'customer' ? this.startPolling() : this.stopPolling()));
     effect(() => this.syncRecording(this.activeCall()));
   }
 

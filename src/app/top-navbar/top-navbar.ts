@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { NavLayoutService } from '../services/nav-layout.service';
 import { AppNotification, NotificationService } from '../shared/common-services/notification.service';
@@ -18,7 +18,17 @@ export class TopNavbar {
   private readonly authService = inject(AuthService);
 
   readonly currentUser = this.authService.currentUser;
-  readonly currentUserRole = computed(() => roleLabel(this.currentUser()?.role_id));
+
+  /** Profile photo of the signed-in user / employee / customer; falls back to the icon if it fails to load. */
+  readonly failedAvatarUrl = signal<string | null>(null);
+  readonly avatarUrl = computed(() => {
+    const url = this.currentUser()?.profile_photo_url;
+    return url && url !== this.failedAvatarUrl() ? url : null;
+  });
+  readonly currentUserRole = computed(() => {
+    const user = this.currentUser();
+    return user?.role_name || user?.role?.name || roleLabel(user?.role_id);
+  });
 
   constructor(
     public navLayout: NavLayoutService,

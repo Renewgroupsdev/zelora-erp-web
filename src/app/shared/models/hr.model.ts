@@ -38,6 +38,11 @@ export interface Employee {
   photo?: string;
   /** Login type; HR employees are Staff. */
   userType?: EmployeeType;
+  /** Telephony extension - only for a telecaller designation. */
+  extension?: string;
+  deviceType?: string;
+  sipUsername?: string;
+  sipDomain?: string;
   designation: string;
   department: string;
   branch: string;

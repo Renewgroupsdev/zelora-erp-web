@@ -67,14 +67,14 @@
   } @else {
     <div class="grid-section">
 
-      @if (!pagedCustomers.length) {
+      @if (!customers.length) {
         <div class="grid-empty">
           <i class="bi bi-people"></i>
           <p>No customers match the current filters.</p>
         </div>
       } @else {
         <div class="customer-grid">
-          @for (customer of pagedCustomers; track customer.id) {
+          @for (customer of customers; track customer.id) {
             <div class="customer-card">
               <div class="customer-card-top">
                 <span class="customer-avatar" [ngClass]="avatarColorForName(customer.name)">{{ initials(customer.name) }}</span>
@@ -83,22 +83,22 @@
 
               <div class="customer-card-body">
                 <span class="customer-name">{{ customer.name }}</span>
-                <span class="customer-id">{{ customer.id }}</span>
-                <span class="customer-meta"><i class="bi bi-telephone"></i> {{ customer.phone }}</span>
-                <span class="customer-meta"><i class="bi bi-geo-alt-fill"></i> {{ customer.branch }}</span>
+                <span class="customer-id">{{ customer.customer_code }}</span>
+                <span class="customer-meta"><i class="bi bi-telephone"></i> {{ customer.mobile_no }}</span>
+                <span class="customer-meta"><i class="bi bi-geo-alt-fill"></i> {{ customer.branch_name || "-" }}</span>
               </div>
 
               <div class="customer-card-stats">
                 <div class="mini-stat">
-                  <span class="mini-value">{{ customer.totalVisits }}</span>
+                  <span class="mini-value">{{ customer.visits }}</span>
                   <span class="mini-label">Visits</span>
                 </div>
                 <div class="mini-stat">
-                  <span class="mini-value">{{ formatCurrency(customer.totalAmount) }}</span>
+                  <span class="mini-value">{{ formatCurrency(customer.total_amount) }}</span>
                   <span class="mini-label">LTV</span>
                 </div>
                 <div class="mini-stat">
-                  <span class="mini-value">{{ formatDate(customer.lastVisit) }}</span>
+                  <span class="mini-value">{{ formatDate(customer.last_visit) }}</span>
                   <span class="mini-label">Last Visit</span>
                 </div>
               </div>

@@ -53,9 +53,6 @@
             <span class="category-date">{{ parent.createdAt }}</span>
 
             <div class="row-actions">
-              <button type="button" class="row-action-btn action-add" (click)="onAddSubCategory(parent, $event)" aria-label="Add sub-category" title="Add sub-category">
-                <i class="bi bi-plus-lg"></i>
-              </button>
               <button type="button" class="row-action-btn action-edit" (click)="onEditCategory(parent, $event)" aria-label="Edit category" title="Edit">
                 <i class="bi bi-pencil-fill"></i>
               </button>
@@ -80,18 +77,9 @@
                   </span>
 
                   <span class="category-date">{{ child.createdAt }}</span>
-
-                  <div class="row-actions">
-                    <button type="button" class="row-action-btn action-edit" (click)="onEditCategory(child, $event)" aria-label="Edit sub-category" title="Edit">
-                      <i class="bi bi-pencil-fill"></i>
-                    </button>
-                    <button type="button" class="row-action-btn action-delete" (click)="onDeleteCategory(child, $event)" aria-label="Delete sub-category" title="Delete">
-                      <i class="bi bi-trash3-fill"></i>
-                    </button>
-                  </div>
                 </div>
               } @empty {
-                <div class="children-empty">No sub-categories yet.</div>
+                <div class="children-empty">No sub-categories yet. Add a treatment under this category in Treatment Management.</div>
               }
             </div>
           }

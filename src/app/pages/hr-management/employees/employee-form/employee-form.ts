@@ -56,6 +56,16 @@ export class EmployeeForm implements OnInit {
   readonly employeeTypes = EMPLOYEE_TYPES;
   /** Designation options are the login roles. */
   readonly roles = signal<string[]>([]);
+  /** Names of the telecaller-group roles - choosing one as the designation asks for a telephony extension. */
+  private readonly telecallerRoles = signal<string[]>([]);
+  isTelecaller(): boolean {
+    return this.telecallerRoles().includes(this.model.designation);
+  }
+  /** Same rule as the User form: letters, digits and * # _ - only. */
+  extensionInvalid(): boolean {
+    const ext = (this.model.extension ?? '').trim();
+    return this.isTelecaller() && (!ext || !/^[A-Za-z0-9*#_-]+$/.test(ext) || ext.length > 30);
+  }
   readonly photoError = signal<string | null>(null);
   readonly isSaving = signal(false);
   /** Branches come from the API; the employee stores the branch by name and the API receives its id. */
@@ -70,11 +80,16 @@ export class EmployeeForm implements OnInit {
 
   ngOnInit(): void {
     this.model.userType ??= 'Staff';
+    this.model.deviceType ||= 'sip';
     // List rows mask the bank account and omit KYC files, so an edit starts from the full record.
     if (this.data.employee) {
       this.hr.fetchEmployee(this.data.employee.id).subscribe({
         next: full => {
           this.model.accountNo = full.accountNo;
+          this.model.extension = full.extension;
+          this.model.deviceType = full.deviceType || 'sip';
+          this.model.sipUsername = full.sipUsername;
+          this.model.sipDomain = full.sipDomain;
           this.model.kycDocuments = full.kycDocuments ?? [];
         },
         error: () => this.toast.error('Failed to load the full employee details. Please close and try again.'),
@@ -85,8 +100,9 @@ export class EmployeeForm implements OnInit {
         if (!this.isEdit && list.length) this.model.branch = list.find(b => b.name === this.data.branch)?.name ?? list[0].name;
       }
     });
-    this.api.GetAllPages(ApiRoutesConstants.ROLES_GET_List).pipe(catchError(() => of([]))).subscribe((roles: { name: string }[]) => {
+    this.api.GetAllPages(ApiRoutesConstants.ROLES_GET_List).pipe(catchError(() => of([]))).subscribe((roles: { name: string; slug?: string }[]) => {
       const names = roles.map(r => r.name);
+      this.telecallerRoles.set(roles.filter(r => r.slug === 'telecaller').map(r => r.name));
       // Keep a saved designation that is no longer a role selectable instead of blanking it.
       const current = this.model.designation;
       this.roles.set(current && !names.includes(current) ? [current, ...names] : names);
@@ -222,7 +238,9 @@ export class EmployeeForm implements OnInit {
 
   private stepValid(form: NgForm, index: number): boolean {
     const controlsOk = this.stepControls[index].every(n => !form.controls[n] || form.controls[n].valid);
-    return controlsOk && (index !== 0 || (!this.sameAsPrimary() && !this.passwordMismatch()));
+    return controlsOk
+      && (index !== 0 || (!this.sameAsPrimary() && !this.passwordMismatch()))
+      && (index !== 1 || !this.extensionInvalid());
   }
 
   goTo(index: number): void {
@@ -252,6 +270,7 @@ export class EmployeeForm implements OnInit {
     this.hr.saveEmployee(this.data.employee?.id ?? null, payload, {
       photo: this.photoFile, removePhoto: this.photoRemoved, removedKycIds: this.removedKycIds, candidateId: this.candidateId,
       password: this.password || undefined, passwordConfirmation: this.confirmPassword || undefined,
+      telecaller: this.isTelecaller(),
     }).pipe(finalize(() => this.isSaving.set(false))).subscribe({
       next: () => {
         this.toast.success(this.isEdit ? 'Employee updated successfully' : 'Employee added successfully');

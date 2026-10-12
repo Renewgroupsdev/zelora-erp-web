@@ -6,9 +6,6 @@
     <div class="page-header-actions">
       <span class="today-date-badge"><i class="bi bi-calendar3"></i> {{ formattedTodayDate }}</span>
 
-      <button type="button" class="add-appointment-btn" (click)="openAddAppointment()">
-        <i class="bi bi-plus-lg"></i> <span>New Appointment</span>
-      </button>
     </div>
   </div>
 
@@ -22,7 +19,6 @@
           [trendDirection]="stat.trendDirection ?? 'neutral'"
           [icon]="stat.icon"
           [iconVariant]="stat.iconVariant ?? 'primary'"
-          [sparkline]="stat.sparkline"
         ></app-common-detail-card>
       </div>
     }
@@ -52,25 +48,25 @@
           <div class="timeline-scroll" #timelineScroll (scroll)="onTimelineScroll()">
             @for (appt of todaysAppointments; track appt.id) {
               <div class="timeline-item">
-                <div class="timeline-time">{{ formatTime(appt.startTime) }}</div>
+                <div class="timeline-time">{{ formatTime(appt.appointment_time) }}</div>
 
                 <div class="timeline-body">
-                  <span class="timeline-avatar" [ngClass]="avatarColorForName(appt.customerName)">{{ initials(appt.customerName) }}</span>
+                  <span class="timeline-avatar" [ngClass]="avatarColorForName(appt.name)">{{ initials(appt.name) }}</span>
                   <div class="timeline-info">
-                    <span class="timeline-name">{{ appt.customerName }}</span>
-                    <span class="timeline-service"><i class="bi bi-magic"></i> {{ appt.service }}</span>
-                    <span class="timeline-branch"><i class="bi bi-geo-alt-fill"></i> {{ appt.branch }}</span>
+                    <span class="timeline-name">{{ appt.name }}</span>
+                    <span class="timeline-service"><i class="bi bi-magic"></i> {{ appt.treatment?.name || (appt.category ? appt.category + ' consultation' : 'Consultation') }}</span>
+                    <span class="timeline-branch"><i class="bi bi-geo-alt-fill"></i> {{ appt.branch?.name || '-' }}</span>
                   </div>
                 </div>
 
                 <div class="timeline-payment">
-                  <span class="payment-amount"><i class="bi bi-cash-stack"></i> {{ formatCurrency(appt.total) }}</span>
-                  <span class="status-pill sm" [ngClass]="paymentStatusClass(appt.paymentStatus)">{{ appt.paymentStatus }}</span>
+                  <span class="payment-amount"><i class="bi bi-cash-stack"></i> {{ inr(appt.total_amount) }}</span>
+                  <span class="status-pill sm" [ngClass]="paymentStatusClass(paymentStatus(appt))">{{ paymentStatus(appt) }}</span>
                 </div>
 
                 <div class="timeline-footer">
-                  <span class="status-pill" [ngClass]="statusClass(appt.status)">{{ appt.status }}</span>
-                  <a class="timeline-call-btn" [href]="'tel:' + appt.phone" [attr.aria-label]="'Call ' + appt.customerName" title="Call">
+                  <button type="button" class="status-pill as-btn" [ngClass]="statusClass(appt.status)" (click)="appt.status === 'Converted' ? openSittings(appt) : openWizard(appt)" title="Open">{{ appt.status }}</button>
+                  <a class="timeline-call-btn" [href]="'tel:' + appt.mobile_no" [attr.aria-label]="'Call ' + appt.name" title="Call">
                     <i class="bi bi-telephone-fill"></i>
                   </a>
                 </div>
@@ -87,7 +83,7 @@
   </div>
 
   <app-common-filter-card
-    searchPlaceholder="Search by customer, phone or service"
+    searchPlaceholder="Search by customer, phone or invoice no"
     [filters]="filters"
     (searchChange)="onSearch($event)"
     (filterClick)="onFilterClick($event)"

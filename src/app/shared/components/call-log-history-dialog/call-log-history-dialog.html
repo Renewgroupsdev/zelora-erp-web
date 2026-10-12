@@ -51,7 +51,7 @@
           <div class="call-log-entry-content">
             <div class="call-log-entry-row">
               <span class="call-log-caller">{{ entry.telecallerName }}</span>
-              <span class="call-log-empno">Emp No: {{ entry.empNo }}</span>
+              @if (entry.empNo) { <span class="call-log-empno">Emp No: {{ entry.empNo }}</span> }
             </div>
 
             <div class="call-log-datetime">

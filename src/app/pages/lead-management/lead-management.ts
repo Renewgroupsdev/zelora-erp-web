@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import Swal from 'sweetalert2';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Component, OnInit } from '@angular/core';
 import { Sort, SortDirection } from '@angular/material/sort';
@@ -20,7 +21,7 @@ import {
 import { AddLeadForm } from './add-lead-form/add-lead-form';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin, of } from 'rxjs';
+import { Subscription, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
@@ -97,8 +98,8 @@ export class LeadManagement implements OnInit {
 
   readonly pageSizeOptions = [10, 30, 50, 100];
   isLoading = false;
-  allRows: TableRow[] = [];
   private leadsById = new Map<number, any>();
+  private leadSub?: Subscription;
   readonly type: number = 1;
 
   rows: TableRow[] = [];
@@ -120,8 +121,10 @@ export class LeadManagement implements OnInit {
   private telecallerBranchByName: Record<string, string> = {};
 
   ngOnInit(): void {
-    this.loadFilterList();
+    // Table first: the API serves requests one after another, so the list shouldn't queue
+    // behind the seven filter-option / stat-card calls.
     this.loadLeadData();
+    this.loadFilterList();
   }
 
   private loadFilterList(): void {
@@ -230,26 +233,48 @@ export class LeadManagement implements OnInit {
     const telecallerId = this.filterState.telecaller ? this.telecallerIdByName.get(this.filterState.telecaller) : undefined;
     if (telecallerId) params.set('assigned_to', String(telecallerId));
 
+    if (this.filterState.dateFrom) params.set('date_from', this.filterState.dateFrom);
+    if (this.filterState.dateTo) params.set('date_to', this.filterState.dateTo);
+
     return params.toString();
   }
 
+  /** Fetches only the page on screen - search, filters, sort and paging all run in the API.
+   *  (Downloading every lead and paging in the browser took one request per 15 leads.) */
   loadLeadData(): void {
     this.isLoading = true;
     this.loading = true;
 
-    const qs = this.buildQueryParams();
-    this.ApiDataService.GetAllPages(`${ApiRoutesConstants.LEAD_GET_List}?${qs}`).subscribe({
-      next: (leads: any[]) => {
+    const params = new URLSearchParams(this.buildQueryParams());
+    params.set('page', String(this.currentPage));
+    params.set('per_page', String(this.pageSize));
+    if (this.sortActive && this.sortDirection) {
+      params.set('sort_by', this.sortActive);
+      params.set('sort_dir', this.sortDirection);
+    }
+
+    // A newer search / filter / page request supersedes one still in flight.
+    this.leadSub?.unsubscribe();
+    this.leadSub = this.ApiDataService.GET(`${ApiRoutesConstants.LEAD_GET_List}?${params}`).subscribe({
+      next: (res: any) => {
+        const page = res?.data;
         this.isLoading = false;
         this.leadsById.clear();
-        this.allRows = leads.map((lead: any) => this.mapLeadToRow(lead));
-        this.refreshRows();
+        this.rows = (page?.data ?? []).map((lead: any) => this.mapLeadToRow(lead));
+        this.totalRecords = Number(page?.total ?? this.rows.length);
         this.loading = false;
+
+        // The page asked for no longer exists (e.g. last row of the last page was removed).
+        const lastPage = Number(page?.last_page ?? 1);
+        if (this.currentPage > lastPage && lastPage >= 1 && this.totalRecords > 0) {
+          this.currentPage = lastPage;
+          this.loadLeadData();
+        }
       },
       error: (err: any) => {
         this.isLoading = false;
         this.loading = false;
-        this.toast.error(err.message);
+        this.toast.error(err?.error?.message || err.message);
       },
     });
   }
@@ -265,14 +290,16 @@ export class LeadManagement implements OnInit {
       contact: lead.mobile_no ?? '',
       source: lead.source_name ?? '',
       service_category: lead.service_category_name ?? '',
-      service_request: lead.reason ?? '',
+      service_request: lead.service_request_name ?? '',
       branch: lead.organization_name ?? lead.location ?? '',
       status: lead.status_name || 'Lead',
+      // A telecaller checks each lead assigned to them (the API only returns theirs) before following it up.
+      canValidate: this.telephony.isTelecaller() && ['New Lead', 'Lead'].includes(lead.status_name || 'Lead') && !!lead.assigned_to ? 1 : 0,
       created_at: this.formatDate(lead.created_at),
       gender: lead.gender ?? '',
       telecaller: lead.assigned_to_name || 'Unassigned',
       telecaller_avatar: lead.assigned_to_name
-        ? [{ name: lead.assigned_to_name, empNo: `EMP-${lead.assigned_to}`, image: lead.assigned_to_photo ?? undefined }]
+        ? [{ name: lead.assigned_to_name, empNo: lead.assigned_to_emp_code ?? '', image: lead.assigned_to_photo ?? undefined }]
         : [],
       next_follow_up: lead.next_follow_up_at ? this.formatDate(lead.next_follow_up_at) : '-',
       action: 'menu',
@@ -351,20 +378,16 @@ export class LeadManagement implements OnInit {
   }
 
   onPageChange(event: TablePageChangeEvent) {
-    this.loading = true;
     this.currentPage = event.page;
     this.pageSize = event.pageSize;
-    this.refreshRows();
-    this.loading = false;
+    this.loadLeadData();
   }
 
   onSortChange(sort: Sort) {
-    this.loading = true;
     this.sortActive = sort.active;
     this.sortDirection = sort.direction || 'asc';
     this.currentPage = 1;
-    this.refreshRows();
-    this.loading = false;
+    this.loadLeadData();
   }
 
   onRowAction(row: TableRow) {
@@ -434,6 +457,33 @@ export class LeadManagement implements OnInit {
     });
   }
 
+  /** Telecaller verdict on an assigned lead. Invalid leads go back to Lead Management (unassigned) for the branch manager. */
+  async onValidateLead(row: TableRow, valid: boolean): Promise<void> {
+    let reason = '';
+    if (!valid) {
+      const result = await Swal.fire({
+        title: 'Mark this lead as invalid?',
+        input: 'text',
+        inputLabel: 'Note (required)',
+        inputPlaceholder: 'e.g. wrong number, not interested',
+        inputValidator: (value: string) => (value.trim() ? null : 'Add a note explaining why this lead is invalid.'),
+        showCancelButton: true,
+        confirmButtonText: 'Mark invalid',
+        confirmButtonColor: '#dc2626',
+      });
+      if (!result.isConfirmed) return;
+      reason = String(result.value ?? '').trim();
+    }
+
+    this.ApiDataService.POST(`${ApiRoutesConstants.LEAD_VALIDATE}/${row['id']}/validate`, { valid, reason }).subscribe({
+      next: (res: any) => {
+        this.toast.success(res?.message || (valid ? 'Lead marked valid.' : 'Lead marked invalid.'));
+        this.loadLeadData();
+      },
+      error: (err: any) => this.toast.error(err?.error?.message || 'Unable to update the lead. Please try again.'),
+    });
+  }
+
   private openLeadProfile(row: TableRow, stage: 'lead' | 'appointment'): void {
     const dialogRef = this.dialog.open(LeadProfileDialog, {
       width: '600px',
@@ -497,8 +547,8 @@ export class LeadManagement implements OnInit {
   }
 
   private removeLeadRow(row: TableRow): void {
-    this.allRows = this.allRows.filter(item => item !== row);
-    this.refreshRows();
+    this.rows = this.rows.filter(item => item !== row);
+    this.totalRecords = Math.max(0, this.totalRecords - 1);
   }
 
   private toFlowLead(row: TableRow): FlowLead {
@@ -547,98 +597,30 @@ export class LeadManagement implements OnInit {
     });
   }
 
-  private refreshRows(): void {
-    const filteredRows = this.getFilteredRows();
-    const sortedRows = this.getSortedRows(filteredRows);
-
-    this.totalRecords = sortedRows.length;
-
-    const totalPages = Math.max(1, Math.ceil(this.totalRecords / this.pageSize));
-    if (this.currentPage > totalPages) {
-      this.currentPage = totalPages;
-    }
-
-    const startIndex = (this.currentPage - 1) * this.pageSize;
-    const endIndex = startIndex + this.pageSize;
-    this.rows = sortedRows.slice(startIndex, endIndex);
-  }
-
-  private getFilteredRows(): TableRow[] {
-    return this.allRows.filter((row) => {
-      const lead = row['lead'] as LeadCell;
-      const haystack = [lead.name, lead.subtitle ?? '', row['contact']].join(' ').toLowerCase();
-
-      if (this.searchTerm && !haystack.includes(this.searchTerm)) return false;
-      if (this.filterState.status && row['status'] !== this.filterState.status) return false;
-      if (this.filterState.source && row['source'] !== this.filterState.source) return false;
-      if (this.filterState.branch.length > 0 && !this.filterState.branch.includes(String(row['branch']))) return false;
-      if (this.filterState.telecaller && row['telecaller'] !== this.filterState.telecaller) return false;
-
-      const leadDate = this.parseLeadDate(String(row['created_at']));
-      if (this.filterState.dateFrom && leadDate < this.filterState.dateFrom) return false;
-      if (this.filterState.dateTo && leadDate > this.filterState.dateTo) return false;
-
-      return true;
-    });
-  }
-
-  private parseLeadDate(value: string): string {
-    const parsed = new Date(value);
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed.toISOString().slice(0, 10);
-    }
-
-    const match = value.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-    if (!match) return '';
-
-    const months: Record<string, string> = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' };
-    const month = months[match[2].toLowerCase()];
-    if (!month) return '';
-    return `${match[3]}-${month}-${match[1].padStart(2, '0')}`;
-  }
-
-  private getSortedRows(rows: TableRow[]): TableRow[] {
-    if (!this.sortActive || !this.sortDirection) {
-      return rows;
-    }
-
-    const direction = this.sortDirection === 'asc' ? 1 : -1;
-
-    return [...rows].sort((left, right) => {
-      const leftValue = this.getSortableValue(left, this.sortActive);
-      const rightValue = this.getSortableValue(right, this.sortActive);
-
-      if (leftValue < rightValue) {
-        return -1 * direction;
-      }
-
-      if (leftValue > rightValue) {
-        return 1 * direction;
-      }
-
-      return 0;
-    });
-  }
-
-  private getSortableValue(row: TableRow, key: string): string | number {
-    const value = row[key];
-
-    if (key === 'lead') {
-      return ((value as LeadCell)?.name ?? '').toLowerCase();
-    }
-
-    if (typeof value === 'number') {
-      return value;
-    }
-
-    return String(value ?? '').toLowerCase();
-  }
-
   openAppointment(row: TableRow): void {
     this.openLeadProfile(row, 'appointment');
   }
 
-  sendToBranch(row: TableRow): void {
-    console.log('Send to branch:', row);
+  /** Hands the lead to one of the branch's telecallers (batches of 10 per telecaller - see the API). */
+  async sendToBranch(row: TableRow): Promise<void> {
+    const confirmed = await this.toast.confirm(
+      'Send this lead to the branch telecallers?',
+      'It is assigned automatically; each telecaller gets leads in batches of 10.',
+      'Yes, send',
+    );
+    if (!confirmed) return;
+
+    const branchId = this.branchIdByName.get(String(row['branch'] ?? ''));
+    this.ApiDataService.POST(ApiRoutesConstants.LEAD_AUTO_ASSIGN, {
+      lead_ids: [Number(row['id'])],
+      ...(branchId ? { organization_id: branchId } : {}),
+    }).subscribe({
+      next: (res: any) => {
+        this.toast.success(res?.message || 'Lead sent to the branch.');
+        this.loadLeadData();
+        this.loadFilterList();
+      },
+      error: (err: any) => this.toast.error(err?.error?.message || 'Unable to send the lead. Please try again.'),
+    });
   }
 }

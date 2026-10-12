@@ -343,7 +343,7 @@
 }
 
 .side-navbar.expanded .nav-item.has-children {
-  background: var(--nav-surface);
+  // background: var(--nav-surface);
   border-radius: 15px;
   box-shadow: 0 2px 8px rgba(16, 40, 36, .07);
   padding: 5px;
@@ -2126,4 +2126,25 @@
 
 .nav-list::-webkit-scrollbar-thumb:hover {
   background: var(--primary-dark);
+}
+
+
+.side-navbar.expanded .nav-item.has-children .nav-link:hover {
+  color: color-mix(in srgb, var(--primary-dark) 76%, var(--text-dark));
+  background: color-mix(in srgb, var(--primary) 11%, var(--app-surface-solid));
+  border-color: color-mix(in srgb, var(--primary) 26%, var(--app-surface-solid));
+}
+
+.side-navbar.expanded .nav-item.has-children .nav-link.active:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+.side-navbar.expanded .subnav-link:hover {
+  color: color-mix(in srgb, var(--primary-dark) 76%, var(--text-dark));
+  background: color-mix(in srgb, var(--primary) 13%, var(--app-surface-solid));
+}
+
+.side-navbar.expanded .subnav-link:hover .subnav-icon {
+  color: var(--primary);
 }

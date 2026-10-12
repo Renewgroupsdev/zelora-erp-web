@@ -1,0 +1,156 @@
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-collection-fill"></i></div>
+      <div class="title-content">
+        <h2>Treatment Sittings</h2>
+        @if (appt(); as a) {
+          <p>{{ a.name }} · {{ a.customer?.customer_code }} · {{ a.treatment?.name }} · {{ completed() }} of {{ sittings().length }} completed</p>
+        }
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    @if (appt(); as a) {
+      <div class="st-progress">
+        <div class="bar"><span [style.width.%]="sittings().length ? (completed() / sittings().length) * 100 : 0"></span></div>
+        <small>{{ completed() }} / {{ sittings().length }} sittings · Invoice {{ a.invoice_no }} · Paid {{ inr(a.paid_amount) }} of {{ inr(a.total_amount) }}</small>
+      </div>
+
+      @for (s of sittings(); track s.id) {
+        <section class="st-card" [class.done]="s.status === 'completed'" [class.next]="s.id === nextOpenId" [class.locked]="isLocked(s)">
+          <header>
+            <span class="st-no">{{ s.sitting_no }}</span>
+            <div class="st-when">
+              <strong>Sitting {{ s.sitting_no }}</strong>
+              <small>
+                @if (s.status === 'completed') { Completed {{ formatDate(s.actual_date) }} }
+                @else { {{ formatDate(s.scheduled_date) }} {{ formatTime(s.scheduled_time) }} }
+              </small>
+            </div>
+            <span class="st-status" [class.done]="s.status === 'completed'" [class.locked]="isLocked(s)">
+              @if (s.status === 'completed') { Completed } @else if (isLocked(s)) { <i class="bi bi-lock-fill"></i> Locked } @else { Next }
+            </span>
+
+            @if (s.status !== 'completed') {
+              <button type="button" class="st-link" [disabled]="busy() === s.id" (click)="drafts[s.id].rescheduling = !drafts[s.id].rescheduling"><i class="bi bi-calendar2-week"></i> Reschedule</button>
+              <button type="button" class="st-complete" [disabled]="busy() === s.id || blockers(s).length > 0" [title]="blockers(s).join(' · ')" (click)="complete(s)"><i class="bi bi-check2-circle"></i> Mark completed</button>
+            }
+          </header>
+
+          @if (isLocked(s)) {
+            <p class="st-locked-note"><i class="bi bi-lock"></i> Complete sitting {{ waitingFor(s) }} first - this sitting opens after that.</p>
+          }
+
+          @if (drafts[s.id].rescheduling) {
+            <div class="st-reschedule">
+              <div class="input-wrap"><i class="bi bi-calendar3"></i><input type="date" [min]="today" [(ngModel)]="drafts[s.id].date" [name]="'d' + s.id" /></div>
+              <div class="input-wrap"><i class="bi bi-clock"></i><input type="time" [(ngModel)]="drafts[s.id].time" [name]="'t' + s.id" /></div>
+              <button type="button" class="save-btn" [disabled]="busy() === s.id" (click)="reschedule(s)">Save new slot</button>
+              <button type="button" class="cancel-btn" (click)="drafts[s.id].rescheduling = false">Cancel</button>
+            </div>
+          }
+
+          <div class="st-photos">
+            @for (type of ['before', 'after']; track type) {
+              <div class="st-gallery">
+                <div class="st-gallery-head">
+                  <span><i class="bi" [class.bi-camera]="type === 'before'" [class.bi-stars]="type === 'after'"></i> {{ type === 'before' ? 'Before' : 'After' }} photos</span>
+                  @if (s.status !== 'completed') {
+                    <label class="st-link" [class.disabled]="busy() === s.id || !canUpload(s, $any(type))">
+                      <i class="bi bi-plus-lg"></i> Add
+                      <input type="file" accept="image/*" capture="environment" multiple hidden #pick (change)="upload(s, $any(type), pick)" />
+                    </label>
+                  }
+                </div>
+                <div class="st-thumbs">
+                  @for (p of photos(s, $any(type)); track p.id; let i = $index) {
+                    <div class="st-thumb">
+                      <img [src]="p.url" [alt]="type + ' photo ' + (i + 1)" title="Click to view" (click)="openViewer(photos(s, $any(type)), i)" />
+                      @if (s.status !== 'completed') {
+                        <button type="button" aria-label="Remove photo" (click)="deletePhoto(s, p)"><i class="bi bi-x"></i></button>
+                      }
+                    </div>
+                  } @empty {
+                    <span class="muted">
+                      @if (type === 'after' && !isLocked(s) && !canUpload(s, 'after') && s.status !== 'completed') { Add the before photos first }
+                      @else { No {{ type }} photos yet }
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="st-notes">
+            <label [for]="'n' + s.id"><i class="bi bi-journal-medical"></i> Doctor notes
+              @if (s.doctor) { <small>· {{ s.doctor.name }}</small> }
+            </label>
+            @if (isDoctor() && s.status !== 'completed') {
+              <textarea [id]="'n' + s.id" rows="2" [(ngModel)]="drafts[s.id].notes" [name]="'n' + s.id" maxlength="3000" [disabled]="!canWriteNotes(s)"
+                [placeholder]="canWriteNotes(s) ? 'How did the session go? Response, side effects, advice for the next sitting' : isLocked(s) ? 'Complete sitting ' + waitingFor(s) + ' first' : 'Add the before and after photos first'"></textarea>
+              <button type="button" class="st-link" [disabled]="busy() === s.id || !canWriteNotes(s)" (click)="saveNotes(s)"><i class="bi bi-floppy"></i> Save notes</button>
+            } @else {
+              <p class="st-notes-text">{{ s.notes || 'The doctor has not written notes for this sitting yet.' }}</p>
+            }
+          </div>
+
+          @if (s.status !== 'completed' && !isLocked(s) && s.requirements; as r) {
+            <div class="st-checklist">
+              <span [class.ok]="hasPhotos(s, 'before')"><i class="bi" [class.bi-check-circle-fill]="hasPhotos(s, 'before')" [class.bi-circle]="!hasPhotos(s, 'before')"></i> Before photos</span>
+              <span [class.ok]="hasPhotos(s, 'after')"><i class="bi" [class.bi-check-circle-fill]="hasPhotos(s, 'after')" [class.bi-circle]="!hasPhotos(s, 'after')"></i> After photos</span>
+              <span [class.ok]="!!s.notes?.trim()"><i class="bi" [class.bi-check-circle-fill]="!!s.notes?.trim()" [class.bi-circle]="!s.notes?.trim()"></i> Doctor notes</span>
+              <span [class.ok]="r.amount_due <= 0" [class.bad]="r.amount_due > 0">
+                <i class="bi" [class.bi-check-circle-fill]="r.amount_due <= 0" [class.bi-exclamation-circle]="r.amount_due > 0"></i>
+                @if (r.amount_due > 0) { {{ inr(r.amount_due) }} due } @else { Payment ({{ inr(r.paid) }} of {{ inr(r.required_paid) }}) }
+              </span>
+              @for (m of r.materials; track m.product_id) {
+                <span [class.ok]="m.available >= m.needed" [class.bad]="m.available < m.needed">
+                  <i class="bi bi-box-seam"></i> {{ m.name }} {{ m.needed }} ({{ m.available }} in stock)
+                </span>
+              }
+              @if (r.amount_due > 0 && !drafts[s.id].paying) {
+                <button type="button" class="st-link" [disabled]="busy() === s.id" (click)="drafts[s.id].paying = true"><i class="bi bi-cash-coin"></i> Collect payment</button>
+              }
+            </div>
+
+            @if (drafts[s.id].paying) {
+              <div class="st-reschedule">
+                <div class="input-wrap">
+                  <i class="bi bi-wallet2"></i>
+                  <select [(ngModel)]="drafts[s.id].payMode" [name]="'pm' + s.id">
+                    @for (m of paymentModes; track m.value) { <option [value]="m.value">{{ m.label }}</option> }
+                  </select>
+                </div>
+                <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input type="number" min="1" [max]="r.balance" [(ngModel)]="drafts[s.id].payAmount" [name]="'pa' + s.id" placeholder="Amount" /></div>
+                @if (drafts[s.id].payMode !== 'Cash') {
+                  <div class="input-wrap"><i class="bi bi-hash"></i><input type="text" maxlength="100" [(ngModel)]="drafts[s.id].payTxn" [name]="'pt' + s.id" placeholder="Transaction no." /></div>
+                }
+                <button type="button" class="save-btn" [disabled]="busy() === s.id" (click)="collectPayment(s)">Record payment</button>
+                <button type="button" class="cancel-btn" (click)="drafts[s.id].paying = false">Cancel</button>
+              </div>
+            }
+          }
+        </section>
+      }
+    }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+  </div>
+</div>
+
+@if (viewer(); as v) {
+  <div class="st-viewer" (click)="viewer.set(null)">
+    <img [src]="v.photos[v.index].url" alt="Sitting photo" (click)="$event.stopPropagation()" />
+    <button type="button" class="nav close" (click)="viewer.set(null)" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+    <span class="caption">{{ v.photos[v.index].type === 'before' ? 'Before' : 'After' }} · {{ v.index + 1 }} / {{ v.photos.length }}</span>
+    @if (v.photos.length > 1) {
+      <button type="button" class="nav prev" (click)="$event.stopPropagation(); step(-1)" aria-label="Previous"><i class="bi bi-chevron-left"></i></button>
+      <button type="button" class="nav next" (click)="$event.stopPropagation(); step(1)" aria-label="Next"><i class="bi bi-chevron-right"></i></button>
+    }
+  </div>
+}

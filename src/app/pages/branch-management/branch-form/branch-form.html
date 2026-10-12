@@ -81,6 +81,10 @@
         </div>
       </div>
 
+      <div class="section-title"><i class="bi bi-geo-alt"></i> Geo Location</div>
+      <app-geo-location-field idPrefix="br-geo" [(latitude)]="model.latitude" [(longitude)]="model.longitude"
+        [address]="(model.address ? model.address + ', ' : '') + model.city + (model.state ? ', ' + model.state : '')"></app-geo-location-field>
+
       <div class="section-title"><i class="bi bi-person-badge"></i> Branch Head</div>
       <div class="form-grid cols-3">
         <div class="form-field">

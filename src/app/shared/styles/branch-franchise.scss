@@ -967,3 +967,6 @@ a.activity:hover .body strong { color: var(--status-blue-text); }
   .tabs-wrap .tabs { scroll-behavior: auto; }
   .tabs-arrow { transition: none; }
 }
+
+/* Geo Location panel (map + coordinates) between the top row and the tabs */
+.geo-panel { margin-top: 8px; }

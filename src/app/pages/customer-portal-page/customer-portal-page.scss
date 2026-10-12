@@ -212,6 +212,9 @@ app-common-table-card {
   overflow-y: auto;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  // Rows keep the cards' natural height and start at the top - without this a few cards
+  // stretch to fill the whole page height (grid's default align-content: stretch).
+  align-content: start;
   gap: 8px;
   padding: 2px;
   scrollbar-width: thin;
