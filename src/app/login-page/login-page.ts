@@ -108,7 +108,7 @@ export class LoginPage implements OnInit, OnDestroy {
   }
 
   get identifierPlaceholder(): string {
-    return this.mode === 'employee' ? 'Enter your employee ID (e.g. RP1001)' : this.mode === 'customer' ? 'Enter your 10-digit mobile number' : 'Enter your user name';
+    return this.mode === 'employee' ? 'Enter your employee ID (e.g. RNG-EMP-0001)' : this.mode === 'customer' ? 'Enter your 10-digit mobile number' : 'Enter your user name';
   }
 
   /** Customer step 1: send the OTP to the mobile number. */
