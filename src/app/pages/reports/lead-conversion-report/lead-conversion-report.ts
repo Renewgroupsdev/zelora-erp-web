@@ -8,6 +8,7 @@ import { ApiDataService } from '../../../shared/common-services/api-data.service
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { ChartDatum, DetailTrendDirection } from '../../../shared/models/common-components.model';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 type DatePresetKey = 'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_month' | 'this_year' | 'custom';
 type ExportFormat = 'csv' | 'xlsx' | 'pdf';
@@ -108,7 +109,7 @@ const DATE_PRESETS: DatePreset[] = [
 @Component({
   selector: 'app-lead-conversion-report',
   standalone: true,
-  imports: [CommonModule, FormsModule, CommonChartCard, CommonTrendChart],
+  imports: [CommonModule, FormsModule, CommonChartCard, CommonTrendChart, PageLoader],
   templateUrl: './lead-conversion-report.html',
   styleUrl: './lead-conversion-report.scss',
 })

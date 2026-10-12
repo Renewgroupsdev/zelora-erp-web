@@ -8,9 +8,10 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { HairGradeIcon } from '../../../shared/components/hair-grade-icon/hair-grade-icon';
 import {
-  ALLERGIES, EMI_MONTHS, FAMILY_HISTORY, FlowAppointmentRecord, FlowCategory, HAIR_LOSS_PATTERN, HEARD_FROM, LUDWIG_GRADES,
+  ALLERGIES, EMI_MONTHS, FAMILY_HISTORY, FlowAppointmentRecord, HAIR_LOSS_PATTERN, HEARD_FROM, LUDWIG_GRADES,
   NORWOOD_GRADES, PAYMENT_MODES, PaymentMode, SKIN_CONCERNS, SKIN_TYPES, inr,
 } from '../../../shared/models/appointment-flow.model';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 interface TreatmentOption {
   id: number;
@@ -18,6 +19,19 @@ interface TreatmentOption {
   total_amount: number;
   default_sittings: number;
   category: string;
+  category_id: number;
+}
+
+/** Which clinical examination sections a service category needs. */
+type ExamKind = 'Hair' | 'Skin' | 'Combo' | 'Other';
+
+/** A service category from Service Category master, listed in the "Service Category" dropdown. */
+interface CategoryOption {
+  id: number;
+  name: string;
+  /** Hair / Skin / Combo (both) / Other (no hair or skin section, e.g. Slimming). */
+  kind: ExamKind;
+  icon: string;
 }
 
 /** Answers of the printed consultation form, stored as `appointments.consultation`. */
@@ -65,7 +79,7 @@ const emptyConsultation = (): Consultation => ({
 @Component({
   selector: 'app-appointment-wizard',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, HairGradeIcon],
+  imports: [CommonModule, FormsModule, MatDialogModule, HairGradeIcon, PageLoader],
   templateUrl: './appointment-wizard.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', './appointment-wizard.scss'],
 })
@@ -99,6 +113,7 @@ export class AppointmentWizard implements OnInit {
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   readonly treatments = signal<TreatmentOption[]>([]);
+  readonly categories = signal<CategoryOption[]>([]);
   private changed = false;
 
   // Step 1
@@ -108,7 +123,10 @@ export class AppointmentWizard implements OnInit {
   newDocs: { file: File; title: string }[] = [];
 
   // Step 2
-  category: FlowCategory | '' = '';
+  /** Service category name saved on the appointment (Hair, Skin, Combo, Slimming ...). */
+  category = '';
+  /** The service category picked in the dropdown. */
+  categoryId: number | null = null;
   vitals = { bp: '', weight: null as number | null, is_allergy: false };
   c: Consultation = emptyConsultation();
 
@@ -124,13 +142,22 @@ export class AppointmentWizard implements OnInit {
   ngOnInit(): void {
     // Categories with their treatments (real ids + price + default sittings).
     this.api.GetAllPages(ApiRoutesConstants.SERVICE_CATEGORY_TREE_LIST).subscribe({
-      next: (categories: any[]) => this.treatments.set(categories.flatMap(cat => (cat.treatments ?? [])
-        .filter((t: any) => t.is_active !== false)
-        .map((t: any) => ({
-          id: Number(t.id), name: t.name, total_amount: Number(t.total_amount ?? 0), default_sittings: Number(t.default_sittings ?? 1),
-          category: cat.name ?? '',
-        })))),
-      error: () => this.treatments.set([]),
+      next: (categories: any[]) => {
+        const active = categories.filter(cat => cat.is_active !== false);
+        this.categories.set(active
+          .map(cat => ({ id: Number(cat.id), name: cat.name ?? '', kind: categoryKind(cat.name), icon: categoryIcon(cat.name) })));
+        this.treatments.set(active.flatMap(cat => (cat.treatments ?? [])
+          .filter((t: any) => t.is_active !== false)
+          .map((t: any) => ({
+            id: Number(t.id), name: t.name, total_amount: Number(t.total_amount ?? 0), default_sittings: Number(t.default_sittings ?? 1),
+            category: cat.name ?? '', category_id: Number(cat.id),
+          }))));
+        this.syncCategoryId();
+      },
+      error: () => {
+        this.categories.set([]);
+        this.treatments.set([]);
+      },
     });
     this.reload(true);
   }
@@ -164,6 +191,7 @@ export class AppointmentWizard implements OnInit {
       sitting_interval_days: a.sitting_interval_days || 30,
       doctor_suggestion: a.doctor_suggestion ?? '',
     };
+    this.syncCategoryId();
     this.pay = {
       payment_mode: a.payment_mode ?? 'UPI',
       paid_amount: Number(a.paid_amount) || 0,
@@ -267,13 +295,15 @@ export class AppointmentWizard implements OnInit {
 
   private saveClinical(): void {
     if (!this.profile.gender) return void this.error.set('Select the gender (it decides the grading scale).');
-    if (!this.category) return void this.error.set('Choose Hair or Skin.');
-    if (this.category === 'Hair' && !this.c.grade) return void this.error.set(`Select the ${this.profile.gender === 'Female' ? 'Ludwig grade' : 'Norwood grade'}.`);
-    if (this.category === 'Skin' && !this.c.skinType) return void this.error.set('Select the skin type.');
+    if (!this.category) return void this.error.set('Choose the service category.');
+    if (this.showHairExam && !this.c.grade) return void this.error.set(`Select the ${this.profile.gender === 'Female' ? 'Ludwig grade' : 'Norwood grade'}.`);
+    if (this.showSkinExam && !this.c.skinType) return void this.error.set('Select the skin type.');
     const pull = this.c.hairPull;
     if ([pull.frontal, pull.occipital, pull.lesional].some(v => v !== null && v !== undefined && (Number(v) < 0 || Number(v) > 50))) {
       return void this.error.set('Hair pull counts are out of 50.');
     }
+    const categoryId = this.categoryId;
+    const plan = { ...this.plan };
 
     this.send(this.api.PUT(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/clinical`, {
       gender: this.profile.gender,
@@ -282,12 +312,73 @@ export class AppointmentWizard implements OnInit {
       bp: this.vitals.bp || null,
       weight: this.vitals.weight,
       is_allergy: this.vitals.is_allergy || this.c.allergies.length > 0,
-    }));
+    }), () => this.keepServiceRequest(categoryId, plan));
+  }
+
+  /** The service request picked here is saved with step 3, so keep it when the clinical save reloads the appointment. */
+  private keepServiceRequest(categoryId: number | null, plan: typeof this.plan): void {
+    if (!plan.treatment_id || plan.treatment_id === this.plan.treatment_id) return;
+    this.plan = { ...this.plan, treatment_id: plan.treatment_id, sittings_count: plan.sittings_count };
+    this.categoryId = categoryId;
+  }
+
+  /** The service category shown in the dropdown. */
+  get selectedCategory(): CategoryOption | undefined {
+    return this.categories().find(c => c.id === this.categoryId);
+  }
+
+  /** Service category dropdown changed. */
+  onCategoryChange(id: number | null): void {
+    const cat = this.categories().find(c => c.id === Number(id));
+    if (cat) return this.selectCategory(cat);
+    this.categoryId = null;
+    this.category = '';
+    this.c.grade = '';
+    this.plan.treatment_id = null;
+  }
+
+  /** Hair / Skin / Combo / Other of the picked category (older appointments only saved "Hair" / "Skin"). */
+  get examKind(): ExamKind | '' {
+    return this.selectedCategory?.kind ?? (this.category ? categoryKind(this.category) : '');
+  }
+
+  get showHairExam(): boolean {
+    return this.examKind === 'Hair' || this.examKind === 'Combo';
+  }
+
+  get showSkinExam(): boolean {
+    return this.examKind === 'Skin' || this.examKind === 'Combo';
+  }
+
+  /** Service category picked: switch the examination sections and drop a service request from another category. */
+  selectCategory(cat: CategoryOption): void {
+    if (this.categoryId === cat.id) return;
+    if (!this.showHairExam || !(cat.kind === 'Hair' || cat.kind === 'Combo')) this.c.grade = '';
+    this.category = cat.name;
+    this.categoryId = cat.id;
+    if (this.selectedTreatment && this.selectedTreatment.category_id !== cat.id) this.plan.treatment_id = null;
+  }
+
+  /** Picks the service category from the saved service request, else the saved / lead's category name, else Hair / Skin. */
+  private syncCategoryId(): void {
+    const cats = this.categories();
+    const a = this.appt();
+    if (!cats.length || !a) return;
+    const saved = this.category.toLowerCase();
+    const leadCategory = (a.lead?.service_category?.name ?? '').toLowerCase();
+    const match = cats.find(c => c.id === this.selectedTreatment?.category_id)
+      ?? cats.find(c => saved && c.name.toLowerCase() === saved)
+      ?? cats.find(c => !saved && c.name.toLowerCase() === leadCategory)
+      ?? cats.find(c => !!saved && c.kind === categoryKind(saved));
+    this.categoryId = match?.id ?? null;
+    if (match) this.category = match.name;
   }
 
   // ---------------------------------------------------------------- step 3
 
+  /** Service requests (treatments) of the picked service category. */
   get filteredTreatments(): TreatmentOption[] {
+    if (this.categoryId) return this.treatments().filter(t => t.category_id === this.categoryId);
     const cat = this.category.toLowerCase();
     const matching = this.treatments().filter(t => t.category.toLowerCase().includes(cat));
     return cat && matching.length ? matching : this.treatments();
@@ -430,4 +521,19 @@ export class AppointmentWizard implements OnInit {
     const d = new Date(iso);
     return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
+}
+
+/** Which examination sections a service category needs: Combo (or hair + skin) shows both, others (e.g. Slimming) neither. */
+function categoryKind(name: string | null | undefined): ExamKind {
+  const value = (name ?? '').toLowerCase();
+  const hair = value.includes('hair');
+  const skin = value.includes('skin');
+  if (value.includes('combo') || (hair && skin)) return 'Combo';
+  return hair ? 'Hair' : skin ? 'Skin' : 'Other';
+}
+
+function categoryIcon(name: string | null | undefined): string {
+  const value = (name ?? '').toLowerCase();
+  if (value.includes('slim') || value.includes('weight')) return 'bi-heart-pulse';
+  return ({ Hair: 'bi-scissors', Skin: 'bi-droplet-half', Combo: 'bi-stars', Other: 'bi-tags' } as Record<ExamKind, string>)[categoryKind(name)];
 }

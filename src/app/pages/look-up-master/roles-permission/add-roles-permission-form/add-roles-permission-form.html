@@ -13,7 +13,7 @@
   </div>
 
   @if (isLoading) {
-    <div class="form-loading">Loading module details...</div>
+    <app-page-loader [inline]="true"></app-page-loader>
   } @else if (rootGroup) {
     <form [formGroup]="rootGroup" (ngSubmit)="save()" novalidate class="form-scroll">
       <app-module-form-node [group]="rootGroup" [depth]="0" [removable]="false"></app-module-form-node>

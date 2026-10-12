@@ -23,7 +23,7 @@
       </div>
     </header>
 
-    <div class="top-grid">
+    <div class="top-grid geo-top">
       <div class="panel photo-card">
         <div class="photo">
           @if (f.photo) { <img [src]="f.photo" [alt]="f.name + ' franchise'" /> } @else { <i class="bi bi-shop" aria-hidden="true"></i> }
@@ -40,16 +40,16 @@
 
       <div class="panel">
         <h4>Basic Information</h4>
-        <dl class="facts">
-          <div><span class="mi tone-blue"><i class="bi bi-hash"></i></span><dt>Franchise Code</dt><dd>{{ f.code }}</dd></div>
-          <div><span class="mi tone-purple"><i class="bi bi-shop"></i></span><dt>Franchise Name</dt><dd>{{ f.name }}</dd></div>
-          <div><span class="mi tone-orange"><i class="bi bi-building"></i></span><dt>Owner Name</dt><dd>{{ f.ownerCompany }}</dd></div>
-          <div><span class="mi tone-green"><i class="bi bi-geo-alt-fill"></i></span><dt>City</dt><dd>{{ f.city }}</dd></div>
-          <div><span class="mi tone-orange"><i class="bi bi-map"></i></span><dt>State</dt><dd>{{ f.state }}</dd></div>
-          <div><span class="mi tone-blue"><i class="bi bi-telephone-fill"></i></span><dt>Phone</dt><dd>{{ f.ownerPhone || '-' }}</dd></div>
-          <div><span class="mi tone-purple"><i class="bi bi-envelope-fill"></i></span><dt>Email</dt><dd>{{ f.ownerEmail || '-' }}</dd></div>
-          <div><span class="mi tone-green"><i class="bi bi-receipt"></i></span><dt>GST No</dt><dd>{{ f.gstin || '-' }}</dd></div>
-          <div><span class="mi tone-orange"><i class="bi bi-calendar-check"></i></span><dt>Agreement Period</dt><dd>{{ displayDate(f.agreementFrom) }} to {{ displayDate(f.agreementTo) }}</dd></div>
+        <dl class="kv">
+          <dt>Franchise code</dt><dd>{{ f.code }}</dd>
+          <dt>Franchise name</dt><dd>{{ f.name }}</dd>
+          <dt>Owner company</dt><dd>{{ f.ownerCompany }}</dd>
+          <dt>City</dt><dd>{{ f.city }}</dd>
+          <dt>State</dt><dd>{{ f.state || '-' }}</dd>
+          <dt>Phone</dt><dd>{{ f.ownerPhone || '-' }}</dd>
+          <dt>Email</dt><dd>{{ f.ownerEmail || '-' }}</dd>
+          <dt>GST No</dt><dd>{{ f.gstin || '-' }}</dd>
+          <dt>Agreement period</dt><dd>{{ displayDate(f.agreementFrom) }} to {{ displayDate(f.agreementTo) }}</dd>
         </dl>
       </div>
 
@@ -69,12 +69,12 @@
           <button type="button" class="outline-btn" (click)="tab.set('agreement')"><i class="bi bi-file-earmark-text"></i> View Agreement</button>
         </div>
       </div>
-    </div>
 
-    <div class="panel geo-panel">
-      <h4>Geo Location</h4>
-      <app-geo-location-card [latitude]="f.latitude" [longitude]="f.longitude"
-        [address]="f.city + (f.state ? ', ' + f.state : '')" (addLocation)="edit()"></app-geo-location-card>
+      <div class="panel geo-panel">
+        <h4>Geo Location</h4>
+        <app-geo-location-card [compact]="true" [latitude]="f.latitude" [longitude]="f.longitude"
+          [address]="f.city + (f.state ? ', ' + f.state : '')" (addLocation)="edit()"></app-geo-location-card>
+      </div>
     </div>
 
     <div class="panel tabs-panel">

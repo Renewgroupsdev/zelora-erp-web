@@ -8,12 +8,13 @@ import {
   customerNumber,
 } from '../../../core/telephony/telephony.models';
 import { TelephonyService } from '../../../core/telephony/telephony.service';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 /** Live presence board: who is available, who is on a call, how many leads each one holds. */
 @Component({
   selector: 'app-telecaller-status',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PageLoader],
   templateUrl: './telecaller-status.html',
   styleUrl: './telecaller-status.scss',
 })

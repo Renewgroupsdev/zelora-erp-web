@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { ApiDataService } from '../../../../core/http/api.service';
@@ -13,10 +13,9 @@ import { ToastService } from '../../../../shared/common-services/toast.service';
   templateUrl: './add-service-category-form.html',
   styleUrl: './add-service-category-form.scss',
 })
-export class AddServiceCategoryForm implements OnInit {
+export class AddServiceCategoryForm {
   categoryForm: FormGroup;
   isSaving = false;
-  parentOptions: any[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -27,32 +26,12 @@ export class AddServiceCategoryForm implements OnInit {
   ) {
     this.categoryForm = this.fb.group({
       name: [data?.name ?? '', [Validators.required, Validators.maxLength(100)]],
-      parent_id: [data?.parent_id ?? ''],
       status: [data?.status ?? 1, Validators.required],
     });
   }
 
-  ngOnInit(): void {
-    this.loadParentOptions();
-  }
-
   get isEdit(): boolean {
     return !!this.data?.id;
-  }
-
-  loadParentOptions(): void {
-    this.apiDataService.GetAllPages(ApiRoutesConstants.SERVICE_CATEGORY_GET_List).subscribe({
-      next: (categories: any[]) => {
-        // Only top-level categories can be picked as a parent (this schema is 2 levels deep) -
-        // and a category can't be its own parent, so drop it from the list when editing.
-        this.parentOptions = categories.filter(
-          (category: any) => !category.parent_id && category.id !== this.data?.id
-        );
-      },
-      error: (err: any) => {
-        console.error('Failed to load parent categories:', err);
-      },
-    });
   }
 
   saveCategory(): void {
@@ -64,7 +43,8 @@ export class AddServiceCategoryForm implements OnInit {
     const formValue = this.categoryForm.getRawValue();
     const payload = {
       name: formValue.name,
-      parent_id: formValue.parent_id || null,
+      // Parent Category is no longer picked here: a new category is top-level, an edited one keeps its parent.
+      parent_id: this.data?.parent_id ?? null,
       status: Number(formValue.status),
     };
 

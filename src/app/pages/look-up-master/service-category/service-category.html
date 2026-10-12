@@ -87,7 +87,7 @@
       } @empty {
         <div class="empty-state">
           @if (isLoading) {
-            Loading categories...
+            <app-page-loader [inline]="true"></app-page-loader>
           } @else {
             No categories found
           }

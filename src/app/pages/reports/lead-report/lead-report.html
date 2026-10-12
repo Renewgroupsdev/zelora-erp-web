@@ -152,8 +152,7 @@
 
         @if (isPerformanceLoading) {
           <div class="performance-empty">
-            <i class="bi bi-arrow-repeat spin" aria-hidden="true"></i>
-            <p>Loading performance…</p>
+            <app-page-loader [inline]="true"></app-page-loader>
           </div>
         } @else if (!performanceRows.length) {
           <div class="performance-empty">

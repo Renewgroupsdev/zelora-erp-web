@@ -22,7 +22,7 @@
       </div>
     </header>
 
-    <div class="top-grid">
+    <div class="top-grid geo-top">
       <div class="panel photo-card">
         <div class="photo">
           @if (b.photo) { <img [src]="b.photo" [alt]="b.name + ' branch'" /> } @else { <i class="bi bi-shop-window" aria-hidden="true"></i> }
@@ -39,14 +39,14 @@
 
       <div class="panel">
         <h4>Basic Information</h4>
-        <dl class="facts">
-          <div><span class="mi tone-blue"><i class="bi bi-hash"></i></span><dt>Branch Code</dt><dd>{{ b.code }}</dd></div>
-          <div><span class="mi tone-purple"><i class="bi bi-shop-window"></i></span><dt>Branch Name</dt><dd>{{ b.name }}</dd></div>
-          <div><span class="mi tone-green"><i class="bi bi-geo-alt-fill"></i></span><dt>City</dt><dd>{{ b.city }}</dd></div>
-          <div><span class="mi tone-orange"><i class="bi bi-map"></i></span><dt>State</dt><dd>{{ b.state }}</dd></div>
-          <div><span class="mi tone-blue"><i class="bi bi-telephone-fill"></i></span><dt>Phone</dt><dd>{{ b.phone || '-' }}</dd></div>
-          <div><span class="mi tone-purple"><i class="bi bi-envelope-fill"></i></span><dt>Email</dt><dd>{{ b.email || '-' }}</dd></div>
-          <div class="wide"><span class="mi tone-orange"><i class="bi bi-pin-map-fill"></i></span><dt>Address</dt><dd>{{ b.address || '-' }}</dd></div>
+        <dl class="kv">
+          <dt>Branch code</dt><dd>{{ b.code }}</dd>
+          <dt>Branch name</dt><dd>{{ b.name }}</dd>
+          <dt>City</dt><dd>{{ b.city }}</dd>
+          <dt>State</dt><dd>{{ b.state || '-' }}</dd>
+          <dt>Phone</dt><dd>{{ b.phone || '-' }}</dd>
+          <dt>Email</dt><dd>{{ b.email || '-' }}</dd>
+          <dt>Address</dt><dd>{{ b.address || '-' }}</dd>
         </dl>
       </div>
 
@@ -57,12 +57,12 @@
         <div class="contact-line"><i class="bi bi-envelope"></i> {{ b.headEmail || '-' }}</div>
         <div class="contact-line"><i class="bi bi-calendar3"></i> Opened {{ displayDate(b.openedOn) }}</div>
       </div>
-    </div>
 
-    <div class="panel geo-panel">
-      <h4>Geo Location</h4>
-      <app-geo-location-card [latitude]="b.latitude" [longitude]="b.longitude"
-        [address]="(b.address ? b.address + ', ' : '') + b.city + (b.state ? ', ' + b.state : '')" (addLocation)="edit()"></app-geo-location-card>
+      <div class="panel geo-panel">
+        <h4>Geo Location</h4>
+        <app-geo-location-card [compact]="true" [latitude]="b.latitude" [longitude]="b.longitude"
+          [address]="(b.address ? b.address + ', ' : '') + b.city + (b.state ? ', ' + b.state : '')" (addLocation)="edit()"></app-geo-location-card>
+      </div>
     </div>
 
     <div class="panel tabs-panel">

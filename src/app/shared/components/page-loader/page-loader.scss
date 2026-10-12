@@ -17,6 +17,18 @@
     position: absolute;
     z-index: 5;
   }
+
+  // Sits in the normal flow in place of the content that is loading - no blur, no overlay.
+  &.inline {
+    position: relative;
+    inset: auto;
+    z-index: auto;
+    width: 100%;
+    min-height: var(--page-loader-min-height, 120px);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
 
 // Covers only the layout's content area (right of the sidebar, below the top navbar).
