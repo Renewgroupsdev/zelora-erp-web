@@ -14,7 +14,7 @@
 
   <div class="modal-body-custom">
     @if (loading()) {
-      <div class="wz-loading"><i class="bi bi-arrow-repeat spin"></i> Loading appointment…</div>
+      <app-page-loader [inline]="true"></app-page-loader>
     } @else if (appt(); as a) {
 
       <ol class="emp-stepper" aria-label="Consultation steps">
@@ -124,9 +124,28 @@
               <button type="button" [class.on]="profile.gender === g" (click)="profile.gender = g; c.grade = ''"><i class="bi" [class.bi-gender-male]="g === 'Male'" [class.bi-gender-female]="g === 'Female'" [class.bi-gender-ambiguous]="g === 'Other'"></i> {{ g }}</button>
             }
           </div>
-          <div class="wz-seg">
-            <button type="button" [class.on]="category === 'Hair'" (click)="category = 'Hair'"><i class="bi bi-scissors"></i> Hair</button>
-            <button type="button" [class.on]="category === 'Skin'" (click)="category = 'Skin'"><i class="bi bi-droplet-half"></i> Skin</button>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="wz-service-category">Service Category <span>*</span></label>
+            <div class="input-wrap"><i class="bi" [class]="selectedCategory?.icon || 'bi-tags'"></i>
+              <select id="wz-service-category" name="serviceCategory" [ngModel]="categoryId" (ngModelChange)="onCategoryChange($event)">
+                <option [ngValue]="null">{{ categories().length ? 'Select service category' : 'No service categories found' }}</option>
+                @for (cat of categories(); track cat.id) { <option [ngValue]="cat.id">{{ cat.name }}</option> }
+              </select>
+              <i class="bi bi-chevron-down select-arrow"></i>
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="wz-service-request">Service Request</label>
+            <div class="input-wrap"><i class="bi bi-diagram-3"></i>
+              <select id="wz-service-request" name="serviceRequest" [(ngModel)]="plan.treatment_id" (ngModelChange)="onTreatmentChange()" [disabled]="!categoryId">
+                <option [ngValue]="null">{{ !categoryId ? 'Select service category first' : filteredTreatments.length ? 'Select service request' : 'No service requests available' }}</option>
+                @for (t of filteredTreatments; track t.id) { <option [ngValue]="t.id">{{ t.name }}</option> }
+              </select>
+              <i class="bi bi-chevron-down select-arrow"></i>
+            </div>
           </div>
         </div>
 
@@ -165,7 +184,7 @@
           </div>
         </div>
 
-        @if (category === 'Hair') {
+        @if (showHairExam) {
           <div class="section-title"><i class="bi bi-scissors"></i> Clinical Examination - Hair</div>
           <div class="form-grid">
             <div class="form-field full-width">
@@ -215,7 +234,7 @@
           </div>
         }
 
-        @if (category === 'Skin') {
+        @if (showSkinExam) {
           <div class="section-title"><i class="bi bi-droplet-half"></i> Aesthetic Information - Skin</div>
           <div class="form-grid">
             <div class="form-field full-width">

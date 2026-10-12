@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { PageLoader } from '../page-loader/page-loader';
 
 export interface TrendPoint {
   period: string;
@@ -25,7 +26,7 @@ const GRID_STEPS = 4;
 @Component({
   selector: 'app-common-trend-chart',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PageLoader],
   templateUrl: './common-trend-chart.html',
   styleUrl: './common-trend-chart.scss',
 })

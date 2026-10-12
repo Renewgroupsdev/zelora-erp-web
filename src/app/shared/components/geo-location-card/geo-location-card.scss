@@ -110,3 +110,19 @@
   .geo-map { height: 200px; }
   .geo-none { flex-wrap: wrap; }
 }
+
+/* Compact: used when the card sits in a narrow column (e.g. beside Franchise Owner) */
+:host(.compact) {
+  height: 100%;
+
+  .geo-card { height: 100%; gap: 6px; }
+  .geo-map { flex: 1; height: auto; min-height: 140px; }
+  .geo-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .geo-fact { gap: 8px; padding: 5px 8px; }
+  .geo-fact strong { font-size: 12px; }
+  .geo-fact:nth-child(n + 3) { grid-column: 1 / -1; }
+  .mi { flex-basis: 26px; width: 26px; height: 26px; font-size: 12px; }
+  .geo-links { flex-wrap: nowrap; }
+  .geo-link { min-height: 24px; padding: 0 8px; font-size: 11px; }
+  .geo-none { flex-wrap: wrap; height: 100%; }
+}

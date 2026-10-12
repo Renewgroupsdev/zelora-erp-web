@@ -5,6 +5,7 @@ import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { FlowAppointmentRecord, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 interface DetailItem {
   label: string;
@@ -19,7 +20,7 @@ interface DetailItem {
 @Component({
   selector: 'app-customer-details-dialog',
   standalone: true,
-  imports: [CommonModule, MatDialogModule],
+  imports: [CommonModule, MatDialogModule, PageLoader],
   templateUrl: './customer-details-dialog.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', './customer-details-dialog.scss'],
 })

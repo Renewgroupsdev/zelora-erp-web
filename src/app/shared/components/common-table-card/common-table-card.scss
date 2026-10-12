@@ -179,19 +179,16 @@
     background: var(--table-row-hover-bg);
   }
 
-  /* Follow-ups: orange within 30 minutes of the call-back time, red within 5 minutes (and once overdue). */
-  .mat-mdc-row.row-followup-soon,
-  .mat-mdc-row.row-followup-soon:nth-child(odd),
-  .mat-mdc-row.row-followup-soon:nth-child(even) {
-    background: #fff1e0;
-    box-shadow: inset 3px 0 0 #f59e0b;
+  /* Follow-ups: orange text within 30 minutes of the call-back time, red text within 5 minutes (and once overdue).
+     Only the letters change colour - the row background, status badges and action buttons stay as they are. */
+  .mat-mdc-row.row-followup-soon .mat-mdc-cell,
+  .mat-mdc-row.row-followup-soon .mat-mdc-cell :is(span, strong, small, a, div, p):not(.status-badge) {
+    color: #d97706 !important;
   }
 
-  .mat-mdc-row.row-followup-urgent,
-  .mat-mdc-row.row-followup-urgent:nth-child(odd),
-  .mat-mdc-row.row-followup-urgent:nth-child(even) {
-    background: #fde4e4;
-    box-shadow: inset 3px 0 0 #dc2626;
+  .mat-mdc-row.row-followup-urgent .mat-mdc-cell,
+  .mat-mdc-row.row-followup-urgent .mat-mdc-cell :is(span, strong, small, a, div, p):not(.status-badge) {
+    color: #dc2626 !important;
   }
 
   .mat-mdc-row:last-child .mat-mdc-cell {

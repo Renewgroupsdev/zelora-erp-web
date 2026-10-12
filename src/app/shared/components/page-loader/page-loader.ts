@@ -14,6 +14,8 @@ import { inject } from '@angular/core';
  * - `[content]="true"`: blurs the whole page area to the right of the sidebar (below the top
  *   navbar). The host is moved into the layout's `.content-shell`; sidebar and header stay usable.
  *   Falls back to full-screen when no `.content-shell` exists.
+ * - `[inline]="true"`: no overlay - just the heartbeat, centred in place of the content that is
+ *   loading (a dialog body, a chart card, an empty table row). Height via `--page-loader-min-height`.
  */
 @Component({
   selector: 'app-page-loader',
@@ -24,6 +26,7 @@ import { inject } from '@angular/core';
 export class PageLoader implements AfterViewInit, OnDestroy {
   @Input() contained = false;
   @Input() content = false;
+  @Input() inline = false;
 
   private host = inject(ElementRef<HTMLElement>);
   private renderer = inject(Renderer2);
@@ -31,7 +34,7 @@ export class PageLoader implements AfterViewInit, OnDestroy {
   private moved = false;
 
   ngAfterViewInit(): void {
-    if (this.contained) return;
+    if (this.contained || this.inline) return;
 
     const shell = this.content ? this.document.querySelector('.content-shell') : null;
     if (shell) this.renderer.addClass(this.host.nativeElement, 'in-content');

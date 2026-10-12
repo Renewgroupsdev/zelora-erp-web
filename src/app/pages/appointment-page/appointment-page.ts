@@ -278,7 +278,6 @@ export class AppointmentPage implements OnInit, AfterViewInit {
       actions.push({ key: 'wizard', icon: 'bi-clipboard2-pulse', label: 'Consultation form', variant: 'primary' });
     }
     if (a.invoice_no) actions.push({ key: 'invoice', icon: 'bi-receipt', label: 'Download invoice', variant: 'default' });
-    actions.push({ key: 'call', icon: 'bi-telephone', label: 'Call', variant: 'default' });
     return actions;
   }
 
@@ -289,7 +288,6 @@ export class AppointmentPage implements OnInit, AfterViewInit {
     if (action === 'wizard') this.openWizard(appt);
     else if (action === 'sittings') this.openSittings(appt);
     else if (action === 'invoice') this.downloadInvoice(appt);
-    else if (action === 'call') window.location.href = `tel:${appt.mobile_no}`;
   }
 
   /** Customer name link: the full customer record, view only (editing stays in the form / sittings actions). */

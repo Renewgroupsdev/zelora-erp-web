@@ -21,6 +21,7 @@ import {
 } from '../roles-permission-data.util';
 import { isSuccessResponse } from '../roles-permission.model';
 import { AuthService } from '../../../../core/auth/auth.service';
+import { PageLoader } from '../../../../shared/components/page-loader/page-loader';
 
 /** One screen to grant a single role access across the entire existing module/sub-module/action
  *  tree in one pass, instead of reopening "Add Module & Permissions" per module - checking a
@@ -28,7 +29,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 @Component({
   selector: 'app-role-permission-matrix',
   standalone: true,
-  imports: [CommonModule, FormsModule, DragDropModule, CommonFilterCard, MatrixTreeNode],
+  imports: [CommonModule, FormsModule, DragDropModule, CommonFilterCard, MatrixTreeNode, PageLoader],
   templateUrl: './role-permission-matrix.html',
   styleUrl: './role-permission-matrix.scss',
 })

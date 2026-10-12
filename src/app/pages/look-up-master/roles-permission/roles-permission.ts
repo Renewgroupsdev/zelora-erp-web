@@ -11,11 +11,12 @@ import { ModuleReorderEvent, ModuleTreeNode } from './module-tree-node/module-tr
 import { fetchFullModuleTree } from './roles-permission-data.util';
 import { DisplayModuleNode, isSuccessResponse, RolePermissionModule } from './roles-permission.model';
 import { AuthService } from '../../../core/auth/auth.service';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 @Component({
   selector: 'app-roles-permission',
   standalone: true,
-  imports: [CommonModule, DragDropModule, CommonFilterCard, ModuleTreeNode],
+  imports: [CommonModule, DragDropModule, CommonFilterCard, ModuleTreeNode, PageLoader],
   templateUrl: './roles-permission.html',
   styleUrl: './roles-permission.scss',
 })

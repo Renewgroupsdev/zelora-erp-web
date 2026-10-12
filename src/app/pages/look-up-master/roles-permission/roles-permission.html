@@ -79,7 +79,7 @@
       } @empty {
         <div class="empty-state">
           @if (isLoading) {
-            Loading modules...
+            <app-page-loader [inline]="true"></app-page-loader>
           } @else {
             No modules found
           }

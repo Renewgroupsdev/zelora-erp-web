@@ -9,12 +9,13 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { CallDetails } from '../call-details/call-details';
 import { openCallOutcome } from '../call-disposition/open-call-outcome';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 /** Full persisted call log - every inbound and outbound leg with its outcome. */
 @Component({
   selector: 'app-call-history',
   standalone: true,
-  imports: [CommonModule, CallDetails],
+  imports: [CommonModule, CallDetails, PageLoader],
   templateUrl: './call-history.html',
   styleUrl: './call-history.scss',
 })

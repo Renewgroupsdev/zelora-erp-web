@@ -597,10 +597,6 @@ export class LeadManagement implements OnInit {
     });
   }
 
-  openAppointment(row: TableRow): void {
-    this.openLeadProfile(row, 'appointment');
-  }
-
   /** Hands the lead to one of the branch's telecallers (batches of 10 per telecaller - see the API). */
   async sendToBranch(row: TableRow): Promise<void> {
     const confirmed = await this.toast.confirm(

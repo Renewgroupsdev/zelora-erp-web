@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { ChartDatum } from '../../models/common-components.model';
+import { PageLoader } from '../page-loader/page-loader';
 
 export type ChartCardType = 'donut' | 'bar';
 
@@ -31,7 +32,7 @@ const DONUT_GAP = 3;
 @Component({
   selector: 'app-common-chart-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PageLoader],
   templateUrl: './common-chart-card.html',
   styleUrl: './common-chart-card.scss',
 })

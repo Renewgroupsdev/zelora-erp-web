@@ -84,7 +84,8 @@ export interface FlowAppointmentRecord {
   email: string | null;
   gender: string | null;
   age: number | null;
-  category: FlowCategory | null;
+  /** Service category name picked in the consultation form (Hair, Skin, Combo, Slimming ...). */
+  category: string | null;
   heard_from: string | null;
   appointment_date: string;
   appointment_time: string;

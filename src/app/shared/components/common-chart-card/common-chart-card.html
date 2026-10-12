@@ -25,8 +25,7 @@
 
   @if (loading) {
     <div class="chart-card-empty">
-      <i class="bi bi-arrow-repeat spin" aria-hidden="true"></i>
-      <p>Loading chart…</p>
+      <app-page-loader [inline]="true"></app-page-loader>
     </div>
   } @else if (!series.length || total === 0) {
     <div class="chart-card-empty">

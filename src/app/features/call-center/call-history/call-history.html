@@ -34,7 +34,7 @@
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="9" class="empty">{{ loading ? 'Loading…' : 'No call records yet.' }}</td></tr>
+          <tr><td colspan="9" class="empty">@if (loading) { <app-page-loader [inline]="true"></app-page-loader> } @else { No call records yet. }</td></tr>
         }
       </tbody>
     </table>

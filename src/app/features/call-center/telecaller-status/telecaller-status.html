@@ -24,7 +24,7 @@
             <td>{{ agent.assigned_leads_count }}</td>
           </tr>
         } @empty {
-          <tr><td colspan="5" class="empty">{{ loading ? 'Loading…' : 'No telecallers found.' }}</td></tr>
+          <tr><td colspan="5" class="empty">@if (loading) { <app-page-loader [inline]="true"></app-page-loader> } @else { No telecallers found. }</td></tr>
         }
       </tbody>
     </table>

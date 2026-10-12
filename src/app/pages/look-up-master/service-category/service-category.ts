@@ -7,6 +7,7 @@ import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AddServiceCategoryForm } from './add-service-category-form/add-service-category-form';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 /** One node in the tree - a top-level category carries its sub-categories (the treatments created
  *  under it in Treatment Management) in `children`; a sub-category's `children` stays empty. */
@@ -22,7 +23,7 @@ interface CategoryNode {
 @Component({
   selector: 'app-service-category',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonFilterCard],
+  imports: [CommonModule, MatDialogModule, CommonFilterCard, PageLoader],
   templateUrl: './service-category.html',
   styleUrl: './service-category.scss',
 })

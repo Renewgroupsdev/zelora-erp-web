@@ -137,8 +137,7 @@
 
       @if (isFunnelLoading) {
         <div class="performance-empty">
-          <i class="bi bi-arrow-repeat spin" aria-hidden="true"></i>
-          <p>Loading funnel…</p>
+          <app-page-loader [inline]="true"></app-page-loader>
         </div>
       } @else if (!funnel?.stages?.length) {
         <div class="performance-empty">

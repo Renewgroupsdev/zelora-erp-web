@@ -7,6 +7,7 @@ import { ApiDataService } from '../../../core/http/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { FlowAppointmentRecord, PAYMENT_MODES, PaymentMode, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
 
 /** Roles allowed to write the doctor's session notes (matches the API). */
@@ -32,7 +33,7 @@ interface SittingDraft {
 @Component({
   selector: 'app-sittings-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatDialogModule, PageLoader],
   templateUrl: './sittings-dialog.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', './sittings-dialog.scss'],
 })

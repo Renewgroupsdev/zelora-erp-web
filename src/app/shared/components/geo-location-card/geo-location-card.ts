@@ -13,12 +13,15 @@ import { GeoPoint, directionsUrl, formatGeo, googleMapsUrl, isValidGeo, mapEmbed
   imports: [CommonModule, SafeUrlPipe],
   templateUrl: './geo-location-card.html',
   styleUrl: './geo-location-card.scss',
+  host: { '[class.compact]': 'compact()' },
 })
 export class GeoLocationCard {
   readonly latitude = input<number | null | undefined>(null);
   readonly longitude = input<number | null | undefined>(null);
   /** Address line shown under the coordinates (e.g. street, city, state). */
   readonly address = input('');
+  /** Narrow column layout: smaller map, coordinates two per row, address and actions full width. */
+  readonly compact = input(false);
   /** Fired by "Add location" when no coordinates are saved yet (the page opens its edit form). */
   readonly addLocation = output<void>();
 

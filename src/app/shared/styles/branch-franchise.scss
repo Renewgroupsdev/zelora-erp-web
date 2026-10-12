@@ -970,3 +970,29 @@ a.activity:hover .body strong { color: var(--status-blue-text); }
 
 /* Geo Location panel (map + coordinates) between the top row and the tabs */
 .geo-panel { margin-top: 8px; }
+
+/* Franchise / Branch details: photo | Basic Information (key/value list) | Owner / Head | Geo Location in one row */
+.top-grid.geo-top {
+  grid-template-columns: minmax(180px, 0.5fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr);
+  margin-bottom: 3px;
+
+  > .panel:nth-child(2) { display: block; }
+  .kv { grid-template-columns: 110px minmax(0, 1fr); gap: 5px 10px; }
+  .kv dt, .kv dd { padding-bottom: 5px; }
+  .geo-panel { display: flex; flex-direction: column; margin-top: 0; }
+  .geo-panel app-geo-location-card { flex: 1; min-height: 0; }
+}
+
+@media (max-width: 1400px) {
+  .top-grid.geo-top { grid-template-columns: minmax(180px, 0.6fr) minmax(0, 1fr) minmax(0, 1fr); }
+  .top-grid.geo-top > :last-child { grid-column: 1 / -1; }
+  .top-grid.geo-top .geo-panel app-geo-location-card { min-height: 280px; }
+}
+
+@media (max-width: 1100px) {
+  .top-grid.geo-top { grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr); }
+}
+
+@media (max-width: 900px) {
+  .top-grid.geo-top { grid-template-columns: 1fr; }
+}

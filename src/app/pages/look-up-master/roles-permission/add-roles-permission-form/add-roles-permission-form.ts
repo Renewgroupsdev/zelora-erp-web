@@ -9,6 +9,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { isSuccessResponse, RolePermissionModule } from '../roles-permission.model';
 import { ModuleFormNode } from './module-form-node/module-form-node';
 import { buildModuleGroup, extractModulePayload } from './module-form.util';
+import { PageLoader } from '../../../../shared/components/page-loader/page-loader';
 
 /** Full-page (not dialog) add/edit for a module + its actions + its recursively nested
  *  sub-modules - the nested tree needs far more room than the app's usual 480px modal, and every
@@ -17,7 +18,7 @@ import { buildModuleGroup, extractModulePayload } from './module-form.util';
 @Component({
   selector: 'app-add-roles-permission-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ModuleFormNode],
+  imports: [CommonModule, ReactiveFormsModule, ModuleFormNode, PageLoader],
   templateUrl: './add-roles-permission-form.html',
   styleUrl: './add-roles-permission-form.scss',
 })
