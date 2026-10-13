@@ -3,9 +3,8 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { FileUploadService, uploadError } from '../../../shared/common-services/file-upload.service';
 import { FranchiseService } from '../../../shared/common-services/franchise.service';
-import { FranchiseRecord, shrinkPhoto } from '../../../shared/models/branch-franchise.model';
+import { FranchiseRecord, readPhoto } from '../../../shared/models/branch-franchise.model';
 import { addDays, isoDate } from '../../../shared/utils/format.util';
 
 type FranchiseInput = Omit<FranchiseRecord, 'id' | 'code'>;
@@ -22,13 +21,11 @@ export class FranchiseForm {
   private readonly dialogRef = inject(MatDialogRef<FranchiseForm, FranchiseRecord>);
   private readonly data = inject<{ franchiseId?: string }>(MAT_DIALOG_DATA);
   private readonly store = inject(FranchiseService);
-  private readonly uploads = inject(FileUploadService);
 
   readonly existing = this.data.franchiseId ? this.store.franchise(this.data.franchiseId) ?? null : null;
   readonly isEdit = !!this.existing;
   readonly submitted = signal(false);
   readonly serverError = signal<string | null>(null);
-  readonly uploading = signal(false);
 
   model: FranchiseInput = this.existing
     ? structuredClone((({ id, code, ...rest }) => rest)(this.existing))
@@ -60,7 +57,6 @@ export class FranchiseForm {
     const payload = { ...this.model, additionalOwners, sharePercent: share, employees: Number(this.model.employees) || 0, inventoryValue: Math.max(0, Number(this.model.inventoryValue) || 0), gstin: this.model.gstin.trim().toUpperCase() };
     if (this.existing) {
       this.store.update(this.existing.id, payload);
-      this.finish();
       this.dialogRef.close(this.store.franchise(this.existing.id));
       return;
     }
@@ -69,7 +65,6 @@ export class FranchiseForm {
       this.serverError.set(result);
       return;
     }
-    this.finish();
     this.dialogRef.close(result);
   }
 
@@ -78,37 +73,15 @@ export class FranchiseForm {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    this.serverError.set(null);
-    this.uploading.set(true);
     try {
-      const photo = await shrinkPhoto(file);
-      this.uploads.upload('franchise_photo', photo).subscribe({
-        next: up => {
-          this.photoDraft.track(up.url);
-          this.model.photo = up.url;
-          this.uploading.set(false);
-        },
-        error: err => {
-          this.serverError.set(uploadError(err, 'Could not upload the photo. Please try again.'));
-          this.uploading.set(false);
-        },
-      });
+      this.model.photo = await readPhoto(file);
+      this.serverError.set(null);
     } catch (e) {
       this.serverError.set((e as Error).message);
-      this.uploading.set(false);
     }
-  }
-
-  removePhoto(): void {
-    this.model.photo = undefined;
   }
 
   close(): void {
     this.dialogRef.close();
-  }
-
-  private finish(): void {
-    this.saved = true;
-    this.photoDraft.commit([this.model.photo]);
   }
 }

@@ -2,8 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { finalize } from 'rxjs';
-import { FileUploadService, uploadError } from '../../../../shared/common-services/file-upload.service';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { HrService } from '../../../../shared/common-services/hr.service';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
@@ -183,13 +181,7 @@ export class CandidateProcess {
     if (!file) return;
     if (file.size > MAX_FILE_BYTES) return void this.fail(`${file.name} is larger than 5 MB.`);
     if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) return void this.fail('Upload a PDF, JPG or PNG file.');
-
-    const candidateId = this.candidate().id;
-    this.uploadingDoc.set(type);
-    this.uploads.upload('candidate_document', file).pipe(finalize(() => this.uploadingDoc.set(null))).subscribe({
-      next: up => this.hr.uploadCandidateDocument(candidateId, type, file.name, up.url),
-      error: err => this.fail(uploadError(err, `Could not upload ${file.name}. Please try again.`)),
-    });
+    this.hr.uploadCandidateDocument(this.candidate().id, type, file.name);
   }
 
   verifyDoc(type: string, verified: boolean): void {
