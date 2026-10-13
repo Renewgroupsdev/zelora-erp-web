@@ -62,7 +62,7 @@
         </label>
         <label class="field" [class.has-error]="invalid(form.controls.maxSessions)">
           <span>Max sittings <span class="required-asterisk">*</span></span>
-          <input type="number" min="1" formControlName="maxSessions" />
+          <input type="number" min="1" formControlName="maxSessions" readonly/>
           @if (invalid(form.controls.maxSessions)) { <small class="error-text">Enter at least 1 sitting</small> }
         </label>
         <label class="field">

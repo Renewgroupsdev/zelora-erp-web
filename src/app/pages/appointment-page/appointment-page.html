@@ -5,7 +5,10 @@
 
     <div class="page-header-actions">
       <span class="today-date-badge"><i class="bi bi-calendar3"></i> {{ formattedTodayDate }}</span>
-
+      <!-- <button type="button" class="add-appointment-btn">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+        <span>Add Appointment</span>
+      </button> -->
     </div>
   </div>
 
@@ -66,9 +69,9 @@
 
                 <div class="timeline-footer">
                   <button type="button" class="status-pill as-btn" [ngClass]="statusClass(appt.status)" (click)="appt.status === 'Converted' ? openSittings(appt) : openWizard(appt)" title="Open">{{ appt.status }}</button>
-                  <a class="timeline-call-btn" [href]="'tel:' + appt.mobile_no" [attr.aria-label]="'Call ' + appt.name" title="Call">
+                  <!-- <a class="timeline-call-btn" [href]="'tel:' + appt.mobile_no" [attr.aria-label]="'Call ' + appt.name" title="Call">
                     <i class="bi bi-telephone-fill"></i>
-                  </a>
+                  </a> -->
                 </div>
               </div>
             }

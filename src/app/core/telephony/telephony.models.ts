@@ -161,6 +161,7 @@ export interface FollowUpLead {
   reason: string | null;
   source_name: string | null;
   service_category_name: string | null;
+  service_request_name: string | null;
   status_name: string | null;
   organization_name: string | null;
   assigned_to: number | null;

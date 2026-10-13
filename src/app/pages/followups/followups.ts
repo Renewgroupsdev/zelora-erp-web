@@ -254,7 +254,7 @@ export class Followups implements OnInit, OnDestroy {
       gender: lead.gender ?? '',
       source: lead.source_name ?? '',
       service_category: lead.service_category_name ?? '',
-      service_request: lead.reason ?? '',
+      service_request: lead.service_request_name ?? '',
       followup_count: lead.follow_ups_count,
       follow_up_at: lead.next_follow_up_at ?? '',
       _urgency: this.urgencyOf(lead.next_follow_up_at),
