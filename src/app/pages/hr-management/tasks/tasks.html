@@ -24,9 +24,9 @@
           <option value="">All branches</option>
           @for (b of branches; track b) { <option [value]="b">{{ b }}</option> }
         </select>
-        <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+        <button *appCan="'export-hr-tasks'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
         @if (access().role === 'seo') {
-          <button type="button" class="add-lead-btn" (click)="open()"><i class="bi bi-plus-lg"></i> Log task</button>
+          <button *appCan="'add-hr-task'" type="button" class="add-lead-btn" (click)="open()"><i class="bi bi-plus-lg"></i> Log task</button>
         }
       </div>
     }

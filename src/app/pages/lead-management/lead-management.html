@@ -5,7 +5,7 @@
       <h6 class="page-title">Lead Managements</h6>
     </div>
 
-    <button type="button" class="add-lead-btn" (click)="openAddPopup()">
+    <button *appCan="'add-lead'" type="button" class="add-lead-btn" (click)="openAddPopup()">
       <i class="bi bi-plus-lg"></i>
       Add Lead
     </button>
@@ -33,6 +33,7 @@
     (searchChange)="onSearch($event)"
     (filterClick)="onFilterClick($event)"
     (filtersChange)="onFiltersChange($event)"
+    [showExport]="can('export-leads')"
     (exportClick)="onExport($event)"
   ></app-common-filter-card>
 
@@ -52,6 +53,7 @@
         [sortActive]="sortActive"
         [sortDirection]="sortDirection"
         [dragDropEnabled]="false"
+        [actionPermissions]="leadActionPermissions"
         (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
         (rowActionClick)="onRowAction($event)"

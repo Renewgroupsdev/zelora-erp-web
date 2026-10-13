@@ -11,13 +11,14 @@ import { DetailCardData, QuickAction, TableColumn, TableRow } from '../../../sha
 import { DEPARTMENTS } from '../../../shared/models/hr.model';
 import { downloadExcel } from '../../../shared/utils/export.util';
 import { inr, monthKey, monthLabel } from '../../../shared/utils/format.util';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { HrListBase } from '../hr-list-base';
 import { PayslipView } from './payslip-view/payslip-view';
 
 @Component({
   selector: 'app-payroll',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs],
+  imports: [CommonModule, FormsModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './payroll.html',
   styleUrl: '../../../shared/styles/erp-page.scss',
 })

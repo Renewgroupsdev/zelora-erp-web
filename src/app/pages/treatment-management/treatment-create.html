@@ -17,9 +17,11 @@
         <i class="bi bi-arrow-left"></i> <span>Back</span>
       </button> -->
 
-      <button *ngIf="!readOnly" type="button" class="add-treatment-btn" [disabled]="saving() || loading()" [attr.aria-label]="editingId ? 'Update Treatment' : 'Create Treatment'" (click)="save()">
-        <i class="bi bi-check2"></i> <span>{{ saving() ? 'Saving...' : (editingId ? 'Update Treatment' : 'Create Treatment') }}</span>
-      </button>
+      <ng-container *appCan="editingId ? 'edit-treatment' : 'add-treatment'">
+        <button *ngIf="!readOnly" type="button" class="add-treatment-btn" [disabled]="saving() || loading()" [attr.aria-label]="editingId ? 'Update Treatment' : 'Create Treatment'" (click)="save()">
+          <i class="bi bi-check2"></i> <span>{{ saving() ? 'Saving...' : (editingId ? 'Update Treatment' : 'Create Treatment') }}</span>
+        </button>
+      </ng-container>
     </div>
   </div>
 

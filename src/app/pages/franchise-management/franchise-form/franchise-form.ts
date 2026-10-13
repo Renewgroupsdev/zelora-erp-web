@@ -34,6 +34,14 @@ export class FranchiseForm {
       agreementFrom: isoDate(), agreementTo: addDays(isoDate(), 365 * 3), sharePercent: 70, shareEffectiveFrom: isoDate(), employees: 0, inventoryValue: 0,
     };
 
+  addOwner(): void {
+    (this.model.additionalOwners ??= []).push({ company: '', name: '', phone: '', email: '' });
+  }
+
+  removeOwner(index: number): void {
+    this.model.additionalOwners?.splice(index, 1);
+  }
+
   get renewPercent(): number {
     return Math.round((100 - (Number(this.model.sharePercent) || 0)) * 100) / 100;
   }
@@ -43,7 +51,10 @@ export class FranchiseForm {
     this.serverError.set(null);
     const share = Number(this.model.sharePercent);
     if (form.invalid || !(share >= 0 && share <= 100)) return;
-    const payload = { ...this.model, sharePercent: share, employees: Number(this.model.employees) || 0, inventoryValue: Math.max(0, Number(this.model.inventoryValue) || 0), gstin: this.model.gstin.trim().toUpperCase() };
+    const additionalOwners = (this.model.additionalOwners ?? [])
+      .map(o => ({ company: o.company.trim(), name: o.name.trim(), phone: o.phone.trim(), email: o.email.trim() }))
+      .filter(o => o.name);
+    const payload = { ...this.model, additionalOwners, sharePercent: share, employees: Number(this.model.employees) || 0, inventoryValue: Math.max(0, Number(this.model.inventoryValue) || 0), gstin: this.model.gstin.trim().toUpperCase() };
     if (this.existing) {
       this.store.update(this.existing.id, payload);
       this.dialogRef.close(this.store.franchise(this.existing.id));

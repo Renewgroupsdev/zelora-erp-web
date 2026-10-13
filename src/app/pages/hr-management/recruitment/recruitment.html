@@ -11,8 +11,8 @@
         <button type="button" role="tab" [class.active]="view() === 'vacancies'" (click)="setView('vacancies')">Vacancies</button>
         <button type="button" role="tab" [class.active]="view() === 'candidates'" (click)="setView('candidates')">All Candidates</button>
       </div>
-      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
-      <button type="button" class="add-lead-btn" (click)="newRequest()"><i class="bi bi-plus-lg"></i> Manpower Request</button>
+      <button *appCan="'export-recruitment'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button *appCan="'add-manpower-request'" type="button" class="add-lead-btn" (click)="newRequest()"><i class="bi bi-plus-lg"></i> Manpower Request</button>
     </div>
   </div>
 
@@ -53,6 +53,7 @@
       [pageInfoText]="pageInfoText"
       [sortActive]="sortActive"
       [sortDirection]="sortDirection"
+      [actionPermissions]="{ review: 'approve-manpower-request', open: 'view-vacancy', hold: 'hold-vacancy', reopen: 'reopen-vacancy', addEmployee: 'add-employee', process: 'view-candidate-process', resume: 'download-candidate-resume' }"
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
       (quickActionClick)="onQuickAction($event)"

@@ -3,7 +3,7 @@ import { DOCUMENT } from '@angular/common';
 import { inject } from '@angular/core';
 
 /**
- * Heartbeat loader shown while records load.
+ * Renew Group logo loader shown while records load.
  *
  * Two modes:
  * - `contained` (default: false / full-screen): the host element is moved onto <body> so no
@@ -14,7 +14,7 @@ import { inject } from '@angular/core';
  * - `[content]="true"`: blurs the whole page area to the right of the sidebar (below the top
  *   navbar). The host is moved into the layout's `.content-shell`; sidebar and header stay usable.
  *   Falls back to full-screen when no `.content-shell` exists.
- * - `[inline]="true"`: no overlay - just the heartbeat, centred in place of the content that is
+ * - `[inline]="true"`: no overlay - just the logo, centred in place of the content that is
  *   loading (a dialog body, a chart card, an empty table row). Height via `--page-loader-min-height`.
  */
 @Component({

@@ -10,12 +10,13 @@ import { PURCHASE_RETURN_REASONS, displayDate, inr } from '../../../../shared/mo
 import { PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { PurchaseReturnForm } from './purchase-return-form/purchase-return-form';
+import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 
 /** Stock sent back to the vendor against a purchase inward (GRN). Each return reduces store stock and can raise a debit note. */
 @Component({
   selector: 'app-purchase-returns',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, PurchaseTabs],
+  imports: [CanActionDirective, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, PurchaseTabs],
   templateUrl: './purchase-returns.html',
   styleUrl: '../../../../shared/styles/erp-page.scss',
 })

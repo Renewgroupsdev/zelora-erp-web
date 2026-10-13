@@ -16,14 +16,15 @@ import {
 import { TelephonyService } from '../../../core/telephony/telephony.service';
 import { CallAlert, callStatusLabel } from '../../../core/telephony/telephony.models';
 import { ToastService } from '../../../shared/common-services/toast.service';
+import { AuthService } from '../../../core/auth/auth.service';
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { key: 'acknowledge', icon: 'bi-check2-circle', label: 'Acknowledge', variant: 'primary' },
-  { key: 'callback', icon: 'bi-telephone-outbound', label: 'Call Back', variant: 'default' },
+  { key: 'acknowledge', icon: 'bi-check2-circle', label: 'Acknowledge', variant: 'primary', permission: 'mark-call-alert-read' },
+  { key: 'callback', icon: 'bi-telephone-outbound', label: 'Call Back', variant: 'default', permission: 'call-back-missed-call' },
 ];
 
 const ACKNOWLEDGED_ACTIONS: QuickAction[] = [
-  { key: 'callback', icon: 'bi-telephone-outbound', label: 'Call Back', variant: 'default' },
+  { key: 'callback', icon: 'bi-telephone-outbound', label: 'Call Back', variant: 'default', permission: 'call-back-missed-call' },
 ];
 
 /**
@@ -72,6 +73,7 @@ export class MissedCalls {
   constructor(
     private telephony: TelephonyService,
     private toast: ToastService,
+    private auth: AuthService,
   ) {
     // Re-derives stats/rows whenever a new alert arrives (call not answered, disconnected, etc.)
     // or an existing one gets acknowledged - no manual refresh needed.
@@ -122,6 +124,11 @@ export class MissedCalls {
     this.branchFilter = [...filters.branch];
     this.currentPage = 1;
     this.refreshRows(this.telephony.alerts());
+  }
+
+  /** Whether the signed-in role is ticked on this action slug. */
+  can(slug: string): boolean {
+    return this.auth.hasActionAccess(slug);
   }
 
   onExport(): void {

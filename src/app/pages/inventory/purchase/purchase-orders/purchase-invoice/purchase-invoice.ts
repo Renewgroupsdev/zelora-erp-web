@@ -3,6 +3,7 @@ import { Component, ElementRef, computed, inject, viewChild } from '@angular/cor
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
 import { CENTRAL_STORE, displayDate, lineTotals } from '../../../../../shared/models/purchase.model';
+import { CanActionDirective } from '../../../../../shared/directives/can-action.directive';
 
 /** Print stylesheet for the PDF window - the dialog's own styles don't travel with the HTML. */
 const PRINT_CSS = `
@@ -25,7 +26,7 @@ const PRINT_CSS = `
 @Component({
   selector: 'app-purchase-invoice',
   standalone: true,
-  imports: [CommonModule, MatDialogModule],
+  imports: [CanActionDirective, CommonModule, MatDialogModule],
   templateUrl: './purchase-invoice.html',
   styleUrls: ['../../../../../shared/styles/erp-dialog.scss', './purchase-invoice.scss'],
 })

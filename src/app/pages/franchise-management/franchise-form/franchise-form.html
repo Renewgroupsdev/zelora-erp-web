@@ -75,7 +75,11 @@
       <app-geo-location-field idPrefix="fr-geo" [(latitude)]="model.latitude" [(longitude)]="model.longitude"
         [address]="model.city + (model.state ? ', ' + model.state : '')"></app-geo-location-field>
 
-      <div class="section-title"><i class="bi bi-person-badge"></i> Franchise Owner</div>
+      <div class="section-title">
+        <i class="bi bi-person-badge"></i> Franchise Owner
+        <span class="spacer"></span>
+        <button type="button" class="link-btn" (click)="addOwner()"><i class="bi bi-plus-lg"></i> Add Owner</button>
+      </div>
       <div class="form-grid cols-3">
         <div class="form-field">
           <label for="fr-company">Owner Company <span>*</span></label>
@@ -102,6 +106,42 @@
           </div>
         </div>
       </div>
+
+      @for (o of model.additionalOwners ?? []; track $index; let i = $index) {
+        <div class="section-title owner-title">
+          <i class="bi bi-person-plus"></i> Owner {{ i + 2 }}
+          <span class="spacer"></span>
+          <button type="button" class="owner-remove-btn" (click)="removeOwner(i)" [attr.aria-label]="'Remove owner ' + (i + 2)" title="Remove owner">
+            <i class="bi bi-trash3" aria-hidden="true"></i> Remove
+          </button>
+        </div>
+        <div class="form-grid cols-3">
+          <div class="form-field">
+            <label [for]="'fr-company-' + i">Owner Company</label>
+            <div class="input-wrap"><i class="bi bi-briefcase"></i>
+              <input [id]="'fr-company-' + i" [name]="'ownerCompany' + i" maxlength="100" [(ngModel)]="o.company" placeholder="Same as above if empty" />
+            </div>
+          </div>
+          <div class="form-field">
+            <label [for]="'fr-owner-' + i">Owner Name <span>*</span></label>
+            <div class="input-wrap"><i class="bi bi-person"></i>
+              <input [id]="'fr-owner-' + i" [name]="'ownerName' + i" required maxlength="80" [(ngModel)]="o.name" #extraName="ngModel" [class.is-invalid]="submitted() && extraName.invalid" />
+            </div>
+            @if (submitted() && extraName.invalid) { <small class="error-text">Owner name is required.</small> }
+          </div>
+          <div class="form-field">
+            <label [for]="'fr-ophone-' + i">Phone</label>
+            <div class="input-wrap"><i class="bi bi-telephone"></i><input [id]="'fr-ophone-' + i" [name]="'ownerPhone' + i" maxlength="20" [(ngModel)]="o.phone" /></div>
+          </div>
+          <div class="form-field">
+            <label [for]="'fr-oemail-' + i">Email</label>
+            <div class="input-wrap"><i class="bi bi-envelope"></i>
+              <input [id]="'fr-oemail-' + i" type="email" [name]="'ownerEmail' + i" email [(ngModel)]="o.email" #extraEmail="ngModel" [class.is-invalid]="submitted() && extraEmail.invalid" />
+            </div>
+            @if (submitted() && extraEmail.invalid) { <small class="error-text">Enter a valid email.</small> }
+          </div>
+        </div>
+      }
 
       <div class="section-title"><i class="bi bi-file-earmark-text"></i> Agreement &amp; Share</div>
       <div class="form-grid cols-3">

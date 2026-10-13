@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule } from '@angular/material/dialog';
@@ -36,7 +37,7 @@ const TRIAL_COLUMNS: TableColumn[] = [
 @Component({
   selector: 'app-ledgers',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, CommonFilterCard, CommonTableCard, ModuleTabs],
+  imports: [CommonModule, FormsModule, MatDialogModule, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './ledgers.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './ledgers.scss'],
 })

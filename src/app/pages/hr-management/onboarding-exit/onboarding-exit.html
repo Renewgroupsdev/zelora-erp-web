@@ -10,7 +10,7 @@
         <button type="button" role="tab" [class.active]="view() === 'in'" (click)="view.set('in')"><i class="bi bi-box-arrow-in-right"></i> Onboarding ({{ summary().joining }})</button>
         <button type="button" role="tab" [class.active]="view() === 'out'" (click)="view.set('out')"><i class="bi bi-box-arrow-right"></i> Exit ({{ summary().notice + summary().clearance }})</button>
       </div>
-      <button type="button" class="add-lead-btn" (click)="initiateExit()"><i class="bi bi-person-dash"></i> Initiate Exit</button>
+      <button *appCan="'start-exit'" type="button" class="add-lead-btn" (click)="initiateExit()"><i class="bi bi-person-dash"></i> Initiate Exit</button>
     </div>
   </div>
 
@@ -50,7 +50,7 @@
             @if (expanded() === o.id) {
               <ul class="checklist">
                 @for (c of o.checklist; track c.label; let i = $index) {
-                  <li><label><input type="checkbox" [checked]="c.done" (change)="hr.toggleOnboardingItem(o.id, i)" /> <span [class.ticked]="c.done">{{ c.label }}</span></label></li>
+                  <li><label><input type="checkbox" [checked]="c.done" [disabled]="!can('update-onboarding-checklist')" (change)="hr.toggleOnboardingItem(o.id, i)" /> <span [class.ticked]="c.done">{{ c.label }}</span></label></li>
                 }
               </ul>
             }
@@ -92,16 +92,16 @@
             @if (expanded() === x.id) {
               <ul class="checklist">
                 @for (c of x.checklist; track c.label; let i = $index) {
-                  <li><label><input type="checkbox" [checked]="c.done" [disabled]="x.status === 'Settled'" (change)="hr.toggleExitItem(x.id, i)" /> <span [class.ticked]="c.done">{{ c.label }}</span></label></li>
+                  <li><label><input type="checkbox" [checked]="c.done" [disabled]="x.status === 'Settled' || !can('update-exit-clearance')" (change)="hr.toggleExitItem(x.id, i)" /> <span [class.ticked]="c.done">{{ c.label }}</span></label></li>
                 }
               </ul>
             }
 
             <div class="case-actions">
-              @if (x.status !== 'Settled') { <button type="button" class="ghost-btn" (click)="editFnf(x)"><i class="bi bi-calculator"></i> Edit F&amp;F</button> }
+              @if (x.status !== 'Settled') { <button *appCan="'edit-exit-settlement'" type="button" class="ghost-btn" (click)="editFnf(x)"><i class="bi bi-calculator"></i> Edit F&amp;F</button> }
               <button type="button" class="ghost-btn" (click)="printFnf(x)"><i class="bi bi-file-earmark-pdf"></i> F&amp;F</button>
               @if (x.status === 'Settled') { <button type="button" class="ghost-btn" (click)="printRelieving(x)"><i class="bi bi-envelope-paper"></i> Relieving Letter</button> }
-              @if (x.status === 'Clearance') { <button type="button" class="add-lead-btn" (click)="settle(x)"><i class="bi bi-check2-circle"></i> Settle</button> }
+              @if (x.status === 'Clearance') { <button *appCan="'settle-exit'" type="button" class="add-lead-btn" (click)="settle(x)"><i class="bi bi-check2-circle"></i> Settle</button> }
             </div>
           </div>
         }

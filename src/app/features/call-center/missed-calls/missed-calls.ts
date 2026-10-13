@@ -6,12 +6,13 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { CallAlert } from '../call-alert.model';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 
 /** Branch-head escalations for missed / rejected / unassigned calls, with call-back. */
 @Component({
   selector: 'app-missed-calls',
   standalone: true,
-  imports: [CommonModule, PageLoader],
+  imports: [CommonModule, PageLoader, CanActionDirective],
   templateUrl: './missed-calls.html',
   styleUrl: './missed-calls.scss',
 })

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import Swal from 'sweetalert2';
 import { HrService } from '../../../../shared/common-services/hr.service';
+import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 import { CANDIDATE_STAGES, Candidate, JOB_PORTALS, JobPortal } from '../../../../shared/models/hr.model';
 import { displayDate } from '../../../../shared/utils/format.util';
 import { CandidateProcess } from '../candidate-process/candidate-process';
@@ -13,7 +14,7 @@ import { downloadResume, exportCandidates } from '../resume';
 @Component({
   selector: 'app-vacancy-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatDialogModule, CanActionDirective],
   templateUrl: './vacancy-detail.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', './vacancy-detail.scss'],
 })

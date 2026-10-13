@@ -13,12 +13,12 @@
           <small>{{ alert.triggered_at | date:'dd MMM yyyy, hh:mm a' }}</small>
         </div>
         @if (alert.call?.caller_number) {
-          <button type="button" class="read-btn" (click)="callBack(alert)" [disabled]="telephony.onCall()">Call back</button>
+          <button *appCan="'call-back-missed-call'" type="button" class="read-btn" (click)="callBack(alert)" [disabled]="telephony.onCall()">Call back</button>
         }
         @if (alert.status === 'unread') {
-          <button type="button" class="read-btn" (click)="markAlertRead(alert)">Mark read</button>
+          <button *appCan="'mark-call-alert-read'" type="button" class="read-btn" (click)="markAlertRead(alert)">Mark read</button>
         }
-        <button type="button" class="read-btn" (click)="resolveAlert(alert)">Resolve</button>
+        <button *appCan="'resolve-call-alert'" type="button" class="read-btn" (click)="resolveAlert(alert)">Resolve</button>
       </article>
     } @empty {
       <div class="empty">@if (loading) { <app-page-loader [inline]="true"></app-page-loader> } @else { No open alerts. }</div>

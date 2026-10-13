@@ -62,7 +62,9 @@ export class ApiRoutesConstants {
 
    // Appointment wizard -> invoice -> customer, and the treatment sittings
    public static APPOINTMENT_FLOW = "appointment-flow";
+   public static APPOINTMENT_FLOW_LOOKUP = "appointment-flow/lookup";
    public static SITTINGS = "sittings";
+   public static CUSTOMER_TREATMENTS = "customer-treatments";
    public static SITTING_PHOTOS = "sitting-photos";
    public static TREATMENT_ADD = "treatments";
    public static TREATMENT_DELETE = "treatments";

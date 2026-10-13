@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatDialogModule } from '@angular/material/dialog';
+import { AuthService } from '../../../core/auth/auth.service';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { FranchiseService } from '../../../shared/common-services/franchise.service';
 import { CommonDetailCard } from '../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
@@ -16,13 +18,19 @@ import { FranchiseForm } from '../franchise-form/franchise-form';
 @Component({
   selector: 'app-franchises',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard],
+  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './franchises.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise-list.scss'],
 })
 export class Franchises extends LocalListBase {
   private readonly store = inject(FranchiseService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
+
+  /** Roles & Permissions: whether the signed-in role is ticked on this action slug. */
+  can(slug: string): boolean {
+    return this.auth.hasActionAccess(slug);
+  }
 
   protected readonly noun = 'franchises';
   protected override filterFields = { status: 'status', source: 'city', branch: ['name'] };

@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { DisplayModuleNode } from '../roles-permission.model';
+import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 
 export interface ModuleReorderEvent {
   items: { id: number; position: number }[];
@@ -16,7 +17,7 @@ export interface ModuleReorderEvent {
 @Component({
   selector: 'app-module-tree-node',
   standalone: true,
-  imports: [CommonModule, DragDropModule, ModuleTreeNode],
+  imports: [CommonModule, DragDropModule, ModuleTreeNode, CanActionDirective],
   templateUrl: './module-tree-node.html',
   styleUrl: './module-tree-node.scss',
 })

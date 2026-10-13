@@ -33,6 +33,7 @@
     (searchChange)="onSearch($event)"
     (filterClick)="onFilterClick($event)"
     (filtersChange)="onFiltersChange($event)"
+    [showExport]="can('export-missed-calls')"
     (exportClick)="onExport()"
   ></app-common-filter-card>
 

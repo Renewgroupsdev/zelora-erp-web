@@ -11,8 +11,8 @@
         <button type="button" role="tab" [class.active]="view() === 'Credit Note'" (click)="setView('Credit Note')">Credit Notes</button>
         <button type="button" role="tab" [class.active]="view() === 'Debit Note'" (click)="setView('Debit Note')">Debit Notes</button>
       </div>
-      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
-      <button type="button" class="add-lead-btn" (click)="newVoucher()"><i class="bi bi-plus-lg"></i> New Voucher</button>
+      <button *appCan="'export-vouchers'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button *appCan="'add-voucher'" type="button" class="add-lead-btn" (click)="newVoucher()"><i class="bi bi-plus-lg"></i> New Voucher</button>
     </div>
   </div>
 

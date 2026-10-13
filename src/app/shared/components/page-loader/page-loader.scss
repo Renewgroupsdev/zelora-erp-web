@@ -37,41 +37,46 @@
   z-index: 20;
 }
 
-.table-heartbeat {
-  width: 96px;
-  height: 36px;
-  // Beats per minute the ECG-style sweep completes at - one lap of the line per beat.
-  // Raise this (shorter duration) for a livelier pulse, lower it to slow it down.
-  --heartbeat-bpm: 70;
-  --heartbeat-duration: calc(60s / var(--heartbeat-bpm));
+// Renew Group logo breathing inside a spinning green / gold ring (the logo's own colours).
+.logo-loader {
+  --logo-loader-size: 64px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--logo-loader-size);
+  height: var(--logo-loader-size);
 }
 
-.heartbeat-track,
-.heartbeat-line {
-  fill: none;
-  stroke: var(--primary);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.logo-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--primary, #0b6e4f) 15%, transparent);
+  border-top-color: var(--primary, #0b6e4f);
+  border-right-color: #c9a24d;
+  animation: logo-loader-spin 0.9s linear infinite;
 }
 
-.heartbeat-track {
-  opacity: 0.25;
+.logo-mark {
+  width: 62%;
+  height: 62%;
+  object-fit: contain;
+  user-select: none;
+  animation: logo-loader-pulse 1.4s ease-in-out infinite;
 }
 
-.heartbeat-line {
-  // pathLength="100" on the element means dasharray/dashoffset units below are percent-of-path,
-  // independent of its actual pixel length. A 100/100 dash/gap pair with the offset sweeping
-  // from +100 (fully hidden ahead of the start) to -100 (fully hidden past the end) draws the
-  // line once and lets it run off, then loops - a continuous scanning "beat" rather than a
-  // snap-back reset.
-  stroke-dasharray: 100 100;
-  stroke-dashoffset: 100;
-  animation: heartbeat-sweep var(--heartbeat-duration) linear infinite;
+@keyframes logo-loader-spin {
+  to { transform: rotate(360deg); }
 }
 
-@keyframes heartbeat-sweep {
-  to { stroke-dashoffset: -100; }
+@keyframes logo-loader-pulse {
+  0%, 100% { transform: scale(0.9); opacity: 0.75; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-ring { animation-duration: 2.4s; }
+  .logo-mark { animation: none; }
 }
 
 @keyframes page-loader-fade-in {

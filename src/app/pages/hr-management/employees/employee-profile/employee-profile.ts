@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { HrService } from '../../../../shared/common-services/hr.service';
+import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 import { WorkTaskService } from '../../../../shared/common-services/work-task.service';
 import { isSeoEmployee, isTaskOverdue } from '../../../../shared/models/work-task.model';
 import { hoursLabel, kycNumberLabel, salaryBreakup, workedHours } from '../../../../shared/models/hr.model';
@@ -16,7 +17,7 @@ type ProfileTab = 'overview' | 'salary' | 'attendance' | 'leave' | 'payslips' | 
 @Component({
   selector: 'app-employee-profile',
   standalone: true,
-  imports: [CommonModule, MatDialogModule],
+  imports: [CommonModule, MatDialogModule, CanActionDirective],
   templateUrl: './employee-profile.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', './employee-profile.scss'],
 })

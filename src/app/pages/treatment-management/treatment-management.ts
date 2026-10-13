@@ -19,11 +19,13 @@ import {
 } from '../../shared/models/common-components.model';
 import { LookupOption, TreatmentManagementService, TreatmentRecord } from '../../shared/common-services/treatment-management.service';
 import { ToastService } from '../../shared/common-services/toast.service';
+import { AuthService } from '../../core/auth/auth.service';
+import { CanActionDirective } from '../../shared/directives/can-action.directive';
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { key: 'view', icon: 'bi-eye', label: 'View', variant: 'default' },
-  { key: 'edit', icon: 'bi-pencil-square', label: 'Edit', variant: 'default' },
-  { key: 'delete', icon: 'bi-trash3', label: 'Delete', variant: 'danger' },
+  { key: 'view', icon: 'bi-eye', label: 'View', variant: 'default', permission: 'view-treatment' },
+  { key: 'edit', icon: 'bi-pencil-square', label: 'Edit', variant: 'default', permission: 'edit-treatment' },
+  { key: 'delete', icon: 'bi-trash3', label: 'Delete', variant: 'danger', permission: 'delete-treatment' },
 ];
 
 /** Table column key -> treatments API `sort_by` value. */
@@ -37,7 +39,7 @@ const SORT_FIELDS: Record<string, string> = {
 @Component({
   selector: 'app-treatment-management',
   standalone: true,
-  imports: [CommonModule, CommonDetailCard, CommonFilterCard, CommonTableCard],
+  imports: [CommonModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './treatment-management.html',
   styleUrl: './treatment-management.scss',
 })
@@ -46,6 +48,12 @@ export class TreatmentManagement implements OnInit {
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
+
+  /** Roles & Permissions: whether the signed-in role is ticked on this action slug. */
+  can(slug: string): boolean {
+    return this.auth.hasActionAccess(slug);
+  }
   private readonly search$ = new Subject<string>();
 
   private categories: LookupOption[] = [];

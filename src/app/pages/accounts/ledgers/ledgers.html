@@ -18,8 +18,8 @@
         <input class="date-input" type="date" aria-label="From" [ngModel]="plFrom()" (ngModelChange)="plFrom.set($event)" />
         <input class="date-input" type="date" aria-label="To" [ngModel]="plTo()" (ngModelChange)="plTo.set($event)" />
       }
-      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
-      <button type="button" class="add-lead-btn" (click)="createLedger()"><i class="bi bi-plus-lg"></i> Create Ledger</button>
+      <button *appCan="'export-ledgers'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button *appCan="'add-ledger'" type="button" class="add-lead-btn" (click)="createLedger()"><i class="bi bi-plus-lg"></i> Create Ledger</button>
     </div>
   </div>
 

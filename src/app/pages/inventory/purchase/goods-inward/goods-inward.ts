@@ -10,6 +10,7 @@ import { displayDate, inr } from '../../../../shared/models/purchase.model';
 import { PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { GoodsInwardForm } from './goods-inward-form/goods-inward-form';
+import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 
 const GRN_COLUMNS: TableColumn[] = [
   { key: 'grnNo', header: 'GRN No', width: '10%' },
@@ -41,7 +42,7 @@ const BATCH_COLUMNS: TableColumn[] = [
 @Component({
   selector: 'app-goods-inward',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, PurchaseTabs],
+  imports: [CanActionDirective, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, PurchaseTabs],
   templateUrl: './goods-inward.html',
   styleUrl: '../../../../shared/styles/erp-page.scss',
 })

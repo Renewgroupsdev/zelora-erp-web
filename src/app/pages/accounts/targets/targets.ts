@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
+import { AuthService } from '../../../core/auth/auth.service';
 import { AccountsService } from '../../../shared/common-services/accounts.service';
 import { TargetsService } from '../../../shared/common-services/targets.service';
 import { ModuleTabs } from '../../../shared/components/module-tabs/module-tabs';
@@ -13,12 +15,13 @@ import { accountsTabs } from '../accounts-list-base';
 @Component({
   selector: 'app-targets',
   standalone: true,
-  imports: [CommonModule, FormsModule, ModuleTabs],
+  imports: [CommonModule, FormsModule, ModuleTabs, CanActionDirective],
   templateUrl: './targets.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './targets.scss'],
 })
 export class Targets {
   private readonly acc = inject(AccountsService);
+  private readonly auth = inject(AuthService);
   protected readonly store = inject(TargetsService);
 
   readonly inr = inr;
@@ -30,6 +33,11 @@ export class Targets {
   readonly icons = CATEGORY_ICONS;
   readonly view = signal<'branches' | 'employees' | 'treatments'>('branches');
   readonly empBranch = signal('');
+
+  /** Roles & Permissions: whether the signed-in role is ticked on this action slug. */
+  can(slug: string): boolean {
+    return this.auth.hasActionAccess(slug);
+  }
 
   readonly rows = computed(() => this.store.performance(this.month()));
   readonly employees = computed(() => this.store.employeePerformance(this.month()).filter(e => !this.empBranch() || e.branch === this.empBranch()));

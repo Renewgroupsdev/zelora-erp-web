@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule } from '@angular/material/dialog';
@@ -42,7 +43,7 @@ const HISTORY_COLUMNS: TableColumn[] = [
 @Component({
   selector: 'app-day-book',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, CommonTableCard, ModuleTabs],
+  imports: [CommonModule, FormsModule, MatDialogModule, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './day-book.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './day-book.scss'],
 })

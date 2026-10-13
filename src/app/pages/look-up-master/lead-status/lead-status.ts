@@ -4,6 +4,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import {
   CommonFilterState,
   FilterOption,
@@ -19,7 +20,7 @@ import { AddLeadStatusForm } from './add-lead-status-form/add-lead-status-form';
 @Component({
   selector: 'app-lead-status',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard],
+  imports: [CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './lead-status.html',
   styleUrl: './lead-status.scss',
 })

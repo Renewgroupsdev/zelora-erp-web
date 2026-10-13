@@ -8,6 +8,7 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AddServiceCategoryForm } from './add-service-category-form/add-service-category-form';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 
 /** One node in the tree - a top-level category carries its sub-categories (the treatments created
  *  under it in Treatment Management) in `children`; a sub-category's `children` stays empty. */
@@ -23,7 +24,7 @@ interface CategoryNode {
 @Component({
   selector: 'app-service-category',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonFilterCard, PageLoader],
+  imports: [CommonModule, MatDialogModule, CommonFilterCard, PageLoader, CanActionDirective],
   templateUrl: './service-category.html',
   styleUrl: './service-category.scss',
 })

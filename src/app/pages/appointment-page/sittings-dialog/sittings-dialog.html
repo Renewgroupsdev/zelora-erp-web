@@ -35,8 +35,8 @@
             </span>
 
             @if (s.status !== 'completed') {
-              <button type="button" class="st-link" [disabled]="busy() === s.id" (click)="drafts[s.id].rescheduling = !drafts[s.id].rescheduling"><i class="bi bi-calendar2-week"></i> Reschedule</button>
-              <button type="button" class="st-complete" [disabled]="busy() === s.id || blockers(s).length > 0" [title]="blockers(s).join(' · ')" (click)="complete(s)"><i class="bi bi-check2-circle"></i> Mark completed</button>
+              <button *appCan="'sitting-reschedule'" type="button" class="st-link" [disabled]="busy() === s.id" (click)="drafts[s.id].rescheduling = !drafts[s.id].rescheduling"><i class="bi bi-calendar2-week"></i> Reschedule</button>
+              <button *appCan="'sitting-complete'" type="button" class="st-complete" [disabled]="busy() === s.id || blockers(s).length > 0" [title]="blockers(s).join(' · ')" (click)="complete(s)"><i class="bi bi-check2-circle"></i> Mark completed</button>
             }
           </header>
 
@@ -58,7 +58,7 @@
               <div class="st-gallery">
                 <div class="st-gallery-head">
                   <span><i class="bi" [class.bi-camera]="type === 'before'" [class.bi-stars]="type === 'after'"></i> {{ type === 'before' ? 'Before' : 'After' }} photos</span>
-                  @if (s.status !== 'completed') {
+                  @if (s.status !== 'completed' && can('sitting-photos')) {
                     <label class="st-link" [class.disabled]="busy() === s.id || !canUpload(s, $any(type))">
                       <i class="bi bi-plus-lg"></i> Add
                       <input type="file" accept="image/*" capture="environment" multiple hidden #pick (change)="upload(s, $any(type), pick)" />
@@ -69,7 +69,7 @@
                   @for (p of photos(s, $any(type)); track p.id; let i = $index) {
                     <div class="st-thumb">
                       <img [src]="p.url" [alt]="type + ' photo ' + (i + 1)" title="Click to view" (click)="openViewer(photos(s, $any(type)), i)" />
-                      @if (s.status !== 'completed') {
+                      @if (s.status !== 'completed' && can('sitting-photos')) {
                         <button type="button" aria-label="Remove photo" (click)="deletePhoto(s, p)"><i class="bi bi-x"></i></button>
                       }
                     </div>
@@ -112,7 +112,7 @@
                 </span>
               }
               @if (r.amount_due > 0 && !drafts[s.id].paying) {
-                <button type="button" class="st-link" [disabled]="busy() === s.id" (click)="drafts[s.id].paying = true"><i class="bi bi-cash-coin"></i> Collect payment</button>
+                <button *appCan="'sitting-payment'" type="button" class="st-link" [disabled]="busy() === s.id" (click)="drafts[s.id].paying = true"><i class="bi bi-cash-coin"></i> Collect payment</button>
               }
             </div>
 

@@ -118,10 +118,27 @@ export interface FlowAppointmentRecord {
   notes?: string | null;
   customer?: FlowCustomer | null;
   payments?: FlowPayment[];
-  customer_treatment?: { id: number; sittings_count: number; completed_sittings: number; sittings: Sitting[] } | null;
+  customer_treatment?: { id: number; sittings_count: number; completed_sittings: number; sittings: Sitting[]; treatment?: { id: number; name: string } | null } | null;
+  /** Every treatment of the customer, newest first (earlier ones are view only). */
+  treatment_history?: TreatmentHistory[];
   documents?: FlowDocument[];
   lead?: { source?: { source_name: string } | null; service_category?: { name: string } | null } | null;
   sms_sent?: boolean;
+}
+
+/** One treatment plan of a customer with its sittings (summary, for history views). */
+export interface TreatmentHistory {
+  id: number;
+  treatment: string | null;
+  status: 'active' | 'completed';
+  start_date: string | null;
+  end_date: string | null;
+  sittings_count: number;
+  completed_sittings: number;
+  net_amount: number;
+  paid: number;
+  price_per_sitting: number;
+  sittings: { id: number; sitting_no: number; scheduled_date: string | null; scheduled_time: string | null; actual_date: string | null; status: string }[];
 }
 
 export const PAYMENT_MODES: { value: PaymentMode; label: string; icon: string }[] = [

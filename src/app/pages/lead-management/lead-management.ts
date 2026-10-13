@@ -31,12 +31,13 @@ import { CallReportSummary, LeadWorkStats, TelecallerRow } from '../../core/tele
 import { CrmFlowService, FlowAppointment, FlowLead } from '../../shared/common-services/crm-flow.service';
 import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
 import { AuthService } from '../../core/auth/auth.service';
+import { CanActionDirective } from '../../shared/directives/can-action.directive';
 import { COMBO_OFFERS, TREATMENTS } from '../../shared/data/treatment-catalog';
 
 @Component({
   selector: 'app-lead-management',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard],
+  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './lead-management.html',
   styleUrl: './lead-management.scss',
 })
@@ -388,6 +389,23 @@ export class LeadManagement implements OnInit {
     this.sortDirection = sort.direction || 'asc';
     this.currentPage = 1;
     this.loadLeadData();
+  }
+
+  /** Row buttons in the leads table, each tied to its Roles & Permissions action slug. */
+  readonly leadActionPermissions: Record<string, string> = {
+    call: 'call-lead',
+    validate: 'validate-lead',
+    edit: 'edit-lead',
+    followUp: 'lead-follow-up',
+    profile: 'lead-follow-up',
+    sendToBranch: 'send-lead-to-branch',
+    delete: 'delete-lead',
+    bulkActions: 'bulk-assign-leads',
+  };
+
+  /** Whether the signed-in role is ticked on this action slug. */
+  can(slug: string): boolean {
+    return this.auth.hasActionAccess(slug);
   }
 
   onRowAction(row: TableRow) {

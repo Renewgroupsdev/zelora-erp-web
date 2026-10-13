@@ -101,6 +101,30 @@ export class RolePermissionMatrix implements OnInit {
     return this.tree.filter((node) => nodeMatchesSearch(node, term));
   }
 
+  get selectedRoleName(): string {
+    return this.roles.find(role => role.id === this.selectedRoleId)?.name ?? '';
+  }
+
+  /** Granted / total modules and actions for the selected role across the whole tree (summary strip). */
+  get summary(): { modules: number; totalModules: number; actions: number; totalActions: number } {
+    const result = { modules: 0, totalModules: 0, actions: 0, totalActions: 0 };
+    const walk = (nodes: MatrixModuleNode[]) => nodes.forEach(node => {
+      result.totalModules++;
+      if (hasRole(node.role_ids, this.selectedRoleId)) result.modules++;
+      node.actions.forEach(action => {
+        result.totalActions++;
+        if (hasRole(action.role_ids, this.selectedRoleId)) result.actions++;
+      });
+      walk(node.sub_modules);
+    });
+    walk(this.tree);
+    return result;
+  }
+
+  percent(part: number, total: number): number {
+    return total ? Math.round((part / total) * 100) : 0;
+  }
+
   toggleModule(node: MatrixModuleNode): void {
     if (this.selectedRoleId == null) return;
     cascadeSetRole(node, this.selectedRoleId, !hasRole(node.role_ids, this.selectedRoleId));

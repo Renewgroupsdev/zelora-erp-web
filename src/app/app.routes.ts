@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, branchHeadGuard, loginRedirectGuard } from './core/auth/auth.guard';
+import { purchaseTabGuard } from './pages/inventory/purchase/purchase-tabs/purchase-tab-list';
 
 export const routes: Routes = [
   {
@@ -49,13 +50,13 @@ export const routes: Routes = [
       { path: 'inventory/products', loadComponent: () => import('./pages/inventory/product-management/product-management').then(m => m.ProductManagement) },
       { path: 'inventory/vendors', loadComponent: () => import('./pages/inventory/vendor-management/vendor-management').then(m => m.VendorManagement) },
       { path: 'inventory/purchase', pathMatch: 'full', redirectTo: 'inventory/purchase-requests' },
-      { path: 'inventory/purchase-requests', loadComponent: () => import('./pages/inventory/purchase/purchase-requests/purchase-requests').then(m => m.PurchaseRequests) },
-      { path: 'inventory/purchase-orders', loadComponent: () => import('./pages/inventory/purchase/purchase-orders/purchase-orders').then(m => m.PurchaseOrders) },
-      { path: 'inventory/purchase-inward', loadComponent: () => import('./pages/inventory/purchase/goods-inward/goods-inward').then(m => m.GoodsInward) },
+      { path: 'inventory/purchase-requests', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/purchase-requests/purchase-requests').then(m => m.PurchaseRequests) },
+      { path: 'inventory/purchase-orders', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/purchase-orders/purchase-orders').then(m => m.PurchaseOrders) },
+      { path: 'inventory/purchase-inward', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/goods-inward/goods-inward').then(m => m.GoodsInward) },
       { path: 'inventory/goods-inward', pathMatch: 'full', redirectTo: 'inventory/purchase-inward' },
-      { path: 'inventory/purchase-returns', loadComponent: () => import('./pages/inventory/purchase/purchase-returns/purchase-returns').then(m => m.PurchaseReturns) },
-      { path: 'inventory/vendor-notes', loadComponent: () => import('./pages/inventory/purchase/vendor-notes/vendor-notes').then(m => m.VendorNotes) },
-      { path: 'inventory/stock', loadComponent: () => import('./pages/inventory/purchase/stock/stock-overview').then(m => m.StockOverview) },
+      { path: 'inventory/purchase-returns', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/purchase-returns/purchase-returns').then(m => m.PurchaseReturns) },
+      { path: 'inventory/vendor-notes', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/vendor-notes/vendor-notes').then(m => m.VendorNotes) },
+      { path: 'inventory/stock', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/stock/stock-overview').then(m => m.StockOverview) },
       // HR Management
       { path: 'hr-management', pathMatch: 'full', redirectTo: 'hr/employees' },
       { path: 'hr', pathMatch: 'full', redirectTo: 'hr/employees' },

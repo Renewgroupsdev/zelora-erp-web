@@ -71,8 +71,17 @@ export class TopNavbar {
     this.router.navigate(['/app/settings']);
   }
 
+  readonly signingOut = signal(false);
+
+  /** Revokes the session on the API, then clears it locally and goes to the login page. */
   logout(): void {
-    this.navLayout.closeSettingsMenu();
-    this.authService.logout();
+    if (this.signingOut()) return;
+    this.signingOut.set(true);
+    this.authService.signOut().subscribe({
+      complete: () => {
+        this.signingOut.set(false);
+        this.navLayout.closeSettingsMenu();
+      },
+    });
   }
 }

@@ -13,6 +13,7 @@ import { DetailCardData, TableColumn, TableRow } from '../../../shared/models/co
 import { BREAK_TYPES, BreakType, DEPARTMENTS, breakMinutes, hoursLabel, minutesLabel, workedHours } from '../../../shared/models/hr.model';
 import { downloadExcel } from '../../../shared/utils/export.util';
 import { displayDate, displayTime, isoDate, monthLabel } from '../../../shared/utils/format.util';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { HrListBase } from '../hr-list-base';
 import { AttendanceView } from './attendance-view/attendance-view';
 
@@ -45,7 +46,7 @@ const MONTHLY_COLUMNS: TableColumn[] = [
 @Component({
   selector: 'app-attendance',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs],
+  imports: [CommonModule, FormsModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './attendance.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './attendance.scss'],
 })

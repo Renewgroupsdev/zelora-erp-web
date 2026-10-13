@@ -6,8 +6,8 @@
       <p class="page-subtitle">Employee master with full profile, salary, attendance, leave, payslips and appraisals.</p>
     </div>
     <div class="header-actions">
-      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
-      <button type="button" class="add-lead-btn" (click)="addEmployee()"><i class="bi bi-plus-lg"></i> Add Employee</button>
+      <button *appCan="'export-employees'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button *appCan="'add-employee'" type="button" class="add-lead-btn" (click)="addEmployee()"><i class="bi bi-plus-lg"></i> Add Employee</button>
     </div>
   </div>
 
@@ -41,6 +41,7 @@
       [pageInfoText]="pageInfoText"
       [sortActive]="sortActive"
       [sortDirection]="sortDirection"
+      [actionPermissions]="{ view: 'view-employee', profile: 'view-employee', edit: 'edit-employee', delete: 'delete-employee' }"
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
       (quickActionClick)="onQuickAction($event)"

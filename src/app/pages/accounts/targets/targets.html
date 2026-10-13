@@ -1,5 +1,5 @@
 @let t = totals();
-@let canEdit = access().canEdit;
+@let canEdit = access().canEdit && can('set-target');
 <div class="purchase-page container-fluid px-0">
 
   <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
@@ -23,7 +23,7 @@
       @if (canEdit) {
         <button type="button" class="ghost-btn" (click)="copyPrevious()"><i class="bi bi-files"></i> Copy last month</button>
       }
-      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button *appCan="'export-targets'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
     </div>
   </div>
 
@@ -126,7 +126,7 @@
           <label class="field">Bonus when conversion target is met (₹)
             <input class="num" type="number" min="0" [ngModel]="conversionBonus()" (ngModelChange)="conversionBonus.set($event)" />
           </label>
-          <button type="button" class="add-lead-btn" (click)="saveRules()"><i class="bi bi-check-lg"></i> Save incentive rules</button>
+          <button *appCan="'set-incentive-rules'" type="button" class="add-lead-btn" (click)="saveRules()"><i class="bi bi-check-lg"></i> Save incentive rules</button>
         </div>
       </div>
     }

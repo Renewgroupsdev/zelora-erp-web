@@ -56,6 +56,9 @@
 }
 
 .page-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   margin: 0;
   font-family: var(--font-family-display);
   font-size: clamp(17px, 1.4vw, 20px);
@@ -78,12 +81,109 @@
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 20px rgba(15, 23, 42, 0.03);
 }
 
+.title-icon {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  color: #fff;
+  box-shadow: 0 6px 14px var(--primary-shadow);
+
+  i { font-size: 14px; }
+}
+
 .page-subtitle {
-  margin: 0 0 2px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--table-border, var(--border-soft-strong));
+  margin: 0;
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* ---- summary strip: who is being edited + how much of the tree they have ---- */
+.summary-strip {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.1fr) 1fr 1fr auto;
+  align-items: center;
+  gap: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--table-border, var(--border-soft-strong));
+}
+
+.summary-role {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+
+  small { display: block; font-size: 10.5px; color: var(--text-muted); }
+  strong { display: block; font-size: 13.5px; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+
+.role-avatar {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 15px;
+  text-transform: uppercase;
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.stat-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--text-muted);
+
+  i { margin-right: 4px; }
+  strong { font-size: 13px; color: var(--text-dark); }
+}
+
+.stat-bar {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--app-surface-bg);
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+    transition: width 0.3s ease;
+  }
+}
+
+.summary-legend {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+
+  span { display: inline-flex; align-items: center; gap: 5px; }
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+
+  &.full { background: var(--status-green-text, #1f9d55); }
+  &.partial { background: var(--status-orange-text, #c77700); }
+  &.none { background: var(--border-soft-strong); }
 }
 
 .matrix-toolbar {
@@ -275,12 +375,14 @@
   background: var(--app-surface-solid);
   border: 1px solid var(--table-border, var(--border-soft-strong));
   border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 20px rgba(15, 23, 42, 0.03);
   overflow: hidden;
 }
 
 .matrix-tree-scroll {
   flex: 1 1 auto;
   min-height: 0;
+  padding: 6px 8px;
   overflow-y: auto;
   scrollbar-color: var(--primary) var(--table-scrollbar-track);
 }
@@ -302,22 +404,18 @@
 }
 
 /* ---- drag-and-drop reordering (root modules) ---- */
-.root-drag-item {
-  border-bottom: 1px solid var(--table-border, var(--border-soft-strong));
-}
-
-.root-drag-item:last-child {
-  border-bottom: 0;
+/* Root modules are rows of one tree, split by a hairline. */
+.root-drag-item + .root-drag-item {
+  border-top: 1px solid var(--border-soft, var(--table-border));
 }
 
 .drag-card {
   display: flex;
   align-items: center;
-  padding: 4px 6px;
+  padding: 2px 0;
   background: var(--app-surface-solid);
-  border: 1px solid transparent;
-  border-radius: 0;
-  transition: box-shadow 0.18s ease, transform 0.18s ease, border-radius 0.18s ease, border-color 0.18s ease;
+  border-radius: 10px;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .root-drag-content {
@@ -346,26 +444,48 @@
 }
 
 /* ---- footer ---- */
+/* Floating save bar: quiet when everything is saved, highlighted while there are unsaved ticks. */
 .matrix-footer {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  padding: 10px 9px 4px;
+  margin: 0 7px 4px;
+  padding: 10px 12px;
   position: sticky;
   bottom: 0;
-  background: var(--app-surface-bg);
+  border: 1px solid var(--table-border, var(--border-soft-strong));
+  border-radius: 14px;
+  background: var(--app-surface-solid);
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.05);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.matrix-footer.has-changes {
+  border-color: var(--status-orange-text, #c77700);
+  box-shadow: 0 -4px 22px color-mix(in srgb, var(--status-orange-text, #c77700) 18%, transparent);
+}
+
+.dirty-badge,
+.saved-note {
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: 600;
 }
 
 .dirty-badge {
-  margin-right: auto;
-  padding: 4px 10px;
-  border-radius: var(--radius-pill);
-  background: var(--status-purple-bg);
-  color: var(--status-purple-text);
-  font-size: 11px;
-  font-weight: var(--fw-medium);
+  background: var(--status-orange-bg);
+  color: var(--status-orange-text);
+}
+
+.saved-note {
+  color: var(--status-green-text);
 }
 
 .cancel-btn,
@@ -423,7 +543,14 @@
   to { transform: rotate(360deg); }
 }
 
+@media (max-width: 980px) {
+  .summary-strip { grid-template-columns: 1fr 1fr; }
+  .summary-legend { display: none; }
+}
+
 @media (max-width: 700px) {
+  .summary-strip { grid-template-columns: 1fr; }
+
   .role-select-control {
     min-width: 140px;
   }

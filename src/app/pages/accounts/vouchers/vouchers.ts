@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { Component, computed, signal } from '@angular/core';
 import { MatDialogModule } from '@angular/material/dialog';
 import { CommonDetailCard } from '../../../shared/components/common-detail-card/common-detail-card';
@@ -18,7 +19,7 @@ type View = 'All' | 'Credit Note' | 'Debit Note';
 @Component({
   selector: 'app-vouchers',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs],
+  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './vouchers.html',
   styleUrl: '../../../shared/styles/erp-page.scss',
 })

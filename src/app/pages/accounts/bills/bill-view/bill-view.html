@@ -102,17 +102,17 @@
   <div class="modal-footer-custom">
     <button type="button" class="cancel-btn" (click)="close()">Close</button>
     @if (b.status !== 'Cancelled' && b.status !== 'Converted' && b.paidAmount === 0) {
-      <button type="button" class="danger-btn" (click)="cancel()"><i class="bi bi-x-circle"></i> Cancel Bill</button>
+      <button *appCan="'cancel-bill'" type="button" class="danger-btn" (click)="cancel()"><i class="bi bi-x-circle"></i> Cancel Bill</button>
     }
     @if (b.kind === 'Proforma' && b.status === 'Draft') {
-      <button type="button" class="cancel-btn" (click)="markSent()"><i class="bi bi-send"></i> Mark Sent</button>
+      <button *appCan="'send-proforma-bill'" type="button" class="cancel-btn" (click)="markSent()"><i class="bi bi-send"></i> Mark Sent</button>
     }
     @if (b.kind === 'Proforma' && (b.status === 'Draft' || b.status === 'Sent')) {
-      <button type="button" class="save-btn" (click)="convert()"><i class="bi bi-arrow-right-circle"></i> Convert to Service Bill</button>
+      <button *appCan="'convert-proforma-bill'" type="button" class="save-btn" (click)="convert()"><i class="bi bi-arrow-right-circle"></i> Convert to Service Bill</button>
     }
     @if (b.kind === 'Service' && (b.status === 'Unpaid' || b.status === 'Partially Paid')) {
-      <button type="button" class="save-btn" (click)="collect()"><i class="bi bi-cash-coin"></i> Collect Payment</button>
+      <button *appCan="'record-bill-payment'" type="button" class="save-btn" (click)="collect()"><i class="bi bi-cash-coin"></i> Collect Payment</button>
     }
-    <button type="button" class="save-btn" (click)="downloadPdf()"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+    <button *appCan="'download-bill-pdf'" type="button" class="save-btn" (click)="downloadPdf()"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
   </div>
 </div>

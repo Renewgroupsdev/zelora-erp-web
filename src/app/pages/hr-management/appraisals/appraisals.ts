@@ -10,6 +10,7 @@ import { DetailCardData, FilterOption, QuickAction, TableColumn, TableRow } from
 import { Appraisal, BonusType, DEPARTMENTS } from '../../../shared/models/hr.model';
 import { downloadExcel, escapeHtml, fileStamp, printDocument } from '../../../shared/utils/export.util';
 import { displayDate, inr, monthKey, monthLabel } from '../../../shared/utils/format.util';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { HrListBase } from '../hr-list-base';
 import { AppraisalForm } from './appraisal-form/appraisal-form';
 
@@ -41,7 +42,7 @@ const BONUS_COLUMNS: TableColumn[] = [
 @Component({
   selector: 'app-appraisals',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs],
+  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './appraisals.html',
   styleUrl: '../../../shared/styles/erp-page.scss',
 })

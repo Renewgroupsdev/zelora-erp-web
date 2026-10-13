@@ -61,7 +61,7 @@
             <p>{{ alert.message }}</p>
             <small>{{ alert.triggered_at | date:'dd MMM, hh:mm a' }}</small>
           </div>
-          <button type="button" class="read-btn" (click)="markAlertRead(alert)">Read</button>
+          <button *appCan="'mark-call-alert-read'" type="button" class="read-btn" (click)="markAlertRead(alert)">Read</button>
         </article>
       } @empty {
         <div class="empty">No open branch alerts.</div>

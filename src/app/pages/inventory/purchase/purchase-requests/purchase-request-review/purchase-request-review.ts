@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
 import { CENTRAL_STORE, PurchaseOrder, displayDate, lineTotals } from '../../../../../shared/models/purchase.model';
+import { CanActionDirective } from '../../../../../shared/directives/can-action.directive';
 
 export interface ReviewResult {
   action: 'approved' | 'rejected';
@@ -14,7 +15,7 @@ export interface ReviewResult {
 @Component({
   selector: 'app-purchase-request-review',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [CanActionDirective, CommonModule, FormsModule, MatDialogModule],
   templateUrl: './purchase-request-review.html',
   styleUrl: '../../../../../shared/styles/erp-dialog.scss',
 })

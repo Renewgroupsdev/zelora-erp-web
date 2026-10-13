@@ -79,6 +79,6 @@
 
   <div class="modal-footer-custom">
     <button type="button" class="cancel-btn" (click)="close()">Close</button>
-    <button type="button" class="save-btn" (click)="downloadPdf()"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+    <button *appCan="'download-payslip'" type="button" class="save-btn" (click)="downloadPdf()"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
   </div>
 </div>

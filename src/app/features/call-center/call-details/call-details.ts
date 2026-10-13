@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CallLog, LIVE_CALL_STATUSES, customerNumber, formatCallDuration } from '../../../core/telephony/telephony.models';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 
 /** Read-only detail modal for one call record, with a shortcut to log its outcome. */
 @Component({
   selector: 'app-call-details',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CanActionDirective],
   templateUrl: './call-details.html',
   styleUrl: './call-details.scss',
 })

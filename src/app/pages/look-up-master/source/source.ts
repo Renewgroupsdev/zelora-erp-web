@@ -4,6 +4,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import {
   CommonFilterState,
   FilterOption,
@@ -19,7 +20,7 @@ import { AddSourceForm } from './add-source-form/add-source-form';
 @Component({
   selector: 'app-source',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard],
+  imports: [CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './source.html',
   styleUrl: './source.scss',
 })

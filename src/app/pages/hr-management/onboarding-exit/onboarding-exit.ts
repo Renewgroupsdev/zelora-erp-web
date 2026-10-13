@@ -6,24 +6,32 @@ import { ModuleTabs } from '../../../shared/components/module-tabs/module-tabs';
 import { ExitCase } from '../../../shared/models/hr.model';
 import { escapeHtml, printDocument } from '../../../shared/utils/export.util';
 import { addDays, amountInWords, daysBetween, displayDate, inr, initials, isoDate } from '../../../shared/utils/format.util';
+import { AuthService } from '../../../core/auth/auth.service';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { hrTabs } from '../hr-list-base';
 
 /** HR "in and out": joining checklist for new hires, exit clearance + full & final settlement for leavers. */
 @Component({
   selector: 'app-onboarding-exit',
   standalone: true,
-  imports: [CommonModule, ModuleTabs],
+  imports: [CommonModule, ModuleTabs, CanActionDirective],
   templateUrl: './onboarding-exit.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './onboarding-exit.scss'],
 })
 export class OnboardingExit {
   readonly hr = inject(HrService);
+  private readonly auth = inject(AuthService);
   readonly tabs = computed(() => hrTabs(this.hr));
   readonly view = signal<'in' | 'out'>('in');
   readonly expanded = signal<string | null>(null);
   readonly displayDate = displayDate;
   readonly initials = initials;
   readonly inr = inr;
+
+  /** Whether Roles & Permissions ticks the signed-in role on this HR action slug. */
+  can(slug: string): boolean {
+    return this.auth.hasActionAccess(slug);
+  }
 
   readonly joiners = computed(() => [...this.hr.onboarding()].sort((a, b) => (a.status === b.status ? a.joinDate.localeCompare(b.joinDate) : a.status === 'In Progress' ? -1 : 1)));
   readonly leavers = computed(() => [...this.hr.exits()].sort((a, b) => (a.status === 'Settled' ? 1 : 0) - (b.status === 'Settled' ? 1 : 0) || a.lastWorkingDay.localeCompare(b.lastWorkingDay)));

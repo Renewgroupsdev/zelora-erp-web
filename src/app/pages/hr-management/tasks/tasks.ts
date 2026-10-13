@@ -8,6 +8,7 @@ import { ModuleTabs } from '../../../shared/components/module-tabs/module-tabs';
 import { ALL_WORK_TASK_TYPES, WORK_TASK_STATUSES, WorkTask, isTaskOverdue } from '../../../shared/models/work-task.model';
 import { downloadExcel } from '../../../shared/utils/export.util';
 import { addDays, displayDate, isoDate } from '../../../shared/utils/format.util';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { hrTabs } from '../hr-list-base';
 import { TaskForm } from './task-form/task-form';
 
@@ -17,7 +18,7 @@ type Period = 'thisweek' | 'thismonth' | 'lastmonth' | 'all';
 @Component({
   selector: 'app-hr-tasks',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, ModuleTabs],
+  imports: [CommonModule, FormsModule, MatDialogModule, ModuleTabs, CanActionDirective],
   templateUrl: './tasks.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './tasks.scss'],
 })

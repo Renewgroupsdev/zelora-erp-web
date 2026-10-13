@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragAxis, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { Component, EventEmitter, Input, Output, ViewChild } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ViewChild, inject } from '@angular/core';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSortModule, Sort, SortDirection } from '@angular/material/sort';
 import { MatTable, MatTableModule } from '@angular/material/table';
 import { PageLoader } from '../page-loader/page-loader';
+import { AuthService } from '../../../core/auth/auth.service';
 import { CallerAvatar, CallerLogEntry, LeadCell, QuickAction, TableColumn, TablePageChangeEvent, TableReorderEvent, TableRow, TableTransferEvent } from '../../models/common-components.model';
 
 const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue'> = {
@@ -41,6 +42,15 @@ const AVATAR_PALETTE_SIZE = 5;
   styleUrl: './common-table-card.scss',
 })
 export class CommonTableCard {
+  private readonly auth = inject(AuthService);
+
+  /**
+   * Roles & Permissions action slug per row button, e.g. `{ edit: 'edit-product', delete: 'delete-product' }`.
+   * Keys: edit, delete, call, validate, followUp, sendToBranch, viewCallLog, profile, bulkActions,
+   * or a quick action key. A button without a slug here (or on the quick action) is always shown.
+   */
+  @Input() actionPermissions: Record<string, string> = {};
+
   @Input() title = '';
   @Input() recordCountText = '';
   @Input() columns: TableColumn[] = [];
@@ -103,8 +113,14 @@ export class CommonTableCard {
     return Array.isArray(value) ? (value as CallerLogEntry[]) : [];
   }
 
+  /** Quick actions the signed-in role may use (the action's own `permission`, else `actionPermissions[key]`). */
   asQuickActions(value: TableRow[string]): QuickAction[] {
-    return Array.isArray(value) ? (value as QuickAction[]) : [];
+    return Array.isArray(value) ? (value as QuickAction[]).filter(a => this.allowed(a.key, a.permission)) : [];
+  }
+
+  /** Whether a row button is shown: true unless it has an action slug the role is not ticked on. */
+  allowed(key: string, slug = this.actionPermissions[key]): boolean {
+    return !slug || this.auth.hasActionAccess(slug);
   }
 
   showAvatarTooltip(event: Event, caller: CallerAvatar): void {

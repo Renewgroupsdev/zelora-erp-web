@@ -2,7 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { HrService } from '../../../../shared/common-services/hr.service';
+import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 import {
   BackgroundCheckStatus,
   Candidate,
@@ -38,7 +40,7 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 @Component({
   selector: 'app-candidate-process',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatDialogModule, CanActionDirective],
   templateUrl: './candidate-process.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', './candidate-process.scss'],
 })
@@ -47,6 +49,7 @@ export class CandidateProcess {
   private readonly data = inject<{ candidateId: string }>(MAT_DIALOG_DATA);
   private readonly dialog = inject(MatDialog);
   readonly hr = inject(HrService);
+  readonly auth = inject(AuthService);
 
   readonly steps = STEPS;
   readonly modes = INTERVIEW_MODES;
