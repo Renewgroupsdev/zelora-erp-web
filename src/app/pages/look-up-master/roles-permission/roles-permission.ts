@@ -12,11 +12,12 @@ import { fetchFullModuleTree } from './roles-permission-data.util';
 import { DisplayModuleNode, isSuccessResponse, RolePermissionModule } from './roles-permission.model';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 
 @Component({
   selector: 'app-roles-permission',
   standalone: true,
-  imports: [CommonModule, DragDropModule, CommonFilterCard, ModuleTreeNode, PageLoader],
+  imports: [CommonModule, DragDropModule, CommonFilterCard, ModuleTreeNode, PageLoader, CanActionDirective],
   templateUrl: './roles-permission.html',
   styleUrl: './roles-permission.scss',
 })

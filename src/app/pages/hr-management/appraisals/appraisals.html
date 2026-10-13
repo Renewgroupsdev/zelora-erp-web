@@ -10,9 +10,9 @@
         <button type="button" role="tab" [class.active]="view() === 'appraisals'" (click)="setView('appraisals')">Appraisals</button>
         <button type="button" role="tab" [class.active]="view() === 'bonus'" (click)="setView('bonus')">Bonus</button>
       </div>
-      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
-      <button type="button" class="ghost-btn" (click)="addBonus()"><i class="bi bi-gift"></i> Add Bonus</button>
-      <button type="button" class="add-lead-btn" (click)="newAppraisal()"><i class="bi bi-plus-lg"></i> New Appraisal</button>
+      <button *appCan="'export-appraisals'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button *appCan="'add-bonus'" type="button" class="ghost-btn" (click)="addBonus()"><i class="bi bi-gift"></i> Add Bonus</button>
+      <button *appCan="'add-appraisal'" type="button" class="add-lead-btn" (click)="newAppraisal()"><i class="bi bi-plus-lg"></i> New Appraisal</button>
     </div>
   </div>
 
@@ -46,6 +46,7 @@
       [pageInfoText]="pageInfoText"
       [sortActive]="sortActive"
       [sortDirection]="sortDirection"
+      [actionPermissions]="{ approve: 'approve-appraisal', release: 'release-appraisal', letter: 'download-appraisal-letter' }"
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
       (quickActionClick)="onQuickAction($event)"

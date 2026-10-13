@@ -10,9 +10,9 @@
         <button type="button" role="tab" [class.active]="view() === 'Service'" (click)="setView('Service')">Service Bills</button>
         <button type="button" role="tab" [class.active]="view() === 'Proforma'" (click)="setView('Proforma')">Proforma Bills</button>
       </div>
-      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
-      <button type="button" class="ghost-btn" (click)="newBill('Proforma')"><i class="bi bi-file-earmark-plus"></i> Proforma Bill</button>
-      <button type="button" class="add-lead-btn" (click)="newBill('Service')"><i class="bi bi-plus-lg"></i> Service Bill</button>
+      <button *appCan="'export-bills'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button *appCan="'add-proforma-bill'" type="button" class="ghost-btn" (click)="newBill('Proforma')"><i class="bi bi-file-earmark-plus"></i> Proforma Bill</button>
+      <button *appCan="'add-bill'" type="button" class="add-lead-btn" (click)="newBill('Service')"><i class="bi bi-plus-lg"></i> Service Bill</button>
     </div>
   </div>
 

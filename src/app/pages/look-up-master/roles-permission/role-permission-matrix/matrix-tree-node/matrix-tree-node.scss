@@ -1,246 +1,240 @@
+/* Explorer-style permission tree: compact rows, connector lines from each module down to its
+   actions (leaves) and sub-modules (branches). */
+
 :host {
   display: block;
   width: 100%;
+  --line: var(--border-soft-strong);
+  --indent: 22px;      /* how far each level steps in */
+  --row-h: 34px;
 }
 
-.matrix-node {
-  border-bottom: 1px solid var(--table-border, var(--border-soft-strong));
-}
-
-.matrix-node:last-child {
-  border-bottom: 0;
-}
-
-.node-row {
+/* ---- rows ---- */
+.tree-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px 9px calc(12px + var(--level) * 22px);
-  cursor: default;
-  position: relative;
-  transition: background 0.15s ease;
+  gap: 8px;
+  min-height: var(--row-h);
+  padding: 0 10px 0 4px;
+  border-radius: 8px;
+  transition: background 0.12s ease;
 }
 
-.node-row.has-children {
+.tree-row:hover { background: var(--table-row-hover-bg); }
+
+.module-row.has-children { cursor: pointer; }
+
+.root > .module-row {
+  min-height: 42px;
+
+  .node-name { font-size: 13px; font-weight: 700; }
+  .node-icon { width: 26px; height: 26px; font-size: 13px; }
+}
+
+.twisty {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
+  transition: transform 0.15s ease, color 0.15s ease;
+
+  i { font-size: 10px; }
+
+  &.open { transform: rotate(90deg); color: var(--primary-dark); }
+  &.invisible { visibility: hidden; pointer-events: none; }
 }
 
-.node-row.has-children:hover {
-  background: var(--table-row-hover-bg);
+.tick {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+
+  input {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+
+  input:disabled { cursor: not-allowed; opacity: 0.45; }
 }
 
-.node-row.expanded {
-  background: var(--table-row-alt-bg);
+/* Everything right of the checkbox is the drag handle for reordering modules. */
+.row-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &.grabbable { cursor: grab; touch-action: none; }
+  &.grabbable:active { cursor: grabbing; }
 }
 
-.node-connector {
-  position: absolute;
-  left: calc(12px + (var(--level) - 1) * 22px + 10px);
-  top: 0;
-  width: 12px;
-  height: 50%;
-  border-left: 1px solid var(--border-soft-strong);
-  border-bottom: 1px solid var(--border-soft-strong);
-  border-bottom-left-radius: 6px;
-}
-
-.expand-toggle {
-  flex: 0 0 22px;
+.node-icon {
+  flex: 0 0 auto;
   width: 22px;
   height: 22px;
   display: grid;
   place-items: center;
-  border: 0;
   border-radius: 6px;
   background: var(--primary-soft);
   color: var(--primary-dark);
-  cursor: pointer;
-  transition: transform 0.18s ease;
-  z-index: 1;
-}
-
-.expand-toggle.invisible {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.expand-toggle.rotated {
-  transform: rotate(90deg);
-}
-
-.expand-toggle i {
-  font-size: 11px;
-}
-
-.module-check {
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  z-index: 1;
-  cursor: pointer;
-}
-
-.module-check input {
-  accent-color: var(--primary);
-  width: 15px;
-  height: 15px;
-  cursor: pointer;
-}
-
-.module-check input:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.node-icon {
-  flex: 0 0 26px;
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: var(--primary-soft);
-  color: var(--primary);
-  z-index: 1;
-}
-
-.node-icon i {
-  font-size: 13px;
-}
-
-/* The whole row (icon + name/slug/actions, and any empty space after them) is the drag handle -
-   only the checkbox and expand-toggle button sit outside it, so those stay reliably clickable
-   while everything else can be pressed and dragged to reorder, Trello-card style. */
-.node-drag-surface {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  z-index: 1;
-}
-
-.node-drag-surface.grabbable {
-  cursor: grab;
-  touch-action: none;
-}
-
-.node-drag-surface.grabbable:active {
-  cursor: grabbing;
-}
-
-.node-info {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  z-index: 1;
+  font-size: 11.5px;
 }
 
 .node-name {
   font-size: 12.5px;
-  font-weight: var(--fw-semibold);
+  font-weight: 600;
   color: var(--text-dark);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .node-slug {
-  flex: 0 0 auto;
-  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10.5px;
   color: var(--text-muted);
-  font-family: monospace;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.meta-chip {
+.row-end {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  background: var(--status-green-bg);
-  color: var(--status-green-text);
-  font-size: 10px;
-  font-weight: var(--fw-medium);
-  white-space: nowrap;
+  gap: 8px;
   margin-left: auto;
 }
 
-.meta-chip i {
-  font-size: 10px;
-}
-
-.node-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  padding: 8px 12px 10px calc(12px + var(--level) * 22px + 44px);
-  background: var(--app-surface-bg);
-}
-
-.action-check-row {
+.count {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   font-size: 11px;
-  color: var(--text-dark);
-  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-muted);
+
+  i { font-size: 11px; }
 }
 
-.action-check-row input {
-  accent-color: var(--primary);
-  width: 13px;
-  height: 13px;
-  cursor: pointer;
-}
-
-.action-check-row input:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.action-check-row i {
-  font-size: 10px;
+.status {
+  min-width: 70px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-align: center;
+  background: var(--app-surface-bg);
   color: var(--text-muted);
 }
 
-.node-children {
-  background: var(--app-surface-bg);
+.access-full > .module-row .status { background: var(--status-green-bg); color: var(--status-green-text); }
+.access-partial > .module-row .status { background: var(--status-orange-bg); color: var(--status-orange-text); }
+
+/* ---- action leaves ---- */
+.action-row {
+  cursor: pointer;
+  min-height: 30px;
+
+  &.on .action-name { color: var(--text-dark); font-weight: 600; }
+  &.on .leaf-icon { color: var(--primary); }
+  &.disabled { cursor: not-allowed; opacity: 0.6; }
 }
 
-/* Trello-style lifted row while a sub-module is actively being dragged. */
-.cdk-drag-preview .node-row {
-  border-radius: 10px;
+.leaf-icon {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.action-name {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ---- connector lines ----
+   Children sit under the parent's twisty; every item draws a vertical line on its left (│) and an
+   elbow into its row (├─). The last item's line stops at its row (└─). When a module has both
+   actions and sub-modules, the actions block "continues" so its line runs on into the sub-modules. */
+.tree-children {
+  margin-left: calc(4px + 9px);   /* centre of the parent's twisty */
+  padding-left: var(--indent);
+}
+
+.tree-children > .tree-item {
+  position: relative;
+}
+
+/* Sub-module items are component hosts (block); action items stay flex rows (.tree-row) so the
+   checkbox, icon, name and slug sit on one line. */
+.tree-children > app-matrix-tree-node.tree-item {
+  display: block;
+}
+
+.tree-children > label.tree-item {
+  display: flex;
+  margin: 0;
+}
+
+.tree-children > .tree-item::before,
+.tree-children > .tree-item::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--indent) * -1);
+  pointer-events: none;
+}
+
+/* │ */
+.tree-children > .tree-item::before {
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--line);
+}
+
+/* ─ into the row (rows are vertically centred in var(--row-h)) */
+.tree-children > .tree-item::after {
+  top: calc(var(--row-h) / 2);
+  width: calc(var(--indent) - 6px);
+  border-top: 1px solid var(--line);
+}
+
+.tree-children > label.tree-item::after { top: 15px; }
+
+/* └ : the last child's vertical line stops at its elbow */
+.tree-children > .tree-item:last-child::before { bottom: auto; height: calc(var(--row-h) / 2); }
+.tree-children > label.tree-item:last-child::before { height: 15px; }
+.tree-children.continues > .tree-item:last-child::before { bottom: 0; height: auto; }
+
+/* Root modules: a hairline between them, like file-explorer sections. */
+.root { padding: 2px 0; }
+
+/* ---- drag & drop ---- */
+.cdk-drag-preview .module-row {
   background: var(--app-surface-solid);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.24), 0 4px 12px rgba(0, 0, 0, 0.12);
-  transform: scale(0.98) rotate(-1deg);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
 }
 
-.cdk-drag-placeholder {
-  opacity: 0.4;
-}
-
-.cdk-drag-placeholder .node-row {
-  border: 2px dashed var(--primary-border-strong);
-  background: var(--primary-soft);
-  border-radius: 8px;
-}
+.cdk-drag-placeholder { opacity: 0.35; }
+.cdk-drag-placeholder .module-row { background: var(--primary-soft); outline: 1px dashed var(--primary-border-strong); }
 
 .cdk-drop-list-dragging > :not(.cdk-drag-placeholder) {
-  transition: transform 220ms cubic-bezier(0, 0, 0.2, 1);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
 }
 
-@media (max-width: 700px) {
-  .node-slug {
-    display: none;
-  }
-}
-
-@media (max-width: 560px) {
-  .node-connector {
-    display: none;
-  }
+@media (max-width: 760px) {
+  .node-slug, .count { display: none; }
+  :host { --indent: 16px; }
 }

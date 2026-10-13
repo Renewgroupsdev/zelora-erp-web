@@ -10,6 +10,7 @@ import { DEPARTMENTS, LEAVE_QUOTA, LeaveType } from '../../../shared/models/hr.m
 import { downloadExcel, fileStamp } from '../../../shared/utils/export.util';
 import { displayDate } from '../../../shared/utils/format.util';
 import { reviewPrompt } from '../../../shared/utils/prompt.util';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { HrListBase } from '../hr-list-base';
 import { LeaveForm } from './leave-form/leave-form';
 
@@ -38,7 +39,7 @@ const BALANCE_COLUMNS: TableColumn[] = [
 @Component({
   selector: 'app-leave-permission',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs],
+  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './leave-permission.html',
   styleUrl: '../../../shared/styles/erp-page.scss',
 })

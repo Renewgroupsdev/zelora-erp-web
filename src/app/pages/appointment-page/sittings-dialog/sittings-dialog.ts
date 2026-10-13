@@ -8,10 +8,11 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { FlowAppointmentRecord, PAYMENT_MODES, PaymentMode, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
 
-/** Roles allowed to write the doctor's session notes (matches the API). */
-const DOCTOR_ROLES = ['doctor', 'super_admin', 'admin'];
+/** Module action whose roles may write the doctor's session notes - assigned in Roles & Permissions (the API checks the same). */
+const SITTING_NOTES_ACTION = 'sitting-notes';
 
 interface SittingDraft {
   date: string;
@@ -33,7 +34,7 @@ interface SittingDraft {
 @Component({
   selector: 'app-sittings-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, PageLoader],
+  imports: [CommonModule, FormsModule, MatDialogModule, PageLoader, CanActionDirective],
   templateUrl: './sittings-dialog.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', './sittings-dialog.scss'],
 })
@@ -53,7 +54,12 @@ export class SittingsDialog implements OnInit {
   drafts: Record<number, SittingDraft> = {};
 
   readonly today = new Date().toISOString().slice(0, 10);
-  readonly isDoctor = computed(() => DOCTOR_ROLES.includes(String(this.auth.currentUser()?.role?.slug ?? '')));
+  readonly isDoctor = computed(() => this.auth.hasActionAccess(SITTING_NOTES_ACTION));
+  /** Roles & Permissions -> Appointment module action ticked for the signed-in role. */
+  can(action: string): boolean {
+    return this.auth.hasActionAccess(action);
+  }
+
   readonly completed = computed(() => this.sittings().filter(s => s.status === 'completed').length);
 
   ngOnInit(): void {

@@ -1,6 +1,6 @@
 @let c = candidate();
 @let v = vacancy();
-@let canAct = hr.canApprove();
+@let canAct = hr.canApprove() && auth.hasActionAccess('move-candidate');
 <div class="lead-modal">
 
   <div class="modal-header-custom">
@@ -254,7 +254,7 @@
                     <div class="input-wrap"><i class="bi bi-hourglass-split"></i><input id="cp-valid" type="date" [min]="today" [(ngModel)]="validUntil" /></div>
                   </div>
                 </div>
-                <div class="actions"><button type="button" class="save-btn" (click)="releaseOffer()"><i class="bi bi-send-check"></i> Release offer letter</button></div>
+                <div class="actions"><button *appCan="'release-offer-letter'" type="button" class="save-btn" (click)="releaseOffer()"><i class="bi bi-send-check"></i> Release offer letter</button></div>
               }
             }
           }
@@ -264,7 +264,7 @@
             @if (canAct) {
               <div class="actions">
                 <button type="button" class="cancel-btn" (click)="offerLetter(c)"><i class="bi bi-file-earmark-pdf"></i> Offer letter</button>
-                <button type="button" class="save-btn" (click)="addEmployee()"><i class="bi bi-person-plus"></i> Add employee</button>
+                <button *appCan="'add-employee'" type="button" class="save-btn" (click)="addEmployee()"><i class="bi bi-person-plus"></i> Add employee</button>
               </div>
             }
           }
@@ -390,7 +390,7 @@
   </div>
 
   <div class="modal-footer-custom">
-    <button type="button" class="link-btn" (click)="resume(c)"><i class="bi bi-download"></i> Resume</button>
+    <button *appCan="'download-candidate-resume'" type="button" class="link-btn" (click)="resume(c)"><i class="bi bi-download"></i> Resume</button>
     <span class="spacer"></span>
     <button type="button" class="cancel-btn" (click)="close()">Close</button>
   </div>

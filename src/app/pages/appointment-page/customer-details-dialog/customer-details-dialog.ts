@@ -6,6 +6,7 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { FlowAppointmentRecord, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
+import { HairGradeIcon } from '../../../shared/components/hair-grade-icon/hair-grade-icon';
 
 interface DetailItem {
   label: string;
@@ -20,7 +21,7 @@ interface DetailItem {
 @Component({
   selector: 'app-customer-details-dialog',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, PageLoader],
+  imports: [CommonModule, MatDialogModule, PageLoader, HairGradeIcon],
   templateUrl: './customer-details-dialog.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', './customer-details-dialog.scss'],
 })
@@ -37,6 +38,9 @@ export class CustomerDetailsDialog implements OnInit {
   readonly sittings = computed<Sitting[]>(() =>
     [...(this.appt()?.customer_treatment?.sittings ?? [])].sort((a, b) => a.sitting_no - b.sitting_no));
   readonly completedSittings = computed(() => this.sittings().filter(s => s.status === 'completed').length);
+  /** The customer's other (earlier) treatments - view only. */
+  readonly previousTreatments = computed(() =>
+    (this.appt()?.treatment_history ?? []).filter(t => t.id !== this.appt()?.customer_treatment?.id));
   readonly balance = computed(() => Math.max(0, Number(this.appt()?.total_amount ?? 0) - Number(this.appt()?.paid_amount ?? 0)));
 
   readonly initials = computed(() =>

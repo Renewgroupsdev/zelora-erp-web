@@ -1,4 +1,5 @@
 import { Directive, computed, inject } from '@angular/core';
+import { AuthService } from '../../core/auth/auth.service';
 import { HrService } from '../../shared/common-services/hr.service';
 import { LocalListBase } from '../../shared/components/local-list-base';
 import { ModuleTab } from '../../shared/components/module-tabs/module-tabs';
@@ -24,4 +25,11 @@ export abstract class HrListBase extends LocalListBase {
   protected override filterFields = { status: 'status', source: 'department', branch: ['branch'] };
 
   readonly tabs = computed<ModuleTab[]>(() => hrTabs(this.hr));
+
+  private readonly actionAuth = inject(AuthService);
+
+  /** Whether Roles & Permissions ticks the signed-in role on this HR action slug. */
+  can(slug: string): boolean {
+    return this.actionAuth.hasActionAccess(slug);
+  }
 }

@@ -5,7 +5,7 @@
       <h6 class="page-title">Product Management</h6>
     </div>
 
-    <button type="button" class="add-lead-btn" (click)="openAddPopup()">
+    <button *appCan="'add-product'" type="button" class="add-lead-btn" (click)="openAddPopup()">
       <i class="bi bi-plus-lg"></i>
       Add Product
     </button>
@@ -36,6 +36,7 @@
         [sortDirection]="sortDirection"
         (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
+        [actionPermissions]="{ edit: 'edit-product', delete: 'delete-product' }"
         (editClick)="onEditProduct($event)"
         (deleteClick)="onDeleteProduct($event)"
       ></app-common-table-card>

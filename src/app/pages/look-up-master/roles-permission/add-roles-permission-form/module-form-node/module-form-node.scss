@@ -280,6 +280,22 @@ app-icon-picker {
   outline: 0;
 }
 
+// URL that is not a page of this app (Roles & Permissions would send users to the 404 page).
+.action-row input.url-unknown {
+  border-color: var(--status-orange-text, #b45309);
+  background: var(--status-orange-bg, #fff7ed);
+}
+
+.url-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--status-orange-text, #b45309);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
 .action-row input.slug-readonly {
   background: var(--app-surface-bg);
   color: var(--text-muted);

@@ -164,7 +164,7 @@
                   <td class="num">₹{{ p.totalDeductions | number }}</td>
                   <td class="num"><strong>₹{{ p.net | number }}</strong></td>
                   <td><span class="pill" [ngClass]="statusClass(p.status)">{{ p.status }}</span></td>
-                  <td><button type="button" class="link-btn" (click)="openPayslip(p.id)"><i class="bi bi-file-earmark-pdf"></i> View</button></td>
+                  <td><button *appCan="'view-payslip'" type="button" class="link-btn" (click)="openPayslip(p.id)"><i class="bi bi-file-earmark-pdf"></i> View</button></td>
                 </tr>
               } @empty { <tr><td colspan="7" class="muted">No payslips yet - run payroll for a month.</td></tr> }
             </tbody>
@@ -181,7 +181,7 @@
           <div><small>Overdue</small><strong>{{ ts.overdue }}</strong></div>
         </div>
         <div class="section-title"><i class="bi bi-list-check"></i> SEO tasks
-          @if (work.canEdit({ empId: e.id })) { <button type="button" class="save-btn" style="margin-left: auto" (click)="openTask()"><i class="bi bi-plus-lg"></i> Log task</button> }
+          @if (work.canEdit({ empId: e.id })) { <ng-container *appCan="'add-hr-task'"><button type="button" class="save-btn" style="margin-left: auto" (click)="openTask()"><i class="bi bi-plus-lg"></i> Log task</button></ng-container> }
         </div>
         <div class="items-table-wrap">
           <table class="items-table">
@@ -236,6 +236,6 @@
 
   <div class="modal-footer-custom">
     <button type="button" class="cancel-btn" (click)="close()">Close</button>
-    <button type="button" class="save-btn" (click)="edit()"><i class="bi bi-pencil-square"></i> Edit Employee</button>
+    <button *appCan="'edit-employee'" type="button" class="save-btn" (click)="edit()"><i class="bi bi-pencil-square"></i> Edit Employee</button>
   </div>
 </div>

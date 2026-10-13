@@ -10,6 +10,7 @@ import { CANDIDATE_STAGES, DEPARTMENTS } from '../../../shared/models/hr.model';
 import { downloadExcel, fileStamp } from '../../../shared/utils/export.util';
 import { displayDate, inr } from '../../../shared/utils/format.util';
 import { reviewPrompt } from '../../../shared/utils/prompt.util';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { HrListBase } from '../hr-list-base';
 import { CandidateProcess } from './candidate-process/candidate-process';
 import { EmployeeForm } from '../employees/employee-form/employee-form';
@@ -60,7 +61,7 @@ const VIEW_COLUMNS: Record<View, TableColumn[]> = {
 @Component({
   selector: 'app-recruitment',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs],
+  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './recruitment.html',
   styleUrl: '../../../shared/styles/erp-page.scss',
 })

@@ -6,6 +6,7 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import {
   CommonFilterState,
   FilterOption,
@@ -21,7 +22,7 @@ import { AddUserForm } from './add-user-form/add-user-form';
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard],
+  imports: [CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './users.html',
   styleUrl: './users.scss',
 })

@@ -11,8 +11,8 @@
         <button type="button" role="tab" [class.active]="view() === 'Permission'" (click)="setView('Permission')">Permission</button>
         <button type="button" role="tab" [class.active]="view() === 'Balance'" (click)="setView('Balance')">Leave Balance</button>
       </div>
-      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
-      <button type="button" class="add-lead-btn" (click)="apply()"><i class="bi bi-plus-lg"></i> {{ view() === 'Permission' ? 'Request Permission' : 'Apply Leave' }}</button>
+      <button *appCan="'export-leaves'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button *appCan="'apply-leave'" type="button" class="add-lead-btn" (click)="apply()"><i class="bi bi-plus-lg"></i> {{ view() === 'Permission' ? 'Request Permission' : 'Apply Leave' }}</button>
     </div>
   </div>
 
@@ -53,6 +53,7 @@
       [pageInfoText]="pageInfoText"
       [sortActive]="sortActive"
       [sortDirection]="sortDirection"
+      [actionPermissions]="{ review: 'approve-leave' }"
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
       (quickActionClick)="onQuickAction($event)"

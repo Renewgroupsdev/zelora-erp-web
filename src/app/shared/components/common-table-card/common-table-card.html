@@ -10,7 +10,7 @@
       </div>
     </div>
 
-    @if (bulkActionsLabel) {
+    @if (bulkActionsLabel && allowed('bulkActions')) {
       <button type="button" class="bulk-actions-btn" (click)="bulkActionsClick.emit()">
         {{ bulkActionsLabel }}
         <i class="bi bi-chevron-down"></i>
@@ -105,10 +105,14 @@
                   </span>
                 }
                 <span class="lead-text">
-                  <a class="lead-name lead-name-link" href="javascript:void(0)" role="button"
-                     [title]="asLeadCell(row[col.key]).name"
-                     (click)="profileClick.emit(row)"
-                     (keydown.enter)="profileClick.emit(row)">{{ asLeadCell(row[col.key]).name }}</a>
+                  @if (allowed('profile')) {
+                    <a class="lead-name lead-name-link" href="javascript:void(0)" role="button"
+                       [title]="asLeadCell(row[col.key]).name"
+                       (click)="profileClick.emit(row)"
+                       (keydown.enter)="profileClick.emit(row)">{{ asLeadCell(row[col.key]).name }}</a>
+                  } @else {
+                    <span class="lead-name" [title]="asLeadCell(row[col.key]).name">{{ asLeadCell(row[col.key]).name }}</span>
+                  }
                   @if (asLeadCell(row[col.key]).subtitle) {
                     <span class="lead-subtitle">{{ asLeadCell(row[col.key]).subtitle }}</span>
                   }
@@ -166,6 +170,7 @@
 
             @else if (col.type === 'callLog') {
               <div class="call-log-cell">
+                @if (allowed('viewCallLog')) {
                 <button
                   type="button"
                   class="row-action-btn call-log-btn"
@@ -174,12 +179,14 @@
                   title="View call log history">
                   <i class="bi bi-clock-history"></i>
                 </button>
+                }
               </div>
             }
 
             @else if (col.type === 'rowActions') {
               <div class="action-cell">
                 <!-- Edit -->
+                @if (allowed('edit')) {
                 <button
                   type="button"
                   class="row-action-btn action-edit"
@@ -188,8 +195,10 @@
                   title="Edit">
                   <i class="bi bi-pencil-fill"></i>
                 </button>
+                }
 
                 <!-- Delete -->
+                @if (allowed('delete')) {
                 <button
                   type="button"
                   class="row-action-btn action-delete"
@@ -198,12 +207,14 @@
                   title="Delete">
                   <i class="bi bi-trash3-fill"></i>
                 </button>
+                }
               </div>
             }
 
             @else if (col.type === 'action') {
               <div class="action-cell">
                   <!-- Call -->
+                  @if (allowed('call')) {
                   <button
                     type="button"
                     class="row-action-btn action-call"
@@ -212,9 +223,10 @@
                     title="Call lead">
                     <i class="bi bi-telephone-outbound-fill"></i>
                   </button>
+                  }
 
                   <!-- Telecaller check: is this lead genuine? -->
-                  @if (row['canValidate']) {
+                  @if (row['canValidate'] && allowed('validate')) {
                     <button
                       type="button"
                       class="row-action-btn action-valid"
@@ -234,6 +246,7 @@
                   }
 
                   <!-- Edit -->
+                  @if (allowed('edit')) {
                   <button
                     type="button"
                     class="row-action-btn action-edit"
@@ -242,6 +255,7 @@
                     title="Edit">
                     <i class="bi bi-pencil-fill"></i>
                   </button>
+                  }
 
                   <!-- Appointment -->
                   <!-- <button
@@ -254,6 +268,7 @@
                   </button> -->
 
                   <!-- Follow-up -->
+                  @if (allowed('followUp')) {
                   <button
                     type="button"
                     class="row-action-btn action-followup"
@@ -262,8 +277,10 @@
                     title="Follow-up">
                     <i class="bi bi-arrow-repeat"></i>
                   </button>
+                  }
 
                   <!-- Send to Branch -->
+                  @if (allowed('sendToBranch')) {
                   <button
                     type="button"
                     class="row-action-btn action-branch"
@@ -272,8 +289,10 @@
                     title="Send to assigned branch">
                     <i class="bi bi-building-fill-add"></i>
                   </button>
+                  }
 
                   <!-- Delete -->
+                  @if (allowed('delete')) {
                   <button
                     type="button"
                     class="row-action-btn action-delete"
@@ -282,6 +301,7 @@
                     title="Delete">
                     <i class="bi bi-trash3-fill"></i>
                   </button>
+                  }
                 </div>
             }
 

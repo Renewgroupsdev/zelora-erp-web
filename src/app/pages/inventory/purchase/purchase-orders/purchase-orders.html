@@ -39,6 +39,7 @@
       [sortDirection]="sortDirection"
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
+      [actionPermissions]="{ invoice: 'view-purchase-order', inward: 'record-goods-inward' }"
       (quickActionClick)="onQuickAction($event)"
     ></app-common-table-card>
   </div>

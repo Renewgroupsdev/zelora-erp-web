@@ -11,6 +11,7 @@ import { CENTRAL_STORE, LOW_STOCK_THRESHOLD, displayDate, inr } from '../../../.
 import { PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { StockTransferForm } from './stock-transfer-form/stock-transfer-form';
+import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 
 const STOCK_COLUMNS: TableColumn[] = [
   { key: 'store', header: 'Store', type: 'branch', width: '13%' },
@@ -41,7 +42,7 @@ const TRANSFER_COLUMNS: TableColumn[] = [
 @Component({
   selector: 'app-stock-overview',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, PurchaseTabs],
+  imports: [CanActionDirective, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, PurchaseTabs],
   templateUrl: './stock-overview.html',
   styleUrl: '../../../../shared/styles/erp-page.scss',
 })

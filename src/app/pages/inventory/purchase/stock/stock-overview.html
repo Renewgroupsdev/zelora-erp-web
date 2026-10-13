@@ -10,7 +10,7 @@
         <button type="button" role="tab" [class.active]="view() === 'stock'" [attr.aria-selected]="view() === 'stock'" (click)="setView('stock')">Stock</button>
         <button type="button" role="tab" [class.active]="view() === 'transfers'" [attr.aria-selected]="view() === 'transfers'" (click)="setView('transfers')">Transfers</button>
       </div>
-      <button type="button" class="add-lead-btn" (click)="openTransfer()"><i class="bi bi-arrow-left-right"></i> Transfer Stock</button>
+      <button *appCan="'transfer-stock'" type="button" class="add-lead-btn" (click)="openTransfer()"><i class="bi bi-arrow-left-right"></i> Transfer Stock</button>
     </div>
   </div>
 
@@ -27,7 +27,7 @@
           }
         </div>
       </div>
-      <button type="button" class="ghost-btn" (click)="notifyBranchHead()"><i class="bi bi-bell"></i> Notify Branch Head</button>
+      <button *appCan="'notify-low-stock'" type="button" class="ghost-btn" (click)="notifyBranchHead()"><i class="bi bi-bell"></i> Notify Branch Head</button>
     </div>
   }
 
@@ -61,6 +61,7 @@
       [sortDirection]="sortDirection"
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
+      [actionPermissions]="{ transfer: 'transfer-stock' }"
       (quickActionClick)="onQuickAction($event)"
     ></app-common-table-card>
   </div>

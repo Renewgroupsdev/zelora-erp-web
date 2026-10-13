@@ -17,14 +17,16 @@ import {
   TableRow,
 } from '../../shared/models/common-components.model';
 import { ToastService } from '../../shared/common-services/toast.service';
+import { AuthService } from '../../core/auth/auth.service';
+import { CanActionDirective } from '../../shared/directives/can-action.directive';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { CustomerDetailsDialog } from '../appointment-page/customer-details-dialog/customer-details-dialog';
 import { Customer, CustomerSegment, CustomerStats } from './customer.model';
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { key: 'view', icon: 'bi-eye', label: 'View Profile', variant: 'primary' },
-  { key: 'call', icon: 'bi-telephone', label: 'Call', variant: 'default' },
+  { key: 'view', icon: 'bi-eye', label: 'View Profile', variant: 'primary', permission: 'view-customer' },
+  { key: 'call', icon: 'bi-telephone', label: 'Call', variant: 'default', permission: 'call-customer' },
 ];
 
 /**
@@ -35,12 +37,17 @@ const QUICK_ACTIONS: QuickAction[] = [
 @Component({
   selector: 'app-customer-portal-page',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard],
+  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './customer-portal-page.html',
   styleUrl: './customer-portal-page.scss',
 })
 export class CustomerPortalPage implements OnInit {
-  constructor(private dialog: MatDialog, private toast: ToastService, private api: ApiDataService) { }
+  constructor(private dialog: MatDialog, private toast: ToastService, private api: ApiDataService, private auth: AuthService) { }
+
+  /** Roles & Permissions: whether the signed-in role is ticked on this action slug. */
+  can(slug: string): boolean {
+    return this.auth.hasActionAccess(slug);
+  }
 
   readonly segments: CustomerSegment[] = ['Regular', 'New'];
 

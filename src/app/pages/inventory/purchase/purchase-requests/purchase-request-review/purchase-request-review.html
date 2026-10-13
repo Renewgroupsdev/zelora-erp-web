@@ -97,8 +97,8 @@
   <div class="modal-footer-custom">
     <button type="button" class="cancel-btn" (click)="close()">Close</button>
     @if (canReview()) {
-      <button type="button" class="danger-btn" (click)="reject()"><i class="bi bi-x-circle"></i> Reject</button>
-      <button type="button" class="save-btn" (click)="approve()"><i class="bi bi-check2-circle"></i> Approve &amp; Generate PO</button>
+      <button *appCan="'reject-purchase-request'" type="button" class="danger-btn" (click)="reject()"><i class="bi bi-x-circle"></i> Reject</button>
+      <button *appCan="'approve-purchase-request'" type="button" class="save-btn" (click)="approve()"><i class="bi bi-check2-circle"></i> Approve &amp; Generate PO</button>
     }
   </div>
 </div>

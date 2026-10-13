@@ -37,14 +37,12 @@ export class FranchiseForm {
       agreementFrom: isoDate(), agreementTo: addDays(isoDate(), 365 * 3), sharePercent: 70, shareEffectiveFrom: isoDate(), employees: 0, inventoryValue: 0,
     };
 
-  /** The photo is uploaded to the server (uploads/franchise_photo); replaced / unused files are cleaned up on save or close. */
-  private readonly photoDraft = this.uploads.draft('franchise_photo', [this.existing?.photo]);
-  private saved = false;
+  addOwner(): void {
+    (this.model.additionalOwners ??= []).push({ company: '', name: '', phone: '', email: '' });
+  }
 
-  constructor() {
-    this.dialogRef.afterClosed().subscribe(() => {
-      if (!this.saved) this.photoDraft.discard();
-    });
+  removeOwner(index: number): void {
+    this.model.additionalOwners?.splice(index, 1);
   }
 
   get renewPercent(): number {
@@ -55,8 +53,11 @@ export class FranchiseForm {
     this.submitted.set(true);
     this.serverError.set(null);
     const share = Number(this.model.sharePercent);
-    if (form.invalid || this.uploading() || !(share >= 0 && share <= 100)) return;
-    const payload = { ...this.model, sharePercent: share, employees: Number(this.model.employees) || 0, inventoryValue: Math.max(0, Number(this.model.inventoryValue) || 0), gstin: this.model.gstin.trim().toUpperCase() };
+    if (form.invalid || !(share >= 0 && share <= 100)) return;
+    const additionalOwners = (this.model.additionalOwners ?? [])
+      .map(o => ({ company: o.company.trim(), name: o.name.trim(), phone: o.phone.trim(), email: o.email.trim() }))
+      .filter(o => o.name);
+    const payload = { ...this.model, additionalOwners, sharePercent: share, employees: Number(this.model.employees) || 0, inventoryValue: Math.max(0, Number(this.model.inventoryValue) || 0), gstin: this.model.gstin.trim().toUpperCase() };
     if (this.existing) {
       this.store.update(this.existing.id, payload);
       this.finish();

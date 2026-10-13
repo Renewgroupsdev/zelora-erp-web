@@ -26,7 +26,7 @@
     </div>
 
     @if (canLogOutcome) {
-      <button class="save-btn" type="button" (click)="logOutcome.emit(call)">Log Call Outcome</button>
+      <button *appCan="'log-call-outcome'" class="save-btn" type="button" (click)="logOutcome.emit(call)">Log Call Outcome</button>
     }
   </section>
 </div>

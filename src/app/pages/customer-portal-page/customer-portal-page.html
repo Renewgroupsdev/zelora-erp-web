@@ -40,6 +40,7 @@
     (searchChange)="onSearch($event)"
     (filterClick)="onFilterClick($event)"
     (filtersChange)="onFiltersChange($event)"
+    [showExport]="can('export-customers')"
     (exportClick)="onExport()"
   ></app-common-filter-card>
 
@@ -58,6 +59,7 @@
         [pageInfoText]="pageInfoText"
         [sortActive]="sortActive"
         [sortDirection]="sortDirection"
+        [actionPermissions]="{ profile: 'view-customer' }"
         (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
         (quickActionClick)="onQuickAction($event)"
@@ -107,7 +109,7 @@
                 <span class="status-dot" [ngClass]="statusClass(customer.status)">
                   <i class="bi bi-circle-fill"></i> {{ customer.status }}
                 </span>
-                <button type="button" class="view-profile-btn" (click)="openProfile(customer)">
+                <button *appCan="'view-customer'" type="button" class="view-profile-btn" (click)="openProfile(customer)">
                   View Profile <i class="bi bi-arrow-right"></i>
                 </button>
               </div>

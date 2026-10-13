@@ -11,11 +11,12 @@ import { PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { PurchaseRequestForm } from './purchase-request-form/purchase-request-form';
 import { PurchaseRequestReview, ReviewResult } from './purchase-request-review/purchase-request-review';
+import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 
 @Component({
   selector: 'app-purchase-requests',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, PurchaseTabs],
+  imports: [CanActionDirective, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, PurchaseTabs],
   templateUrl: './purchase-requests.html',
   styleUrl: '../../../../shared/styles/erp-page.scss',
 })

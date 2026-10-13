@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { CommonDetailCard } from '../../shared/components/common-detail-card/common-detail-card';
@@ -21,6 +21,9 @@ import { FlowAppointmentRecord, FlowStatus, inr } from '../../shared/models/appo
 import { AppointmentWizard } from './appointment-wizard/appointment-wizard';
 import { SittingsDialog } from './sittings-dialog/sittings-dialog';
 import { CustomerDetailsDialog } from './customer-details-dialog/customer-details-dialog';
+import { NewAppointmentDialog, NewAppointmentResult } from './new-appointment-dialog/new-appointment-dialog';
+import { AuthService } from '../../core/auth/auth.service';
+import { CanActionDirective } from '../../shared/directives/can-action.directive';
 
 const STATUSES: FlowStatus[] = ['Scheduled', 'In Consultation', 'Awaiting Terms', 'Invoiced', 'Converted', 'Cancelled'];
 
@@ -31,7 +34,7 @@ const STATUSES: FlowStatus[] = ['Scheduled', 'In Consultation', 'Awaiting Terms'
 @Component({
   selector: 'app-appointment-page',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard],
+  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './appointment-page.html',
   styleUrl: './appointment-page.scss',
 })
@@ -39,6 +42,12 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   constructor(private dialog: MatDialog, private toast: ToastService, private api: ApiDataService) { }
 
   readonly inr = inr;
+  private readonly auth = inject(AuthService);
+
+  /** Roles & Permissions -> Appointment module action ticked for the signed-in role. */
+  can(action: string): boolean {
+    return this.auth.hasActionAccess(action);
+  }
 
   filters: FilterOption[] = [
     { key: 'status', label: 'Status', options: STATUSES },
@@ -273,11 +282,11 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   private actionsFor(a: FlowAppointmentRecord): QuickAction[] {
     const actions: QuickAction[] = [];
     if (a.status === 'Converted') {
-      actions.push({ key: 'sittings', icon: 'bi-collection', label: 'Treatment sittings', variant: 'primary' });
-    } else if (a.status !== 'Cancelled') {
+      if (this.can('treatment-sittings')) actions.push({ key: 'sittings', icon: 'bi-collection', label: 'Treatment sittings', variant: 'primary' });
+    } else if (a.status !== 'Cancelled' && this.can('consultation-form')) {
       actions.push({ key: 'wizard', icon: 'bi-clipboard2-pulse', label: 'Consultation form', variant: 'primary' });
     }
-    if (a.invoice_no) actions.push({ key: 'invoice', icon: 'bi-receipt', label: 'Download invoice', variant: 'default' });
+    if (a.invoice_no && this.can('download-invoice')) actions.push({ key: 'invoice', icon: 'bi-receipt', label: 'Download invoice', variant: 'default' });
     return actions;
   }
 
@@ -294,16 +303,30 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   openAppointmentProfile(row: TableRow): void {
     const appt = this.appointments.find(a => a.id === Number(row['id']));
     if (!appt) return;
+    if (!this.can('customer-details')) return void this.toast.warning('Your role cannot view customer details.');
     this.dialog.open(CustomerDetailsDialog, {
       width: '960px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false,
       panelClass: 'customer-details-dialog', data: { appointmentId: appt.id },
     });
   }
 
-  openWizard(appt: FlowAppointmentRecord): void {
+  /** Without an appointment ("Add Appointment"): mobile lookup + personal details first, then the wizard for the new visit. */
+  openWizard(appt?: FlowAppointmentRecord): void {
+    if (appt) return this.openWizardFor(appt.id);
+    this.dialog.open(NewAppointmentDialog, {
+      width: '760px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, disableClose: true,
+      panelClass: 'new-appointment-dialog',
+    }).afterClosed().subscribe((result?: NewAppointmentResult) => {
+      if (!result) return;
+      if (result.changed) this.loadAppointments();
+      if (result.appointmentId && this.can('consultation-form')) this.openWizardFor(result.appointmentId);
+    });
+  }
+
+  private openWizardFor(appointmentId: number): void {
     this.dialog.open(AppointmentWizard, {
       width: '880px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, disableClose: true,
-      panelClass: 'appointment-wizard-dialog', data: { appointmentId: appt.id },
+      panelClass: 'appointment-wizard-dialog', data: { appointmentId },
     }).afterClosed().subscribe((changed: boolean) => {
       if (changed) this.loadAppointments();
     });
@@ -336,7 +359,7 @@ export class AppointmentPage implements OnInit, AfterViewInit {
       id: a.id,
       lead: { name: a.name, subtitle: a.customer?.customer_code ?? `AP-${String(a.id).padStart(5, '0')}` },
       contact: a.mobile_no,
-      service: a.treatment?.name ?? (a.category ? `${a.category} consultation` : 'Consultation'),
+      service: a.customer_treatment?.treatment?.name ?? a.treatment?.name ?? (a.category ? `${a.category} consultation` : 'Consultation'),
       branch: a.branch?.name ?? '',
       schedule: `${this.formatDisplayDate(a.appointment_date)}, ${this.formatTime(a.appointment_time)}`,
       scheduleSort: `${a.appointment_date} ${a.appointment_time ?? ''}`,

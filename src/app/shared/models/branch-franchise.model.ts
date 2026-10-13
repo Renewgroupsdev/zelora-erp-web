@@ -29,6 +29,14 @@ export interface BranchRecord {
 
 export type FranchiseStatus = 'Active' | 'Pending' | 'Inactive';
 
+/** A co-owner / partner of a franchise besides the primary owner. */
+export interface FranchiseOwner {
+  company: string;
+  name: string;
+  phone: string;
+  email: string;
+}
+
 export interface FranchiseRecord {
   id: string;
   /** e.g. FR02 */
@@ -40,6 +48,8 @@ export interface FranchiseRecord {
   ownerName: string;
   ownerPhone: string;
   ownerEmail: string;
+  /** Further owners added with "Add Owner" (the fields above are the primary owner). */
+  additionalOwners?: FranchiseOwner[];
   city: string;
   state: string;
   gstin: string;

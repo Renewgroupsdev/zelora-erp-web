@@ -10,6 +10,7 @@ import { DetailCardData, TableColumn, TableRow } from '../../../shared/models/co
 import { DEPARTMENTS, salaryBreakup } from '../../../shared/models/hr.model';
 import { downloadExcel, fileStamp } from '../../../shared/utils/export.util';
 import { displayDate, inr } from '../../../shared/utils/format.util';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { HrListBase } from '../hr-list-base';
 import { EmployeeForm } from './employee-form/employee-form';
 import { EmployeeProfile } from './employee-profile/employee-profile';
@@ -17,7 +18,7 @@ import { EmployeeProfile } from './employee-profile/employee-profile';
 @Component({
   selector: 'app-employees',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs],
+  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './employees.html',
   styleUrl: '../../../shared/styles/erp-page.scss',
 })

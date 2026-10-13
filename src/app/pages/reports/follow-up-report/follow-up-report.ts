@@ -11,6 +11,7 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { ChartDatum, DetailTrendDirection, TableColumn, TablePageChangeEvent, TableRow } from '../../../shared/models/common-components.model';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 
 type ReportViewMode = 'analytics' | 'records';
 type DatePresetKey = 'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_month' | 'this_year' | 'custom';
@@ -113,7 +114,7 @@ const STATUS_LABELS: Record<FollowUpStatus, string> = {
 @Component({
   selector: 'app-follow-up-report',
   standalone: true,
-  imports: [CommonModule, FormsModule, CommonTableCard, CommonChartCard, CommonTrendChart, PageLoader],
+  imports: [CommonModule, FormsModule, CommonTableCard, CommonChartCard, CommonTrendChart, PageLoader, CanActionDirective],
   templateUrl: './follow-up-report.html',
   styleUrl: './follow-up-report.scss',
 })

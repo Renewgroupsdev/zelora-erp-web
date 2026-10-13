@@ -55,6 +55,24 @@ export class MatrixTreeNode {
     return states.some(Boolean) && !states.every(Boolean);
   }
 
+  /** How many of this module's own actions the selected role has (for the progress chip). */
+  get grantedActions(): number {
+    return this.node.actions.filter(action => this.isActionChecked(action)).length;
+  }
+
+  /** full / partial / none over this module and everything under it, for the selected role (row accent). */
+  get accessState(): 'full' | 'partial' | 'none' | 'idle' {
+    if (this.selectedRoleId == null) return 'idle';
+    const states: boolean[] = [];
+    collectRoleStates(this.node, this.selectedRoleId, states);
+    if (states.every(Boolean)) return 'full';
+    return states.some(Boolean) ? 'partial' : 'none';
+  }
+
+  get accessLabel(): string {
+    return { full: 'Full access', partial: 'Partial', none: 'No access', idle: '' }[this.accessState];
+  }
+
   isActionChecked(action: RolePermissionAction): boolean {
     return hasRole(action.role_ids, this.selectedRoleId);
   }

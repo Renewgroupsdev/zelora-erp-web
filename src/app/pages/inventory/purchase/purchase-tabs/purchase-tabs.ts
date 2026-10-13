@@ -1,7 +1,9 @@
 import { Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { NavTabGroupService } from '../../../../services/nav-tab-group.service';
 import { PurchaseService } from '../../../../shared/common-services/purchase.service';
+import { AuthService } from '../../../../core/auth/auth.service';
+import { PURCHASE_TABS, allowedPurchaseTabs } from './purchase-tab-list';
 
 /** Step strip shown on every Purchase Management page: Request -> PO -> Inward -> Return -> Notes -> Stock. */
 @Component({
@@ -47,13 +49,23 @@ export class PurchaseTabs implements OnInit, OnDestroy {
   }
 
   private readonly purchase = inject(PurchaseService);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
-  readonly tabs = computed(() => [
-    { label: 'Purchase Requests', icon: 'bi-cart-plus', path: '/app/inventory/purchase-requests', badge: this.purchase.pendingCount(), warn: false },
-    { label: 'Purchase Orders', icon: 'bi-receipt', path: '/app/inventory/purchase-orders', badge: this.purchase.orders().filter(o => o.status !== 'Received').length, warn: false },
-    { label: 'Purchase Inward', icon: 'bi-box-arrow-in-down', path: '/app/inventory/purchase-inward', badge: 0, warn: false },
-    { label: 'Purchase Return', icon: 'bi-box-arrow-up', path: '/app/inventory/purchase-returns', badge: 0, warn: false },
-    { label: 'Credit / Debit Notes', icon: 'bi-journal-text', path: '/app/inventory/vendor-notes', badge: this.purchase.notes().filter(n => n.status === 'Open').length, warn: false },
-    { label: 'Stock & Transfer', icon: 'bi-boxes', path: '/app/inventory/stock', badge: this.purchase.lowStock().length, warn: true },
-  ]);
+  /** Badge per tab path (pending work on that step). */
+  private readonly badges = computed<Record<string, { badge: number; warn: boolean }>>(() => ({
+    '/app/inventory/purchase-requests': { badge: this.purchase.pendingCount(), warn: false },
+    '/app/inventory/purchase-orders': { badge: this.purchase.orders().filter(o => o.status !== 'Received').length, warn: false },
+    '/app/inventory/vendor-notes': { badge: this.purchase.notes().filter(n => n.status === 'Open').length, warn: false },
+    '/app/inventory/stock': { badge: this.purchase.lowStock().length, warn: true },
+  }));
+
+  /**
+   * Only the tabs Roles & Permissions shows to the signed-in role (purchase-management -> "... Tab" actions),
+   * each opening the URL set on its action. Badges stay keyed by the tab's own route.
+   */
+  readonly tabs = computed(() => allowedPurchaseTabs(this.auth, this.router).map(tab => {
+    const route = PURCHASE_TABS.find(t => t.permission === tab.permission)!.path;
+    return { ...tab, ...(this.badges()[route] ?? { badge: 0, warn: false }) };
+  }));
 }

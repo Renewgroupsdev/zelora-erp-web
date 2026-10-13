@@ -7,11 +7,11 @@
     </div>
     <div class="header-actions">
       <input class="date-input" type="month" aria-label="Payroll month" [max]="thisMonth" [ngModel]="month()" (ngModelChange)="setMonth($event)" />
-      <button type="button" class="ghost-btn" [disabled]="!slips().length" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button *appCan="'export-payroll'" type="button" class="ghost-btn" [disabled]="!slips().length" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
       @if (unpaid().length) {
-        <button type="button" class="ghost-btn" (click)="markAllPaid()"><i class="bi bi-check2-all"></i> Mark All Paid</button>
+        <button *appCan="'mark-payslip-paid'" type="button" class="ghost-btn" (click)="markAllPaid()"><i class="bi bi-check2-all"></i> Mark All Paid</button>
       }
-      <button type="button" class="add-lead-btn" (click)="runPayroll()"><i class="bi bi-play-circle"></i> {{ slips().length ? 'Re-run Payroll' : 'Run Payroll' }}</button>
+      <button *appCan="'run-payroll'" type="button" class="add-lead-btn" (click)="runPayroll()"><i class="bi bi-play-circle"></i> {{ slips().length ? 'Re-run Payroll' : 'Run Payroll' }}</button>
     </div>
   </div>
 
@@ -53,6 +53,7 @@
       [pageInfoText]="pageInfoText"
       [sortActive]="sortActive"
       [sortDirection]="sortDirection"
+      [actionPermissions]="{ view: 'view-payslip', paid: 'mark-payslip-paid' }"
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
       (quickActionClick)="onQuickAction($event)"

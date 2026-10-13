@@ -2,13 +2,14 @@ import { CommonModule } from '@angular/common';
 import { Component, ElementRef, computed, inject, viewChild } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { HrService } from '../../../../shared/common-services/hr.service';
+import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 import { printDocument } from '../../../../shared/utils/export.util';
 import { amountInWords, displayDate, monthLabel } from '../../../../shared/utils/format.util';
 
 @Component({
   selector: 'app-payslip-view',
   standalone: true,
-  imports: [CommonModule, MatDialogModule],
+  imports: [CommonModule, MatDialogModule, CanActionDirective],
   templateUrl: './payslip-view.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', '../../../../shared/styles/erp-document.scss'],
 })

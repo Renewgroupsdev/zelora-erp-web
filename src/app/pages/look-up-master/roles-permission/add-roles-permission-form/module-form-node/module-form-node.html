@@ -68,6 +68,8 @@
           </div>
           @if (isInvalid('url')) {
             <small class="error-text">URL is too long.</small>
+          } @else if (unknownUrl) {
+            <small class="url-warning"><i class="bi bi-exclamation-triangle-fill"></i> No page at this URL - it will open the 404 page.</small>
           }
         </div>
 
@@ -117,7 +119,9 @@
                 type="text"
                 formControlName="url"
                 placeholder="e.g. /app/masters/settings"
-                [class.is-invalid]="isActionInvalid(i, 'url')" />
+                [class.is-invalid]="isActionInvalid(i, 'url')"
+                [class.url-unknown]="unknownActionUrl(i)"
+                [title]="unknownActionUrl(i) ? 'No page at this URL - it will open the 404 page.' : ''" />
               <app-icon-picker formControlName="logo" placeholder="Choose icon"></app-icon-picker>
               <select formControlName="permission">
                 <option [value]="1">Allowed</option>
@@ -129,6 +133,12 @@
             </div>
           } @empty {
             <div class="empty-row">No actions added yet.</div>
+          }
+          @if (unknownActionUrls.length) {
+            <small class="url-warning">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+              No page at the URL of: {{ unknownActionUrls.join(', ') }}. Fix it (or clear it to use the default page).
+            </small>
           }
         </div>
       </div>

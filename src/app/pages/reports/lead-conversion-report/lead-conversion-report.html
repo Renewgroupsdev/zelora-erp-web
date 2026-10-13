@@ -2,7 +2,7 @@
 
   <div class="report-toolbar d-flex flex-wrap align-items-center justify-content-end">
     <div class="toolbar-actions d-flex flex-wrap align-items-center">
-      <div class="export-menu">
+      <div *appCan="'export-lead-conversion-report'" class="export-menu">
         <button type="button" class="export-btn" [disabled]="isExporting" (click)="toggleExportMenu($event)">
           <i class="bi" [ngClass]="isExporting ? 'bi-arrow-repeat spin' : 'bi-box-arrow-down'"></i>
           Export

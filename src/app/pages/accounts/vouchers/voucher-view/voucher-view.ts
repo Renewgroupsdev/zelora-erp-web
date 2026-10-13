@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 import { Component, ElementRef, computed, inject, viewChild } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { AccountsService } from '../../../../shared/common-services/accounts.service';
@@ -10,7 +11,7 @@ import { amountInWords, displayDate } from '../../../../shared/utils/format.util
 @Component({
   selector: 'app-voucher-view',
   standalone: true,
-  imports: [CommonModule, MatDialogModule],
+  imports: [CommonModule, MatDialogModule, CanActionDirective],
   templateUrl: './voucher-view.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', '../../../../shared/styles/erp-document.scss'],
 })

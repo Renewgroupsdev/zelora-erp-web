@@ -15,6 +15,7 @@ import { DetailCardIconVariant } from '../../../shared/models/common-components.
 import { CallAlert } from '../call-alert.model';
 import { CallDetails } from '../call-details/call-details';
 import { openCallOutcome } from '../call-disposition/open-call-outcome';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 
 interface DashboardStat {
   label: string;
@@ -30,7 +31,7 @@ interface DashboardStat {
 @Component({
   selector: 'app-call-center-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, CallDetails, CommonDetailCard],
+  imports: [CommonModule, RouterLink, CallDetails, CommonDetailCard, CanActionDirective],
   templateUrl: './call-center-dashboard.html',
   styleUrl: './call-center-dashboard.scss',
 })

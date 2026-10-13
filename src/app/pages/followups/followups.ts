@@ -28,17 +28,18 @@ import { TelephonyService } from '../../core/telephony/telephony.service';
 import { FollowUpLead } from '../../core/telephony/telephony.models';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
+import { AuthService } from '../../core/auth/auth.service';
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { key: 'call', icon: 'bi-telephone-outbound', label: 'Call Lead', variant: 'primary' },
-  { key: 'appointment', icon: 'bi-calendar2-check', label: 'Book Appointment', variant: 'default' },
-  { key: 'call-log', icon: 'bi-clock-history', label: 'View Call Log', variant: 'default' },
+  { key: 'call', icon: 'bi-telephone-outbound', label: 'Call Lead', variant: 'primary', permission: 'call-follow-up-lead' },
+  { key: 'appointment', icon: 'bi-calendar2-check', label: 'Book Appointment', variant: 'default', permission: 'book-follow-up-appointment' },
+  { key: 'call-log', icon: 'bi-clock-history', label: 'View Call Log', variant: 'default', permission: 'view-follow-up-call-log' },
 ];
 
 /** A freshly assigned (Contacted) lead is checked by the telecaller first: genuine lead or not. */
 const VALIDATION_ACTIONS: QuickAction[] = [
-  { key: 'valid', icon: 'bi-check-lg', label: 'Valid lead', variant: 'default' },
-  { key: 'invalid', icon: 'bi-x-lg', label: 'Invalid lead', variant: 'danger' },
+  { key: 'valid', icon: 'bi-check-lg', label: 'Valid lead', variant: 'default', permission: 'validate-follow-up-lead' },
+  { key: 'invalid', icon: 'bi-x-lg', label: 'Invalid lead', variant: 'danger', permission: 'validate-follow-up-lead' },
 ];
 
 @Component({
@@ -56,6 +57,7 @@ export class Followups implements OnInit, OnDestroy {
     private router: Router,
     private telephony: TelephonyService,
     private apiDataService: ApiDataService,
+    private auth: AuthService,
   ) {
     // A call outcome (follow-up / callback / appointment) changes this list, so reload it when one is saved.
     this.telephony.outcomeSaved$.pipe(takeUntilDestroyed()).subscribe(() => this.loadFollowUps());
@@ -296,6 +298,11 @@ export class Followups implements OnInit, OnDestroy {
     this.filterState = { ...filters, branch: [...filters.branch] };
     this.currentPage = 1;
     this.loadFollowUps();
+  }
+
+  /** Whether the signed-in role is ticked on this action slug. */
+  can(slug: string): boolean {
+    return this.auth.hasActionAccess(slug);
   }
 
   onExport(): void {

@@ -51,6 +51,8 @@ export interface QuickAction {
   icon: string;
   label: string;
   variant?: 'primary' | 'danger' | 'default';
+  /** Roles & Permissions action slug; the table hides the button when the role is not ticked on it. */
+  permission?: string;
 }
 
 export interface TableColumn {

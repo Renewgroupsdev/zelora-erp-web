@@ -101,7 +101,9 @@
         <div class="settings-backdrop" (click)="navLayout.closeSettingsMenu()"></div>
         <div class="settings-dropdown">
           <button type="button" class="dropdown-item" (click)="goToSettings()"><i class="bi bi-gear"></i> Settings</button>
-          <button type="button" class="dropdown-item danger" (click)="logout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+          <button type="button" class="dropdown-item danger" [disabled]="signingOut()" (click)="logout()">
+            <i class="bi bi-box-arrow-right"></i> {{ signingOut() ? 'Logging out…' : 'Logout' }}
+          </button>
         </div>
       }
     </div>

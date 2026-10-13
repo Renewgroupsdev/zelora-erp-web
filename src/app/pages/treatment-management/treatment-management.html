@@ -6,7 +6,7 @@
     <div class="page-header-actions">
       <span class="today-date-badge"><i class="bi bi-grid-3x3-gap"></i> {{ summary().total }} treatments</span>
 
-      <button type="button" class="add-treatment-btn" (click)="create()">
+      <button *appCan="'add-treatment'" type="button" class="add-treatment-btn" (click)="create()">
         <i class="bi bi-plus-lg"></i> <span>Create Treatment</span>
       </button>
     </div>
@@ -31,6 +31,7 @@
     (searchChange)="onSearch($event)"
     (filterClick)="onFilterClick($event)"
     (filtersChange)="onFiltersChange($event)"
+    [showExport]="can('export-treatments')"
     (exportClick)="onExport()"
   ></app-common-filter-card>
 

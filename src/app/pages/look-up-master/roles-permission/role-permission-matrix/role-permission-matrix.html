@@ -6,12 +6,12 @@
         <i class="bi bi-arrow-left"></i>
         <span>Roles &amp; Permission</span>
       </button>
-      <h6 class="page-title">Assign Permissions</h6>
+      <h6 class="page-title"><span class="title-icon"><i class="bi bi-shield-lock-fill"></i></span> Assign Permissions</h6>
+      <p class="page-subtitle">Pick a role, tick the modules and actions it should access, then save once.</p>
     </div>
   </div>
 
   <div class="matrix-controls-card">
-    <p class="page-subtitle">Pick a role, tick the modules/actions it should access, save once.</p>
 
     <div class="matrix-toolbar">
       <div class="toolbar-row-top d-flex flex-wrap align-items-end">
@@ -83,9 +83,11 @@
     </div>
   </div>
 
-  <div class="matrix-footer">
+  <div class="matrix-footer" [class.has-changes]="dirtyCount">
     @if (dirtyCount) {
-      <span class="dirty-badge">{{ dirtyCount }} module{{ dirtyCount > 1 ? 's' : '' }} changed</span>
+      <span class="dirty-badge"><i class="bi bi-pencil-square"></i> {{ dirtyCount }} module{{ dirtyCount > 1 ? 's' : '' }} changed - not saved yet</span>
+    } @else {
+      <span class="saved-note"><i class="bi bi-check2-circle"></i> All changes saved</span>
     }
     <button type="button" class="cancel-btn" [disabled]="!dirtyCount || isSaving" (click)="discard()">Discard changes</button>
     <button type="button" class="save-btn" [disabled]="!dirtyCount || isSaving" (click)="save()">

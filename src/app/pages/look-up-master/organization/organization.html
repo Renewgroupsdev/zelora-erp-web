@@ -5,7 +5,7 @@
       <h6 class="page-title">Organization</h6>
     </div>
 
-    <button type="button" class="add-lead-btn" (click)="openAddPopup()">
+    <button *appCan="'add-organisation'" type="button" class="add-lead-btn" (click)="openAddPopup()">
       <i class="bi bi-plus-lg"></i>
       Add Organization
     </button>
@@ -34,6 +34,7 @@
         [pageInfoText]="pageInfoText"
         [sortActive]="sortActive"
         [sortDirection]="sortDirection"
+        [actionPermissions]="{ edit: 'edit-organisation', delete: 'delete-organisation' }"
         (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
         (editClick)="onEditOrganization($event)"

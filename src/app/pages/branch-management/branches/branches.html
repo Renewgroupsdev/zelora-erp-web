@@ -8,8 +8,8 @@
           <p class="page-subtitle">Manage your company owned branches and their operations.</p>
         </div>
         <div class="header-actions">
-          <button type="button" class="ghost-btn" (click)="onExport('xlsx')"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
-          <button type="button" class="add-lead-btn" (click)="addBranch()"><i class="bi bi-plus-lg"></i> Add Branch</button>
+          <button *appCan="'export-branches'" type="button" class="ghost-btn" (click)="onExport('xlsx')"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+          <button *appCan="'add-branch'" type="button" class="add-lead-btn" (click)="addBranch()"><i class="bi bi-plus-lg"></i> Add Branch</button>
         </div>
       </div>
 
@@ -24,6 +24,7 @@
       <app-common-filter-card
         searchPlaceholder="Search branch by name, code or city..."
         [filters]="filters"
+        [showExport]="can('export-branches')"
         (exportClick)="onExport($event)"
         (searchChange)="onSearch($event)"
         (filtersChange)="onFiltersChange($event)"
@@ -45,6 +46,7 @@
           [selectedId]="current()?.id ?? null"
           (pageChange)="onPageChange($event)"
           (sortChange)="onSortChange($event)"
+          [actionPermissions]="{ edit: 'edit-branch' }"
           (quickActionClick)="onQuickAction($event)"
           (rowSelect)="select($event)"
           (profileClick)="open($event)"
@@ -58,7 +60,7 @@
         <header class="drawer-hero">
           <div class="dh-top">
             <span class="dh-title">Branch Details</span>
-            <button type="button" class="glass-btn" (click)="onQuickAction({ row: { id: p.branch.id }, action: 'edit' })"><i class="bi bi-pencil-square"></i> Edit</button>
+            <button *appCan="'edit-branch'" type="button" class="glass-btn" (click)="onQuickAction({ row: { id: p.branch.id }, action: 'edit' })"><i class="bi bi-pencil-square"></i> Edit</button>
             <button type="button" class="glass-btn icon" aria-label="Close details" (click)="closePanel()"><i class="bi bi-x-lg"></i></button>
           </div>
           <div class="dh-id">

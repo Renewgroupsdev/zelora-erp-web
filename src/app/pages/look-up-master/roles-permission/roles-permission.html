@@ -7,11 +7,11 @@
     </div>
 
     <div class="page-header-actions d-flex">
-      <button type="button" class="assign-permissions-btn" (click)="onAssignPermissions()">
+      <button *appCan="'assign-permissions'" type="button" class="assign-permissions-btn" (click)="onAssignPermissions()">
         <i class="bi bi-shield-check"></i>
         Assign Permissions
       </button>
-      <button type="button" class="add-lead-btn" (click)="onAddModule()">
+      <button *appCan="'add-module'" type="button" class="add-lead-btn" (click)="onAddModule()">
         <i class="bi bi-plus-lg"></i>
         Add Module
       </button>

@@ -32,12 +32,12 @@
             </div>
           </div>
           @if (isPosted(p)) {
-            <button type="button" class="link-btn" [disabled]="syncing()" (click)="sync(p)">
+            <button *appCan="'sync-vacancy-portal'" type="button" class="link-btn" [disabled]="syncing()" (click)="sync(p)">
               <i class="bi" [class.bi-arrow-repeat]="syncing() !== p" [class.bi-hourglass-split]="syncing() === p"></i>
               {{ syncing() === p ? 'Fetching profiles…' : 'Fetch applied profiles' }}
             </button>
           } @else {
-            <button type="button" class="link-btn" (click)="post(p)"><i class="bi bi-megaphone"></i> Post job</button>
+            <button *appCan="'post-vacancy-job'" type="button" class="link-btn" (click)="post(p)"><i class="bi bi-megaphone"></i> Post job</button>
           }
         </div>
       }
@@ -58,7 +58,7 @@
         <option value="All">All sources</option>
         @for (s of bySource(); track s.source) { <option [value]="s.source">{{ s.source }} ({{ s.count }})</option> }
       </select>
-      <button type="button" class="link-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export list</button>
+      <button *appCan="'export-candidates'" type="button" class="link-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export list</button>
     </div>
 
     <div class="items-table-wrap">
@@ -87,9 +87,9 @@
                 </span>
               </td>
               <td><span class="pill" [class.green]="c.stage === 'Hired'" [class.red]="c.stage === 'Rejected' || c.stage === 'Offer Declined'" [class.orange]="c.stage === 'Interview' || c.stage === 'Verification'">{{ c.stage }}</span></td>
-              <td><button type="button" class="link-btn" (click)="resume(c)" [title]="c.resumeFile"><i class="bi bi-download"></i> PDF</button></td>
+              <td><button *appCan="'download-candidate-resume'" type="button" class="link-btn" (click)="resume(c)" [title]="c.resumeFile"><i class="bi bi-download"></i> PDF</button></td>
               <td>
-                <button type="button" class="link-btn" title="Shortlist, interview, verify and offer" (click)="openProcess(c)"><i class="bi bi-kanban"></i> Process</button>
+                <button *appCan="'view-candidate-process'" type="button" class="link-btn" title="Shortlist, interview, verify and offer" (click)="openProcess(c)"><i class="bi bi-kanban"></i> Process</button>
               </td>
             </tr>
           } @empty {

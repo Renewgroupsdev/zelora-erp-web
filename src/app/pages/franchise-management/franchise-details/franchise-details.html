@@ -18,7 +18,7 @@
         </div>
       </div>
       <div class="header-actions">
-        <button type="button" class="add-lead-btn" (click)="edit()"><i class="bi bi-pencil-square"></i> Edit</button>
+        <button *appCan="'edit-franchise'" type="button" class="add-lead-btn" (click)="edit()"><i class="bi bi-pencil-square"></i> Edit</button>
         <button type="button" class="ghost-btn" (click)="back()"><i class="bi bi-arrow-left"></i> Back</button>
       </div>
     </header>
@@ -58,6 +58,11 @@
         <div class="person"><div class="avatar">{{ initials(f.ownerName) }}</div><div><strong>{{ f.ownerName }}</strong><small>Owner</small></div></div>
         <div class="contact-line"><i class="bi bi-telephone"></i> {{ f.ownerPhone || '-' }}</div>
         <div class="contact-line"><i class="bi bi-envelope"></i> {{ f.ownerEmail || '-' }}</div>
+        @for (o of f.additionalOwners ?? []; track $index) {
+          <div class="person co-owner"><div class="avatar">{{ initials(o.name) }}</div><div><strong>{{ o.name }}</strong><small>Co-owner{{ o.company && o.company !== f.ownerCompany ? ' · ' + o.company : '' }}</small></div></div>
+          @if (o.phone) { <div class="contact-line"><i class="bi bi-telephone"></i> {{ o.phone }}</div> }
+          @if (o.email) { <div class="contact-line"><i class="bi bi-envelope"></i> {{ o.email }}</div> }
+        }
 
         <div class="share-config">
           <div class="share-title"><i class="bi bi-pie-chart-fill"></i> Share Configuration</div>

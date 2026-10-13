@@ -58,6 +58,39 @@
   }
 }
 
+// "Remove" on an added franchise owner's section title.
+.owner-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--status-red-text, #c62828) 30%, transparent);
+  border-radius: 8px;
+  background: var(--status-red-bg, #fdecea);
+  color: var(--status-red-text, #c62828);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  // Not the boxed icon style section titles give their own icon.
+  .section-title & i {
+    width: auto;
+    height: auto;
+    display: inline;
+    border-radius: 0;
+    background: none;
+    color: inherit;
+    font-size: 12px;
+  }
+
+  &:hover { background: var(--status-red-text, #c62828); color: #fff; }
+  &:focus-visible { outline: 2px solid var(--status-red-text, #c62828); outline-offset: 2px; }
+}
+
 .form-grid { gap: 10px; }
 
 .form-field label { color: var(--text-dark); letter-spacing: 0.01em; }

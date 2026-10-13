@@ -24,9 +24,9 @@
         <button type="button" aria-label="Next day" [disabled]="date() >= today" (click)="shift(1)"><i class="bi bi-chevron-right"></i></button>
       </div>
       }
-      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
-      <button type="button" class="ghost-btn" [disabled]="!!b.closed" (click)="newVoucher()"><i class="bi bi-plus-lg"></i> Voucher</button>
-      <button type="button" class="add-lead-btn" [disabled]="!!b.closed" (click)="newBill()"><i class="bi bi-receipt"></i> Service Bill</button>
+      <button *appCan="'export-day-book'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button *appCan="'add-voucher'" type="button" class="ghost-btn" [disabled]="!!b.closed" (click)="newVoucher()"><i class="bi bi-plus-lg"></i> Voucher</button>
+      <button *appCan="'add-bill'" type="button" class="add-lead-btn" [disabled]="!!b.closed" (click)="newBill()"><i class="bi bi-receipt"></i> Service Bill</button>
     </div>
   </div>
 
@@ -69,10 +69,10 @@
         <span class="lock"><i class="bi bi-lock-fill"></i> Day closed</span>
         <small>by {{ b.closed.closedBy }} · {{ b.closed.closedAt | date:'d MMM, h:mm a' }}</small>
         <small>c/f as {{ displayDate(nextDay()) }} opening</small>
-        <button type="button" class="link" (click)="reopenDay()">Reopen</button>
+        <button *appCan="'reopen-day-book'" type="button" class="link" (click)="reopenDay()">Reopen</button>
       } @else {
         <span class="open"><i class="bi bi-unlock"></i> Day open</span>
-        <button type="button" class="add-lead-btn" (click)="closeDay()"><i class="bi bi-lock"></i> Close Day</button>
+        <button *appCan="'close-day-book'" type="button" class="add-lead-btn" (click)="closeDay()"><i class="bi bi-lock"></i> Close Day</button>
       }
     </div>
   </div>

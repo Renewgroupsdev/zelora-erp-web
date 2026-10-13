@@ -15,7 +15,7 @@
       </div>
       <div class="header-actions">
         <a class="ghost-btn" [routerLink]="['/app/branches', b.id]"><i class="bi bi-arrow-left"></i> Back</a>
-        <button type="button" class="add-lead-btn" (click)="addEmployee()"><i class="bi bi-plus-lg"></i> Add Employee</button>
+        <button *appCan="'add-branch-employee'" type="button" class="add-lead-btn" (click)="addEmployee()"><i class="bi bi-plus-lg"></i> Add Employee</button>
       </div>
     </header>
 
@@ -47,7 +47,7 @@
                 <td><span class="status-pill" [ngClass]="statusClass(e.status)">{{ e.status }}</span></td>
                 <td>
                   <div class="icon-actions">
-                    <button type="button" (click)="edit(e)" [attr.aria-label]="'Edit ' + e.name" title="Edit"><i class="bi bi-pencil-square"></i></button>
+                    <button *appCan="'edit-branch-employee'" type="button" (click)="edit(e)" [attr.aria-label]="'Edit ' + e.name" title="Edit"><i class="bi bi-pencil-square"></i></button>
                     <button type="button" (click)="view(e.id)" [attr.aria-label]="'View ' + e.name" title="View profile"><i class="bi bi-person-vcard"></i></button>
                   </div>
                 </td>

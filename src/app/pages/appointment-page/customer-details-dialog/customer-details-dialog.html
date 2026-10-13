@@ -39,7 +39,16 @@
         <section class="cd-section">
           <h3><i class="bi bi-clipboard2-pulse"></i> Clinical examination</h3>
           <dl class="cd-grid">
-            @for (item of clinical(); track item.label) { <div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div> }
+            @for (item of clinical(); track item.label) {
+              <div>
+                <dt>{{ item.label }}</dt>
+                @if (item.label === 'Grade') {
+                  <dd class="cd-grade"><app-hair-grade-icon [grade]="item.value" /><span>{{ item.value }}</span></dd>
+                } @else {
+                  <dd>{{ item.value }}</dd>
+                }
+              </div>
+            }
           </dl>
         </section>
       }
@@ -118,6 +127,21 @@
               @if (s.notes) {
                 <p class="cd-note"><strong>Doctor notes{{ s.doctor ? ' (' + s.doctor.name + ')' : '' }}:</strong> {{ s.notes }}</p>
               }
+            </div>
+          }
+        </section>
+      }
+
+      @if (previousTreatments().length) {
+        <section class="cd-section">
+          <h3><i class="bi bi-clock-history"></i> Previous treatments <small>· view only</small></h3>
+          @for (p of previousTreatments(); track p.id) {
+            <div class="cd-sitting done">
+              <div class="cd-sitting-head">
+                <strong>{{ p.treatment }}</strong>
+                <span>{{ formatDate(p.start_date) }} - {{ formatDate(p.end_date) }} · {{ p.completed_sittings }}/{{ p.sittings_count }} sittings · {{ inr(p.net_amount) }}</span>
+                <span class="cd-pill" [class.done]="p.status === 'completed'">{{ p.status === 'completed' ? 'Completed' : 'In progress' }}</span>
+              </div>
             </div>
           }
         </section>

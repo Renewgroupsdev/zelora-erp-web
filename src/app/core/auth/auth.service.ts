@@ -1,12 +1,12 @@
 import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, map, of, tap } from 'rxjs';
+import { Observable, catchError, finalize, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiDataService } from '../http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { ApiResponse, AuthUser, LoginResponse, LoginResponseData, ResetPasswordPayload } from './auth.model';
 import { IdleService } from '../idle-service/idle.service';
-import { SidebarModule, flattenModuleSlugs } from '../../shared/models/permission.model';
+import { SidebarAction, SidebarModule, findAction, flattenActionSlugs, flattenModuleSlugs } from '../../shared/models/permission.model';
 
 const ACCESS_TOKEN_KEY = 'token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
@@ -15,7 +15,6 @@ const TOKEN_EXPIRES_AT_KEY = 'token_expires_at';
 const AUTH_USER_KEY = 'auth_user';
 const MENUS_KEY = 'auth_menus';
 const AUTH_PERMISSIONS_KEY = 'auth_permissions';
-
 @Injectable({
   providedIn: 'root',
 })
@@ -31,7 +30,7 @@ export class AuthService {
     private idleService: IdleService,
   ) {
     if (this.isAuthenticated()) {
-      this.idleService.start(() => this.logout());
+      this.idleService.start(() => this.signOut().subscribe());
       // Always re-fetch on load (not just when the cache is empty) - an admin adding a module
       // in Roles & Permissions should see it appear on their next reload, not only after a
       // fresh login. The cached copy from readMenus() is still shown immediately in the
@@ -39,7 +38,17 @@ export class AuthService {
       this.refreshMenus();
       this.refreshProfile();
     }
+
+    // Roles & Permissions changes made by an admin elsewhere reach an open session when the user comes
+    // back to the tab (at most every 30 s), not only on the next reload / login.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || !this.isAuthenticated()) return;
+      if (Date.now() - this.menusRefreshedAt < 30_000) return;
+      this.refreshMenus();
+    });
   }
+
+  private menusRefreshedAt = 0;
 
   /** Re-reads the signed-in account (name, role, profile photo) so the top bar is never stuck on
    *  the copy saved at login - e.g. a photo uploaded afterwards shows on the next reload. */
@@ -103,6 +112,20 @@ export class AuthService {
     return flattenModuleSlugs(this.permissions()).has(slugName);
   }
 
+  /**
+   * True when Roles & Permissions assigns the signed-in role to this module action (e.g. 'sitting-notes').
+   * Follows the matrix for every role; the API already hands Super Admin the Roles & Permissions actions
+   * it can never lose, so no special case is needed here.
+   */
+  hasActionAccess(actionSlug: string): boolean {
+    return flattenActionSlugs(this.permissions()).has(actionSlug);
+  }
+
+  /** The action (url, logo, name from Roles & Permissions) when the signed-in role has it, else undefined. */
+  actionDetails(actionSlug: string): SidebarAction | undefined {
+    return findAction(this.permissions(), actionSlug);
+  }
+
   forgotPassword(email: string): Observable<ApiResponse<unknown>> {
     return this.api.POST(ApiRoutesConstants.AUTH_FORGOT_PASSWORD, { email });
   }
@@ -111,6 +134,25 @@ export class AuthService {
     return this.api.POST(ApiRoutesConstants.AUTH_RESET_PASSWORD, payload);
   }
 
+  /**
+   * User sign-out (Logout button, idle timeout): revokes the access + refresh token on the API, then clears
+   * the local session. The local session is cleared even when the API call fails (offline, token already expired).
+   */
+  signOut(): Observable<void> {
+    const refreshToken = this.readRefreshToken();
+    if (!this.readAccessToken()) {
+      this.logout();
+      return of(undefined);
+    }
+    this.idleService.stop();
+    return this.api.POST(ApiRoutesConstants.AUTH_LOGOUT, { refresh_token: refreshToken }).pipe(
+      map(() => undefined),
+      catchError(() => of(undefined)),
+      finalize(() => this.logout()),
+    );
+  }
+
+  /** Clears the local session only (no API call) - used when the session is already invalid (401 / failed refresh). */
   logout(navigateToLogin = true): void {
     this.idleService.stop();
     localStorage.removeItem(ACCESS_TOKEN_KEY);
@@ -191,7 +233,7 @@ export class AuthService {
     }
 
     this.isAuthenticated.set(true);
-    this.idleService.start(() => this.logout());
+    this.idleService.start(() => this.signOut().subscribe());
   }
 
   private readAccessToken(): string | null {
@@ -232,6 +274,7 @@ export class AuthService {
   }
 
   refreshMenus(): void {
+    this.menusRefreshedAt = Date.now();
     this.api.GET(ApiRoutesConstants.ROLES_PERMISSION_SIDEBAR).subscribe({
       next: (res: any) => {
         const menus: SidebarModule[] | undefined = res?.Menus ?? res?.data;

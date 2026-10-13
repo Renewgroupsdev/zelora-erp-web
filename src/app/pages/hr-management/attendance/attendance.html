@@ -15,7 +15,7 @@
       } @else {
         <input class="date-input" type="month" aria-label="Attendance month" [ngModel]="month()" (ngModelChange)="setMonth($event)" />
       }
-      <button type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
+      <button *appCan="'export-attendance'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
     </div>
   </div>
 
@@ -52,6 +52,7 @@
       [pageInfoText]="pageInfoText"
       [sortActive]="sortActive"
       [sortDirection]="sortDirection"
+      [actionPermissions]="{ view: 'view-attendance' }"
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
       (quickActionClick)="onQuickAction($event)"

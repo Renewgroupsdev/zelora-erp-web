@@ -1,21 +1,18 @@
 @if (isVisible) {
-  <div class="matrix-node" [style.--level]="level">
-    <div class="node-row" [class.has-children]="hasExpandableContent" [class.expanded]="node.expanded" (click)="onToggle()">
-      @if (level > 0) {
-        <span class="node-connector"></span>
-      }
-
+  <div class="tree-node" [class.root]="level === 0" [class]="'access-' + accessState">
+    <!-- Module / sub-module row -->
+    <div class="tree-row module-row" [class.has-children]="hasExpandableContent" [class.open]="showChildren" (click)="onToggle()">
       <button
         type="button"
-        class="expand-toggle"
-        [class.rotated]="node.expanded"
+        class="twisty"
+        [class.open]="showChildren"
         [class.invisible]="!hasExpandableContent"
-        [attr.aria-expanded]="node.expanded"
-        [attr.aria-label]="node.expanded ? 'Collapse ' + node.module_name : 'Expand ' + node.module_name">
-        <i class="bi bi-chevron-right"></i>
+        [attr.aria-expanded]="showChildren"
+        [attr.aria-label]="showChildren ? 'Collapse ' + node.module_name : 'Expand ' + node.module_name">
+        <i class="bi bi-caret-right-fill"></i>
       </button>
 
-      <label class="module-check" (click)="$event.stopPropagation()" [title]="selectedRoleId ? 'Grant this module to the selected role' : 'Select a role first'">
+      <label class="tick" (click)="$event.stopPropagation()" [title]="selectedRoleId ? 'Grant this module (and everything in it) to the selected role' : 'Select a role first'">
         <input
           type="checkbox"
           [checked]="isChecked"
@@ -25,57 +22,66 @@
       </label>
 
       <div
-        class="node-drag-surface"
+        class="row-body"
         [class.grabbable]="!dragDisabled"
         cdkDragHandle
         [cdkDragHandleDisabled]="dragDisabled"
         [title]="dragDisabled ? node.module_name : 'Click and drag to reorder'">
-        <div class="node-icon">
+        <span class="node-icon">
           @if (node.icon) {
             <i class="bi" [class]="node.icon"></i>
           } @else {
-            <i class="bi" [class.bi-folder2-open]="node.expanded" [class.bi-folder2]="!node.expanded"></i>
+            <i class="bi" [class.bi-folder2-open]="showChildren" [class.bi-folder2]="!showChildren"></i>
           }
-        </div>
+        </span>
+        <span class="node-name">{{ node.module_name }}</span>
+        <!-- <span class="node-slug">{{ node.slug_name }}</span> -->
 
-        <div class="node-info">
-          <span class="node-name">{{ node.module_name }}</span>
-          <span class="node-slug">{{ node.slug_name }}</span>
+        <span class="row-end">
           @if (node.actions.length) {
-            <span class="meta-chip">
-              <i class="bi bi-key-fill"></i>
-              {{ node.actions.length }} action{{ node.actions.length > 1 ? 's' : '' }}
+            <span class="count" [title]="(selectedRoleId ? grantedActions + ' of ' : '') + node.actions.length + ' actions'">
+              <i class="bi bi-key"></i>
+              {{ selectedRoleId ? grantedActions + '/' + node.actions.length : node.actions.length }}
             </span>
           }
-        </div>
+          @if (selectedRoleId) {
+            <span class="status">{{ accessLabel }}</span>
+          }
+        </span>
       </div>
     </div>
 
     @if (showChildren) {
+      <!-- Actions: leaves of this module, on the same tree line as its sub-modules -->
       @if (node.actions.length) {
-        <div class="node-actions">
+        <div class="tree-children" [class.continues]="node.sub_modules.length">
           @for (action of node.actions; track action.id ?? action.action_name) {
-            <label class="action-check-row">
-              <input
-                type="checkbox"
-                [checked]="isActionChecked(action)"
-                [disabled]="!selectedRoleId"
-                (change)="toggleAction.emit({ node, action })" />
-              <i class="bi bi-key-fill"></i>
-              {{ action.action_name }}
+            <label class="tree-item tree-row action-row" [class.on]="isActionChecked(action)" [class.disabled]="!selectedRoleId">
+              <span class="tick">
+                <input
+                  type="checkbox"
+                  [checked]="isActionChecked(action)"
+                  [disabled]="!selectedRoleId"
+                  (change)="toggleAction.emit({ node, action })" />
+              </span>
+              <i class="bi bi-key-fill leaf-icon"></i>
+              <span class="action-name">{{ action.action_name }}</span>
+              <!-- <span class="node-slug">{{ action.slug_name }}</span> -->
             </label>
           }
         </div>
       }
 
+      <!-- Sub-modules (each recursing into this same component) -->
       @if (node.sub_modules.length) {
         <div
-          class="node-children"
+          class="tree-children"
           cdkDropList
           [cdkDropListDisabled]="dragDisabled"
           (cdkDropListDropped)="onChildrenDrop($event)">
           @for (child of node.sub_modules; track child.id) {
             <app-matrix-tree-node
+              class="tree-item"
               cdkDrag
               [cdkDragDisabled]="dragDisabled"
               [node]="child"

@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -20,7 +21,7 @@ const DESIGNATION_ICONS: Record<string, string> = {
 @Component({
   selector: 'app-branch-employees',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, MatDialogModule],
+  imports: [CommonModule, FormsModule, RouterLink, MatDialogModule, CanActionDirective],
   templateUrl: './branch-employees.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise.scss'],
 })

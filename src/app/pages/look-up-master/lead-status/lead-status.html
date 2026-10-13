@@ -5,7 +5,7 @@
       <h6 class="page-title">Lead Status</h6>
     </div>
 
-    <button type="button" class="add-lead-btn" (click)="openAddPopup()">
+    <button *appCan="'add-lead-status'" type="button" class="add-lead-btn" (click)="openAddPopup()">
       <i class="bi bi-plus-lg"></i>
       Add Status
     </button>
@@ -34,6 +34,7 @@
         [pageInfoText]="pageInfoText"
         [sortActive]="sortActive"
         [sortDirection]="sortDirection"
+        [actionPermissions]="{ edit: 'edit-lead-status', delete: 'delete-lead-status' }"
         (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
         (editClick)="onEditStatus($event)"

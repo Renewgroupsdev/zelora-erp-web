@@ -6,7 +6,7 @@
       <p class="page-subtitle">Return received stock to the vendor against a purchase inward. Stock is reduced batch-wise and a debit note is raised.</p>
     </div>
     <div class="header-actions">
-      <button type="button" class="add-lead-btn" (click)="newReturn()"><i class="bi bi-plus-lg"></i> New Return</button>
+      <button *appCan="'create-purchase-return'" type="button" class="add-lead-btn" (click)="newReturn()"><i class="bi bi-plus-lg"></i> New Return</button>
     </div>
   </div>
 

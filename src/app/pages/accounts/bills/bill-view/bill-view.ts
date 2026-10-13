@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import Swal from 'sweetalert2';
@@ -10,7 +11,7 @@ import { amountInWords, displayDate, isoDate } from '../../../../shared/utils/fo
 @Component({
   selector: 'app-bill-view',
   standalone: true,
-  imports: [CommonModule, MatDialogModule],
+  imports: [CommonModule, MatDialogModule, CanActionDirective],
   templateUrl: './bill-view.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', '../../../../shared/styles/erp-document.scss'],
 })

@@ -25,6 +25,7 @@
     (searchChange)="onSearch($event)"
     (filterClick)="onFilterClick($event)"
     (filtersChange)="onFiltersChange($event)"
+    [showExport]="can('export-follow-ups')"
     (exportClick)="onExport()"
   ></app-common-filter-card>
 
@@ -42,6 +43,7 @@
       [pageInfoText]="pageInfoText"
       [sortActive]="sortActive"
       [sortDirection]="sortDirection"
+      [actionPermissions]="{ profile: 'update-follow-up' }"
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
       (rowActionClick)="onRowAction($event)"
