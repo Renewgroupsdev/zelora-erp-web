@@ -104,7 +104,7 @@
             <i class="bi bi-geo-alt"></i>
             <select id="cust-branch" formControlName="branch" [class.is-invalid]="isInvalid('branch')">
               <option value="">Select branch</option>
-              @for (branch of data.branches; track branch) {
+              @for (branch of branches(); track branch) {
                 <option [value]="branch">{{ branch }}</option>
               }
             </select>

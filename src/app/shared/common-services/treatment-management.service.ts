@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { EMPTY, Observable, catchError, expand, map, of, reduce } from 'rxjs';
 import { ApiDataService } from './api-data.service';
 import { ApiRoutesConstants } from './api-route-constants';
+import { BranchOptionsService } from './branch-options.service';
 
 export type DiscountType = 'percentage' | 'fixed';
 
@@ -72,6 +73,7 @@ export interface LookupOption {
 @Injectable({ providedIn: 'root' })
 export class TreatmentManagementService {
   private readonly api = inject(ApiDataService);
+  private readonly branchOptions = inject(BranchOptionsService);
 
   list(query: TreatmentListQuery): Observable<any> {
     const params = new URLSearchParams({ page: String(query.page), per_page: String(query.perPage) });
@@ -128,10 +130,8 @@ export class TreatmentManagementService {
     );
   }
 
+  /** Active branches (GET /branches/options, shared with every other branch dropdown). */
   branches(): Observable<LookupOption[]> {
-    return this.api.GetAllPages(`${ApiRoutesConstants.Branch_List_Options}?per_page=100`).pipe(
-      map((rows: any[]) => rows.map(r => ({ id: r.id, name: r.name }))),
-      catchError(() => of([])),
-    );
+    return this.branchOptions.load().pipe(map(rows => rows.map(r => ({ id: r.id, name: r.name }))));
   }
 }

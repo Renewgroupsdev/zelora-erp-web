@@ -137,6 +137,7 @@ export class ApiRoutesConstants {
    //Direct file uploads (POST/DELETE uploads/{folder})
    public static UPLOADS = "uploads";
    public static BRANCHES = "branches";
+   public static BRANCH_OPTIONS = "branches/options";
    public static FRANCHISES = "franchises";
 
    //Settings (key-value)

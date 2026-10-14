@@ -5,7 +5,7 @@ import {
   BranchPerformance, BranchTarget, CategoryResult, DEFAULT_RULES, EmployeePerformance, EmployeeTarget, IncentiveRules, IncentiveSlab,
   TREATMENT_CATEGORIES, TreatmentCategory, billCategory, emptyAmounts, isTreatmentStaff, slabRate, targetStatus,
 } from '../models/targets.model';
-import { BRANCHES, isoDate, loadState, saveState } from '../utils/format.util';
+import { isoDate, loadState, saveState } from '../utils/format.util';
 import { AccountsService } from './accounts.service';
 import { HrService } from './hr.service';
 
@@ -51,7 +51,8 @@ export class TargetsService {
   readonly targets = computed(() => this.state().targets);
   readonly employeeTargets = computed(() => this.state().employeeTargets);
   readonly rules = computed(() => this.state().rules);
-  readonly branches = BRANCHES;
+  /** Branch names from GET /branches/options (live array, see BranchOptionsService). */
+  readonly branches = this.hr.branches;
   readonly categories = TREATMENT_CATEGORIES;
 
   /** What the signed-in user may see: admins see every branch and employee. */
@@ -66,7 +67,8 @@ export class TargetsService {
 
   readonly visibleBranches = computed(() => {
     const a = this.access();
-    return a.level === 'all' ? this.branches : this.branches.filter(b => b === a.branch);
+    const names = this.hr.branchNames();
+    return a.level === 'all' ? names : names.filter(b => b === a.branch);
   });
 
   constructor() {

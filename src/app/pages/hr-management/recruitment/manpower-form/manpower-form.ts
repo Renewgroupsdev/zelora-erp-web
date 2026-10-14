@@ -22,9 +22,14 @@ export class ManpowerForm {
   readonly submitted = signal(false);
 
   model: NewManpowerInput = {
-    branch: this.hr.branches[0], department: DEPARTMENTS[0], designation: '', positions: 1, employmentType: 'Full Time',
+    branch: this.hr.branches[0] ?? '', department: DEPARTMENTS[0], designation: '', positions: 1, employmentType: 'Full Time',
     experience: '1-3 years', budgetMin: 18000, budgetMax: 25000, skills: '', justification: '', replacementFor: '', requiredBy: null,
   };
+
+  constructor() {
+    // Default to the first branch once GET /branches/options has answered.
+    this.hr.loadBranches().subscribe(list => { if (!this.model.branch && list.length) this.model.branch = list[0].name; });
+  }
 
   monthlyBudget(): number {
     return (Number(this.model.budgetMax) || 0) * (Number(this.model.positions) || 0);

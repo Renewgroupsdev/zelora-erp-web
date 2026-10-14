@@ -1,10 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, computed, inject } from '@angular/core';
+import { BranchOptionsService } from '../../../shared/common-services/branch-options.service';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 
 export interface AddCustomerFormData {
-  branches: string[];
+  /** Extra branch names; the dialog loads the full list from GET /branches/options itself. */
+  branches?: string[];
   segments: string[];
   serviceOptions: string[];
 }
@@ -27,6 +29,9 @@ export interface AddCustomerFormResult {
   styleUrl: './add-customer-form.scss',
 })
 export class AddCustomerForm {
+  private readonly branchOptions = inject(BranchOptionsService);
+  /** Branch names from GET /branches/options, plus any the caller passed in. */
+  readonly branches = computed(() => [...new Set([...this.branchOptions.names(), ...(this.data.branches ?? [])])]);
   customerForm: FormGroup;
   isSaving = false;
 
@@ -41,6 +46,7 @@ export class AddCustomerForm {
     private dialogRef: MatDialogRef<AddCustomerForm, AddCustomerFormResult>,
     @Inject(MAT_DIALOG_DATA) public data: AddCustomerFormData,
   ) {
+    this.branchOptions.ensure();
     this.customerForm = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(100)]],
       phone: ['', [Validators.required, Validators.pattern(/^[0-9+\-\s()]{8,20}$/)]],

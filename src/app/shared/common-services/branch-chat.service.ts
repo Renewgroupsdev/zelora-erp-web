@@ -3,7 +3,7 @@ import Swal from 'sweetalert2';
 import { AuthService } from '../../core/auth/auth.service';
 import { isAdmin, isTelecallerRole } from '../../core/auth/auth.model';
 import { Employee } from '../models/hr.model';
-import { BRANCHES, uid } from '../utils/format.util';
+import { uid } from '../utils/format.util';
 import { HrService } from './hr.service';
 import { NotificationService } from './notification.service';
 
@@ -95,8 +95,9 @@ export class BranchChatService {
    * Administrators (head office) may switch between branch groups to moderate.
    */
   readonly myBranches = computed<string[]>(() => {
-    if (this.isAdminUser() && !this.me()) return BRANCHES;
-    return [this.me()?.branch ?? BRANCHES[0]];
+    const names = this.hr.branchNames();
+    if (this.isAdminUser() && !this.me() && names.length) return names;
+    return [this.me()?.branch ?? names[0] ?? ''];
   });
 
   readonly activeBranch = signal<string>('');

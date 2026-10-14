@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
+import { BranchOptionsService } from '../../shared/common-services/branch-options.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { CommonDetailCard } from '../../shared/components/common-detail-card/common-detail-card';
@@ -39,6 +40,7 @@ const STATUSES: FlowStatus[] = ['Scheduled', 'In Consultation', 'Awaiting Terms'
   styleUrl: './appointment-page.scss',
 })
 export class AppointmentPage implements OnInit, AfterViewInit {
+  private readonly branchOptions = inject(BranchOptionsService);
   constructor(private dialog: MatDialog, private toast: ToastService, private api: ApiDataService) { }
 
   readonly inr = inr;
@@ -100,12 +102,9 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   // ---------------------------------------------------------------- data
 
   private loadBranches(): void {
-    this.api.GET(`${ApiRoutesConstants.Branch_List_Options}?per_page=200`).subscribe({
-      next: (res: any) => {
-        const names = ((res?.data?.data ?? res?.data ?? []) as any[]).map(b => b?.name).filter(Boolean);
-        this.filters = this.filters.map(f => (f.key === 'branch' ? { ...f, options: names } : f));
-      },
-      error: () => undefined,
+    this.branchOptions.load().subscribe(list => {
+      const names = list.map(b => b.name);
+      this.filters = this.filters.map(f => (f.key === 'branch' ? { ...f, options: names } : f));
     });
   }
 

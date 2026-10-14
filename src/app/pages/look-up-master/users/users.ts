@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
+import { BranchOptionsService } from '../../../shared/common-services/branch-options.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { forkJoin, of } from 'rxjs';
@@ -27,6 +28,7 @@ import { AddUserForm } from './add-user-form/add-user-form';
   styleUrl: './users.scss',
 })
 export class Users implements OnInit {
+  private readonly branchOptions = inject(BranchOptionsService);
 
   constructor(
     private dialog: MatDialog,
@@ -87,7 +89,7 @@ export class Users implements OnInit {
   private loadLookups(): void {
     forkJoin({
       roles: this.apiDataService.GetAllPages(ApiRoutesConstants.ROLES_GET_List).pipe(catchError(() => of([]))),
-      branches: this.apiDataService.GetAllPages(ApiRoutesConstants.Branch_List_Options).pipe(catchError(() => of([]))),
+      branches: this.branchOptions.load(),
     }).subscribe(({ roles, branches }: any) => {
       this.roles = roles;
       this.branches = branches;

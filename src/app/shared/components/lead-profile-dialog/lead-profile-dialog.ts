@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Inject, inject } from '@angular/core';
+import { Component, HostListener, Inject, computed, inject } from '@angular/core';
+import { BranchOptionsService } from '../../common-services/branch-options.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { FlowAppointment, FlowLead, FollowUpEntry } from '../../common-services/crm-flow.service';
@@ -89,7 +90,11 @@ export interface LeadProfileDialogResult {
 export class LeadProfileDialog {
   readonly form;
   readonly paymentMethods = PAYMENT_METHODS;
-  readonly branches: string[];
+  private readonly branchOptions = inject(BranchOptionsService);
+  /** Branch names from GET /branches/options plus the caller's list; the lead's own branch is always selectable. */
+  readonly branches = computed(() => [...new Set([
+    ...this.branchOptions.names(), ...(this.data.branches ?? []), ...(this.data.lead.branch ? [this.data.lead.branch] : []),
+  ])]);
   readonly categories = TREATMENT_CATEGORIES;
 
   history: FollowUpEntry[];
@@ -122,9 +127,7 @@ export class LeadProfileDialog {
     private auth: AuthService,
     @Inject(MAT_DIALOG_DATA) public data: LeadProfileDialogData,
   ) {
-    // Branch names come from the API; the lead's own branch is always selectable.
-    const branchNames = new Set([...(data.branches ?? []), ...(data.lead.branch ? [data.lead.branch] : [])]);
-    this.branches = [...branchNames];
+    this.branchOptions.ensure();
     const lead = data.lead;
     const appointment = data.appointment;
     this.history = [...(lead.history ?? [])];
@@ -678,7 +681,7 @@ export class LeadProfileDialog {
 
   onTelecallerChange(): void {
     const branch = this.data.telecallerBranches?.[this.form.get('telecaller')?.value ?? ''];
-    if (branch && this.branches.includes(branch)) this.form.patchValue({ branch });
+    if (branch && this.branches().includes(branch)) this.form.patchValue({ branch });
   }
 
   close(): void { this.dialogRef.close({ action: 'close', lead: this.data.lead }); }

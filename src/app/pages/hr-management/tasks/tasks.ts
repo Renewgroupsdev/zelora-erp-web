@@ -79,7 +79,7 @@ export class Tasks {
   }
 
   /** One card per branch: progress, members and who is responsible (SEO employees working or based there). */
-  readonly locationCards = computed(() => this.hr.branches.map(branch => {
+  readonly locationCards = computed(() => this.hr.branchNames().map(branch => {
     const list = this.periodScoped().filter(t => t.branch === branch);
     const all = this.store.visibleTasks().filter(t => t.branch === branch);
     const names = new Set<string>(all.map(t => this.employeeName(t.empId)));

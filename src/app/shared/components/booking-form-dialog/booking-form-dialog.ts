@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, Inject } from '@angular/core';
+import { Component, Inject, computed, inject } from '@angular/core';
+import { BranchOptionsService } from '../../common-services/branch-options.service';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { BaldnessType, ComboOffer, PAYMENT_METHODS, PaymentStatus, TREATMENT_CATEGORIES, Treatment, TreatmentCategory, TreatmentPackage, baldnessTypesFor, formatCurrency, packagesByCategory } from '../../data/treatment-catalog';
@@ -10,7 +11,8 @@ import { TimePickerDirective } from '../../directives/time-picker.directive';
 export type BookingType = 'single' | 'combo' | 'package';
 
 export interface BookingFormData {
-  branches: string[];
+  /** Extra branch names; the dialog loads the full list from GET /branches/options itself. */
+  branches?: string[];
   staffOptions: string[];
   treatments: Treatment[];
   combos?: ComboOffer[];
@@ -55,6 +57,9 @@ export interface BookingFormResult {
   styleUrl: './booking-form-dialog.scss',
 })
 export class BookingFormDialog {
+  private readonly branchOptions = inject(BranchOptionsService);
+  /** Branch names from GET /branches/options, plus any the caller passed in. */
+  readonly branches = computed(() => [...new Set([...this.branchOptions.names(), ...(this.data.branches ?? [])])]);
   form: FormGroup;
   isSaving = false;
 
@@ -74,6 +79,7 @@ export class BookingFormDialog {
     private notifications: NotificationService,
     @Inject(MAT_DIALOG_DATA) public data: BookingFormData,
   ) {
+    this.branchOptions.ensure();
     const initial = data.initial;
 
     this.form = this.fb.group({

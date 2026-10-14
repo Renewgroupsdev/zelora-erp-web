@@ -35,7 +35,7 @@ export class BillForm {
 
   date = this.today;
   dueDate: string | null = addDays(this.today, this.data.kind === 'Proforma' ? 15 : 7);
-  branch = this.acc.branches[0];
+  branch = this.acc.branches[0] ?? '';
   employeeId = '';
   customerName = '';
   customerPhone = '';
@@ -43,6 +43,11 @@ export class BillForm {
   customerGstin = '';
   notes = '';
   items: BillItem[] = [this.blankItem()];
+
+  constructor() {
+    // Default to the first branch once GET /branches/options has answered.
+    this.acc.loadBranches().subscribe(list => { if (!this.branch && list.length) this.branch = list[0].name; });
+  }
   collectNow = true;
   collectAmount: number | null = null;
   collectMode: PaymentMode = 'UPI';

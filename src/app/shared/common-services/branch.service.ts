@@ -4,6 +4,7 @@ import { ApiDataService } from '../../core/http/api.service';
 import { BranchRecord, BranchStatus } from '../models/branch-franchise.model';
 import { Employee } from '../models/hr.model';
 import { ApiRoutesConstants } from './api-route-constants';
+import { BranchOptionsService } from './branch-options.service';
 import { HrService } from './hr.service';
 
 /** The four stat cards on the list page (GET /branches -> stats). */
@@ -70,6 +71,7 @@ export function apiError(err: any, fallback = 'Something went wrong. Please try 
 export class BranchService {
   private readonly api = inject(ApiDataService);
   private readonly hr = inject(HrService);
+  private readonly branchOptions = inject(BranchOptionsService);
 
   private readonly list = signal<BranchRecord[]>([]);
   private readonly overview = signal<BranchOverview | null>(null);
@@ -173,6 +175,7 @@ export class BranchService {
   /** Stat cards depend on every branch, so re-read them after a change. */
   private refreshStats(): void {
     this.load().subscribe({ error: () => undefined });
+    this.branchOptions.refresh();
   }
 }
 

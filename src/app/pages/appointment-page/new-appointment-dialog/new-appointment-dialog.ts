@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { BranchOptionsService } from '../../../shared/common-services/branch-options.service';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { finalize } from 'rxjs';
@@ -62,6 +63,7 @@ const emptyForm = () => ({
   styleUrls: ['../../../shared/styles/erp-dialog.scss', './new-appointment-dialog.scss'],
 })
 export class NewAppointmentDialog implements OnInit {
+  private readonly branchOptions = inject(BranchOptionsService);
   private readonly api = inject(ApiDataService);
   private readonly toast = inject(ToastService);
   private readonly dialogRef = inject(MatDialogRef<NewAppointmentDialog, NewAppointmentResult | undefined>);
@@ -107,11 +109,7 @@ export class NewAppointmentDialog implements OnInit {
     this.form.appointment_time = time;
     this.plan.start_date = this.today;
     this.plan.start_time = time;
-    this.api.GET(ApiRoutesConstants.Branch_List_Options).subscribe({
-      next: (res: any) => this.branches.set((res?.data?.data ?? res?.data ?? [])
-        .filter((b: any) => b?.name).map((b: any) => ({ id: Number(b.id), name: b.name }))),
-      error: () => this.branches.set([]),
-    });
+    this.branchOptions.load().subscribe(list => this.branches.set(list.map(b => ({ id: b.id, name: b.name }))));
     this.api.GetAllPages(ApiRoutesConstants.SERVICE_CATEGORY_TREE_LIST).subscribe({
       next: (cats: any[]) => {
         const active = cats.filter(c => c.is_active !== false);

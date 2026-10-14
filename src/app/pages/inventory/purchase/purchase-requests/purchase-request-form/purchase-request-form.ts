@@ -3,6 +3,7 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { BranchOptionsService } from '../../../../../shared/common-services/branch-options.service';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
 import { PurchaseOption, Priority, lineTotals } from '../../../../../shared/models/purchase.model';
 
@@ -17,6 +18,9 @@ export class PurchaseRequestForm {
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<PurchaseRequestForm>);
   readonly purchase = inject(PurchaseService);
+  private readonly branchOptions = inject(BranchOptionsService);
+  /** Requesting branch options (GET /branches/options). */
+  readonly branches = this.branchOptions.options;
 
   readonly vendors = this.purchase.vendors;
   readonly products = toSignal(this.purchase.productOptions(), { initialValue: [] as PurchaseOption[] });
@@ -37,9 +41,10 @@ export class PurchaseRequestForm {
   constructor() {
     // On-hand qty shown per line; stock is not part of the Purchase Requests tab load.
     void this.purchase.reload('stock');
-    // Default to the user's own branch (else the first branch) once the store list has loaded.
+    this.branchOptions.ensure();
+    // Default to the user's own branch (else the first branch) once the branch list has loaded.
     effect(() => {
-      const branches = this.purchase.branchOptions();
+      const branches = this.branches();
       const control = this.form.controls.branchId;
       if (control.value !== null || !branches.length) return;
       const mine = branches.find(b => b.id === this.purchase.meta().userStoreId);

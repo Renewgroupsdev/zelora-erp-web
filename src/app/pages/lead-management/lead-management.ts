@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import Swal from 'sweetalert2';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
+import { BranchOption, BranchOptionsService } from '../../shared/common-services/branch-options.service';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { CommonDetailCard } from '../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../shared/components/common-filter-card/common-filter-card';
@@ -42,6 +43,7 @@ import { COMBO_OFFERS, TREATMENTS } from '../../shared/data/treatment-catalog';
   styleUrl: './lead-management.scss',
 })
 export class LeadManagement implements OnInit {
+  private readonly branchOptions = inject(BranchOptionsService);
 
   constructor(
     private dialog: MatDialog,
@@ -136,9 +138,7 @@ export class LeadManagement implements OnInit {
       sources: this.ApiDataService.GET(`${ApiRoutesConstants.Source_List_Options}`).pipe(
         catchError(() => of(null))
       ),
-      branches: this.ApiDataService.GET(`${ApiRoutesConstants.Branch_List_Options}`).pipe(
-        catchError(() => of(null))
-      ),
+      branches: this.branchOptions.load(),
       types: this.ApiDataService.GET(`${ApiRoutesConstants.Type_List_Options}/${this.type}`).pipe(
         catchError(() => of(null))
       ),
@@ -180,10 +180,9 @@ export class LeadManagement implements OnInit {
     }
   }
 
-  private applyBranchOptions(res: any): void {
-    const list: any[] = res?.data?.data ?? [];
-    this.branchIdByName = new Map(list.filter(b => b?.name).map(b => [b.name, Number(b.id)]));
-    const names = list.map(b => b?.name).filter((name: unknown): name is string => !!name);
+  private applyBranchOptions(list: BranchOption[]): void {
+    this.branchIdByName = new Map(list.map(b => [b.name, b.id]));
+    const names = list.map(b => b.name);
 
     if (names.length) {
       this.filters = this.filters.map(f => (f.key === 'branch' ? { ...f, options: names } : f));

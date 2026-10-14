@@ -35,9 +35,14 @@ export class TaskForm {
   model: WorkTaskInput = this.existing
     ? structuredClone((({ id, empId, createdAt, updatedAt, ...rest }) => rest)(this.existing))
     : {
-      branch: this.owner?.branch ?? this.hr.branches[0], type: WORK_TASK_TYPES['SEO'][0], title: '', status: 'Not started', result: 'Pending',
+      branch: this.owner?.branch ?? this.hr.branches[0] ?? '', type: WORK_TASK_TYPES['SEO'][0], title: '', status: 'Not started', result: 'Pending',
       metric: '', plannedDate: isoDate(), dueDate: addDays(isoDate(), 3), completedDate: '', notes: '',
     };
+
+  constructor() {
+    // Default to the first branch once GET /branches/options has answered.
+    this.hr.loadBranches().subscribe(list => { if (!this.model.branch && list.length) this.model.branch = list[0].name; });
+  }
 
   onStatusChange(): void {
     if (this.model.status === 'Completed' && !this.model.completedDate) this.model.completedDate = isoDate();

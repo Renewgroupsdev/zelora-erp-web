@@ -1,6 +1,6 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import Swal from 'sweetalert2';
-import { Observable, catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
+import { Observable, forkJoin, map, of, switchMap, tap } from 'rxjs';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from './api-route-constants';
 import { FileUploadService } from './file-upload.service';
@@ -43,8 +43,9 @@ import {
   structureFromGross,
   workedHours,
 } from '../models/hr.model';
-import { BRANCHES, addDays, daysInMonth, isoDate, loadState, monthKey, saveState, seqNo, uid } from '../utils/format.util';
+import { addDays, daysInMonth, isoDate, loadState, monthKey, saveState, seqNo, uid } from '../utils/format.util';
 import { NotificationService } from './notification.service';
+import { BranchOption, BranchOptionsService } from './branch-options.service';
 
 const STORAGE_KEY = 'zelora_hr_store_v1';
 
@@ -78,6 +79,7 @@ export class HrService {
   private readonly notifications = inject(NotificationService);
   private readonly api = inject(ApiDataService);
   private readonly uploads = inject(FileUploadService);
+  private readonly branchList = inject(BranchOptionsService);
   private readonly state = signal<HrState>(loadState(STORAGE_KEY, seedState));
 
   readonly employees = computed(() => this.state().employees);
@@ -91,7 +93,10 @@ export class HrService {
   readonly onboarding = computed(() => this.state().onboarding);
   readonly exits = computed(() => this.state().exits);
 
-  readonly branches = BRANCHES;
+  /** Branch names from GET /branches/options (one live array, refilled when the options load). */
+  readonly branches = this.branchList.nameList;
+  /** Same names as a signal, for computed()s. */
+  readonly branchNames = this.branchList.names;
   readonly activeEmployees = computed(() => this.employees().filter(e => e.status !== 'Exited'));
   readonly vacancies = computed(() => this.manpower().filter(m => m.status === 'Approved'));
   readonly pendingLeaves = computed(() => this.leaves().filter(l => l.status === 'Pending').length);
@@ -101,6 +106,7 @@ export class HrService {
 
   constructor() {
     effect(() => saveState(STORAGE_KEY, this.state()));
+    this.branchList.ensure();
   }
 
   get userName(): string {
@@ -139,13 +145,11 @@ export class HrService {
   // ---- Employees API (hr/employees) ----
 
   /** Branch names <-> ids for the employee form (employees reference a branch by id). */
-  readonly branchOptions = signal<{ id: number; name: string }[]>([]);
+  readonly branchOptions = this.branchList.options;
 
-  loadBranches(): Observable<{ id: number; name: string }[]> {
-    return (this.api.GetAllPages(ApiRoutesConstants.Branch_List_Options) as Observable<{ id: number; name: string }[]>).pipe(
-      catchError(() => of([])),
-      tap(list => this.branchOptions.set(list.map(b => ({ id: b.id, name: b.name })))),
-    );
+  /** GET /branches/options (shared with every other branch dropdown). */
+  loadBranches(): Observable<BranchOption[]> {
+    return this.branchList.load();
   }
 
   /** Replaces the store's employees with every employee from the API (all pages). */
@@ -304,7 +308,7 @@ export class HrService {
     const employee: Employee = {
       id: uid('EMP'), empCode: this.nextEmpCode(), status: 'Active',
       name: user.name.trim(), gender: 'Other', dob: null, phone: user.phone_no ?? '', email: user.email ?? '', address: '', bloodGroup: '',
-      designation: user.role?.name ?? 'Staff', department: DEPARTMENTS[0], branch: this.branches[0], reportingTo: 'Branch Head',
+      designation: user.role?.name ?? 'Staff', department: DEPARTMENTS[0], branch: this.branches[0] ?? '', reportingTo: 'Branch Head',
       joinDate: isoDate(), employmentType: 'Full Time', pan: '', aadhaarLast4: '', uan: '', bankName: '', accountNo: '', ifsc: '',
       emergencyContact: '', salary: structureFromGross(0),
     };

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import Swal from 'sweetalert2';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { BranchOptionsService } from '../../shared/common-services/branch-options.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { CommonDetailCard } from '../../shared/components/common-detail-card/common-detail-card';
@@ -50,6 +51,7 @@ const VALIDATION_ACTIONS: QuickAction[] = [
   styleUrl: './followups.scss',
 })
 export class Followups implements OnInit, OnDestroy {
+  private readonly branchOptions = inject(BranchOptionsService);
 
   constructor(
     private dialog: MatDialog,
@@ -153,10 +155,7 @@ export class Followups implements OnInit, OnDestroy {
       next: (res: any) => setOptions('source', (res?.data?.data ?? res?.data ?? []).map((s: any) => s?.source_name)),
       error: () => undefined,
     });
-    this.apiDataService.GET(`${ApiRoutesConstants.Branch_List_Options}?per_page=100`).subscribe({
-      next: (res: any) => setOptions('branch', (res?.data?.data ?? res?.data ?? []).map((b: any) => b?.name)),
-      error: () => undefined,
-    });
+    this.branchOptions.load().subscribe(list => setOptions('branch', list.map(b => b.name)));
     this.telephony.telecallers().subscribe({
       next: rows => setOptions('telecaller', rows.map(r => r.name)),
       error: () => undefined,

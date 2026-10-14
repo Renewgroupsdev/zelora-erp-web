@@ -19,6 +19,7 @@ import {
 } from '../models/accounts.model';
 import { BRANCHES, addDays, isoDate, loadState, saveState, uid } from '../utils/format.util';
 import { NotificationService } from './notification.service';
+import { BranchOptionsService } from './branch-options.service';
 
 const STORAGE_KEY = 'zelora_accounts_store_v1';
 
@@ -89,13 +90,17 @@ export interface NewVoucherInput {
 export class AccountsService {
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
+  private readonly branchList = inject(BranchOptionsService);
   private readonly state = signal<AccountsState>(attributeSeedBills(loadState(STORAGE_KEY, seedState)));
 
   readonly ledgers = computed(() => this.state().ledgers);
   readonly vouchers = computed(() => this.state().vouchers.filter(v => !v.cancelled));
   readonly bills = computed(() => this.state().bills);
   readonly dayCloses = computed(() => this.state().dayCloses);
-  readonly branches = BRANCHES;
+  /** Branch names from GET /branches/options (live array, see BranchOptionsService). */
+  readonly branches = this.branchList.nameList;
+  /** Resolves once the branch options are loaded (forms use it to pick a default branch). */
+  readonly loadBranches = () => this.branchList.load();
 
   readonly cashLedgers = computed(() => this.ledgers().filter(l => CASH_GROUPS.includes(l.group)));
   readonly receivables = computed(() => this.bills()
@@ -104,6 +109,7 @@ export class AccountsService {
 
   constructor() {
     effect(() => saveState(STORAGE_KEY, this.state()));
+    this.branchList.ensure();
   }
 
   get userName(): string {

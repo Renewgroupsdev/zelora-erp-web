@@ -60,7 +60,7 @@ export class VoucherForm {
   readonly error = signal<string | null>(null);
 
   date = this.today;
-  branch = this.acc.branches[0];
+  branch = this.acc.branches[0] ?? '';
   narration = '';
   reference = '';
   // Simple vouchers
@@ -75,6 +75,8 @@ export class VoucherForm {
 
   constructor() {
     this.setType(this.type());
+    // Default to the first branch once GET /branches/options has answered.
+    this.acc.loadBranches().subscribe(list => { if (!this.branch && list.length) this.branch = list[0].name; });
   }
 
   /** Tally shortcuts: F4 Contra, F5 Payment, F6 Receipt, F7 Journal, F8 Sales, F9 Purchase, Ctrl+F8 / Ctrl+F9 notes. */
