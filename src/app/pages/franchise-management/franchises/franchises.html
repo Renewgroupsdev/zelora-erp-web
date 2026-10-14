@@ -82,7 +82,7 @@
 
         <div class="drawer-body">
           <div class="side-tabs" role="tablist">
-            <button type="button" role="tab" class="active" aria-selected="true">Overview</button>
+            <button type="button" *appCan="'overview'" role="tab" class="active" aria-selected="true">Overview</button>
             @for (t of panelTabs; track t) {
               <button type="button" role="tab" aria-selected="false" (click)="panelLink(p.franchise.id, t)">{{ t[0].toUpperCase() + t.slice(1) }}</button>
             }

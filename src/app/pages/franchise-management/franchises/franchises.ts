@@ -1,16 +1,18 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatDialogModule } from '@angular/material/dialog';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { FranchiseService } from '../../../shared/common-services/franchise.service';
+import { ToastService } from '../../../shared/common-services/toast.service';
 import { CommonDetailCard } from '../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
 import { LocalListBase } from '../../../shared/components/local-list-base';
 import { DetailCardData, ExportFormat, TableColumn, TableRow } from '../../../shared/models/common-components.model';
-import { inrShort, invoiceTotal, lastMonths } from '../../../shared/models/branch-franchise.model';
+import { inrShort } from '../../../shared/models/branch-franchise.model';
+import { saveBlob } from '../../../shared/utils/export.util';
 import { displayDate } from '../../../shared/utils/format.util';
 import { FranchiseForm } from '../franchise-form/franchise-form';
 
@@ -22,8 +24,9 @@ import { FranchiseForm } from '../franchise-form/franchise-form';
   templateUrl: './franchises.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise-list.scss'],
 })
-export class Franchises extends LocalListBase {
+export class Franchises extends LocalListBase implements OnInit {
   private readonly store = inject(FranchiseService);
+  private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
 
@@ -37,8 +40,21 @@ export class Franchises extends LocalListBase {
 
   override filters = [
     { key: 'status', label: 'Status', options: ['Active', 'Pending', 'Inactive'] },
-    { key: 'source', label: 'City', options: [...new Set(this.store.franchises().map(f => f.city))].sort() },
+    { key: 'source', label: 'City', options: [] as string[] },
   ];
+
+  ngOnInit(): void {
+    this.reload();
+  }
+
+  private reload(): void {
+    this.store.load().subscribe({
+      next: list => {
+        this.filters = [this.filters[0], { key: 'source', label: 'City', options: [...new Set(list.map(f => f.city).filter(Boolean))].sort() }];
+      },
+      error: (err: any) => this.toast.error(err?.error?.message || 'Failed to load franchises. Please try again.'),
+    });
+  }
 
   columns: TableColumn[] = [
     { key: 'code', header: 'Code', width: '7%' },
@@ -60,7 +76,7 @@ export class Franchises extends LocalListBase {
   /** The details panel slides in over the page when a row is clicked. */
   readonly panelOpen = signal(false);
   /** Tabs after Overview open the matching tab on the full details page. */
-  readonly panelTabs = ['agreement', 'employees', 'sales'] as const;
+  readonly panelTabs = ['agreement', 'customers', 'sales'] as const;
   readonly displayDate = displayDate;
 
   current() {
@@ -71,9 +87,9 @@ export class Franchises extends LocalListBase {
   panel() {
     const f = this.current();
     if (!f) return null;
-    const t = this.store.totalsFor(f.id);
     const share = f.sharePercent;
-    return { franchise: f, totals: t, franchiseShare: share, renewShare: 100 - share, donut: `conic-gradient(var(--status-blue-text) 0 ${share}%, var(--status-green-text) ${share}% 100%)` };
+    const totals = { total: f.totalSales ?? 0, franchise: f.franchiseShareTotal ?? 0, renew: f.renewShareTotal ?? 0, invoices: f.invoicesCount ?? 0 };
+    return { franchise: f, totals, franchiseShare: share, renewShare: Math.round((100 - share) * 100) / 100, donut: `conic-gradient(var(--status-blue-text) 0 ${share}%, var(--status-green-text) ${share}% 100%)` };
   }
 
   select(row: TableRow): void {
@@ -91,23 +107,21 @@ export class Franchises extends LocalListBase {
   }
 
   readonly stats = computed<DetailCardData[]>(() => {
-    const list = this.store.franchises();
-    const overall = this.store.overall();
-    // Month-on-month growth of invoice value across all franchises.
-    const [prev, current] = lastMonths(2).map(m => this.store.invoices().filter(i => i.date.startsWith(m.key)).reduce((s, i) => s + invoiceTotal(i.items), 0));
-    const growth = prev ? Math.round(((current - prev) / prev) * 100) : null;
+    const o = this.store.overview();
+    const growth = o?.salesGrowthPercent ?? null;
     return [
-      { label: 'Total Franchises', value: list.length, icon: 'bi-shop', iconVariant: 'blue' },
-      { label: 'Active Franchises', value: list.filter(f => f.status === 'Active').length, icon: 'bi-check-circle-fill', iconVariant: 'green' },
-      { label: 'Pending', value: list.filter(f => f.status === 'Pending').length, icon: 'bi-hourglass-split', iconVariant: 'orange' },
-      { label: 'Total Sales', value: inrShort(overall.total), trendText: growth === null ? undefined : `${growth >= 0 ? '+' : ''}${growth}% growth`, trendDirection: growth !== null && growth < 0 ? 'down' : 'up', icon: 'bi-graph-up-arrow', iconVariant: 'blue' },
-      { label: 'Renew Share (Company)', value: inrShort(overall.renew), trendText: `${overall.renewPercent}% of total`, trendDirection: 'neutral', icon: 'bi-percent', iconVariant: 'purple' },
+      { label: 'Total Franchises', value: o?.totalFranchises ?? 0, icon: 'bi-shop', iconVariant: 'blue' },
+      { label: 'Active Franchises', value: o?.activeFranchises ?? 0, icon: 'bi-check-circle-fill', iconVariant: 'green' },
+      { label: 'Pending', value: o?.pendingFranchises ?? 0, icon: 'bi-hourglass-split', iconVariant: 'orange' },
+      { label: 'Total Sales', value: inrShort(o?.totalSales ?? 0), trendText: growth === null ? undefined : `${growth >= 0 ? '+' : ''}${growth}% growth`, trendDirection: growth !== null && growth < 0 ? 'down' : 'up', icon: 'bi-graph-up-arrow', iconVariant: 'blue' },
+      { label: 'Renew Share (Company)', value: inrShort(o?.renewShare ?? 0), trendText: `${o?.renewPercent ?? 0}% of total`, trendDirection: 'neutral', icon: 'bi-percent', iconVariant: 'purple' },
     ];
   });
 
   protected allRows(): TableRow[] {
     return this.store.franchises().map(f => {
-      const t = this.store.totalsFor(f.id);
+      const total = f.totalSales ?? 0;
+      const renew = f.renewShareTotal ?? 0;
       return {
         id: f.id,
         code: f.code,
@@ -119,26 +133,37 @@ export class Franchises extends LocalListBase {
         city: f.city,
         state: f.state,
         status: f.status,
-        sales: `₹${Math.round(t.total).toLocaleString('en-IN')}`, __sales: t.total,
-        renew: `₹${Math.round(t.renew).toLocaleString('en-IN')}`, __renew: t.renew,
+        sales: `₹${Math.round(total).toLocaleString('en-IN')}`, __sales: total,
+        renew: `₹${Math.round(renew).toLocaleString('en-IN')}`, __renew: renew,
         actions: [
           { key: 'edit', icon: 'bi-pencil-square', label: 'Edit franchise', variant: 'primary' },
           { key: 'view', icon: 'bi-eye-fill', label: 'View franchise details' },
+          { key: 'delete', icon: 'bi-trash3-fill', label: 'Delete franchise', variant: 'danger', permission: 'delete-franchise' },
         ],
       };
     });
   }
 
   addFranchise(): void {
-    this.openDialog(FranchiseForm, {}, '860px');
+    this.openDialog(FranchiseForm, {}, '860px').afterClosed().subscribe(saved => saved && this.reload());
+  }
+
+  private async deleteFranchise(row: TableRow): Promise<void> {
+    const name = (row['__franchiseName'] as string) || 'This franchise';
+    if (!(await this.toast.confirm('Delete this franchise?', `${name} will be removed. A franchise that already has invoices cannot be deleted - mark it Inactive instead.`))) return;
+    this.store.remove(String(row['id'])).subscribe({
+      next: () => { this.closePanel(); this.toast.success('Franchise deleted successfully'); },
+      error: (err: any) => this.toast.error(err?.error?.message || 'Failed to delete franchise. Please try again.'),
+    });
   }
 
   onQuickAction(event: { row: TableRow; action: string }): void {
+    if (event.action === 'delete') return void this.deleteFranchise(event.row);
     this.selectedId.set(String(event.row['id']));
     if (event.action === 'view') this.router.navigate(['/app/franchises', event.row['id']]);
     if (event.action === 'edit') {
       this.closePanel();
-      this.openDialog(FranchiseForm, { franchiseId: event.row['id'] }, '860px');
+      this.openDialog(FranchiseForm, { franchiseId: event.row['id'] }, '860px').afterClosed().subscribe(saved => saved && this.reload());
     }
   }
 
@@ -146,7 +171,12 @@ export class Franchises extends LocalListBase {
     this.router.navigate(['/app/franchises', row['id']]);
   }
 
+  /** Server export of the franchises matching the search and filters; falls back to the table's own rows if the server cannot build the file. */
   onExport(format: ExportFormat): void {
-    this.exportAs(format, 'franchises', 'Franchises');
+    const f = this.filterState;
+    this.store.export(format, { search: this.searchTerm, status: f.status, cities: f.source ? [f.source] : [] }).subscribe({
+      next: blob => saveBlob(blob, `franchises-${new Date().toISOString().slice(0, 10)}.${format}`),
+      error: () => this.exportAs(format, 'franchises', 'Franchises'),
+    });
   }
 }

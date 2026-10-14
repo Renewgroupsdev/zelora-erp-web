@@ -25,6 +25,10 @@ export interface BranchRecord {
   /** Geo location (decimal degrees), set from the form's map tools. */
   latitude?: number | null;
   longitude?: number | null;
+  /** Filled for list rows by the API. */
+  employees?: number;
+  customers?: number;
+  monthlySales?: number;
 }
 
 export type FranchiseStatus = 'Active' | 'Pending' | 'Inactive';
@@ -60,6 +64,12 @@ export interface FranchiseRecord {
   sharePercent: number;
   shareEffectiveFrom: string;
   employees: number;
+  /** Invoice totals of the franchise - filled for list rows by the API. */
+  totalSales?: number;
+  franchiseShareTotal?: number;
+  renewShareTotal?: number;
+  invoicesCount?: number;
+  paidCount?: number;
   /** Stock value held at the partner outlet (reported by the franchise). */
   inventoryValue?: number;
   /** Storefront photo (downscaled data URL) shown on the details page. */

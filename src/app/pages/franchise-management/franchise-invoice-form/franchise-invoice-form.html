@@ -1,0 +1,90 @@
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-receipt"></i></div>
+      <div class="title-content">
+        <h2>New Invoice</h2>
+        <p>{{ franchiseName }} · split {{ sharePercent }}% franchise / {{ 100 - sharePercent }}% Renew</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <form #f="ngForm" (ngSubmit)="save(f)" novalidate>
+    <div class="modal-body-custom">
+      @if (serverError(); as err) { <div class="error-text" role="alert">{{ err }}</div> }
+
+      <div class="section-title"><i class="bi bi-person"></i> Customer</div>
+      <div class="form-grid cols-3">
+        <div class="form-field">
+          <label for="inv-customer">Customer Name <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-person"></i>
+            <input id="inv-customer" name="customer" required maxlength="120" [(ngModel)]="customer" #cust="ngModel" [class.is-invalid]="submitted() && cust.invalid" />
+          </div>
+          @if (submitted() && cust.invalid) { <small class="error-text">Customer name is required.</small> }
+        </div>
+        <div class="form-field">
+          <label for="inv-phone">Phone</label>
+          <div class="input-wrap"><i class="bi bi-telephone"></i><input id="inv-phone" name="customerPhone" maxlength="20" [(ngModel)]="customerPhone" /></div>
+        </div>
+        <div class="form-field">
+          <label for="inv-date">Invoice Date</label>
+          <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="inv-date" type="date" name="date" [max]="today" [(ngModel)]="date" /></div>
+        </div>
+        <div class="form-field">
+          <label for="inv-status">Payment</label>
+          <div class="input-wrap"><i class="bi bi-toggle-on"></i>
+            <select id="inv-status" name="status" [(ngModel)]="status"><option>Unpaid</option><option>Paid</option></select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+        <div class="form-field full-width" style="grid-column: span 2">
+          <label for="inv-notes">Notes</label>
+          <div class="input-wrap"><i class="bi bi-chat-left-text"></i><input id="inv-notes" name="notes" maxlength="1000" [(ngModel)]="notes" /></div>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <i class="bi bi-box-seam"></i> Items
+        <span class="spacer"></span>
+        <button type="button" class="owner-remove-btn" (click)="addLine()"><i class="bi bi-plus-lg" aria-hidden="true"></i> Add item</button>
+      </div>
+      @for (l of lines(); track $index; let i = $index) {
+        <div class="form-grid cols-3">
+          <div class="form-field">
+            <label [for]="'inv-item-' + i">Product <span>*</span></label>
+            <div class="input-wrap"><i class="bi bi-tag"></i>
+              <input [id]="'inv-item-' + i" [name]="'item' + i" required maxlength="150" [(ngModel)]="l.name" #iname="ngModel" [class.is-invalid]="submitted() && iname.invalid" placeholder="e.g. Hair Serum" />
+            </div>
+            @if (submitted() && iname.invalid) { <small class="error-text">Product is required.</small> }
+          </div>
+          <div class="form-field">
+            <label [for]="'inv-qty-' + i">Qty <span>*</span></label>
+            <div class="input-wrap"><i class="bi bi-hash"></i>
+              <input [id]="'inv-qty-' + i" type="number" min="1" step="1" [name]="'qty' + i" required [(ngModel)]="l.qty" #iqty="ngModel" [class.is-invalid]="submitted() && iqty.invalid" />
+            </div>
+          </div>
+          <div class="form-field">
+            <label [for]="'inv-price-' + i">Unit Price (₹) <span>*</span></label>
+            <div class="input-wrap"><i class="bi bi-currency-rupee"></i>
+              <input [id]="'inv-price-' + i" type="number" min="0" step="0.01" [name]="'price' + i" required [(ngModel)]="l.unitPrice" #iprice="ngModel" [class.is-invalid]="submitted() && iprice.invalid" />
+            </div>
+            @if (lines().length > 1) { <button type="button" class="owner-remove-btn" (click)="removeLine(i)" [attr.aria-label]="'Remove item ' + (i + 1)"><i class="bi bi-trash3" aria-hidden="true"></i> Remove</button> }
+          </div>
+        </div>
+      }
+
+      <div class="section-title"><i class="bi bi-pie-chart"></i> Split Preview</div>
+      <div class="form-grid cols-3">
+        <div class="form-field"><label>Invoice Total</label><strong>{{ inr(total()) }}</strong></div>
+        <div class="form-field"><label>Franchise ({{ sharePercent }}%)</label><strong>{{ inr(split().franchise) }}</strong></div>
+        <div class="form-field"><label>Renew ({{ 100 - sharePercent }}%)</label><strong>{{ inr(split().renew) }}</strong></div>
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn" [disabled]="saving()"><i class="bi bi-floppy"></i> {{ saving() ? 'Saving...' : 'Raise Invoice' }}</button>
+    </div>
+  </form>
+</div>

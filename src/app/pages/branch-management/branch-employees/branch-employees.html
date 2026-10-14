@@ -52,7 +52,7 @@
                   </div>
                 </td>
               </tr>
-            } @empty { <tr><td colspan="7" class="muted-note">No employees match.</td></tr> }
+            } @empty { <tr><td colspan="7" class="muted-note">{{ loading() ? 'Loading employees...' : 'No employees match.' }}</td></tr> }
           </tbody>
         </table>
       </div>

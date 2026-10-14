@@ -1,15 +1,22 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { BranchRecord, lastMonths, timeAgo } from '../models/branch-franchise.model';
-import { addDays, isoDate, loadState, saveState, uid } from '../utils/format.util';
-import { AccountsService } from './accounts.service';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, map, tap } from 'rxjs';
+import { ApiDataService } from '../../core/http/api.service';
+import { BranchRecord, BranchStatus } from '../models/branch-franchise.model';
+import { Employee } from '../models/hr.model';
+import { ApiRoutesConstants } from './api-route-constants';
 import { HrService } from './hr.service';
-import { PurchaseService } from './purchase.service';
-import { TargetsService } from './targets.service';
 
-const STORAGE_KEY = 'zelora_branches_store_v1';
-
-interface BranchState {
-  branches: BranchRecord[];
+/** The four stat cards on the list page (GET /branches -> stats). */
+export interface BranchOverview {
+  totalBranches: number;
+  newBranches: number;
+  activeBranches: number;
+  activePercent: number;
+  totalEmployees: number;
+  newEmployees: number;
+  monthlySales: number;
+  previousMonthSales: number;
+  salesGrowthPercent: number | null;
 }
 
 export interface BranchActivity {
@@ -20,129 +27,181 @@ export interface BranchActivity {
   when: string;
 }
 
+export interface LabelValue { label: string; value: number; }
+
+export interface SeriesPoint { key: string; label: string; sales: number; bills: number; appointments: number; }
+
+/** GET /branches/{id} -> summary: what the details header and overview tab show. */
+export interface BranchSummary {
+  employees: number;
+  customers: number;
+  monthlySales: number;
+  todaySales: number;
+  totalCollected: number;
+  receivables: number;
+  inventoryValue: number;
+  appointments: number;
+  leadRate: number;
+  employeesByDesignation: { designation: string; count: number }[];
+  revenueByTreatment: LabelValue[];
+  funnel: LabelValue[];
+  monthlySeries: SeriesPoint[];
+  activities: BranchActivity[];
+}
+
+export interface BranchFilterQuery {
+  search?: string;
+  status?: string | null;
+  cities?: string[];
+}
+
+/** Server error -> the first validation message (or the API message / a fallback). */
+export function apiError(err: any, fallback = 'Something went wrong. Please try again.'): string {
+  const errors = err?.error?.errors;
+  const first = errors && typeof errors === 'object' ? (Object.values(errors)[0] as string[] | string | undefined) : null;
+  return (Array.isArray(first) ? first[0] : first) || err?.error?.message || fallback;
+}
+
 /**
- * Front-end store for Branch Management (design stage - no API yet). Sales, customers and employees
- * are read live from Accounts and HR, so the branch screens always agree with those modules.
+ * Branch Management, backed by the API (GET/POST/PUT/DELETE /branches). The list is loaded once into signals;
+ * the details page and its tabs ask the API for their own data (nothing is stored in the browser).
  */
 @Injectable({ providedIn: 'root' })
 export class BranchService {
-  private readonly acc = inject(AccountsService);
+  private readonly api = inject(ApiDataService);
   private readonly hr = inject(HrService);
-  private readonly purchase = inject(PurchaseService);
-  private readonly targets = inject(TargetsService);
-  private readonly state = signal<BranchState>(loadState(STORAGE_KEY, seedState));
 
-  readonly branches = computed(() => this.state().branches);
-
-  constructor() {
-    effect(() => saveState(STORAGE_KEY, this.state()));
-  }
+  private readonly list = signal<BranchRecord[]>([]);
+  private readonly overview = signal<BranchOverview | null>(null);
+  readonly loaded = signal(false);
+  readonly loading = signal(false);
+  readonly branches = computed(() => this.list());
+  readonly stats = computed(() => this.overview());
 
   branch(id: string): BranchRecord | undefined {
-    return this.branches().find(b => b.id === id);
+    return this.list().find(b => b.id === id);
   }
 
-  employees(name: string) {
-    return this.hr.employees().filter(e => e.branch === name && e.status !== 'Exited');
+  /** Every branch (the list is small, so the screens filter / sort / page it in the browser) plus the stat cards. */
+  load(): Observable<BranchRecord[]> {
+    this.loading.set(true);
+    return (this.api.GET(`${ApiRoutesConstants.BRANCHES}?per_page=200&sort_by=code&sort_direction=asc`) as Observable<any>).pipe(
+      tap({ error: () => this.loading.set(false) }),
+      map(res => {
+        this.overview.set(res.stats ? overviewFromApi(res.stats) : null);
+        const rows = ((res.data ?? []) as any[]).map(branchFromApi);
+        this.list.set(rows);
+        this.loaded.set(true);
+        this.loading.set(false);
+        return rows;
+      }),
+    );
   }
 
-  customers(name: string): number {
-    return new Set(this.acc.bills().filter(b => b.branch === name && b.kind === 'Service').map(b => b.customerName.toLowerCase())).size;
+  /** One branch with its summary (also refreshes the copy in the list). */
+  fetch(id: string): Observable<{ branch: BranchRecord; summary: BranchSummary }> {
+    return (this.api.GET(`${ApiRoutesConstants.BRANCHES}/${id}`) as Observable<any>).pipe(
+      map(res => {
+        const branch = branchFromApi(res.data);
+        this.upsert(branch);
+        return { branch, summary: summaryFromApi(res.data.summary ?? {}) };
+      }),
+    );
   }
 
-  /** Cash + bank receipts (contra excluded) posted to the branch, optionally for one month (YYYY-MM) or one day. */
-  sales(name: string, datePrefix?: string): number {
-    const cash = new Set(this.acc.cashLedgers().map(l => l.id));
-    return this.acc.vouchers()
-      .filter(v => v.branch === name && v.type !== 'Contra' && (!datePrefix || v.date.startsWith(datePrefix)))
-      .reduce((sum, v) => sum + v.entries.filter(e => cash.has(e.ledgerId)).reduce((s, e) => s + e.debit, 0), 0);
+  /** Creates (id = null) or updates a branch. Emits the saved record; errors carry the API message. */
+  save(id: string | null, input: Omit<BranchRecord, 'id' | 'code'>): Observable<BranchRecord> {
+    const body = {
+      name: input.name, city: input.city, state: input.state || null, phone: input.phone, email: input.email || null,
+      address: input.address || null, status: input.status, opened_on: input.openedOn || null, photo: input.photo || null,
+      latitude: input.latitude ?? null, longitude: input.longitude ?? null,
+      head_name: input.headName, head_phone: input.headPhone || null, head_email: input.headEmail || null,
+    };
+    const request$: Observable<any> = id
+      ? this.api.PUT(`${ApiRoutesConstants.BRANCHES}/${id}`, body)
+      : this.api.POST(ApiRoutesConstants.BRANCHES, body);
+    return request$.pipe(map(res => branchFromApi(res.data)), tap(branch => this.upsert(branch)), tap(() => this.refreshStats()));
   }
 
-  receivables(name: string): number {
-    return this.acc.bills()
-      .filter(b => b.branch === name && b.kind === 'Service' && (b.status === 'Unpaid' || b.status === 'Partially Paid'))
-      .reduce((s, b) => s + b.items.reduce((x, i) => x + i.qty * i.rate * (1 - (i.discountPercent || 0) / 100) * (1 + (i.gstPercent || 0) / 100), 0) - b.paidAmount, 0);
+  setStatus(id: string, status: BranchStatus): Observable<BranchRecord> {
+    return (this.api.PATCH(`${ApiRoutesConstants.BRANCHES}/${id}/status`, { status }) as Observable<any>).pipe(
+      map(res => branchFromApi(res.data)), tap(branch => this.upsert(branch)), tap(() => this.refreshStats()),
+    );
   }
 
-  /** Last `days` days of collections, oldest first. */
-  dailySales(name: string, days = 7): { label: string; date: string; value: number }[] {
-    const today = isoDate();
-    return Array.from({ length: days }, (_, i) => {
-      const date = addDays(today, i - (days - 1));
-      return { label: new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), date, value: this.sales(name, date) };
-    });
+  remove(id: string): Observable<unknown> {
+    return (this.api.Delete(`${ApiRoutesConstants.BRANCHES}/${id}`, {}) as Observable<unknown>).pipe(
+      tap(() => { this.list.set(this.list().filter(b => b.id !== id)); this.refreshStats(); }),
+    );
   }
 
-  /** Monthly collections against the branch's revenue target (Targets module), oldest first. */
-  monthlySeries(name: string, months = 7): { key: string; label: string; sales: number; target: number }[] {
-    return lastMonths(months).map(m => ({ ...m, sales: this.sales(name, m.key), target: this.targets.targetFor(name, m.key).revenueTarget }));
+  /** Branch team from HR (GET /branches/{id}/employees) as the HR Employee model, with the designation summary. */
+  employees(id: string, query: { search?: string; designation?: string; status?: string } = {}): Observable<{ employees: Employee[]; summary: { total: number; byDesignation: { designation: string; count: number }[] } }> {
+    const qs = new URLSearchParams({ per_page: '200' });
+    Object.entries(query).forEach(([k, v]) => v && qs.set(k, v));
+    return (this.api.GET(`${ApiRoutesConstants.BRANCHES}/${id}/employees?${qs}`) as Observable<any>).pipe(
+      map(res => ({
+        employees: ((res.data ?? []) as any[]).map(r => this.hr.employeeFromApi(r)),
+        summary: {
+          total: res.summary?.total ?? 0,
+          byDesignation: (res.summary?.by_designation ?? []) as { designation: string; count: number }[],
+        },
+      })),
+    );
   }
 
-  /** Value of stock held at the branch store (Purchase / Inventory). */
-  inventoryValue(name: string): number {
-    return this.purchase.stock().filter(b => b.store === name).reduce((s, b) => s + b.qty * b.unitPrice, 0);
+  /** Data of one details tab: attendance | leads | customers | appointments | treatments | sales | inventory | reports. */
+  tab<T = any>(id: string, tab: string, params: Record<string, string> = {}): Observable<T> {
+    const qs = new URLSearchParams(params).toString();
+    return (this.api.GET(`${ApiRoutesConstants.BRANCHES}/${id}/${tab}${qs ? `?${qs}` : ''}`) as Observable<any>).pipe(map(res => res.data as T));
   }
 
-  stock(name: string) {
-    return this.purchase.stock().filter(b => b.store === name && b.qty > 0);
+  /** Server export (xlsx | csv | pdf) of the branches matching the filters. */
+  export(format: string, f: BranchFilterQuery): Observable<Blob> {
+    const qs = new URLSearchParams({ format });
+    if (f.search) qs.set('search', f.search);
+    if (f.status) qs.set('status', f.status);
+    (f.cities ?? []).forEach(c => qs.append('city[]', c));
+    return this.api.GET_BLOB(`${ApiRoutesConstants.BRANCHES}/export?${qs}`) as Observable<Blob>;
   }
 
-  /** Vouchers posted to the branch plus staff who joined it, newest first. */
-  activities(name: string, limit = 6): BranchActivity[] {
-    const rupees = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
-    const vouchers = this.acc.vouchers()
-      .filter(v => v.branch === name)
-      .map(v => {
-        const received = v.type === 'Receipt';
-        const sale = v.type === 'Sales';
-        const amount = v.entries.reduce((s, e) => s + e.debit, 0);
-        return {
-          at: v.createdAt,
-          icon: received ? 'bi-cash-coin' : sale ? 'bi-bag-check-fill' : v.type === 'Payment' ? 'bi-wallet2' : 'bi-journal-text',
-          tone: received ? 'green' : sale ? 'red' : v.type === 'Payment' ? 'orange' : 'purple',
-          title: `${received ? 'Payment received' : sale ? 'Sale completed' : `${v.type} voucher`} ${rupees(amount)}`,
-          detail: v.narration,
-        };
-      });
-    const joins = this.employees(name).filter(e => e.joinDate).map(e => ({
-      at: `${e.joinDate}T09:00:00`, icon: 'bi-person-plus-fill', tone: 'blue', title: 'New employee joined', detail: `${e.name} · ${e.designation}`,
-    }));
-    return [...vouchers, ...joins]
-      .sort((a, b) => b.at.localeCompare(a.at))
-      .slice(0, limit)
-      .map(({ at, ...a }) => ({ ...a, when: timeAgo(at) }) as BranchActivity);
+  private upsert(branch: BranchRecord): void {
+    const exists = this.list().some(b => b.id === branch.id);
+    this.list.set(exists ? this.list().map(b => (b.id === branch.id ? { ...b, ...branch } : b)) : [...this.list(), branch]);
   }
 
-  add(input: Omit<BranchRecord, 'id' | 'code'>): BranchRecord | string {
-    if (this.branches().some(b => b.name.trim().toLowerCase() === input.name.trim().toLowerCase())) return 'A branch with this name already exists.';
-    const max = this.branches().reduce((m, b) => Math.max(m, Number(b.code.replace(/\D/g, '')) || 0), 0);
-    const record: BranchRecord = { ...input, name: input.name.trim(), id: uid('BR'), code: `BR${String(max + 1).padStart(2, '0')}` };
-    this.mutate(s => s.branches.push(record));
-    return record;
-  }
-
-  update(id: string, patch: Partial<BranchRecord>): string | null {
-    if (patch.name && this.branches().some(b => b.id !== id && b.name.trim().toLowerCase() === patch.name!.trim().toLowerCase())) return 'A branch with this name already exists.';
-    this.mutate(s => { s.branches = s.branches.map(b => (b.id === id ? { ...b, ...patch } : b)); });
-    return null;
-  }
-
-  private mutate(fn: (draft: BranchState) => void): void {
-    const draft = structuredClone(this.state());
-    fn(draft);
-    this.state.set(draft);
+  /** Stat cards depend on every branch, so re-read them after a change. */
+  private refreshStats(): void {
+    this.load().subscribe({ error: () => undefined });
   }
 }
 
-function seedState(): BranchState {
-  const base = { state: 'Tamil Nadu', headEmail: '', headPhone: '' };
-  const rows: Omit<BranchRecord, 'id'>[] = [
-    { ...base, code: 'BR01', name: 'Anna Nagar', city: 'Chennai', phone: '+91 98765 43210', email: 'annanagar@renew.com', address: 'No.12, Anna Nagar, Chennai - 600040', headName: 'Anitha Mohan', headPhone: '+91 98765 43210', headEmail: 'anitha@renew.com', status: 'Active', openedOn: '2019-04-10' },
-    { ...base, code: 'BR02', name: 'Velachery', city: 'Chennai', phone: '+91 98765 43211', email: 'velachery@renew.com', address: '45, Velachery Main Road, Chennai - 600042', headName: 'Dr. Priya Sharma', headPhone: '+91 98765 43211', headEmail: 'priya@renew.com', status: 'Active', openedOn: '2020-08-01' },
-    { ...base, code: 'BR03', name: 'T. Nagar', city: 'Chennai', phone: '+91 98765 43212', email: 'tnagar@renew.com', address: '8, Usman Road, T. Nagar, Chennai - 600017', headName: 'Meena Iyer', headPhone: '+91 98765 43212', headEmail: 'meena@renew.com', status: 'Active', openedOn: '2021-02-15' },
-    { ...base, code: 'BR04', name: 'Adyar', city: 'Chennai', phone: '+91 98765 43213', email: 'adyar@renew.com', address: '21, LB Road, Adyar, Chennai - 600020', headName: 'Vignesh Kumar', headPhone: '+91 98765 43213', headEmail: 'vignesh@renew.com', status: 'Active', openedOn: '2022-06-20' },
-    { ...base, code: 'BR05', name: 'Coimbatore', city: 'Coimbatore', phone: '+91 98765 43214', email: 'coimbatore@renew.com', address: '17, RS Puram, Coimbatore - 641002', headName: 'Arun K', headPhone: '+91 98765 43214', headEmail: 'arun@renew.com', status: 'Active', openedOn: '2023-01-09' },
-    { ...base, code: 'BR06', name: 'Salem', city: 'Salem', phone: '+91 98765 43215', email: 'salem@renew.com', address: '3, Five Roads, Salem - 636004', headName: 'Prakash T', headPhone: '+91 98765 43215', headEmail: 'prakash@renew.com', status: 'Inactive', openedOn: '2023-09-04' },
-  ];
-  return { branches: rows.map(r => ({ ...r, id: `BR-seed-${r.code}` })) };
+export function branchFromApi(r: any): BranchRecord {
+  return {
+    id: String(r.id), code: r.code, name: r.name, city: r.city ?? '', state: r.state ?? '',
+    phone: r.phone ?? '', email: r.email ?? '', address: r.address ?? '',
+    headName: r.head_name ?? '', headPhone: r.head_phone ?? '', headEmail: r.head_email ?? '',
+    status: r.status === 'Inactive' ? 'Inactive' : 'Active', openedOn: r.opened_on ?? '',
+    photo: r.photo || undefined,
+    latitude: r.latitude ?? null, longitude: r.longitude ?? null,
+    employees: r.employees, customers: r.customers, monthlySales: r.monthly_sales,
+  };
+}
+
+function overviewFromApi(s: any): BranchOverview {
+  return {
+    totalBranches: s.total_branches ?? 0, newBranches: s.new_branches ?? 0, activeBranches: s.active_branches ?? 0, activePercent: s.active_percent ?? 0,
+    totalEmployees: s.total_employees ?? 0, newEmployees: s.new_employees ?? 0, monthlySales: s.monthly_sales ?? 0,
+    previousMonthSales: s.previous_month_sales ?? 0, salesGrowthPercent: s.sales_growth_percent ?? null,
+  };
+}
+
+function summaryFromApi(s: any): BranchSummary {
+  return {
+    employees: s.employees ?? 0, customers: s.customers ?? 0, monthlySales: s.monthly_sales ?? 0, todaySales: s.today_sales ?? 0,
+    totalCollected: s.total_collected ?? 0, receivables: s.receivables ?? 0, inventoryValue: s.inventory_value ?? 0,
+    appointments: s.appointments ?? 0, leadRate: s.lead_rate ?? 0,
+    employeesByDesignation: s.employees_by_designation ?? [], revenueByTreatment: s.revenue_by_treatment ?? [], funnel: s.funnel ?? [],
+    monthlySeries: s.monthly_series ?? [], activities: s.activities ?? [],
+  };
 }

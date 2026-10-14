@@ -107,7 +107,7 @@
 
     <div class="modal-footer-custom">
       <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
-      <button type="submit" class="save-btn" [disabled]="uploading()"><i class="bi bi-floppy"></i> {{ isEdit ? 'Update Branch' : 'Save Branch' }}</button>
+      <button type="submit" class="save-btn" [disabled]="uploading() || saving()"><i class="bi bi-floppy"></i> {{ saving() ? 'Saving...' : isEdit ? 'Update Branch' : 'Save Branch' }}</button>
     </div>
   </form>
 </div>

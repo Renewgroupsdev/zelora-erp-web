@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { map } from 'rxjs';
 import { BranchService } from '../../../shared/common-services/branch.service';
+import { ToastService } from '../../../shared/common-services/toast.service';
 import { Employee } from '../../../shared/models/hr.model';
 import { initials } from '../../../shared/utils/format.util';
 import { EmployeeForm } from '../../hr-management/employees/employee-form/employee-form';
@@ -25,8 +26,9 @@ const DESIGNATION_ICONS: Record<string, string> = {
   templateUrl: './branch-employees.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise.scss'],
 })
-export class BranchEmployees {
+export class BranchEmployees implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly toast = inject(ToastService);
   private readonly dialog = inject(MatDialog);
   protected readonly store = inject(BranchService);
 
@@ -38,7 +40,30 @@ export class BranchEmployees {
   readonly designation = signal('');
   readonly status = signal('');
 
-  readonly all = computed(() => (this.branch() ? this.store.employees(this.branch()!.name) : []));
+  /** Employees of this branch from the API (HR records whose branch is this one, exited staff excluded). */
+  readonly all = signal<Employee[]>([]);
+  readonly loading = signal(true);
+
+  constructor() {
+    // The branch id comes from the route; reload the team whenever it changes.
+    effect(() => {
+      const id = this.id();
+      if (id) this.loadEmployees(id);
+    });
+  }
+
+  ngOnInit(): void {
+    if (!this.branch() && this.id()) this.store.fetch(this.id()).subscribe({ error: () => undefined });
+  }
+
+  private loadEmployees(id: string): void {
+    this.loading.set(true);
+    this.store.employees(id).subscribe({
+      next: res => { this.all.set(res.employees); this.loading.set(false); },
+      error: (err: any) => { this.loading.set(false); this.toast.error(err?.error?.message || 'Failed to load employees. Please try again.'); },
+    });
+  }
+
   readonly designations = computed(() => [...new Set(this.all().map(e => e.designation))].sort());
   readonly rows = computed(() => {
     const q = this.search().trim().toLowerCase();
@@ -62,10 +87,12 @@ export class BranchEmployees {
   }
 
   edit(employee: Employee): void {
-    this.dialog.open(EmployeeForm, { width: '900px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, disableClose: true, data: { employee } });
+    this.dialog.open(EmployeeForm, { width: '900px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, disableClose: true, data: { employee } })
+      .afterClosed().subscribe(() => this.loadEmployees(this.id()));
   }
 
   addEmployee(): void {
-    this.dialog.open(EmployeeForm, { width: '900px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, disableClose: true, data: { employee: null, branch: this.branch()?.name } });
+    this.dialog.open(EmployeeForm, { width: '900px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, disableClose: true, data: { employee: null, branch: this.branch()?.name } })
+      .afterClosed().subscribe(() => this.loadEmployees(this.id()));
   }
 }

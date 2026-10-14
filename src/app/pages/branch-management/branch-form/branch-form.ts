@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { BranchService } from '../../../shared/common-services/branch.service';
+import { BranchService, apiError } from '../../../shared/common-services/branch.service';
+import { ToastService } from '../../../shared/common-services/toast.service';
 import { FileUploadService, uploadError } from '../../../shared/common-services/file-upload.service';
 import { BranchRecord, shrinkPhoto } from '../../../shared/models/branch-franchise.model';
 import { isoDate } from '../../../shared/utils/format.util';
@@ -23,16 +24,18 @@ export class BranchForm {
   private readonly data = inject<{ branchId?: string }>(MAT_DIALOG_DATA);
   private readonly store = inject(BranchService);
   private readonly uploads = inject(FileUploadService);
+  private readonly toast = inject(ToastService);
 
   readonly existing = this.data.branchId ? this.store.branch(this.data.branchId) ?? null : null;
   readonly isEdit = !!this.existing;
   readonly submitted = signal(false);
   readonly serverError = signal<string | null>(null);
   readonly uploading = signal(false);
+  readonly saving = signal(false);
 
   model: BranchInput = this.existing
     ? structuredClone((({ id, code, ...rest }) => rest)(this.existing))
-    : { name: '', city: '', state: 'Tamil Nadu', phone: '', email: '', address: '', headName: '', headPhone: '', headEmail: '', status: 'Active', openedOn: isoDate() };
+    : { name: '', city: '', state: 'Tamil Nadu', phone: '', email: '', address: '', headName: '', headPhone: '', headEmail: '', status: 'Active', openedOn: isoDate(), latitude: null, longitude: null };
 
   /** The photo is uploaded to the server (uploads/branch_photo); replaced / unused files are cleaned up on save or close. */
   private readonly photoDraft = this.uploads.draft('branch_photo', [this.existing?.photo]);
@@ -47,15 +50,22 @@ export class BranchForm {
   save(form: NgForm): void {
     this.submitted.set(true);
     this.serverError.set(null);
-    if (form.invalid || this.uploading()) return;
-    const result = this.existing ? this.store.update(this.existing.id, this.model) : this.store.add(this.model);
-    if (typeof result === 'string') {
-      this.serverError.set(result);
-      return;
-    }
-    this.saved = true;
-    this.photoDraft.commit([this.model.photo]);
-    this.dialogRef.close(this.existing ? this.store.branch(this.existing.id) : (result as BranchRecord));
+    if (form.invalid || this.uploading() || this.saving()) return;
+    this.saving.set(true);
+    this.store.save(this.existing?.id ?? null, this.model).subscribe({
+      next: branch => {
+        this.saved = true;
+        this.saving.set(false);
+        // The API already freed the replaced photo; this drops uploads that were picked and then discarded.
+        this.photoDraft.commit([this.model.photo]);
+        this.toast.success(this.existing ? 'Branch updated successfully' : 'Branch saved successfully');
+        this.dialogRef.close(branch);
+      },
+      error: err => {
+        this.saving.set(false);
+        this.toast.error(apiError(err, 'Failed to save branch. Please try again.'));
+      },
+    });
   }
 
   async onPhoto(event: Event): Promise<void> {
@@ -74,12 +84,12 @@ export class BranchForm {
           this.uploading.set(false);
         },
         error: err => {
-          this.serverError.set(uploadError(err, 'Could not upload the photo. Please try again.'));
+          this.toast.error(uploadError(err, 'Could not upload the photo. Please try again.'));
           this.uploading.set(false);
         },
       });
     } catch (e) {
-      this.serverError.set((e as Error).message);
+      this.toast.error((e as Error).message);
       this.uploading.set(false);
     }
   }

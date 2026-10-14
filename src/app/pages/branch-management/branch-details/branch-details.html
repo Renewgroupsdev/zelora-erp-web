@@ -77,21 +77,21 @@
       </div>
 
       <div class="tab-body">
+        @if (tabLoading()) { <p class="muted-note">Loading...</p> }
         @switch (tab()) {
 
           @case ('overview') {
             <div class="mstats">
-              <div class="mstat m-blue"><span class="mi"><i class="bi bi-bullseye"></i></span><div><small>Target achieved (this month)</small><strong>{{ current().target ? current().percent + '%' : '-' }}</strong></div></div>
+              <div class="mstat m-blue"><span class="mi"><i class="bi bi-cash-coin"></i></span><div><small>Collected (this month)</small><strong>{{ inrShort(monthlySales()) }}</strong></div></div>
               <div class="mstat m-orange"><span class="mi"><i class="bi bi-hourglass-split"></i></span><div><small>Receivables</small><strong>{{ inrShort(receivables()) }}</strong></div></div>
-              <div class="mstat m-purple"><span class="mi"><i class="bi bi-person-lines-fill"></i></span><div><small>Lead conversion</small><strong>{{ leadStats().rate }}%</strong></div></div>
-              <div class="mstat m-green"><span class="mi"><i class="bi bi-calendar2-check-fill"></i></span><div><small>Appointments</small><strong>{{ appointments().length }}</strong></div></div>
+              <div class="mstat m-purple"><span class="mi"><i class="bi bi-person-lines-fill"></i></span><div><small>Lead conversion</small><strong>{{ leadRate() }}%</strong></div></div>
+              <div class="mstat m-green"><span class="mi"><i class="bi bi-calendar2-check-fill"></i></span><div><small>Appointments</small><strong>{{ appointmentCount() }}</strong></div></div>
             </div>
 
             <div class="chart-grid g-main">
               <section class="chart-card">
                 <div class="chart-head"><h4>Sales Overview</h4></div>
-                <app-bf-columns [data]="salesVsTarget()" aName="Sales" bName="Target" [money]="true" emptyText="No sales recorded yet"></app-bf-columns>
-                @if (!hasTarget()) { <p class="muted-note spaced">No monthly targets set for this branch yet - <a routerLink="/app/accounts/targets">set them in Targets</a>.</p> }
+                <app-bf-columns [data]="salesSeries()" aName="Sales" [money]="true" emptyText="No sales recorded yet"></app-bf-columns>
               </section>
               <section class="chart-card">
                 <h4>Recent Activities</h4>
@@ -106,9 +106,9 @@
             </div>
 
             <div class="chart-grid g-3">
-              <section class="chart-card"><h4>Staff by Designation</h4><app-bf-donut [data]="employeesByRole()" centerLabel="Employees" emptyText="No employees in this branch"></app-bf-donut></section>
-              <section class="chart-card"><h4>Treatment Revenue</h4><app-bf-donut [data]="revenueByTreatment()" [money]="true" centerLabel="Billed" emptyText="No treatments billed yet"></app-bf-donut></section>
-              <section class="chart-card"><h4>Branch Process</h4><app-bf-bars [data]="funnel()" emptyText="No activity yet"></app-bf-bars></section>
+              <section class="chart-card"><h4>Staff by Designation</h4><app-bf-donut [data]="overviewRoles()" centerLabel="Employees" emptyText="No employees in this branch"></app-bf-donut></section>
+              <section class="chart-card"><h4>Treatment Revenue</h4><app-bf-donut [data]="overviewRevenue()" [money]="true" centerLabel="Collected" emptyText="No treatments billed yet"></app-bf-donut></section>
+              <section class="chart-card"><h4>Branch Process</h4><app-bf-bars [data]="overviewFunnel()" emptyText="No activity yet"></app-bf-bars></section>
             </div>
           }
 
@@ -143,24 +143,23 @@
           }
 
           @case ('attendance') {
-            <p class="sample-note"><i class="bi bi-info-circle"></i> Sample attendance for today.</p>
             <div class="mstats">
               <div class="mstat m-green"><span class="mi"><i class="bi bi-person-check-fill"></i></span><div><small>Present</small><strong>{{ attendanceStats().present }}</strong></div></div>
               <div class="mstat m-orange"><span class="mi"><i class="bi bi-alarm-fill"></i></span><div><small>Late</small><strong>{{ attendanceStats().late }}</strong></div></div>
-              <div class="mstat m-purple"><span class="mi"><i class="bi bi-calendar-x-fill"></i></span><div><small>On leave / absent</small><strong>{{ attendanceStats().leave + attendanceStats().absent }}</strong></div></div>
+              <div class="mstat m-purple"><span class="mi"><i class="bi bi-calendar-x-fill"></i></span><div><small>On leave / absent</small><strong>{{ attendanceStats().on_leave + attendanceStats().absent }}</strong></div></div>
               <div class="mstat m-blue"><span class="mi"><i class="bi bi-percent"></i></span><div><small>Attendance rate</small><strong>{{ attendanceStats().rate }}%</strong></div></div>
             </div>
             <div class="chart-grid g-side">
-              <section class="chart-card"><h4>Today at a Glance</h4><app-bf-donut [data]="attendanceChart()" centerLabel="Staff" emptyText="No staff"></app-bf-donut></section>
+              <section class="chart-card"><h4>Today at a Glance</h4><app-bf-donut [data]="attendanceChart()" centerLabel="Staff" emptyText="No staff in this branch"></app-bf-donut></section>
               <section class="chart-card">
                 <h4>Today's Attendance</h4>
                 <div class="table-scroll">
                   <table class="simple-table">
                     <thead><tr><th>Employee</th><th>Designation</th><th>Check-in</th><th>Check-out</th><th>Status</th></tr></thead>
                     <tbody>
-                      @for (a of attendance(); track a.name) {
-                        <tr><td><div class="name-cell"><span class="avatar sm" [ngClass]="'tone-' + ($index % 5)">{{ initials(a.name) }}</span><strong>{{ a.name }}</strong></div></td><td>{{ a.designation }}</td><td>{{ a.checkIn }}</td><td>{{ a.checkOut }}</td><td><span class="status-pill" [ngClass]="a.status === 'Present' ? 'active' : a.status === 'Absent' ? 'inactive' : 'pending'">{{ a.status }}</span></td></tr>
-                      }
+                      @for (a of attendance(); track a.employee_id) {
+                        <tr><td><div class="name-cell"><span class="avatar sm" [ngClass]="'tone-' + ($index % 5)">{{ initials(a.name) }}</span><strong>{{ a.name }}</strong></div></td><td>{{ a.designation }}</td><td>{{ a.check_in || '-' }}</td><td>{{ a.check_out || '-' }}</td><td><span class="status-pill" [ngClass]="attendanceClass(a.status)">{{ a.status }}</span></td></tr>
+                      } @empty { <tr><td colspan="5" class="muted-note">No active staff in this branch.</td></tr> }
                     </tbody>
                   </table>
                 </div>
@@ -169,26 +168,25 @@
           }
 
           @case ('leads') {
-            @if (sample().leads) { <p class="sample-note"><i class="bi bi-info-circle"></i> Sample data shown - this branch has no live records yet.</p> }
             <div class="mstats">
               <div class="mstat m-blue"><span class="mi"><i class="bi bi-person-lines-fill"></i></span><div><small>Total leads</small><strong>{{ leadStats().total }}</strong></div></div>
               <div class="mstat m-green"><span class="mi"><i class="bi bi-check2-circle"></i></span><div><small>Converted</small><strong>{{ leadStats().converted }}</strong></div></div>
               <div class="mstat m-purple"><span class="mi"><i class="bi bi-percent"></i></span><div><small>Conversion rate</small><strong>{{ leadStats().rate }}%</strong></div></div>
-              <div class="mstat m-orange"><span class="mi"><i class="bi bi-telephone-forward-fill"></i></span><div><small>Open follow-ups</small><strong>{{ leadStats().open }}</strong></div></div>
+              <div class="mstat m-orange"><span class="mi"><i class="bi bi-telephone-forward-fill"></i></span><div><small>Not yet converted</small><strong>{{ leadStats().open }}</strong></div></div>
             </div>
             <div class="chart-grid g-2">
               <section class="chart-card"><h4>Leads by Treatment</h4><app-bf-donut [data]="leadsByTreatment()" centerLabel="Leads" emptyText="No leads for this branch yet"></app-bf-donut></section>
-              <section class="chart-card"><h4>Conversion by Treatment</h4><app-bf-bars [data]="conversionByTreatment()" secondaryLabel="converted" emptyText="No leads for this branch yet"></app-bf-bars></section>
+              <section class="chart-card"><h4>Leads by Source</h4><app-bf-bars [data]="leadsBySource()" emptyText="No leads for this branch yet"></app-bf-bars></section>
             </div>
             <section class="chart-card">
-              <h4>Lead Details</h4>
+              <h4>Lead Details <small class="muted-note">(latest 50)</small></h4>
               <div class="table-scroll">
                 <table class="simple-table">
-                  <thead><tr><th>Name</th><th>Phone</th><th>Treatment</th><th>Source</th><th>Telecaller</th><th>Follow-up</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Name</th><th>Phone</th><th>Treatment</th><th>Source</th><th>Created</th><th>Status</th></tr></thead>
                   <tbody>
                     @for (l of leadRows(); track l.id) {
-                      <tr><td><strong>{{ l.name }}</strong></td><td>{{ l.phone }}</td><td>{{ l.treatment }}</td><td>{{ l.source }}</td><td>{{ l.telecaller }}</td><td>{{ displayDate(l.followUp) }}</td><td><span class="status-pill" [ngClass]="l.converted ? 'paid' : l.status === 'Invalid' ? 'inactive' : 'pending'">{{ l.converted ? 'Converted' : l.status }}</span></td></tr>
-                    } @empty { <tr><td colspan="7" class="muted-note">No leads for this branch yet.</td></tr> }
+                      <tr><td><strong>{{ l.name }}</strong></td><td>{{ l.phone }}</td><td>{{ l.treatment || '-' }}</td><td>{{ l.source || '-' }}</td><td>{{ displayDate(l.created_at) }}</td><td><span class="status-pill pending">{{ l.status || '-' }}</span></td></tr>
+                    } @empty { <tr><td colspan="6" class="muted-note">No leads for this branch yet.</td></tr> }
                   </tbody>
                 </table>
               </div>
@@ -196,7 +194,6 @@
           }
 
           @case ('customers') {
-            @if (sample().customers) { <p class="sample-note"><i class="bi bi-info-circle"></i> Sample data shown - this branch has no live records yet.</p> }
             <div class="mstats">
               <div class="mstat m-blue"><span class="mi"><i class="bi bi-people-fill"></i></span><div><small>Total customers</small><strong>{{ customerStats().total }}</strong></div></div>
               <div class="mstat m-green"><span class="mi"><i class="bi bi-arrow-repeat"></i></span><div><small>Repeat customers</small><strong>{{ customerStats().repeat }}</strong></div></div>
@@ -205,17 +202,17 @@
             </div>
             <div class="chart-grid g-2">
               <section class="chart-card"><h4>Customers by Treatment</h4><app-bf-donut [data]="customersByTreatment()" centerLabel="Customers" emptyText="No customers billed yet"></app-bf-donut></section>
-              <section class="chart-card"><h4>Revenue by Treatment</h4><app-bf-bars [data]="revenueByTreatment()" [money]="true" emptyText="No treatments billed yet"></app-bf-bars></section>
+              <section class="chart-card"><h4>Revenue by Treatment</h4><app-bf-bars [data]="customerRevenue()" [money]="true" emptyText="No treatments billed yet"></app-bf-bars></section>
             </div>
             <section class="chart-card">
-              <h4>Customer Details</h4>
+              <h4>Customer Details <small class="muted-note">(latest 50)</small></h4>
               <div class="table-scroll">
                 <table class="simple-table">
-                  <thead><tr><th>Customer</th><th>Phone</th><th class="num">Bills</th><th class="num">Billed</th><th>Last visit</th></tr></thead>
+                  <thead><tr><th>Customer</th><th>Code</th><th>Phone</th><th class="num">Plans</th><th class="num">Billed</th><th>Last visit</th></tr></thead>
                   <tbody>
-                    @for (c of customers(); track c.name) {
-                      <tr><td><div class="name-cell"><span class="avatar sm" [ngClass]="'tone-' + ($index % 5)">{{ initials(c.name) }}</span><strong>{{ c.name }}</strong></div></td><td>{{ c.phone }}</td><td class="num">{{ c.bills }}</td><td class="num">{{ inr(c.billed) }}</td><td>{{ displayDate(c.last) }}</td></tr>
-                    } @empty { <tr><td colspan="5" class="muted-note">No customers billed at this branch yet.</td></tr> }
+                    @for (c of customers(); track c.id) {
+                      <tr><td><div class="name-cell"><span class="avatar sm" [ngClass]="'tone-' + ($index % 5)">{{ initials(c.name) }}</span><strong>{{ c.name }}</strong></div></td><td>{{ c.customer_code }}</td><td>{{ c.phone }}</td><td class="num">{{ c.plans }}</td><td class="num">{{ inr(c.billed) }}</td><td>{{ displayDate(c.last_visit) }}</td></tr>
+                    } @empty { <tr><td colspan="6" class="muted-note">No customers registered at this branch yet.</td></tr> }
                   </tbody>
                 </table>
               </div>
@@ -223,7 +220,6 @@
           }
 
           @case ('appointments') {
-            @if (sample().appointments) { <p class="sample-note"><i class="bi bi-info-circle"></i> Sample data shown - this branch has no live records yet.</p> }
             <div class="mstats">
               <div class="mstat m-blue"><span class="mi"><i class="bi bi-calendar2-check-fill"></i></span><div><small>Total appointments</small><strong>{{ appointmentStats().total }}</strong></div></div>
               <div class="mstat m-green"><span class="mi"><i class="bi bi-check-circle-fill"></i></span><div><small>Paid</small><strong>{{ appointmentStats().paid }}</strong></div></div>
@@ -232,16 +228,16 @@
             </div>
             <div class="chart-grid g-2">
               <section class="chart-card"><h4>Appointments by Treatment</h4><app-bf-donut [data]="appointmentsByTreatment()" centerLabel="Appointments" emptyText="No appointments booked yet"></app-bf-donut></section>
-              <section class="chart-card"><h4>Payment Status</h4><app-bf-bars [data]="appointmentPayments()" emptyText="No appointments booked yet"></app-bf-bars></section>
+              <section class="chart-card"><h4>Appointment Status</h4><app-bf-bars [data]="appointmentsByStatus()" emptyText="No appointments booked yet"></app-bf-bars></section>
             </div>
             <section class="chart-card">
-              <h4>Appointment Details</h4>
+              <h4>Appointment Details <small class="muted-note">(latest 50)</small></h4>
               <div class="table-scroll">
                 <table class="simple-table">
-                  <thead><tr><th>Customer</th><th>Treatment</th><th>Date</th><th>Time</th><th>Staff</th><th class="num">Amount</th><th>Payment</th></tr></thead>
+                  <thead><tr><th>Customer</th><th>Treatment</th><th>Date</th><th>Time</th><th>Counselor</th><th class="num">Amount</th><th>Payment</th></tr></thead>
                   <tbody>
                     @for (a of appointmentRows(); track a.id) {
-                      <tr><td><strong>{{ a.customer }}</strong></td><td>{{ a.treatment }}</td><td>{{ displayDate(a.date) }}</td><td>{{ a.time }}</td><td>{{ a.staff }}</td><td class="num">{{ inr(a.amount) }}</td><td><span class="status-pill" [ngClass]="a.payment === 'Paid' ? 'paid' : 'pending'">{{ a.payment }}</span></td></tr>
+                      <tr><td><strong>{{ a.customer }}</strong></td><td>{{ a.treatment || '-' }}</td><td>{{ displayDate(a.date) }}</td><td>{{ a.time }}</td><td>{{ a.staff || '-' }}</td><td class="num">{{ inr(a.amount) }}</td><td><span class="status-pill" [ngClass]="a.payment === 'Paid' ? 'paid' : 'pending'">{{ a.payment }}</span></td></tr>
                     } @empty { <tr><td colspan="7" class="muted-note">No appointments booked yet.</td></tr> }
                   </tbody>
                 </table>
@@ -250,26 +246,25 @@
           }
 
           @case ('treatments') {
-            <p class="sample-note"><i class="bi bi-info-circle"></i> Sample treatment catalogue and sessions for this branch.</p>
             <div class="mstats">
-              <div class="mstat m-blue"><span class="mi"><i class="bi bi-heart-pulse-fill"></i></span><div><small>Treatments offered</small><strong>{{ treatmentStats().count }}</strong></div></div>
-              <div class="mstat m-purple"><span class="mi"><i class="bi bi-clipboard2-pulse-fill"></i></span><div><small>Sessions this month</small><strong>{{ treatmentStats().sessions }}</strong></div></div>
+              <div class="mstat m-blue"><span class="mi"><i class="bi bi-heart-pulse-fill"></i></span><div><small>Treatments sold</small><strong>{{ treatmentStats().count }}</strong></div></div>
+              <div class="mstat m-purple"><span class="mi"><i class="bi bi-clipboard2-pulse-fill"></i></span><div><small>Sessions completed</small><strong>{{ treatmentStats().sessions }}</strong></div></div>
               <div class="mstat m-green"><span class="mi"><i class="bi bi-cash-stack"></i></span><div><small>Treatment revenue</small><strong>{{ inrShort(treatmentStats().revenue) }}</strong></div></div>
-              <div class="mstat m-orange"><span class="mi"><i class="bi bi-trophy-fill"></i></span><div><small>Top earner</small><strong class="txt">{{ treatmentStats().best }}</strong></div></div>
+              <div class="mstat m-orange"><span class="mi"><i class="bi bi-trophy-fill"></i></span><div><small>Top earner</small><strong class="txt">{{ treatmentStats().best || '-' }}</strong></div></div>
             </div>
             <div class="chart-grid g-2">
-              <section class="chart-card"><h4>Revenue by Category</h4><app-bf-donut [data]="treatmentsByCategory()" [money]="true" centerLabel="Revenue"></app-bf-donut></section>
-              <section class="chart-card"><h4>Sessions by Treatment</h4><app-bf-bars [data]="treatmentSessions()"></app-bf-bars></section>
+              <section class="chart-card"><h4>Revenue by Treatment</h4><app-bf-donut [data]="treatmentRevenue()" [money]="true" centerLabel="Revenue" emptyText="No treatments sold yet"></app-bf-donut></section>
+              <section class="chart-card"><h4>Sessions by Treatment</h4><app-bf-bars [data]="treatmentSessions()" emptyText="No sessions completed yet"></app-bf-bars></section>
             </div>
             <section class="chart-card">
-              <h4>Treatment Catalogue</h4>
+              <h4>Treatments at this Branch</h4>
               <div class="table-scroll">
                 <table class="simple-table">
-                  <thead><tr><th>Treatment</th><th>Category</th><th class="num">Price</th><th class="num">Sessions</th><th class="num">Revenue</th><th>Rating</th></tr></thead>
+                  <thead><tr><th>Treatment</th><th class="num">Customers</th><th class="num">Sessions done</th><th class="num">Sessions planned</th><th class="num">Revenue</th></tr></thead>
                   <tbody>
-                    @for (t of treatments(); track t.name) {
-                      <tr><td><strong>{{ t.name }}</strong></td><td>{{ t.category }}</td><td class="num">{{ inr(t.price) }}</td><td class="num">{{ t.sessions }}</td><td class="num">{{ inr(t.revenue) }}</td><td><span class="stars">{{ stars(t.rating) }}</span> {{ t.rating }}</td></tr>
-                    }
+                    @for (t of treatments(); track t.id) {
+                      <tr><td><strong>{{ t.name }}</strong></td><td class="num">{{ t.customers }}</td><td class="num">{{ t.sessions }}</td><td class="num">{{ t.planned_sessions }}</td><td class="num">{{ inr(t.revenue) }}</td></tr>
+                    } @empty { <tr><td colspan="5" class="muted-note">No treatments sold at this branch yet.</td></tr> }
                   </tbody>
                 </table>
               </div>
@@ -277,42 +272,27 @@
           }
 
           @case ('sales') {
-            @if (sample().sales) { <p class="sample-note"><i class="bi bi-info-circle"></i> Sample data shown - this branch has no live records yet.</p> }
             <div class="mstats">
-              <div class="mstat m-purple"><span class="mi"><i class="bi bi-bullseye"></i></span><div><small>Target (this month)</small><strong>{{ current().target ? inrShort(current().target) : 'Not set' }}</strong></div></div>
-              <div class="mstat m-green"><span class="mi"><i class="bi bi-cash-coin"></i></span><div><small>Collected</small><strong>{{ inrShort(current().sales) }}</strong></div></div>
-              <div class="mstat m-orange"><span class="mi"><i class="bi bi-flag-fill"></i></span><div><small>Balance to target</small><strong>{{ current().target ? inrShort(current().balance) : '-' }}</strong></div></div>
-              <div class="mstat m-blue"><span class="mi"><i class="bi bi-receipt-cutoff"></i></span><div><small>Total billed</small><strong>{{ inrShort(billedTotal()) }}</strong></div></div>
+              <div class="mstat m-green"><span class="mi"><i class="bi bi-cash-coin"></i></span><div><small>Collected (this month)</small><strong>{{ inrShort(salesStats().this_month) }}</strong></div></div>
+              <div class="mstat m-purple"><span class="mi"><i class="bi bi-calendar-month"></i></span><div><small>Last month</small><strong>{{ inrShort(salesStats().last_month) }}</strong></div></div>
+              <div class="mstat m-blue"><span class="mi"><i class="bi bi-receipt-cutoff"></i></span><div><small>Total collected</small><strong>{{ inrShort(salesStats().total) }}</strong></div></div>
+              <div class="mstat m-orange"><span class="mi"><i class="bi bi-hourglass-split"></i></span><div><small>Receivables</small><strong>{{ inrShort(salesStats().receivables) }}</strong></div></div>
             </div>
-            @if (current().target) {
-              <div class="progress-card" [class.low]="current().percent < 50" [class.done]="current().percent >= 100">
-                <div class="pc-top">
-                  <span><i class="bi bi-bullseye"></i> Target achievement</span>
-                  <b>{{ current().percent }}%<small>{{ current().percent >= 100 ? 'Target met' : current().percent >= 50 ? 'On track' : 'Behind' }}</small></b>
-                </div>
-                <div class="pc-track">
-                  <div class="pc-fill" [style.width.%]="current().percent > 100 ? 100 : current().percent"><span class="pc-bubble">{{ current().percent }}%</span></div>
-                  <i class="pc-tick" style="left: 25%"></i><i class="pc-tick" style="left: 50%"></i><i class="pc-tick" style="left: 75%"></i>
-                </div>
-                <div class="pc-scale"><span>0</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
-                <div class="pc-foot"><span><i class="bi bi-cash-coin"></i> Collected <b>{{ inrShort(current().sales) }}</b></span><span><i class="bi bi-bullseye"></i> Target <b>{{ inrShort(current().target) }}</b></span><span><i class="bi bi-flag"></i> To go <b>{{ inrShort(current().balance) }}</b></span></div>
-              </div>
-            }
             <div class="chart-grid g-main">
-              <section class="chart-card"><h4>Sales vs Target</h4><app-bf-columns [data]="salesVsTarget()" aName="Sales" bName="Target" [money]="true" emptyText="No sales recorded yet"></app-bf-columns></section>
-              <section class="chart-card"><h4>Treatment-wise Service Sales</h4><app-bf-donut [data]="revenueByTreatment()" [money]="true" centerLabel="Services" emptyText="No treatments billed yet"></app-bf-donut></section>
+              <section class="chart-card"><h4>Monthly Sales</h4><app-bf-columns [data]="salesColumns()" aName="Sales" [money]="true" emptyText="No sales recorded yet"></app-bf-columns></section>
+              <section class="chart-card"><h4>Treatment-wise Sales</h4><app-bf-donut [data]="salesByTreatment()" [money]="true" centerLabel="Services" emptyText="No treatments billed yet"></app-bf-donut></section>
             </div>
             <div class="chart-grid g-side">
-              <section class="chart-card"><h4>Product-wise Sales</h4><app-bf-bars [data]="productSales()" [money]="true" emptyText="No product sales billed yet"></app-bf-bars></section>
+              <section class="chart-card"><h4>Payment Mode</h4><app-bf-bars [data]="salesByMode()" [money]="true" emptyText="No payments received yet"></app-bf-bars></section>
               <section class="chart-card">
-                <h4>Recent Sales &amp; Receipts</h4>
+                <h4>Recent Payments</h4>
                 <div class="table-scroll">
                   <table class="simple-table">
-                    <thead><tr><th>Date</th><th>Voucher</th><th>Type</th><th>Narration</th><th class="num">Amount</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Customer</th><th>Treatment</th><th>Mode</th><th class="num">Amount</th></tr></thead>
                     <tbody>
-                      @for (v of sales(); track v.id) {
-                        <tr><td>{{ displayDate(v.date) }}</td><td>{{ v.voucherNo }}</td><td>{{ v.type }}</td><td>{{ v.narration }}</td><td class="num">{{ inr(amount(v)) }}</td></tr>
-                      } @empty { <tr><td colspan="5" class="muted-note">No sales recorded for this branch yet.</td></tr> }
+                      @for (p of recentSales(); track p.id) {
+                        <tr><td>{{ displayDate(p.date) }}</td><td>{{ p.customer }}</td><td>{{ p.treatment || '-' }}</td><td>{{ p.mode }}</td><td class="num">{{ inr(p.amount) }}</td></tr>
+                      } @empty { <tr><td colspan="5" class="muted-note">No payments recorded for this branch yet.</td></tr> }
                     </tbody>
                   </table>
                 </div>
@@ -321,7 +301,6 @@
           }
 
           @case ('inventory') {
-            @if (sample().inventory) { <p class="sample-note"><i class="bi bi-info-circle"></i> Sample data shown - this branch has no live records yet.</p> }
             <div class="mstats">
               <div class="mstat m-blue"><span class="mi"><i class="bi bi-box-seam-fill"></i></span><div><small>Products in stock</small><strong>{{ stockStats().products }}</strong></div></div>
               <div class="mstat m-purple"><span class="mi"><i class="bi bi-stack"></i></span><div><small>Units in hand</small><strong>{{ stockStats().units }}</strong></div></div>
@@ -338,122 +317,41 @@
                 <table class="simple-table">
                   <thead><tr><th>Product</th><th>Code</th><th class="num">Batches</th><th class="num">Qty in hand</th><th class="num">Value</th></tr></thead>
                   <tbody>
-                    @for (p of stockByProduct(); track p.code) {
+                    @for (p of stock(); track p.product_id) {
                       <tr><td><strong>{{ p.name }}</strong></td><td>{{ p.code }}</td><td class="num">{{ p.batches }}</td><td class="num">{{ p.qty }}</td><td class="num">{{ inr(p.value) }}</td></tr>
                     } @empty { <tr><td colspan="5" class="muted-note">No stock held at this branch.</td></tr> }
                   </tbody>
-                  @if (stockByProduct().length) { <tfoot><tr><td colspan="3">Total</td><td class="num">{{ stockStats().units }}</td><td class="num">{{ inr(stockTotal()) }}</td></tr></tfoot> }
+                  @if (stock().length) { <tfoot><tr><td colspan="3">Total</td><td class="num">{{ stockStats().units }}</td><td class="num">{{ inr(stockTotal()) }}</td></tr></tfoot> }
                 </table>
               </div>
             </section>
-          }
-
-          @case ('expenses') {
-            <p class="sample-note"><i class="bi bi-info-circle"></i> Sample expense records for this branch.</p>
-            <div class="mstats">
-              <div class="mstat m-orange"><span class="mi"><i class="bi bi-wallet2"></i></span><div><small>Recent expenses</small><strong>{{ inrShort(expenseStats().total) }}</strong></div></div>
-              <div class="mstat m-blue"><span class="mi"><i class="bi bi-receipt"></i></span><div><small>Entries</small><strong>{{ expenseStats().count }}</strong></div></div>
-              <div class="mstat m-purple"><span class="mi"><i class="bi bi-hourglass-split"></i></span><div><small>Pending payment</small><strong>{{ inrShort(expenseStats().pending) }}</strong></div></div>
-              <div class="mstat m-green"><span class="mi"><i class="bi bi-percent"></i></span><div><small>Expense vs sales</small><strong>{{ expenseStats().ratio }}%</strong></div></div>
-            </div>
-            <div class="chart-grid g-2">
-              <section class="chart-card"><h4>Expenses by Category</h4><app-bf-donut [data]="expensesByCategory()" [money]="true" centerLabel="Spent"></app-bf-donut></section>
-              <section class="chart-card"><h4>Expenses vs Sales</h4><app-bf-columns [data]="expenseMonthly()" aName="Expenses" bName="Sales" [money]="true"></app-bf-columns></section>
-            </div>
-            <section class="chart-card">
-              <h4>Expense Register</h4>
-              <div class="table-scroll">
-                <table class="simple-table">
-                  <thead><tr><th>Date</th><th>Category</th><th>Vendor</th><th>Mode</th><th class="num">Amount</th><th>Status</th></tr></thead>
-                  <tbody>
-                    @for (e of expenses(); track $index) {
-                      <tr><td>{{ displayDate(e.date) }}</td><td>{{ e.category }}</td><td>{{ e.vendor }}</td><td>{{ e.mode }}</td><td class="num">{{ inr(e.amount) }}</td><td><span class="status-pill" [ngClass]="e.status === 'Paid' ? 'paid' : 'pending'">{{ e.status }}</span></td></tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          }
-
-          @case ('feedback') {
-            <p class="sample-note"><i class="bi bi-info-circle"></i> Sample customer reviews for this branch.</p>
-            <div class="mstats">
-              <div class="mstat m-orange"><span class="mi"><i class="bi bi-star-fill"></i></span><div><small>Average rating</small><strong>{{ feedbackStats().avg }} / 5</strong></div></div>
-              <div class="mstat m-blue"><span class="mi"><i class="bi bi-chat-square-text-fill"></i></span><div><small>Total reviews</small><strong>{{ feedbackStats().total }}</strong></div></div>
-              <div class="mstat m-green"><span class="mi"><i class="bi bi-emoji-smile-fill"></i></span><div><small>5-star reviews</small><strong>{{ feedbackStats().five }}%</strong></div></div>
-              <div class="mstat m-purple"><span class="mi"><i class="bi bi-reply-fill"></i></span><div><small>Awaiting reply</small><strong>{{ feedbackStats().unanswered }}</strong></div></div>
-            </div>
-            <div class="chart-grid g-2">
-              <section class="chart-card"><h4>Rating Spread</h4><app-bf-bars [data]="ratingSpread()"></app-bf-bars></section>
-              <section class="chart-card"><h4>Rating by Treatment</h4><app-bf-bars [data]="ratingByTreatment()"></app-bf-bars></section>
-            </div>
-            <section class="chart-card">
-              <h4>Recent Reviews</h4>
-              <div class="table-scroll">
-                <table class="simple-table">
-                  <thead><tr><th>Customer</th><th>Treatment</th><th>Rating</th><th>Review</th><th>Date</th><th>Reply</th></tr></thead>
-                  <tbody>
-                    @for (r of reviews(); track $index) {
-                      <tr><td><strong>{{ r.customer }}</strong></td><td>{{ r.treatment }}</td><td><span class="stars">{{ stars(r.rating) }}</span></td><td class="wrap">{{ r.comment }}</td><td>{{ displayDate(r.date) }}</td><td><span class="status-pill" [ngClass]="r.replied ? 'paid' : 'pending'">{{ r.replied ? 'Replied' : 'Pending' }}</span></td></tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          }
-
-          @case ('documents') {
-            <p class="sample-note"><i class="bi bi-info-circle"></i> Sample licences and agreements for this branch.</p>
-            <div class="mstats">
-              <div class="mstat m-blue"><span class="mi"><i class="bi bi-file-earmark-text-fill"></i></span><div><small>Total documents</small><strong>{{ documentStats().total }}</strong></div></div>
-              <div class="mstat m-green"><span class="mi"><i class="bi bi-patch-check-fill"></i></span><div><small>Valid</small><strong>{{ documentStats().valid }}</strong></div></div>
-              <div class="mstat m-orange"><span class="mi"><i class="bi bi-exclamation-triangle-fill"></i></span><div><small>Expiring soon</small><strong>{{ documentStats().expiring }}</strong></div></div>
-              <div class="mstat m-purple"><span class="mi"><i class="bi bi-x-octagon-fill"></i></span><div><small>Expired</small><strong>{{ documentStats().expired }}</strong></div></div>
-            </div>
-            <div class="chart-grid g-side">
-              <section class="chart-card"><h4>Compliance Status</h4><app-bf-donut [data]="documentChart()" centerLabel="Documents"></app-bf-donut></section>
-              <section class="chart-card">
-                <h4>Licences &amp; Agreements</h4>
-                <div class="table-scroll">
-                  <table class="simple-table">
-                    <thead><tr><th>Document</th><th>Number</th><th>Issued</th><th>Expires</th><th>Status</th></tr></thead>
-                    <tbody>
-                      @for (d of documents(); track d.name) {
-                        <tr><td><strong>{{ d.name }}</strong></td><td>{{ d.number }}</td><td>{{ displayDate(d.issuedOn) }}</td><td>{{ displayDate(d.expiresOn) }}</td><td><span class="status-pill" [ngClass]="d.status === 'Valid' ? 'active' : d.status === 'Expired' ? 'inactive' : 'pending'">{{ d.status }}</span></td></tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            </div>
           }
 
           @case ('reports') {
-            @if (sample().reports) { <p class="sample-note"><i class="bi bi-info-circle"></i> Sample data shown - this branch has no live records yet.</p> }
             <div class="report-bar">
               <span class="muted-note">Branch performance by</span>
               <div class="seg-toggle" role="group" aria-label="Report period">
                 @for (p of periods; track p.key) {
-                  <button type="button" [class.active]="period() === p.key" (click)="period.set(p.key)">{{ p.label }}</button>
+                  <button type="button" [class.active]="period() === p.key" (click)="setPeriod(p.key)">{{ p.label }}</button>
                 }
               </div>
             </div>
             <div class="mstats">
               <div class="mstat m-green"><span class="mi"><i class="bi bi-cash-coin"></i></span><div><small>Sales collected</small><strong>{{ inrShort(reportTotals().sales) }}</strong></div></div>
-              <div class="mstat m-blue"><span class="mi"><i class="bi bi-receipt-cutoff"></i></span><div><small>Bills raised</small><strong>{{ reportTotals().bills }}</strong></div></div>
+              <div class="mstat m-blue"><span class="mi"><i class="bi bi-receipt-cutoff"></i></span><div><small>Treatment plans</small><strong>{{ reportTotals().bills }}</strong></div></div>
               <div class="mstat m-purple"><span class="mi"><i class="bi bi-calendar2-check-fill"></i></span><div><small>Appointments</small><strong>{{ reportTotals().appointments }}</strong></div></div>
             </div>
             <div class="chart-grid g-2">
               <section class="chart-card"><h4>Sales Collected</h4><app-bf-columns [data]="reportSales()" aName="Sales" [money]="true" emptyText="No sales in this period"></app-bf-columns></section>
-              <section class="chart-card"><h4>Bills &amp; Appointments</h4><app-bf-columns [data]="reportActivity()" aName="Bills" bName="Appointments" emptyText="No bills or appointments in this period"></app-bf-columns></section>
+              <section class="chart-card"><h4>Plans &amp; Appointments</h4><app-bf-columns [data]="reportActivity()" aName="Plans" bName="Appointments" emptyText="No plans or appointments in this period"></app-bf-columns></section>
             </div>
             <div class="chart-grid g-side">
-              <section class="chart-card"><h4>Branch Process</h4><app-bf-bars [data]="funnel()" emptyText="No activity yet"></app-bf-bars></section>
+              <section class="chart-card"><h4>Branch Process</h4><app-bf-bars [data]="reportFunnel()" emptyText="No activity yet"></app-bf-bars></section>
               <section class="chart-card">
                 <h4>{{ period() === 'day' ? 'Daily' : period() === 'month' ? 'Monthly' : 'Yearly' }} Summary</h4>
                 <div class="table-scroll">
                   <table class="simple-table">
-                    <thead><tr><th>Period</th><th class="num">Sales</th><th class="num">Bills</th><th class="num">Appointments</th></tr></thead>
+                    <thead><tr><th>Period</th><th class="num">Sales</th><th class="num">Plans</th><th class="num">Appointments</th></tr></thead>
                     <tbody>
                       @for (r of report().slice().reverse(); track r.key) {
                         <tr><td>{{ r.label }}</td><td class="num">{{ inr(r.sales) }}</td><td class="num">{{ r.bills }}</td><td class="num">{{ r.appointments }}</td></tr>
@@ -468,6 +366,8 @@
       </div>
     </div>
   </div>
+} @else if (loading()) {
+  <div class="purchase-page container-fluid px-0"><div class="panel not-found"><i class="bi bi-arrow-repeat"></i><strong>Loading branch...</strong></div></div>
 } @else {
   <div class="purchase-page container-fluid px-0">
     <div class="panel not-found"><i class="bi bi-building-x"></i><strong>Branch not found</strong><span>It may have been removed.</span><a class="add-lead-btn" routerLink="/app/branches">Back to branches</a></div>

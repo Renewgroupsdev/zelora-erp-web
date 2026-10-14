@@ -240,7 +240,7 @@ export class HrService {
     });
   }
 
-  private employeeFromApi(r: any): Employee {
+  employeeFromApi(r: any): Employee {
     const s = r.salary ?? {};
     return {
       id: String(r.id), empCode: r.emp_code, name: r.name, gender: r.gender, dob: r.dob ?? null,

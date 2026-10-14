@@ -76,6 +76,11 @@ export class ApiDataService {
     }));
   }
 
+  PATCH(path: string, json: any): any {
+    this.APIURL = `${environment.apiBaseUrl}${path}`;
+    return this.http.patch<any>(this.APIURL, json).pipe(map(result => result));
+  }
+
   Delete(path: string, json: any): any {
     this.APIURL = `${environment.apiBaseUrl}${path}`;
     const headers = new HttpHeaders({
