@@ -80,10 +80,12 @@ export class BranchService {
 
   /** Value of stock held at the branch store (Purchase / Inventory). */
   inventoryValue(name: string): number {
+    this.purchase.ensure('stock');
     return this.purchase.stock().filter(b => b.store === name).reduce((s, b) => s + b.qty * b.unitPrice, 0);
   }
 
   stock(name: string) {
+    this.purchase.ensure('stock');
     return this.purchase.stock().filter(b => b.store === name && b.qty > 0);
   }
 

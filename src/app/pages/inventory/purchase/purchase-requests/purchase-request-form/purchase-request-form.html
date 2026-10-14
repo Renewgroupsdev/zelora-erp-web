@@ -21,8 +21,9 @@
           <label for="pr-branch">Requesting Branch <span>*</span></label>
           <div class="input-wrap">
             <i class="bi bi-geo-alt"></i>
-            <select id="pr-branch" formControlName="branch">
-              @for (b of purchase.branches; track b) { <option [value]="b">{{ b }}</option> }
+            <select id="pr-branch" formControlName="branchId" [class.is-invalid]="invalid('branchId')">
+              <option [ngValue]="null">Select branch</option>
+              @for (b of purchase.branchOptions(); track b.id) { <option [ngValue]="b.id">{{ b.name }}</option> }
             </select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
@@ -127,7 +128,7 @@
     <div class="modal-footer-custom">
       <span class="footer-note"><i class="bi bi-bell"></i> The branch head gets a notification alert.</span>
       <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
-      <button type="submit" class="save-btn"><i class="bi bi-send"></i> Send Request</button>
+      <button type="submit" class="save-btn" [disabled]="saving()"><i class="bi bi-send"></i> Send Request</button>
     </div>
   </form>
 </div>

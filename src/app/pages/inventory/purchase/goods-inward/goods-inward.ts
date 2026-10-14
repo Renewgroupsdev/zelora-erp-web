@@ -5,9 +5,9 @@ import Swal from 'sweetalert2';
 import { CommonDetailCard } from '../../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../../shared/components/common-table-card/common-table-card';
-import { DetailCardData, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
+import { DetailCardData, FilterOption, QuickAction, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
 import { displayDate, inr } from '../../../../shared/models/purchase.model';
-import { PurchaseListBase } from '../purchase-list-base';
+import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { GoodsInwardForm } from './goods-inward-form/goods-inward-form';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
@@ -17,12 +17,14 @@ const GRN_COLUMNS: TableColumn[] = [
   { key: 'poNo', header: 'PO No', width: '10%' },
   { key: 'vendor', header: 'Vendor', width: '14%' },
   { key: 'store', header: 'Received Into', type: 'branch', width: '11%' },
-  { key: 'vendorInvoiceNo', header: 'Vendor Inv.', width: '9%' },
-  { key: 'batches', header: 'Batches', width: '12%' },
-  { key: 'received', header: 'Received', width: '7%' },
-  { key: 'damaged', header: 'Damaged', width: '7%' },
+  { key: 'vendorInvoiceNo', header: 'Bill No', width: '8%' },
+  { key: 'batches', header: 'Batches', width: '11%' },
+  { key: 'received', header: 'Received', width: '6%' },
+  { key: 'damaged', header: 'Damaged', width: '6%' },
+  { key: 'netAmount', header: 'Bill Amount', width: '8%' },
   { key: 'status', header: 'Receipt', type: 'badge', width: '7%' },
-  { key: 'receivedAt', header: 'Date', width: '9%' },
+  { key: 'receivedAt', header: 'Date', width: '8%' },
+  { key: 'actions', header: 'Action', type: 'quickActions', width: '7%', sortable: false },
 ];
 
 const BATCH_COLUMNS: TableColumn[] = [
@@ -34,7 +36,8 @@ const BATCH_COLUMNS: TableColumn[] = [
   { key: 'ordered', header: 'Request Qty', width: '8%' },
   { key: 'received', header: 'Received Qty', width: '8%' },
   { key: 'damaged', header: 'Damaged', width: '7%' },
-  { key: 'accepted', header: 'Available Qty', width: '8%' },
+  { key: 'accepted', header: 'Accepted', width: '7%' },
+  { key: 'free', header: 'Free', width: '5%' },
   { key: 'value', header: 'Value', width: '9%' },
   { key: 'store', header: 'Store', type: 'branch', width: '10%' },
 ];
@@ -48,26 +51,27 @@ const BATCH_COLUMNS: TableColumn[] = [
 })
 export class GoodsInward extends PurchaseListBase {
   protected readonly noun = 'entries';
+  protected readonly collections: PurchaseCollection[] = ['inwards', 'orders'];
   readonly view = signal<'grn' | 'batch'>('grn');
 
-  override filters = [
-    { key: 'status', label: 'Receipt', options: ['Full', 'Partial'] },
-    { key: 'branch', label: 'Store', options: this.purchase.stores, multiSelect: true },
-  ];
+  readonly pageFilters = computed<FilterOption[]>(() => [
+    { key: 'status', label: 'Receipt', options: ['Full', 'Partial', 'Cancelled'] },
+    { key: 'branch', label: 'Store', options: this.purchase.stores(), multiSelect: true },
+  ]);
 
   columns: TableColumn[] = GRN_COLUMNS;
   override sortActive = 'receivedAt';
 
-  readonly openOrders = computed(() => this.purchase.orders().filter(o => o.status !== 'Received'));
+  readonly openOrders = computed(() => this.purchase.orders().filter(o => o.canInward));
 
   readonly stats = computed<DetailCardData[]>(() => {
-    const list = this.purchase.inwards();
+    const list = this.purchase.inwards().filter(g => g.status === 'Posted');
     const lines = list.flatMap(g => g.lines);
     return [
       { label: 'Goods Receipts', value: list.length, icon: 'bi-box-arrow-in-down', iconVariant: 'primary' },
       { label: 'Batches Received', value: lines.length, icon: 'bi-upc-scan', iconVariant: 'blue' },
       { label: 'Partial Receipts', value: list.filter(g => g.isPartial).length, icon: 'bi-hourglass-split', iconVariant: 'orange' },
-      { label: 'Damaged Units', value: lines.reduce((s, l) => s + l.damagedQty, 0), icon: 'bi-x-octagon', iconVariant: 'purple' },
+      { label: 'Bill Value', value: inr(list.reduce((s, g) => s + g.netAmount, 0)), icon: 'bi-currency-rupee', iconVariant: 'purple' },
     ];
   });
 
@@ -94,16 +98,20 @@ export class GoodsInward extends PurchaseListBase {
         received: String(l.receivedQty), __received: l.receivedQty,
         damaged: String(l.damagedQty), __damaged: l.damagedQty,
         accepted: String(l.receivedQty - l.damagedQty), __accepted: l.receivedQty - l.damagedQty,
-        value: inr((l.receivedQty - l.damagedQty) * l.unitPrice), __value: (l.receivedQty - l.damagedQty) * l.unitPrice,
+        free: String(l.freeQty), __free: l.freeQty,
+        value: inr(l.lineTotal), __value: l.lineTotal,
         store: g.store,
-        status: g.isPartial ? 'Partial' : 'Full',
+        status: receiptStatus(g),
         __receivedAt: g.receivedAt,
+        __date: g.receivedAt,
       })));
     }
 
     return inwards.map(g => {
       const received = g.lines.reduce((s, l) => s + l.receivedQty, 0);
       const damaged = g.lines.reduce((s, l) => s + l.damagedQty, 0);
+      const actions: QuickAction[] = [{ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'GRN (PDF)' }];
+      if (g.canCancel) actions.push({ key: 'cancel', icon: 'bi-x-circle', label: 'Cancel Inward', variant: 'danger' });
       return {
         id: g.id,
         grnNo: g.grnNo,
@@ -114,9 +122,13 @@ export class GoodsInward extends PurchaseListBase {
         batches: g.lines.map(l => l.batchNo).join(', '),
         received: String(received), __received: received,
         damaged: String(damaged), __damaged: damaged,
-        status: g.isPartial ? 'Partial' : 'Full',
+        netAmount: inr(g.netAmount), __netAmount: g.netAmount,
+        status: receiptStatus(g),
         receivedAt: displayDate(g.receivedAt),
         __receivedAt: g.receivedAt,
+        __date: g.receivedAt,
+        searchText: `${g.grnNo} ${g.poNo} ${g.vendorName} ${g.vendorInvoiceNo} ${g.lines.map(l => `${l.productName} ${l.batchNo}`).join(' ')}`,
+        actions,
       };
     });
   }
@@ -138,6 +150,25 @@ export class GoodsInward extends PurchaseListBase {
       confirmButtonColor: '#6C63FF',
       inputValidator: v => (v ? null : 'Select a purchase order'),
     });
-    if (orderId) this.openDialog(GoodsInwardForm, { orderId }, '1100px');
+    if (orderId) this.openDialog(GoodsInwardForm, { orderId }, '1240px');
   }
+
+  async onQuickAction(event: { row: TableRow; action: string }): Promise<void> {
+    const inward = this.purchase.inwards().find(g => g.id === String(event.row['id']));
+    if (!inward) return;
+    if (event.action === 'pdf') {
+      void this.purchase.openPdf('goods-inward', inward.id);
+      return;
+    }
+    if (event.action === 'cancel') {
+      const reason = await this.purchase.askReason(`Cancel ${inward.grnNo}?`,
+        `Its units are taken back out of ${inward.store} and re-opened on ${inward.poNo}. Not possible once they were returned, transferred or used.`, 'Cancel Inward');
+      if (reason) await this.purchase.cancelInward(inward.id, reason);
+    }
+  }
+}
+
+/** Full / Partial for a posted GRN, else Cancelled. */
+function receiptStatus(g: { status: string; isPartial: boolean }): string {
+  return g.status === 'Cancelled' ? 'Cancelled' : g.isPartial ? 'Partial' : 'Full';
 }

@@ -1,0 +1,90 @@
+@let t = transfer();
+@let s = summary();
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi" [class.bi-box-arrow-in-down]="editable()" [class.bi-eye]="!editable()"></i></div>
+      <div class="title-content">
+        <h2>{{ editable() ? 'Accept / Reject' : 'View' }} {{ t.kind }} · {{ t.transferNo }} <span class="pill" [ngClass]="statusTone(t.status)">{{ t.status }}</span></h2>
+        <p>{{ t.fromStore }} → {{ t.toStore }} · dispatched {{ displayDate(t.transferredAt) }} by {{ t.transferredBy }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    @if (t.remarks) { <p class="muted"><i class="bi bi-chat-left-dots"></i> {{ t.remarks }}</p> }
+    @if (t.cancelReason) { <p class="error-text"><i class="bi bi-x-circle"></i> Cancelled: {{ t.cancelReason }}</p> }
+
+    <div class="section-title">
+      <i class="bi bi-upc-scan"></i> Lines
+      @if (editable()) { <button type="button" class="link-btn" style="margin-left: auto" (click)="acceptAll()"><i class="bi bi-check2-all"></i> Accept all</button> }
+    </div>
+    <div class="items-table-wrap">
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Product · Batch</th><th class="num">Sent</th><th class="num">Accepted</th><th class="num">Rejected</th><th class="num">In Transit</th>
+            @if (editable()) { <th>Accept Now</th><th>Reject Now</th><th>Reject Reason</th><th class="num">Left</th> } @else { <th>Reject Reason</th> }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.id; let i = $index) {
+            <tr>
+              <td><strong>{{ row.productName }}</strong><div class="muted">{{ row.batchNo }} · exp {{ displayDate(row.expiryDate) }}</div></td>
+              <td class="num">{{ row.qty }}</td>
+              <td class="num">{{ row.acceptedQty }}</td>
+              <td class="num">{{ row.rejectedQty }}</td>
+              <td class="num"><span class="pill" [class.orange]="row.pendingQty" [class.green]="!row.pendingQty">{{ row.pendingQty }}</span></td>
+              @if (editable()) {
+                @if (row.pendingQty) {
+                  <td><input class="cell-input qty" type="number" min="0" [max]="row.pendingQty" [(ngModel)]="row.accept" (ngModelChange)="touch(row)" [class.is-invalid]="!!rowError(row)" /></td>
+                  <td><input class="cell-input qty" type="number" min="0" [max]="row.pendingQty" [(ngModel)]="row.reject" (ngModelChange)="touch(row)" [class.is-invalid]="!!rowError(row)" /></td>
+                  <td>
+                    <select class="cell-input" [(ngModel)]="row.reason" (ngModelChange)="touch()" [disabled]="!(row.reject && row.reject > 0)" [class.is-invalid]="row.reject && row.reject > 0 && !row.reason">
+                      <option value="">Select</option>
+                      @for (r of reasons(); track r) { <option [value]="r">{{ r }}</option> }
+                    </select>
+                  </td>
+                  <td class="num">{{ leftInTransit(row) }}</td>
+                } @else {
+                  <td colspan="4" class="muted">Settled{{ row.rejectReason ? ' · rejected: ' + row.rejectReason : '' }}</td>
+                }
+              } @else {
+                <td>{{ row.rejectReason || '-' }}</td>
+              }
+            </tr>
+            @if (editable() && rowError(row); as err) {
+              @if (submitted() || (row.accept ?? 0) + (row.reject ?? 0) > row.pendingQty) {
+                <tr class="error-row"><td colspan="9"><i class="bi bi-exclamation-circle"></i> S.No {{ i + 1 }} - {{ row.productName }}: {{ err }}</td></tr>
+              }
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (editable()) {
+      <div class="qty-summary">
+        <span class="ok"><i class="bi bi-check2-circle"></i> Accept <strong>{{ s.accept }}</strong></span>
+        <span class="bad"><i class="bi bi-arrow-return-left"></i> Reject (back to {{ t.fromStore }}) <strong>{{ s.reject }}</strong></span>
+        <span class="warn"><i class="bi bi-truck"></i> Still in transit <strong>{{ s.left }}</strong></span>
+      </div>
+      @if (submitted() && !s.accept && !s.reject) { <p class="error-text">Enter an accepted or rejected qty for at least one line.</p> }
+      <div class="form-field">
+        <label for="tr-remarks">Remarks</label>
+        <div class="input-wrap"><i class="bi bi-chat-left-text"></i><input id="tr-remarks" type="text" maxlength="255" placeholder="Optional" [(ngModel)]="remarks" /></div>
+      </div>
+    } @else if (t.receivedBy) {
+      <p class="muted"><i class="bi bi-person-check"></i> Last received by {{ t.receivedBy }} on {{ displayDate(t.receivedAt) }}</p>
+    }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="printPdf()"><i class="bi bi-printer"></i> Print</button>
+    <button type="button" class="cancel-btn" (click)="close()">{{ editable() ? 'Cancel' : 'Close' }}</button>
+    @if (editable()) {
+      <button type="button" class="save-btn" [disabled]="saving()" (click)="save()"><i class="bi bi-check2-circle"></i> {{ s.left ? 'Save Partial Receipt' : 'Save Receipt' }}</button>
+    }
+  </div>
+</div>

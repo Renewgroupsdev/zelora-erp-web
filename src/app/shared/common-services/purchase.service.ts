@@ -1,65 +1,82 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { Observable, catchError, map, of } from 'rxjs';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { EMPTY, Observable, expand, firstValueFrom, map, reduce } from 'rxjs';
 import Swal from 'sweetalert2';
-import { AuthService } from '../../core/auth/auth.service';
-import { isTelecallerRole } from '../../core/auth/auth.model';
+import { ApiDataService } from '../../core/http/api.service';
 import {
   CENTRAL_STORE,
+  DocumentStatus,
   GoodsInward,
   InwardLine,
   LOW_STOCK_THRESHOLD,
+  Priority,
   PurchaseLineItem,
+  PurchaseMeta,
   PurchaseOption,
   PurchaseOrder,
+  PurchaseOrderStatus,
   PurchaseRequest,
+  PurchaseRequestStatus,
   PurchaseReturn,
-  PurchaseReturnLine,
   PurchaseReturnReason,
+  PurchaseReturnType,
   StockBatch,
   StockTransfer,
+  StoreOption,
+  TransferStatus,
   VendorNote,
+  VendorNoteStatus,
   VendorNoteType,
-  Priority,
 } from '../models/purchase.model';
-import { InventoryService } from './inventory.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { NotificationService } from './notification.service';
 
-const STORAGE_KEY = 'zelora_purchase_store_v1';
-
-interface PurchaseState {
-  requests: PurchaseRequest[];
-  orders: PurchaseOrder[];
-  inwards: GoodsInward[];
-  returns: PurchaseReturn[];
-  notes: VendorNote[];
-  stock: StockBatch[];
-  transfers: StockTransfer[];
-}
+const BASE = 'purchase';
 
 export interface NewRequestInput {
-  branch: string;
+  orgUnitId: number;
   vendorId: number | null;
-  vendorName: string;
   requiredBy: string | null;
   priority: Priority;
   remarks: string;
-  items: Omit<PurchaseLineItem, 'receivedQty'>[];
+  items: { productId: string; qty: number }[];
 }
 
 export interface InwardInput {
   poId: string;
-  store: string;
+  storeId: number | null;
   vendorInvoiceNo: string;
-  lines: InwardLine[];
+  billDate: string | null;
+  freight: number;
+  otherCharges: number;
+  cashDiscount: number;
+  roundOff: number;
+  remarks: string;
+  lines: Pick<InwardLine, 'productId' | 'batchNo' | 'mfgDate' | 'expiryDate' | 'receivedQty' | 'damagedQty' | 'freeQty' | 'unitPrice' | 'discountPercent' | 'sellingPrice'>[];
   note: { type: VendorNoteType; reason: string } | null;
 }
 
 export interface ReturnInput {
   grnId: string;
   reason: PurchaseReturnReason;
+  returnType: PurchaseReturnType;
   remarks: string;
   lines: { productId: string; batchNo: string; qty: number }[];
   raiseNote: boolean;
+}
+
+export interface TransferInput {
+  fromStoreId: number | null;
+  toStoreId: number | null;
+  remarks: string;
+  lines: { batchId: string; qty: number }[];
+}
+
+export interface ReceiveLineInput {
+  lineId: string;
+  acceptedQty: number;
+  rejectedQty: number;
+  rejectReason: string | null;
 }
 
 /** One GRN batch line with how much of it can still go back to the vendor. */
@@ -75,18 +92,68 @@ export interface ReturnableLine {
   returnable: number;
 }
 
+export type PurchaseDocument = 'purchase-request' | 'purchase-order' | 'goods-inward' | 'purchase-return' | 'vendor-note' | 'stock-transfer';
+
+export type PurchaseCollection = 'requests' | 'orders' | 'inwards' | 'returns' | 'notes' | 'stock' | 'transfers';
+
+interface PurchaseState {
+  requests: PurchaseRequest[];
+  orders: PurchaseOrder[];
+  inwards: GoodsInward[];
+  returns: PurchaseReturn[];
+  notes: VendorNote[];
+  stock: StockBatch[];
+  transfers: StockTransfer[];
+}
+
+const emptyState = (): PurchaseState => ({ requests: [], orders: [], inwards: [], returns: [], notes: [], stock: [], transfers: [] });
+
+const ENDPOINTS: Record<PurchaseCollection, string> = {
+  requests: `${BASE}/requests`,
+  orders: `${BASE}/orders`,
+  inwards: `${BASE}/inwards`,
+  returns: `${BASE}/returns`,
+  notes: `${BASE}/vendor-notes`,
+  stock: `${BASE}/stock`,
+  transfers: `${BASE}/stock/transfers`,
+};
+
+const DEFAULT_META: PurchaseMeta = {
+  stores: [{ id: null, name: CENTRAL_STORE }],
+  branches: [],
+  vendors: [],
+  priorities: ['Low', 'Normal', 'Urgent'],
+  returnReasons: [],
+  returnTypes: ['Debit Note', 'Replacement'],
+  transferRejectReasons: [],
+  lowStockThreshold: LOW_STOCK_THRESHOLD,
+  roundOffLimit: 5,
+  centralStore: CENTRAL_STORE,
+  canApprove: false,
+  userStoreId: null,
+};
+
 /**
- * Front-end store for the Purchase Management flow (design stage - no API yet).
- * State lives in signals and is mirrored to localStorage so the flow survives a reload;
- * swap each mutator for an API call once the backend endpoints exist.
+ * Purchase Management state backed by /api/purchase. Lists are loaded into signals (pages filter / sort / page them
+ * on the client); every action is an API call - the server enforces the rules and its message is shown to the user -
+ * after which the affected lists are reloaded.
  */
 @Injectable({ providedIn: 'root' })
 export class PurchaseService {
-  private readonly auth = inject(AuthService);
-  private readonly inventory = inject(InventoryService);
+  private readonly api = inject(ApiDataService);
   private readonly notifications = inject(NotificationService);
+  private readonly auth = inject(AuthService);
 
-  private readonly state = signal<PurchaseState>(this.load());
+  private readonly state = signal<PurchaseState>(emptyState());
+  readonly meta = signal<PurchaseMeta>(DEFAULT_META);
+  /** True while the open tab's lists are loading. */
+  readonly loading = signal(false);
+  /** Lists fetched at least once (for the signed-in user). */
+  private readonly loaded = new Set<PurchaseCollection>();
+  /** Lists of the open tab - the only ones reloaded after an action. */
+  private active = new Set<PurchaseCollection>();
+  /** User the cached meta / lists belong to; a different sign-in starts clean. */
+  private cachedFor: unknown = undefined;
 
   readonly requests = computed(() => this.state().requests);
   readonly orders = computed(() => this.state().orders);
@@ -96,501 +163,501 @@ export class PurchaseService {
   readonly stock = computed(() => this.state().stock);
   readonly transfers = computed(() => this.state().transfers);
 
-  readonly branches = ['Anna Nagar', 'Velachery', 'T. Nagar', 'Adyar'];
-  readonly stores = [CENTRAL_STORE, ...this.branches];
+  readonly storeOptions = computed(() => this.meta().stores);
+  readonly branchOptions = computed(() => this.meta().branches);
+  /** Store / branch names, for the filter cards. */
+  readonly stores = computed(() => this.meta().stores.map(s => s.name));
+  readonly branches = computed(() => this.meta().branches.map(s => s.name));
+  readonly vendors = computed(() => this.meta().vendors);
+  readonly threshold = computed(() => this.meta().lowStockThreshold);
 
-  /** Branch heads / managers / admins approve requests; telecallers and staff only raise them. */
-  readonly canApprove = computed(() => !isTelecallerRole(this.auth.currentUser()));
+  /** Branch heads / managers / admins approve, cancel and close (decided by the server). */
+  readonly canApprove = computed(() => this.meta().canApprove);
   readonly pendingCount = computed(() => this.requests().filter(r => r.status === 'Pending').length);
+  readonly openTransfers = computed(() => this.transfers().filter(t => t.status === 'In Transit' || t.status === 'Partially Received'));
 
   /** Per store + product totals under the threshold. */
   readonly lowStock = computed(() => {
     const totals = new Map<string, { store: string; productName: string; qty: number }>();
     for (const b of this.stock()) {
-      const key = `${b.store}|${b.productId}`;
+      const key = `${b.storeId ?? 0}|${b.productId}`;
       const row = totals.get(key) ?? { store: b.store, productName: b.productName, qty: 0 };
       row.qty += b.qty;
       totals.set(key, row);
     }
-    return [...totals.values()].filter(t => t.qty < LOW_STOCK_THRESHOLD);
+    return [...totals.values()].filter(t => t.qty < this.threshold());
   });
 
-  constructor() {
-    effect(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state()));
-      } catch { /* storage full / blocked - state still works in memory */ }
+  /**
+   * Called by a tab page every time it opens (sidebar link, tab click, page refresh): fetches just that tab's lists,
+   * plus meta when it is not loaded yet for this user.
+   */
+  async load(...keys: PurchaseCollection[]): Promise<void> {
+    this.resetIfUserChanged();
+    this.active = new Set(keys);
+    this.loading.set(true);
+    try {
+      await this.fetch(keys);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  /** Always fetches the given lists, without changing the open tab (e.g. a dialog that needs fresh orders). */
+  reload(...keys: PurchaseCollection[]): Promise<void> {
+    this.resetIfUserChanged();
+    return this.fetch(keys);
+  }
+
+  /** Fetches the given lists only if they were never loaded. Safe to call from templates / computeds. */
+  ensure(...keys: PurchaseCollection[]): void {
+    if (this.auth.currentUser() === this.cachedFor && keys.every(k => this.loaded.has(k))) return;
+    // Deferred: callers may be inside a template / computed, where writing a signal synchronously is not allowed.
+    queueMicrotask(() => {
+      this.resetIfUserChanged();
+      const missing = keys.filter(k => !this.loaded.has(k));
+      if (missing.length) void this.fetch(missing);
     });
   }
 
-  get userName(): string {
-    return this.auth.currentUser()?.name || 'Staff';
+  /** After an action: reloads the named lists that the open tab shows; the rest reload when their tab opens. */
+  private async refresh(...keys: PurchaseCollection[]): Promise<void> {
+    await this.fetch(keys.filter(k => this.active.has(k)));
   }
 
-  /** Active products from the product master; falls back to demo items when the API is unavailable. */
-  productOptions(): Observable<PurchaseOption[]> {
-    return this.inventory.listProducts({ page: 1, perPage: 100, status: 'Active' }).pipe(
-      map((res: any) => ((res?.data ?? []) as any[]).map(p => ({
-        id: String(p.id),
-        code: p.code,
-        name: p.name,
-        vendorId: p.vendor_id ?? null,
-        unitPrice: Number(p.purchase_price) || 0,
-        gstPercent: Number(p.gst_percent) || 0,
+  private async fetch(keys: PurchaseCollection[]): Promise<void> {
+    // Marked up front so overlapping calls do not fire the same request twice.
+    keys.forEach(k => this.loaded.add(k));
+    const jobs: Promise<unknown>[] = keys.map(k => this.loadCollection(k));
+    if (!this.metaLoaded) {
+      this.metaLoaded = true;
+      jobs.push(this.loadMeta());
+    }
+    await Promise.all(jobs);
+  }
+
+  private metaLoaded = false;
+
+  private resetIfUserChanged(): void {
+    const user = this.auth.currentUser();
+    if (user === this.cachedFor) return;
+    this.cachedFor = user;
+    this.state.set(emptyState());
+    this.meta.set(DEFAULT_META);
+    this.metaLoaded = false;
+    this.loaded.clear();
+    this.active.clear();
+  }
+
+  // ---- Lookups ---------------------------------------------------------------------------------
+
+  /** Active products (price + GST from the product master); only the vendor's products when one is given. */
+  productOptions(vendorId?: number | null): Observable<PurchaseOption[]> {
+    const query = vendorId ? `?vendor_id=${vendorId}` : '';
+    return (this.api.GET(`${BASE}/products${query}`) as Observable<any>).pipe(
+      map(res => ((res?.data ?? []) as any[]).map(p => ({
+        id: String(p.id), code: p.code, name: p.name, vendorId: p.vendor_id ?? null,
+        unitPrice: Number(p.unit_price) || 0, gstPercent: Number(p.gst_percent) || 0,
       }))),
-      map(list => (list.length ? list : DEMO_PRODUCTS)),
-      catchError(() => of(DEMO_PRODUCTS)),
     );
   }
 
+  /** @deprecated use vendors() - kept for older callers. */
   vendorOptions(): Observable<{ id: number; name: string }[]> {
-    return this.inventory.vendorOptions().pipe(map(list => (list.length ? list : DEMO_VENDORS)));
+    return (this.api.GET(`${BASE}/meta`) as Observable<any>).pipe(map(res => (res?.data?.vendors ?? []) as { id: number; name: string }[]));
   }
 
-  // ---- Purchase requests ----
-  createRequest(input: NewRequestInput): PurchaseRequest {
-    const request: PurchaseRequest = {
-      id: uid('PR'),
-      requestNo: this.nextNo('PR', this.requests().length),
-      requestedBy: this.userName,
-      requestedAt: new Date().toISOString(),
-      status: 'Pending',
-      ...input,
-      items: input.items.map(i => ({ ...i, receivedQty: 0 })),
-    };
-    this.patch({ requests: [request, ...this.requests()] });
-
-    this.alert('purchase', 'Purchase request sent', `${request.requestNo} from ${request.branch} is waiting for branch head approval.`, '/app/inventory/purchase-requests');
-    return request;
+  storeName(storeId: number | null): string {
+    return this.meta().stores.find(s => s.id === storeId)?.name ?? (storeId === null ? this.meta().centralStore : `Store #${storeId}`);
   }
 
-  approveRequest(id: string, remarks: string, expectedAt: string | null): PurchaseOrder | null {
-    const request = this.requests().find(r => r.id === id);
-    if (!request || request.status !== 'Pending') return null;
-
-    const seq = this.orders().length;
-    const poNo = this.nextNo('PO', seq);
-    const taken = this.usedBatchNos();
-    const order: PurchaseOrder = {
-      id: uid('PO'),
-      poNo,
-      invoiceNo: this.nextNo('INV', seq),
-      requestId: request.id,
-      requestNo: request.requestNo,
-      branch: request.branch,
-      vendorId: request.vendorId,
-      vendorName: request.vendorName,
-      orderedAt: new Date().toISOString(),
-      approvedBy: this.userName,
-      expectedAt,
-      // Batch no is generated once here, at approval, and carried into every inward of this PO.
-      items: request.items.map((i, index) => ({ ...i, receivedQty: 0, batchNo: this.generateBatchNo(poNo, index, taken) })),
-      status: 'Ordered',
-    };
-
-    this.patch({
-      orders: [order, ...this.orders()],
-      requests: this.requests().map(r => r.id === id
-        ? { ...r, status: 'Approved', reviewedBy: this.userName, reviewedAt: new Date().toISOString(), reviewRemarks: remarks, poId: order.id }
-        : r),
-    });
-
-    this.notifications.add({ type: 'manager', title: 'Purchase order confirmed', message: `${order.poNo} raised to ${order.vendorName} for ${request.requestNo}.`, link: '/app/inventory/purchase-orders' });
-    return order;
-  }
-
-  rejectRequest(id: string, remarks: string): void {
-    this.patch({
-      requests: this.requests().map(r => r.id === id
-        ? { ...r, status: 'Rejected', reviewedBy: this.userName, reviewedAt: new Date().toISOString(), reviewRemarks: remarks }
-        : r),
-    });
-  }
-
-  // ---- Purchase inward (GRN) ----
-  recordInward(input: InwardInput): GoodsInward | null {
-    const order = this.orders().find(o => o.id === input.poId);
-    if (!order || order.status === 'Received') return null;
-
-    // Same rules as the reference purchase inward: qty > 0, damaged <= received, one product + batch per entry.
-    const seen = new Set<string>();
-    const taken = this.inwards().filter(g => g.poId === order.id).flatMap(g => g.lines.map(l => l.batchNo));
-    const lines: InwardLine[] = [];
-    for (const raw of input.lines) {
-      const receivedQty = Math.trunc(Number(raw.receivedQty) || 0);
-      const damagedQty = Math.trunc(Number(raw.damagedQty) || 0);
-      if (receivedQty <= 0 || damagedQty < 0 || damagedQty > receivedQty) continue;
-      const batchNo = (raw.batchNo || '').trim().toUpperCase() || this.nextInwardBatchNo(order.id, raw.productId, taken);
-      const key = `${raw.productId}|${batchNo}`;
-      if (seen.has(key)) return null;
-      seen.add(key);
-      taken.push(batchNo);
-      lines.push({ ...raw, batchNo, receivedQty, damagedQty });
-    }
-    if (!lines.length) return null;
-    input = { ...input, lines };
-
-    const accepted = (l: InwardLine) => Math.max(0, l.receivedQty - l.damagedQty);
-    const items = order.items.map(item => {
-      const qty = input.lines.filter(l => l.productId === item.productId).reduce((s, l) => s + accepted(l), 0);
-      return { ...item, receivedQty: Math.min(item.requestedQty, item.receivedQty + qty) };
-    });
-    const fullyReceived = items.every(i => i.receivedQty >= i.requestedQty);
-    const grnNo = this.nextNo('GRN', this.inwards().length);
-
-    let note: VendorNote | undefined;
-    if (input.note) {
-      const shortValue = items.reduce((s, i) => s + (i.requestedQty - i.receivedQty) * i.unitPrice, 0);
-      const damagedValue = input.lines.reduce((s, l) => s + l.damagedQty * l.unitPrice, 0);
-      note = {
-        id: uid('NT'),
-        noteNo: this.nextNo(input.note.type === 'Credit Note' ? 'CN' : 'DN', this.notes().length),
-        type: input.note.type,
-        vendorName: order.vendorName,
-        poNo: order.poNo,
-        grnNo,
-        reason: input.note.reason,
-        amount: damagedValue + (fullyReceived ? 0 : shortValue),
-        createdAt: new Date().toISOString(),
-        status: 'Open',
-      };
-    }
-
-    const inward: GoodsInward = {
-      id: uid('GRN'),
-      grnNo,
-      poId: order.id,
-      poNo: order.poNo,
-      vendorName: order.vendorName,
-      store: input.store,
-      receivedBy: this.userName,
-      receivedAt: new Date().toISOString(),
-      vendorInvoiceNo: input.vendorInvoiceNo,
-      lines: input.lines,
-      isPartial: !fullyReceived,
-      noteId: note?.id,
-    };
-
-    let stock = [...this.stock()];
-    for (const line of input.lines) {
-      const qty = accepted(line);
-      if (!qty) continue;
-      const item = order.items.find(i => i.productId === line.productId);
-      const existing = stock.find(b => b.store === input.store && b.productId === line.productId && b.batchNo === line.batchNo);
-      if (existing) {
-        stock = stock.map(b => (b.id === existing.id ? { ...b, qty: b.qty + qty } : b));
-        continue;
-      }
-      stock.push({
-        id: uid('STK'),
-        store: input.store,
-        productId: line.productId,
-        productCode: item?.productCode ?? '',
-        productName: line.productName,
-        batchNo: line.batchNo,
-        expiryDate: line.expiryDate,
-        qty,
-        unitPrice: line.unitPrice,
-      });
-    }
-
-    this.patch({
-      inwards: [inward, ...this.inwards()],
-      notes: note ? [note, ...this.notes()] : this.notes(),
-      stock,
-      orders: this.orders().map(o => o.id === order.id ? { ...o, items, status: fullyReceived ? 'Received' : 'Partially Received' } : o),
-    });
-
-    this.notifications.add({ type: 'stock', title: fullyReceived ? 'Goods received' : 'Partial goods received', message: `${grnNo} posted to ${input.store} against ${order.poNo}.`, link: '/app/inventory/purchase-inward' });
-    this.checkLowStock(input.store, input.lines.map(l => l.productId));
-    return inward;
-  }
-
-  // ---- Purchase return (back to vendor) ----
-  returnableLines(grnId: string): ReturnableLine[] {
-    const inward = this.inwards().find(g => g.id === grnId);
-    if (!inward) return [];
-    const returnedLines = this.returns().filter(r => r.grnId === grnId).flatMap(r => r.lines);
-
-    return inward.lines.map(l => {
-      const accepted = Math.max(0, l.receivedQty - l.damagedQty);
-      const returned = returnedLines.filter(r => r.productId === l.productId && r.batchNo === l.batchNo).reduce((s, r) => s + r.qty, 0);
-      const inStock = this.stock().filter(b => b.store === inward.store && b.productId === l.productId && b.batchNo === l.batchNo).reduce((s, b) => s + b.qty, 0);
-      return {
-        productId: l.productId,
-        productName: l.productName,
-        batchNo: l.batchNo,
-        unitPrice: l.unitPrice,
-        accepted,
-        returned,
-        inStock,
-        returnable: Math.max(0, Math.min(accepted - returned, inStock)),
-      };
-    });
-  }
-
-  /** GRNs that still have at least one unit that can be returned. */
-  readonly returnableInwards = computed(() => this.inwards().filter(g => this.returnableLines(g.id).some(l => l.returnable > 0)));
-
-  recordReturn(input: ReturnInput): PurchaseReturn | null {
-    const inward = this.inwards().find(g => g.id === input.grnId);
-    if (!inward || !input.reason) return null;
-
-    const available = this.returnableLines(inward.id);
-    const lines: PurchaseReturnLine[] = [];
-    for (const raw of input.lines) {
-      const qty = Number(raw.qty) || 0;
-      if (!qty) continue;
-      const line = available.find(l => l.productId === raw.productId && l.batchNo === raw.batchNo);
-      // Whole qty > 0 and never more than was accepted (minus earlier returns) or is still on hand.
-      if (!line || !Number.isInteger(qty) || qty < 0 || qty > line.returnable) return null;
-      lines.push({ productId: line.productId, productName: line.productName, batchNo: line.batchNo, qty, unitPrice: line.unitPrice });
-    }
-    if (!lines.length) return null;
-
-    const returnNo = this.nextNo('PRN', this.returns().length);
-    const amount = lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
-
-    let note: VendorNote | undefined;
-    if (input.raiseNote) {
-      note = {
-        id: uid('NT'),
-        noteNo: this.nextNo('DN', this.notes().length),
-        type: 'Debit Note',
-        vendorName: inward.vendorName,
-        poNo: inward.poNo,
-        grnNo: inward.grnNo,
-        returnNo,
-        reason: `Purchase return ${returnNo}: ${input.reason}${input.remarks ? ' - ' + input.remarks : ''}`,
-        amount,
-        createdAt: new Date().toISOString(),
-        status: 'Open',
-      };
-    }
-
-    const purchaseReturn: PurchaseReturn = {
-      id: uid('PRN'),
-      returnNo,
-      grnId: inward.id,
-      grnNo: inward.grnNo,
-      poNo: inward.poNo,
-      vendorName: inward.vendorName,
-      store: inward.store,
-      reason: input.reason,
-      remarks: input.remarks,
-      lines,
-      returnedBy: this.userName,
-      returnedAt: new Date().toISOString(),
-      noteId: note?.id,
-    };
-
-    // Take the returned qty out of the GRN's store, batch by batch.
-    let stock = [...this.stock()];
-    for (const line of lines) {
-      let left = line.qty;
-      stock = stock.map(b => {
-        if (!left || b.store !== inward.store || b.productId !== line.productId || b.batchNo !== line.batchNo) return b;
-        const take = Math.min(left, b.qty);
-        left -= take;
-        return { ...b, qty: b.qty - take };
-      });
-    }
-
-    this.patch({
-      returns: [purchaseReturn, ...this.returns()],
-      notes: note ? [note, ...this.notes()] : this.notes(),
-      stock: stock.filter(b => b.qty > 0 || b.store === CENTRAL_STORE),
-    });
-
-    this.notifications.add({ type: 'stock', title: 'Purchase return posted', message: `${returnNo} returned to ${inward.vendorName} from ${inward.store} against ${inward.grnNo}.`, link: '/app/inventory/purchase-returns' });
-    this.checkLowStock(inward.store, lines.map(l => l.productId));
-    return purchaseReturn;
-  }
-
-  setNoteStatus(id: string, status: VendorNote['status']): void {
-    this.patch({ notes: this.notes().map(n => (n.id === id ? { ...n, status } : n)) });
-  }
-
-  // ---- Stock transfer (central store -> branch) ----
-  transferStock(batchId: string, toStore: string, qty: number, remarks: string): StockTransfer | null {
-    const batch = this.stock().find(b => b.id === batchId);
-    qty = Number(qty);
-    // Reference transfer rules: valid target store, whole qty > 0 and not more than the batch has on hand.
-    if (!batch || !toStore || toStore === batch.store || !this.stores.includes(toStore)) return null;
-    if (!Number.isInteger(qty) || qty <= 0 || qty > batch.qty) return null;
-
-    // Same product + batch at the target is topped up, otherwise a new batch row is opened there (immutable update).
-    let stock = this.stock().map(b => (b.id === batchId ? { ...b, qty: b.qty - qty } : b));
-    const existing = stock.find(b => b.store === toStore && b.productId === batch.productId && b.batchNo === batch.batchNo);
-    if (existing) stock = stock.map(b => (b.id === existing.id ? { ...b, qty: b.qty + qty } : b));
-    else stock.push({ ...batch, id: uid('STK'), store: toStore, qty });
-
-    const transfer: StockTransfer = {
-      id: uid('TR'),
-      transferNo: this.nextNo('ST', this.transfers().length),
-      fromStore: batch.store,
-      toStore,
-      productName: batch.productName,
-      batchNo: batch.batchNo,
-      qty,
-      transferredBy: this.userName,
-      transferredAt: new Date().toISOString(),
-      remarks,
-    };
-
-    this.patch({ stock: stock.filter(b => b.qty > 0 || b.store === CENTRAL_STORE), transfers: [transfer, ...this.transfers()] });
-    this.checkLowStock(batch.store, [batch.productId]);
-    return transfer;
-  }
-
+  /** Units of a product held by a store (by store name, as the pages show it). */
   storeQty(store: string, productId: string): number {
     return this.stock().filter(b => b.store === store && b.productId === productId).reduce((s, b) => s + b.qty, 0);
   }
 
-  /** Stock batches of a store with qty on hand, earliest expiry first (FEFO) - the order transfers should pick from. */
-  availableBatches(store: string) {
+  storeQtyById(storeId: number | null, productId: string): number {
+    return this.stock().filter(b => b.storeId === storeId && b.productId === productId).reduce((s, b) => s + b.qty, 0);
+  }
+
+  /** Batches of a store with qty on hand, earliest expiry first (FEFO) - the order transfers should pick from. */
+  availableBatches(storeId: number | null): StockBatch[] {
     return this.stock()
-      .filter(b => b.store === store && b.qty > 0)
+      .filter(b => b.storeId === storeId && b.qty > 0)
       .sort((a, b) => (a.expiryDate ?? '9999').localeCompare(b.expiryDate ?? '9999') || a.batchNo.localeCompare(b.batchNo));
   }
 
-  /**
-   * Batch no for the next inward row of a PO product. The first receipt uses the batch generated at PO approval;
-   * any further batch (split row or a later partial GRN) gets the next suffix, e.g. B-2026-0001-01-2.
-   */
-  nextInwardBatchNo(orderId: string, productId: string, takenInForm: string[] = []): string {
-    const order = this.orders().find(o => o.id === orderId);
-    const index = order ? order.items.findIndex(i => i.productId === productId) : -1;
-    const base = (order && index >= 0 && order.items[index].batchNo) || this.generateBatchNo(order?.poNo ?? this.nextNo('PO', this.orders().length), Math.max(index, 0), this.usedBatchNos());
-    const used = new Set([
-      ...this.inwards().filter(g => g.poId === orderId).flatMap(g => g.lines.map(l => l.batchNo)),
-      ...takenInForm,
-    ].map(b => (b || '').trim().toUpperCase()));
-    if (!used.has(base)) return base;
-    let n = 2;
-    while (used.has(`${base}-${n}`)) n++;
-    return `${base}-${n}`;
+  // ---- Purchase requests ----------------------------------------------------------------------
+
+  async createRequest(input: NewRequestInput): Promise<PurchaseRequest | null> {
+    const res = await this.send('POST', `${BASE}/requests`, {
+      org_unit_id: input.orgUnitId, vendor_id: input.vendorId, required_by: input.requiredBy || null,
+      priority: input.priority, remarks: input.remarks || null,
+      items: input.items.map(i => ({ product_id: Number(i.productId), qty: i.qty })),
+    });
+    if (!res) return null;
+    await this.refresh('requests');
+    this.notifications.add({ type: 'purchase', title: 'Purchase request sent', message: `${res.data.request_no} is waiting for branch head approval.`, link: '/app/inventory/purchase-requests' });
+    return toRequest(res.data);
   }
 
-  /** B-<year>-<PO seq>-<line>, e.g. PO-2026-0007 line 2 -> B-2026-0007-02; bumped if it already exists anywhere. */
-  private generateBatchNo(poNo: string, lineIndex: number, taken: string[]): string {
-    const base = `B-${poNo.replace(/^PO-/, '')}-${String(lineIndex + 1).padStart(2, '0')}`;
-    let batchNo = base;
-    let n = 2;
-    while (taken.includes(batchNo)) batchNo = `${base}-${n++}`;
-    taken.push(batchNo);
-    return batchNo;
+  async approveRequest(id: string, remarks: string, expectedAt: string | null): Promise<PurchaseOrder | null> {
+    const res = await this.send('POST', `${BASE}/requests/${id}/approve`, { remarks: remarks || null, expected_at: expectedAt || null });
+    if (!res) return null;
+    await this.refresh('requests', 'orders');
+    const order = toOrder(res.data.order);
+    this.notifications.add({ type: 'manager', title: 'Purchase order confirmed', message: `${order.poNo} raised to ${order.vendorName}.`, link: '/app/inventory/purchase-orders' });
+    return this.orders().find(o => o.id === order.id) ?? order;
   }
 
-  private usedBatchNos(): string[] {
-    const s = this.state();
-    return [
-      ...s.orders.flatMap(o => o.items.map(i => i.batchNo ?? '')),
-      ...s.inwards.flatMap(g => g.lines.map(l => l.batchNo)),
-      ...s.stock.map(b => b.batchNo),
-    ].filter(Boolean);
+  async rejectRequest(id: string, remarks: string): Promise<boolean> {
+    const res = await this.send('POST', `${BASE}/requests/${id}/reject`, { remarks });
+    if (res) await this.refresh('requests');
+    return !!res;
   }
 
-  /** Raises a bell notification + popup to the branch head for every product that dropped under the threshold. */
-  private checkLowStock(store: string, productIds: string[]): void {
-    for (const productId of new Set(productIds)) {
-      const qty = this.storeQty(store, productId);
-      if (qty >= LOW_STOCK_THRESHOLD) continue;
-      const name = this.stock().find(b => b.productId === productId)?.productName ?? 'Product';
-      this.alert('stock', 'Low stock alert', `${name} is running low at ${store} (${qty} units left). Branch head notified.`, '/app/inventory/stock', 'warning');
+  // ---- Purchase orders (reference: Edit PO / Cancel PO / Abort PO) -----------------------------
+
+  async updateOrder(id: string, change: { expectedAt?: string | null; items?: { id: string; qty: number }[] }): Promise<boolean> {
+    const body: Record<string, unknown> = {};
+    if (change.expectedAt !== undefined) body['expected_at'] = change.expectedAt || null;
+    if (change.items?.length) body['items'] = change.items.map(i => ({ id: Number(i.id), qty: i.qty }));
+    const res = await this.send('PUT', `${BASE}/orders/${id}`, body);
+    if (res) await this.refresh('orders');
+    return !!res;
+  }
+
+  async cancelOrder(id: string, reason: string): Promise<boolean> {
+    const res = await this.send('POST', `${BASE}/orders/${id}/cancel`, { reason });
+    if (res) await this.refresh('orders');
+    return !!res;
+  }
+
+  async closeOrder(id: string, reason: string): Promise<boolean> {
+    const res = await this.send('POST', `${BASE}/orders/${id}/close`, { reason });
+    if (res) await this.refresh('orders');
+    return !!res;
+  }
+
+  // ---- Purchase inward (GRN) ------------------------------------------------------------------
+
+  /** Pending lines of a PO with their suggested batch numbers (generated by the server). */
+  async inwardDefaults(orderId: string): Promise<InwardLine[] | null> {
+    const res = await this.send('GET', `${BASE}/orders/${orderId}/inward-defaults`, null, false);
+    return res ? ((res.data.lines ?? []) as any[]).map(toInwardLine) : null;
+  }
+
+  async recordInward(input: InwardInput): Promise<GoodsInward | null> {
+    const res = await this.send('POST', `${BASE}/orders/${input.poId}/inward`, {
+      store_id: input.storeId, vendor_invoice_no: input.vendorInvoiceNo, bill_date: input.billDate || null,
+      freight: input.freight || 0, other_charges: input.otherCharges || 0, cash_discount: input.cashDiscount || 0,
+      round_off: input.roundOff || 0, remarks: input.remarks || null,
+      lines: input.lines.map(l => ({
+        product_id: Number(l.productId), batch_no: l.batchNo || null, mfg_date: l.mfgDate || null, expiry_date: l.expiryDate || null,
+        received_qty: l.receivedQty, damaged_qty: l.damagedQty || 0, free_qty: l.freeQty || 0,
+        unit_price: l.unitPrice, discount_percent: l.discountPercent || 0, selling_price: l.sellingPrice || null,
+      })),
+      note: input.note,
+    });
+    if (!res) return null;
+    // Stock is always re-read: the low-stock check below needs current quantities.
+    await Promise.all([this.refresh('orders', 'inwards', 'notes'), this.reload('stock')]);
+    const inward = toInward(res.data);
+    this.checkLowStock(inward.storeId, inward.lines.map(l => l.productId));
+    return inward;
+  }
+
+  async cancelInward(id: string, reason: string): Promise<boolean> {
+    const res = await this.send('POST', `${BASE}/inwards/${id}/cancel`, { reason });
+    if (res) await this.refresh('orders', 'inwards', 'stock', 'notes');
+    return !!res;
+  }
+
+  // ---- Purchase return ------------------------------------------------------------------------
+
+  /** GRNs that still have at least one unit that can go back to the vendor. */
+  async returnableInwards(): Promise<GoodsInward[]> {
+    const res = await this.send('GET', `${BASE}/returns/returnable-inwards`, null, false);
+    return res ? (res.data as any[]).map(toInward) : [];
+  }
+
+  async returnableLines(grnId: string): Promise<ReturnableLine[]> {
+    const res = await this.send('GET', `${BASE}/inwards/${grnId}/returnable-lines`, null, false);
+    return res ? (res.data as any[]).map(l => ({
+      productId: String(l.product_id), productName: l.product_name, batchNo: l.batch_no, unitPrice: Number(l.unit_price) || 0,
+      accepted: l.accepted, returned: l.returned, inStock: l.in_stock, returnable: l.returnable,
+    })) : [];
+  }
+
+  async recordReturn(input: ReturnInput): Promise<PurchaseReturn | null> {
+    const res = await this.send('POST', `${BASE}/returns`, {
+      grn_id: Number(input.grnId), reason: input.reason, return_type: input.returnType, remarks: input.remarks || null,
+      raise_note: input.returnType === 'Debit Note' && input.raiseNote,
+      lines: input.lines.map(l => ({ product_id: Number(l.productId), batch_no: l.batchNo, qty: l.qty })),
+    });
+    if (!res) return null;
+    // Stock is always re-read: the low-stock check below needs current quantities.
+    await Promise.all([this.refresh('returns', 'notes', 'orders'), this.reload('stock')]);
+    const ret = toReturn(res.data);
+    this.checkLowStock(ret.storeId, ret.lines.map(l => l.productId));
+    return ret;
+  }
+
+  async cancelReturn(id: string, reason: string): Promise<boolean> {
+    const res = await this.send('POST', `${BASE}/returns/${id}/cancel`, { reason });
+    if (res) await this.refresh('returns', 'stock', 'notes', 'orders');
+    return !!res;
+  }
+
+  // ---- Credit / debit notes -------------------------------------------------------------------
+
+  async setNoteStatus(id: string, status: 'Open' | 'Adjusted'): Promise<boolean> {
+    const res = await this.send('POST', `${BASE}/vendor-notes/${id}/${status === 'Adjusted' ? 'adjust' : 'reopen'}`, {});
+    if (res) await this.refresh('notes');
+    return !!res;
+  }
+
+  // ---- Stock transfer: dispatch -> accept / reject (or cancel) ---------------------------------
+
+  async dispatchTransfer(input: TransferInput): Promise<StockTransfer | null> {
+    const res = await this.send('POST', `${BASE}/stock/transfers`, {
+      from_store_id: input.fromStoreId, to_store_id: input.toStoreId, remarks: input.remarks || null,
+      lines: input.lines.map(l => ({ batch_id: Number(l.batchId), qty: l.qty })),
+    });
+    if (!res) return null;
+    await this.refresh('stock', 'transfers');
+    const transfer = toTransfer(res.data);
+    this.notifications.add({ type: 'stock', title: 'Stock dispatched', message: `${transfer.transferNo}: ${transfer.qty} unit(s) in transit to ${transfer.toStore}. Waiting for the store to accept.`, link: '/app/inventory/stock' });
+    this.checkLowStock(transfer.fromStoreId, transfer.lines.map(l => l.productId));
+    return transfer;
+  }
+
+  async receiveTransfer(id: string, lines: ReceiveLineInput[], remarks: string): Promise<StockTransfer | null> {
+    const res = await this.send('POST', `${BASE}/stock/transfers/${id}/receive`, {
+      remarks: remarks || null,
+      lines: lines.map(l => ({ line_id: Number(l.lineId), accepted_qty: l.acceptedQty || 0, rejected_qty: l.rejectedQty || 0, reject_reason: l.rejectedQty ? l.rejectReason : null })),
+    });
+    if (!res) return null;
+    await this.refresh('stock', 'transfers');
+    return toTransfer(res.data);
+  }
+
+  async cancelTransfer(id: string, reason: string): Promise<boolean> {
+    const res = await this.send('POST', `${BASE}/stock/transfers/${id}/cancel`, { reason });
+    if (res) await this.refresh('stock', 'transfers');
+    return !!res;
+  }
+
+  /** E-mails the branch heads about every store running low (server side). */
+  async notifyLowStock(): Promise<void> {
+    await this.send('POST', `${BASE}/stock/notify-low-stock`, {});
+  }
+
+  // ---- Documents ------------------------------------------------------------------------------
+
+  /** Opens the server-rendered PDF (tax-invoice layout) in a new tab. */
+  async openPdf(type: PurchaseDocument, id: string): Promise<void> {
+    const tab = window.open('', '_blank');
+    try {
+      const blob = await firstValueFrom(this.api.GET_BLOB(`${BASE}/documents/${type}/${id}/pdf`) as Observable<Blob>);
+      const url = URL.createObjectURL(blob);
+      if (tab) tab.location.href = url;
+      else window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      tab?.close();
+      Swal.fire({ icon: 'error', title: 'Could not open the document', text: 'Please try again.', confirmButtonColor: '#6C63FF' });
     }
   }
 
-  private alert(type: 'purchase' | 'stock', title: string, message: string, link: string, icon: 'info' | 'warning' = 'info'): void {
-    this.notifications.add({ type, title, message, link });
-    Swal.fire({ toast: true, position: 'top-end', icon, title, text: message, showConfirmButton: false, timer: 4500, timerProgressBar: true });
+  /** Asks for the mandatory reason before a cancel / close (reference: cancel reason is required). */
+  async askReason(title: string, text: string, confirmText: string): Promise<string | null> {
+    const { value, isConfirmed } = await Swal.fire({
+      title, text, input: 'textarea', inputPlaceholder: 'Reason (required)', showCancelButton: true,
+      confirmButtonText: confirmText, confirmButtonColor: '#d33', inputAttributes: { maxlength: '255' },
+      inputValidator: v => (v && v.trim().length >= 3 ? null : 'Enter a reason.'),
+    });
+    return isConfirmed && value ? String(value).trim() : null;
   }
 
-  private patch(partial: Partial<PurchaseState>): void {
-    this.state.update(s => ({ ...s, ...partial }));
+  // ---- Plumbing -------------------------------------------------------------------------------
+
+  private async loadMeta(): Promise<void> {
+    const res = await this.send('GET', `${BASE}/meta`, null, false);
+    const d = res?.data;
+    if (!d) {
+      this.metaLoaded = false; // retried by the next tab load
+      return;
+    }
+    const stores = ((d.stores ?? []) as any[]).map(s => ({ id: s.id ?? null, name: s.name }) as StoreOption);
+    this.meta.set({
+      stores, branches: stores.filter(s => s.id !== null), vendors: d.vendors ?? [],
+      priorities: d.priorities ?? DEFAULT_META.priorities, returnReasons: d.return_reasons ?? [],
+      returnTypes: d.return_types ?? DEFAULT_META.returnTypes, transferRejectReasons: d.transfer_reject_reasons ?? [],
+      lowStockThreshold: Number(d.low_stock_threshold) || LOW_STOCK_THRESHOLD, roundOffLimit: Number(d.round_off_limit) || 0,
+      centralStore: d.central_store || CENTRAL_STORE, canApprove: !!d.can_approve, userStoreId: d.user_store_id ?? null,
+    });
   }
 
-  private nextNo(prefix: string, count: number): string {
-    return `${prefix}-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
-  }
-
-  private load(): PurchaseState {
+  private async loadCollection(key: PurchaseCollection): Promise<void> {
+    const mapper: Record<PurchaseCollection, (r: any) => unknown> = {
+      requests: toRequest, orders: toOrder, inwards: toInward, returns: toReturn, notes: toNote, stock: toBatch, transfers: toTransfer,
+    };
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return withPoBatchNos(JSON.parse(raw) as PurchaseState);
-    } catch { /* fall through to seed */ }
-    return seedState();
+      const rows = await firstValueFrom(this.fetchAll(ENDPOINTS[key]));
+      this.state.update(s => ({ ...s, [key]: rows.map(mapper[key]) }));
+    } catch (e) {
+      this.loaded.delete(key);
+      console.error(`Purchase: could not load ${key}`, e);
+    }
+  }
+
+  /** Every page of a paginated list ({data, pagination: {last_page}}). */
+  private fetchAll(path: string): Observable<any[]> {
+    const page = (n: number) => this.api.GET(`${path}?per_page=200&page=${n}`) as Observable<any>;
+    return page(1).pipe(
+      expand(res => {
+        const current = Number(res?.pagination?.current_page ?? 1);
+        return current < Number(res?.pagination?.last_page ?? 1) ? page(current + 1) : EMPTY;
+      }),
+      reduce((all: any[], res: any) => [...all, ...((res?.data ?? []) as any[])], []),
+    );
+  }
+
+  /** Runs a request; shows the server's success toast or error (incl. validation messages). Null on failure. */
+  private async send(method: 'GET' | 'POST' | 'PUT', path: string, body: unknown, toast = true): Promise<any | null> {
+    try {
+      const call = method === 'GET' ? this.api.GET(path) : method === 'POST' ? this.api.POST(path, body) : this.api.PUT(path, body);
+      const res = await firstValueFrom(call as Observable<any>);
+      if (toast && res?.message) {
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: res.message, showConfirmButton: false, timer: 3500, timerProgressBar: true });
+      }
+      return res;
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Not saved', html: errorHtml(e), confirmButtonColor: '#6C63FF' });
+      return null;
+    }
+  }
+
+  /** Bell notification for every product that dropped under the threshold at a store. */
+  private checkLowStock(storeId: number | null, productIds: string[]): void {
+    for (const productId of new Set(productIds)) {
+      const qty = this.storeQtyById(storeId, productId);
+      if (qty >= this.threshold()) continue;
+      const name = this.stock().find(b => b.productId === productId)?.productName ?? 'Product';
+      this.notifications.add({ type: 'stock', title: 'Low stock alert', message: `${name} is running low at ${this.storeName(storeId)} (${qty} units left).`, link: '/app/inventory/stock' });
+    }
   }
 }
 
-/** POs stored before batch numbers were generated on approval get one per line (B-<year>-<seq>-<line>). */
-function withPoBatchNos(state: PurchaseState): PurchaseState {
+// ---- API -> model mappers ----------------------------------------------------------------------
+
+const num = (v: unknown) => Number(v) || 0;
+const str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
+
+function errorHtml(e: unknown): string {
+  const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  if (e instanceof HttpErrorResponse) {
+    const body = e.error ?? {};
+    const details = body.errors && typeof body.errors === 'object' && !Array.isArray(body.errors)
+      ? Object.values(body.errors as Record<string, string[]>).flat().filter(m => typeof m === 'string')
+      : [];
+    const message = (details.length ? details : [body.message || e.message || 'Something went wrong.']).slice(0, 6);
+    return message.map(m => esc(String(m))).join('<br>');
+  }
+  return esc(e instanceof Error ? e.message : 'Something went wrong.');
+}
+
+function toRequest(r: any): PurchaseRequest {
   return {
-    ...state,
-    returns: state.returns ?? [],
-    orders: (state.orders ?? []).map(o => ({
-      ...o,
-      items: o.items.map((i, index) => (i.batchNo ? i : { ...i, batchNo: `B-${o.poNo.replace(/^PO-/, '')}-${String(index + 1).padStart(2, '0')}` })),
+    id: str(r.id), requestNo: r.request_no, branch: r.branch?.name ?? '-', branchId: r.org_unit_id ?? null,
+    vendorId: r.vendor_id ?? null, vendorName: r.vendor_name ?? '-', requestedBy: r.requested_by ?? '-',
+    requestedAt: r.requested_at, requiredBy: r.required_by ?? null, priority: r.priority, remarks: r.remarks ?? '',
+    status: r.status as PurchaseRequestStatus, reviewedBy: r.reviewed_by ?? undefined, reviewedAt: r.reviewed_at ?? undefined,
+    reviewRemarks: r.review_remarks ?? undefined, poId: r.po_id ? str(r.po_id) : undefined,
+    items: ((r.items ?? []) as any[]).map(i => ({
+      productId: str(i.product_id), productCode: i.product_code, productName: i.product_name, unitPrice: num(i.unit_price),
+      gstPercent: num(i.gst_percent), requestedQty: num(i.qty), receivedQty: 0,
     })),
   };
 }
 
-function uid(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+function toOrder(o: any): PurchaseOrder {
+  return {
+    id: str(o.id), poNo: o.po_no, invoiceNo: o.invoice_no, requestId: str(o.request_id), requestNo: o.request_no ?? '-',
+    branch: o.branch?.name ?? '-', vendorId: o.vendor_id ?? null, vendorName: o.vendor_name ?? '-', orderedAt: o.ordered_at,
+    approvedBy: o.approved_by ?? '-', expectedAt: o.expected_at ?? null, status: o.status as PurchaseOrderStatus,
+    closeReason: o.close_reason ?? null, closedBy: o.closed_by ?? null, closedAt: o.closed_at ?? null,
+    canEdit: !!o.can_edit, canEditQty: !!o.can_edit_qty, canInward: !!o.can_inward, canCancel: !!o.can_cancel, canClose: !!o.can_close,
+    items: ((o.items ?? []) as any[]).map((i): PurchaseLineItem => ({
+      id: str(i.id), productId: str(i.product_id), productCode: i.product_code, productName: i.product_name,
+      unitPrice: num(i.unit_price), gstPercent: num(i.gst_percent), requestedQty: num(i.requested_qty), receivedQty: num(i.received_qty),
+      closedQty: num(i.closed_qty), pendingQty: num(i.pending_qty), batchNo: i.batch_no,
+    })),
+  };
 }
 
-const DEMO_VENDORS = [
-  { id: 1, name: 'Derma Supplies Pvt Ltd' },
-  { id: 2, name: 'Hair Care Distributors' },
-];
-
-const DEMO_PRODUCTS: PurchaseOption[] = [
-  { id: 'demo-1', code: 'PRD-001', name: 'Hyaluronic Acid Serum', vendorId: 1, unitPrice: 450, gstPercent: 18 },
-  { id: 'demo-2', code: 'PRD-002', name: 'Vitamin C Face Wash', vendorId: 1, unitPrice: 220, gstPercent: 18 },
-  { id: 'demo-3', code: 'PRD-003', name: 'Minoxidil 5% Solution', vendorId: 2, unitPrice: 610, gstPercent: 12 },
-  { id: 'demo-4', code: 'PRD-004', name: 'Biotin Hair Shampoo', vendorId: 2, unitPrice: 330, gstPercent: 18 },
-];
-
-function seedState(): PurchaseState {
-  const day = 24 * 60 * 60 * 1000;
-  const at = (daysAgo: number) => new Date(Date.now() - daysAgo * day).toISOString();
-  const item = (p: PurchaseOption, requestedQty: number, receivedQty = 0): PurchaseLineItem => ({
-    productId: p.id, productCode: p.code, productName: p.name, unitPrice: p.unitPrice, gstPercent: p.gstPercent, requestedQty, receivedQty,
-  });
-  const [serum, wash, minox, shampoo] = DEMO_PRODUCTS;
-  const year = new Date().getFullYear();
-
+function toInwardLine(l: any): InwardLine {
   return {
-    requests: [
-      { id: 'PR-seed-3', requestNo: `PR-${year}-0003`, branch: 'Velachery', vendorId: 2, vendorName: DEMO_VENDORS[1].name, requestedBy: 'Priya Sharma', requestedAt: at(0), requiredBy: at(-5), priority: 'Urgent', remarks: 'Weekend bookings are high, need stock before Saturday.', items: [item(minox, 40), item(shampoo, 25)], status: 'Pending' },
-      { id: 'PR-seed-2', requestNo: `PR-${year}-0002`, branch: 'Adyar', vendorId: 1, vendorName: DEMO_VENDORS[0].name, requestedBy: 'Karthik R', requestedAt: at(4), requiredBy: null, priority: 'Low', remarks: 'Trial stock.', items: [item(wash, 10)], status: 'Rejected', reviewedBy: 'Branch Head', reviewedAt: at(3), reviewRemarks: 'Central store already has enough stock - raise a transfer instead.' },
-      { id: 'PR-seed-1', requestNo: `PR-${year}-0001`, branch: 'Anna Nagar', vendorId: 1, vendorName: DEMO_VENDORS[0].name, requestedBy: 'Anitha M', requestedAt: at(6), requiredBy: at(1), priority: 'Normal', remarks: 'Monthly replenishment.', items: [item(serum, 50), item(wash, 30)], status: 'Approved', reviewedBy: 'Branch Head', reviewedAt: at(5), reviewRemarks: 'Approved.', poId: 'PO-seed-1' },
-    ],
-    orders: [
-      { id: 'PO-seed-1', poNo: `PO-${year}-0001`, invoiceNo: `INV-${year}-0001`, requestId: 'PR-seed-1', requestNo: `PR-${year}-0001`, branch: 'Anna Nagar', vendorId: 1, vendorName: DEMO_VENDORS[0].name, orderedAt: at(5), approvedBy: 'Branch Head', expectedAt: at(2), items: [{ ...item(serum, 50, 35), batchNo: 'HAS-2409' }, { ...item(wash, 30, 28), batchNo: 'VCF-1182' }], status: 'Partially Received' },
-    ],
-    inwards: [
-      { id: 'GRN-seed-1', grnNo: `GRN-${year}-0001`, poId: 'PO-seed-1', poNo: `PO-${year}-0001`, vendorName: DEMO_VENDORS[0].name, store: CENTRAL_STORE, receivedBy: 'Store Keeper', receivedAt: at(2), vendorInvoiceNo: 'DSP/7781', isPartial: true, noteId: 'NT-seed-1',
-        lines: [
-          { productId: serum.id, productName: serum.name, batchNo: 'HAS-2409', mfgDate: at(60), expiryDate: at(-640), orderedQty: 50, previousQty: 0, receivedQty: 35, damagedQty: 0, unitPrice: serum.unitPrice },
-          { productId: wash.id, productName: wash.name, batchNo: 'VCF-1182', mfgDate: at(45), expiryDate: at(-500), orderedQty: 30, previousQty: 0, receivedQty: 30, damagedQty: 2, unitPrice: wash.unitPrice },
-        ] },
-    ],
-    returns: [],
-    notes: [
-      { id: 'NT-seed-1', noteNo: `DN-${year}-0001`, type: 'Debit Note', vendorName: DEMO_VENDORS[0].name, poNo: `PO-${year}-0001`, grnNo: `GRN-${year}-0001`, reason: '2 face wash bottles damaged in transit; 15 serum units short.', amount: 2 * wash.unitPrice + 15 * serum.unitPrice, createdAt: at(2), status: 'Open' },
-    ],
-    stock: [
-      { id: 'STK-seed-1', store: CENTRAL_STORE, productId: serum.id, productCode: serum.code, productName: serum.name, batchNo: 'HAS-2409', expiryDate: at(-640), qty: 23, unitPrice: serum.unitPrice },
-      { id: 'STK-seed-2', store: CENTRAL_STORE, productId: wash.id, productCode: wash.code, productName: wash.name, batchNo: 'VCF-1182', expiryDate: at(-500), qty: 20, unitPrice: wash.unitPrice },
-      { id: 'STK-seed-3', store: CENTRAL_STORE, productId: minox.id, productCode: minox.code, productName: minox.name, batchNo: 'MNX-0931', expiryDate: at(-300), qty: 6, unitPrice: minox.unitPrice },
-      { id: 'STK-seed-4', store: 'Anna Nagar', productId: serum.id, productCode: serum.code, productName: serum.name, batchNo: 'HAS-2409', expiryDate: at(-640), qty: 4, unitPrice: serum.unitPrice },
-      { id: 'STK-seed-5', store: 'Anna Nagar', productId: wash.id, productCode: wash.code, productName: wash.name, batchNo: 'VCF-1182', expiryDate: at(-500), qty: 6, unitPrice: wash.unitPrice },
-      { id: 'STK-seed-6', store: 'Velachery', productId: serum.id, productCode: serum.code, productName: serum.name, batchNo: 'HAS-2409', expiryDate: at(-640), qty: 8, unitPrice: serum.unitPrice },
-    ],
-    transfers: [
-      { id: 'TR-seed-2', transferNo: `ST-${year}-0002`, fromStore: CENTRAL_STORE, toStore: 'Velachery', productName: serum.name, batchNo: 'HAS-2409', qty: 8, transferredBy: 'Store Keeper', transferredAt: at(1), remarks: '' },
-      { id: 'TR-seed-1', transferNo: `ST-${year}-0001`, fromStore: CENTRAL_STORE, toStore: 'Anna Nagar', productName: serum.name, batchNo: 'HAS-2409', qty: 4, transferredBy: 'Store Keeper', transferredAt: at(1), remarks: 'Urgent top-up' },
-    ],
+    productId: str(l.product_id), productName: l.product_name, batchNo: l.batch_no ?? '', mfgDate: l.mfg_date ?? null,
+    expiryDate: l.expiry_date ?? null, orderedQty: num(l.ordered_qty), previousQty: num(l.previous_qty), receivedQty: num(l.received_qty),
+    damagedQty: num(l.damaged_qty), freeQty: num(l.free_qty), unitPrice: num(l.unit_price), discountPercent: num(l.discount_percent),
+    gstPercent: num(l.gst_percent), sellingPrice: l.selling_price === null || l.selling_price === undefined ? null : num(l.selling_price),
+    lineTotal: num(l.line_total),
+  };
+}
+
+function toInward(g: any): GoodsInward {
+  return {
+    id: str(g.id), grnNo: g.grn_no, poId: str(g.po_id), poNo: g.po_no ?? '-', vendorName: g.vendor_name ?? '-',
+    store: g.store ?? CENTRAL_STORE, storeId: g.store_id ?? null, receivedBy: g.received_by ?? '-', receivedAt: g.received_at,
+    vendorInvoiceNo: g.vendor_invoice_no ?? '', isPartial: !!g.is_partial, noteId: g.note_id ? str(g.note_id) : undefined,
+    noteNo: g.note_no ?? undefined, status: (g.status ?? 'Posted') as DocumentStatus, billDate: g.bill_date ?? null,
+    freight: num(g.freight), otherCharges: num(g.other_charges), cashDiscount: num(g.cash_discount), roundOff: num(g.round_off),
+    netAmount: num(g.net_amount), remarks: g.remarks ?? '', cancelReason: g.cancel_reason ?? null, canCancel: !!g.can_cancel,
+    lines: ((g.lines ?? []) as any[]).map(toInwardLine),
+  };
+}
+
+function toReturn(r: any): PurchaseReturn {
+  return {
+    id: str(r.id), returnNo: r.return_no, grnId: str(r.grn_id), grnNo: r.grn_no ?? '-', poNo: r.po_no ?? '-',
+    vendorName: r.vendor_name ?? '-', store: r.store ?? CENTRAL_STORE, storeId: r.store_id ?? null, reason: r.reason,
+    returnType: (r.return_type ?? 'Debit Note') as PurchaseReturnType, remarks: r.remarks ?? '', returnedBy: r.returned_by ?? '-',
+    returnedAt: r.returned_at, noteId: r.note_id ? str(r.note_id) : undefined, noteNo: r.note_no ?? undefined,
+    status: (r.status ?? 'Posted') as DocumentStatus, cancelReason: r.cancel_reason ?? null, canCancel: !!r.can_cancel,
+    lines: ((r.lines ?? []) as any[]).map(l => ({ productId: str(l.product_id), productName: l.product_name, batchNo: l.batch_no, qty: num(l.qty), unitPrice: num(l.unit_price) })),
+  };
+}
+
+function toNote(n: any): VendorNote {
+  return {
+    id: str(n.id), noteNo: n.note_no, type: n.type as VendorNoteType, vendorId: n.vendor_id ?? null, vendorName: n.vendor_name ?? '-',
+    poNo: n.po_no ?? '-', grnNo: n.grn_no ?? '-', returnNo: n.return_no ?? undefined, reason: n.reason ?? '', amount: num(n.amount),
+    createdAt: n.created_at, status: n.status as VendorNoteStatus,
+  };
+}
+
+function toBatch(b: any): StockBatch {
+  return {
+    id: str(b.id), store: b.store ?? CENTRAL_STORE, storeId: b.store_id ?? null, productId: str(b.product_id), productCode: b.product_code ?? '',
+    productName: b.product_name, batchNo: b.batch_no, expiryDate: b.expiry_date ?? null, qty: num(b.qty), unitPrice: num(b.unit_price),
+    sellingPrice: b.selling_price === null || b.selling_price === undefined ? null : num(b.selling_price),
+  };
+}
+
+function toTransfer(t: any): StockTransfer {
+  return {
+    id: str(t.id), transferNo: t.transfer_no, kind: t.kind === 'Return' ? 'Return' : 'Transfer', status: t.status as TransferStatus,
+    fromStoreId: t.from_store_id ?? null, fromStore: t.from_store, toStoreId: t.to_store_id ?? null, toStore: t.to_store,
+    qty: num(t.qty), acceptedQty: num(t.accepted_qty), rejectedQty: num(t.rejected_qty), pendingQty: num(t.pending_qty),
+    transferredBy: t.transferred_by ?? '-', transferredAt: t.transferred_at, remarks: t.remarks ?? '',
+    receivedBy: t.received_by ?? null, receivedAt: t.received_at ?? null, cancelReason: t.cancel_reason ?? null,
+    canReceive: !!t.can_receive, canCancel: !!t.can_cancel,
+    lines: ((t.lines ?? []) as any[]).map(l => ({
+      id: str(l.id), productId: str(l.product_id), productName: l.product_name, batchNo: l.batch_no, expiryDate: l.expiry_date ?? null,
+      qty: num(l.qty), acceptedQty: num(l.accepted_qty), rejectedQty: num(l.rejected_qty), pendingQty: num(l.pending_qty),
+      rejectReason: l.reject_reason ?? null,
+    })),
   };
 }

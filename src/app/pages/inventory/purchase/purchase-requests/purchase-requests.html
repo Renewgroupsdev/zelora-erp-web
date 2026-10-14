@@ -32,7 +32,7 @@
 
   <app-common-filter-card
     searchPlaceholder="Search by request no, vendor or requester"
-    [filters]="filters"
+    [filters]="pageFilters()"
     [showExport]="false"
     (searchChange)="onSearch($event)"
     (filtersChange)="onFiltersChange($event)"
@@ -42,6 +42,7 @@
     <app-common-table-card
       [recordCountText]="recordCountText"
       [columns]="columns"
+      [loading]="purchase.loading()"
       [rows]="rows"
       [totalRecords]="totalRecords"
       [pageSize]="pageSize"

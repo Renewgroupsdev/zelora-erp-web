@@ -118,3 +118,28 @@
     font-size: 11px;
   }
 }
+
+// Four-up rows (header, bill summary). Collapses like the shared .cols-3.
+.form-grid.cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .form-grid.cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .form-grid.cols-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.info-grid {
+  margin-top: 8px;
+}
+
+.inward-table .cell-input.qty {
+  min-width: 64px;
+}

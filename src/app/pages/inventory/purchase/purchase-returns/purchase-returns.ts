@@ -5,9 +5,9 @@ import Swal from 'sweetalert2';
 import { CommonDetailCard } from '../../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../../shared/components/common-table-card/common-table-card';
-import { DetailCardData, FilterOption, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
-import { PURCHASE_RETURN_REASONS, displayDate, inr } from '../../../../shared/models/purchase.model';
-import { PurchaseListBase } from '../purchase-list-base';
+import { DetailCardData, FilterOption, QuickAction, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
+import { displayDate, inr } from '../../../../shared/models/purchase.model';
+import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { PurchaseReturnForm } from './purchase-return-form/purchase-return-form';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
@@ -22,12 +22,13 @@ import { CanActionDirective } from '../../../../shared/directives/can-action.dir
 })
 export class PurchaseReturns extends PurchaseListBase {
   protected readonly noun = 'returns';
-  protected override filterFields = { status: 'reason', source: 'vendor', branch: ['store'] };
+  protected readonly collections: PurchaseCollection[] = ['returns', 'notes'];
+  protected override filterFields = { status: 'status', source: 'vendor', branch: ['store'] };
 
   readonly returnFilters = computed<FilterOption[]>(() => [
-    { key: 'status', label: 'Reason', options: [...PURCHASE_RETURN_REASONS] },
+    { key: 'status', label: 'Status', options: ['Posted', 'Cancelled'] },
     { key: 'source', label: 'Vendor', options: [...new Set(this.purchase.returns().map(r => r.vendorName))] },
-    { key: 'branch', label: 'Store', options: this.purchase.stores, multiSelect: true },
+    { key: 'branch', label: 'Store', options: this.purchase.stores(), multiSelect: true },
   ]);
 
   columns: TableColumn[] = [
@@ -36,18 +37,21 @@ export class PurchaseReturns extends PurchaseListBase {
     { key: 'poNo', header: 'PO No', width: '10%' },
     { key: 'vendor', header: 'Vendor', width: '13%' },
     { key: 'store', header: 'Returned From', type: 'branch', width: '10%' },
-    { key: 'items', header: 'Product · Batch', width: '15%' },
+    { key: 'items', header: 'Product · Batch', width: '13%' },
     { key: 'qty', header: 'Qty', width: '5%' },
-    { key: 'value', header: 'Value', width: '8%' },
-    { key: 'reason', header: 'Reason', type: 'badge', width: '10%' },
-    { key: 'noteNo', header: 'Debit Note', width: '8%' },
-    { key: 'returnedAt', header: 'Date', width: '8%' },
+    { key: 'value', header: 'Value', width: '7%' },
+    { key: 'reason', header: 'Reason', width: '9%' },
+    { key: 'returnType', header: 'Type', type: 'badge', width: '8%' },
+    { key: 'noteNo', header: 'Debit Note', width: '7%' },
+    { key: 'returnedAt', header: 'Date', width: '7%' },
+    { key: 'status', header: 'Status', type: 'badge', width: '6%' },
+    { key: 'actions', header: 'Action', type: 'quickActions', width: '6%', sortable: false },
   ];
 
   override sortActive = 'returnedAt';
 
   readonly stats = computed<DetailCardData[]>(() => {
-    const list = this.purchase.returns();
+    const list = this.purchase.returns().filter(r => r.status === 'Posted');
     const lines = list.flatMap(r => r.lines);
     const noteIds = new Set(list.map(r => r.noteId).filter(Boolean));
     return [
@@ -59,10 +63,11 @@ export class PurchaseReturns extends PurchaseListBase {
   });
 
   protected allRows(): TableRow[] {
-    const notes = this.purchase.notes();
     return this.purchase.returns().map(r => {
       const qty = r.lines.reduce((s, l) => s + l.qty, 0);
       const value = r.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
+      const actions: QuickAction[] = [{ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Return slip (PDF)' }];
+      if (r.canCancel) actions.push({ key: 'cancel', icon: 'bi-x-circle', label: 'Cancel Return', variant: 'danger' });
       return {
         id: r.id,
         returnNo: r.returnNo,
@@ -74,7 +79,10 @@ export class PurchaseReturns extends PurchaseListBase {
         qty: String(qty), __qty: qty,
         value: inr(value), __value: value,
         reason: r.reason,
-        noteNo: notes.find(n => n.id === r.noteId)?.noteNo ?? '-',
+        returnType: r.returnType,
+        noteNo: r.noteNo ?? '-',
+        status: r.status,
+        actions,
         returnedAt: displayDate(r.returnedAt),
         __returnedAt: r.returnedAt,
         __date: r.returnedAt,
@@ -83,11 +91,25 @@ export class PurchaseReturns extends PurchaseListBase {
     });
   }
 
-  newReturn(): void {
-    if (!this.purchase.returnableInwards().length) {
+  async newReturn(): Promise<void> {
+    if (!(await this.purchase.returnableInwards()).length) {
       Swal.fire({ icon: 'info', title: 'Nothing to return', text: 'No purchase inward has stock left that can be returned to the vendor.', confirmButtonColor: '#6C63FF' });
       return;
     }
-    this.openDialog(PurchaseReturnForm, {}, '980px');
+    this.openDialog(PurchaseReturnForm, {}, '1040px');
+  }
+
+  async onQuickAction(event: { row: TableRow; action: string }): Promise<void> {
+    const ret = this.purchase.returns().find(r => r.id === String(event.row['id']));
+    if (!ret) return;
+    if (event.action === 'pdf') {
+      void this.purchase.openPdf('purchase-return', ret.id);
+      return;
+    }
+    if (event.action === 'cancel') {
+      const what = ret.returnType === 'Replacement' ? 'and the replacement is no longer expected on the PO' : ret.noteNo ? `and ${ret.noteNo} is cancelled` : '';
+      const reason = await this.purchase.askReason(`Cancel ${ret.returnNo}?`, `The returned units come back into ${ret.store} ${what}.`.replace(/\s+\./, '.'), 'Cancel Return');
+      if (reason) await this.purchase.cancelReturn(ret.id, reason);
+    }
   }
 }

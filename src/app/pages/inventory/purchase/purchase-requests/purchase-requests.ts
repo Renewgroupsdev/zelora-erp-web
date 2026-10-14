@@ -4,10 +4,10 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { CommonDetailCard } from '../../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../../shared/components/common-table-card/common-table-card';
-import { DetailCardData, QuickAction, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
+import { DetailCardData, FilterOption, QuickAction, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
 import { displayDate, inr, lineTotals } from '../../../../shared/models/purchase.model';
 import { PurchaseInvoice } from '../purchase-orders/purchase-invoice/purchase-invoice';
-import { PurchaseListBase } from '../purchase-list-base';
+import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { PurchaseRequestForm } from './purchase-request-form/purchase-request-form';
 import { PurchaseRequestReview, ReviewResult } from './purchase-request-review/purchase-request-review';
@@ -22,11 +22,12 @@ import { CanActionDirective } from '../../../../shared/directives/can-action.dir
 })
 export class PurchaseRequests extends PurchaseListBase {
   protected readonly noun = 'requests';
+  protected readonly collections: PurchaseCollection[] = ['requests'];
 
-  override filters = [
+  readonly pageFilters = computed<FilterOption[]>(() => [
     { key: 'status', label: 'Status', options: ['Pending', 'Approved', 'Rejected'] },
-    { key: 'branch', label: 'Branch', options: this.purchase.branches, multiSelect: true },
-  ];
+    { key: 'branch', label: 'Branch', options: this.purchase.branches(), multiSelect: true },
+  ]);
 
   columns: TableColumn[] = [
     { key: 'requestNo', header: 'Request No', width: '11%' },
@@ -60,7 +61,8 @@ export class PurchaseRequests extends PurchaseListBase {
       const total = lineTotals(r.items).grandTotal;
       const actions: QuickAction[] = [{ key: 'view', icon: 'bi-eye-fill', label: 'View details' }];
       if (r.status === 'Pending' && canApprove) actions.push({ key: 'review', icon: 'bi-check2-square', label: 'Approve / Reject', variant: 'primary' });
-      if (r.poId) actions.push({ key: 'invoice', icon: 'bi-file-earmark-pdf-fill', label: 'View PO / Invoice' });
+      if (r.poId) actions.push({ key: 'invoice', icon: 'bi-receipt', label: 'View PO / Invoice' });
+      actions.push({ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Print request (PDF)' });
       return {
         id: r.id,
         requestNo: r.requestNo,
@@ -88,8 +90,12 @@ export class PurchaseRequests extends PurchaseListBase {
     const request = this.purchase.requests().find(r => r.id === event.row['id']);
     if (!request) return;
 
+    if (event.action === 'pdf') {
+      void this.purchase.openPdf('purchase-request', request.id);
+      return;
+    }
     if (event.action === 'invoice' && request.poId) {
-      this.openDialog(PurchaseInvoice, { orderId: request.poId }, '860px');
+      void this.openInvoice(request.poId);
       return;
     }
 
@@ -97,7 +103,13 @@ export class PurchaseRequests extends PurchaseListBase {
       .afterClosed()
       .subscribe(result => {
         // Approving confirms the PO - show the generated invoice straight away.
-        if (result?.action === 'approved' && result.order) this.openDialog(PurchaseInvoice, { orderId: result.order.id }, '860px');
+        if (result?.action === 'approved' && result.order) void this.openInvoice(result.order.id);
       });
+  }
+
+  /** The invoice reads the PO from the orders list, which this tab does not load - fetch it first. */
+  private async openInvoice(orderId: string): Promise<void> {
+    await this.purchase.reload('orders');
+    if (this.purchase.orders().some(o => o.id === orderId)) this.openDialog(PurchaseInvoice, { orderId }, '860px');
   }
 }

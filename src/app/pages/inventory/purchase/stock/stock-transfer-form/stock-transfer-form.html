@@ -4,60 +4,35 @@
     <div class="modal-title-wrap">
       <div class="title-icon"><i class="bi bi-arrow-left-right"></i></div>
       <div class="title-content">
-        <h2>Stock Transfer</h2>
-        <p>Move batch stock from the central store to a branch store</p>
+        <h2>{{ kind() }}</h2>
+        <p>Stock leaves the source now and stays in transit until the receiving store accepts it</p>
       </div>
     </div>
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 
   <div class="modal-body-custom">
-    <div class="form-grid">
+    <div class="form-grid cols-3">
       <div class="form-field">
         <label for="st-from">From Store <span>*</span></label>
         <div class="input-wrap">
           <i class="bi bi-building"></i>
-          <select id="st-from" [ngModel]="fromStore()" (ngModelChange)="setFrom($event)">
-            @for (s of purchase.stores; track s) { <option [value]="s">{{ s }}</option> }
+          <select id="st-from" [ngModel]="fromStoreId()" (ngModelChange)="setFrom($event)">
+            @for (s of purchase.storeOptions(); track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
           </select>
           <i class="bi bi-chevron-down select-arrow"></i>
         </div>
       </div>
 
       <div class="form-field">
-        <label for="st-to">To Branch Store <span>*</span></label>
+        <label for="st-to">To Store <span>*</span></label>
         <div class="input-wrap">
           <i class="bi bi-shop"></i>
-          <select id="st-to" [(ngModel)]="toStore">
-            @for (s of targets(); track s) { <option [value]="s">{{ s }}</option> }
+          <select id="st-to" [ngModel]="toStoreId" (ngModelChange)="setTo($event)">
+            @for (s of targets(); track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
           </select>
           <i class="bi bi-chevron-down select-arrow"></i>
         </div>
-      </div>
-
-      <div class="form-field full-width">
-        <label for="st-batch">Product &amp; Batch <span>*</span></label>
-        <div class="input-wrap">
-          <i class="bi bi-upc-scan"></i>
-          <select id="st-batch" [ngModel]="batchId()" (ngModelChange)="batchId.set($event)" [class.is-invalid]="submitted() && !batch()">
-            <option [ngValue]="null">Select product batch</option>
-            @for (b of batches(); track b.id) {
-              <option [ngValue]="b.id">{{ b.productName }} · {{ b.batchNo }} · {{ b.qty }} in stock · exp {{ displayDate(b.expiryDate) }}</option>
-            }
-          </select>
-          <i class="bi bi-chevron-down select-arrow"></i>
-        </div>
-        @if (submitted() && !batch()) { <small class="error-text">Select a batch to transfer.</small> }
-        @if (!batches().length) { <small class="error-text">No stock available in {{ fromStore() }}.</small> }
-      </div>
-
-      <div class="form-field">
-        <label for="st-qty">Transfer Qty <span>*</span></label>
-        <div class="input-wrap">
-          <i class="bi bi-123"></i>
-          <input id="st-qty" type="number" min="1" [max]="batch()?.qty ?? null" placeholder="0" [(ngModel)]="qty" [class.is-invalid]="submitted() && qtyError()" />
-        </div>
-        @if (submitted() && qtyError()) { <small class="error-text">{{ qtyError() }}</small> }
       </div>
 
       <div class="form-field">
@@ -69,27 +44,56 @@
       </div>
     </div>
 
-    @if (batch(); as b) {
-      <div class="section-title"><i class="bi bi-clipboard-data"></i> After Transfer</div>
-      <div class="info-grid">
-        <div><small>Batch {{ b.batchNo }} left</small><strong>{{ remaining() }}</strong></div>
-        <div>
-          <small>{{ fromStore() }} total</small>
-          <strong><span class="pill" [class.red]="sourceTotalAfter() < threshold" [class.green]="sourceTotalAfter() >= threshold">{{ sourceTotalAfter() }}</span></strong>
-        </div>
-        <div>
-          <small>{{ toStore }} total</small>
-          <strong><span class="pill" [class.red]="targetTotalAfter() < threshold" [class.green]="targetTotalAfter() >= threshold">{{ targetTotalAfter() }}</span></strong>
-        </div>
+    <div class="section-title"><i class="bi bi-upc-scan"></i> Products &amp; Batches</div>
+    @if (!batches().length) {
+      <div class="empty-note"><i class="bi bi-inbox"></i> No stock available in {{ purchase.storeName(fromStoreId()) }}.</div>
+    } @else {
+      <div class="items-table-wrap">
+        <table class="items-table">
+          <thead>
+            <tr><th style="width:48%">Product · Batch (earliest expiry first)</th><th class="num">Available</th><th>Transfer Qty</th><th class="num">Store total after</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track $index; let i = $index) {
+              <tr>
+                <td>
+                  <select class="cell-input" [(ngModel)]="row.batchId" (ngModelChange)="touch()" [class.is-invalid]="submitted() && !batch(row)">
+                    <option [ngValue]="null">Select product batch</option>
+                    @for (b of options(i); track b.id) {
+                      <option [ngValue]="b.id">{{ b.productName }} · {{ b.batchNo }} · exp {{ displayDate(b.expiryDate) }}</option>
+                    }
+                  </select>
+                </td>
+                <td class="num">{{ batch(row)?.qty ?? '-' }}</td>
+                <td><input class="cell-input qty" type="number" min="1" [max]="batch(row)?.qty ?? null" placeholder="0" [(ngModel)]="row.qty" (ngModelChange)="touch()" [class.is-invalid]="submitted() && !!rowError(row)" /></td>
+                <td class="num">
+                  @if (batch(row)) {
+                    <span class="pill" [class.red]="sourceAfter(row) < purchase.threshold()" [class.green]="sourceAfter(row) >= purchase.threshold()">{{ sourceAfter(row) }}</span>
+                  }
+                </td>
+                <td class="row-actions">
+                  <button type="button" class="icon-btn" [disabled]="rows().length === 1" (click)="removeRow(i)" aria-label="Remove line"><i class="bi bi-trash3"></i></button>
+                </td>
+              </tr>
+              @if (submitted() && rowError(row); as err) {
+                <tr class="error-row"><td colspan="5"><i class="bi bi-exclamation-circle"></i> Line {{ i + 1 }}: {{ err }}</td></tr>
+              }
+            }
+          </tbody>
+        </table>
       </div>
-      @if (sourceTotalAfter() < threshold) {
-        <p class="error-text" style="font-size: 11px"><i class="bi bi-exclamation-triangle"></i> {{ fromStore() }} will drop below {{ threshold }} units. The branch head gets a low-stock alert.</p>
-      }
+      <button type="button" class="link-btn" style="margin-top: 6px" [disabled]="rows().length >= batches().length" (click)="addRow()"><i class="bi bi-plus-lg"></i> Add product</button>
+
+      <div class="qty-summary">
+        <span><i class="bi bi-box-seam"></i> Lines <strong>{{ rows().length }}</strong></span>
+        <span class="ok"><i class="bi bi-truck"></i> Units to dispatch <strong>{{ totalQty() }}</strong></span>
+      </div>
     }
   </div>
 
   <div class="modal-footer-custom">
+    <span class="footer-note"><i class="bi bi-info-circle"></i> {{ purchase.storeName(toStoreId) }} accepts or rejects each line; rejected units come back here.</span>
     <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
-    <button type="button" class="save-btn" (click)="save()"><i class="bi bi-arrow-left-right"></i> Transfer Stock</button>
+    <button type="button" class="save-btn" [disabled]="!batches().length || saving()" (click)="save()"><i class="bi bi-truck"></i> Dispatch</button>
   </div>
 </div>

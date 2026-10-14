@@ -1,0 +1,64 @@
+@let o = order();
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-pencil-square"></i></div>
+      <div class="title-content">
+        <h2>Edit PO · {{ o.poNo }}</h2>
+        <p>{{ o.vendorName }} · {{ o.canEditQty ? 'quantities can change until goods are received' : 'goods received - only the expected date can change' }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="po-expected">Expected Delivery</label>
+        <div class="input-wrap">
+          <i class="bi bi-calendar-event"></i>
+          <input id="po-expected" type="date" [min]="today" [(ngModel)]="expectedAt" [class.is-invalid]="submitted() && !!expectedAt && expectedAt < today" />
+        </div>
+        @if (submitted() && expectedAt && expectedAt < today) { <small class="error-text">Expected date cannot be in the past.</small> }
+      </div>
+    </div>
+
+    <div class="section-title"><i class="bi bi-list-ul"></i> Order Lines</div>
+    <div class="items-table-wrap">
+      <table class="items-table">
+        <thead>
+          <tr><th>Product</th><th>Batch</th><th class="num">Rate</th><th class="num">GST %</th><th>Qty</th><th class="num">Received</th></tr>
+        </thead>
+        <tbody>
+          @for (i of o.items; track i.id) {
+            <tr>
+              <td><strong>{{ i.productName }}</strong><div class="muted">{{ i.productCode }}</div></td>
+              <td>{{ i.batchNo }}</td>
+              <td class="num">{{ inr(i.unitPrice) }}</td>
+              <td class="num">{{ i.gstPercent }}</td>
+              <td>
+                @if (o.canEditQty) {
+                  <input class="cell-input qty" type="number" min="1" [ngModel]="qty()[i.id!]" (ngModelChange)="setQty(i.id!, $event)" [class.is-invalid]="!!qtyError(i.id!)" />
+                } @else { {{ i.requestedQty }} }
+              </td>
+              <td class="num">{{ i.receivedQty }}</td>
+            </tr>
+            @if (o.canEditQty && qtyError(i.id!); as err) {
+              <tr class="error-row"><td colspan="6"><i class="bi bi-exclamation-circle"></i> {{ i.productName }}: {{ err }}</td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="info-grid">
+      <div><small>Sub total</small><strong>{{ inr(totals().subTotal) }}</strong></div>
+      <div><small>GST</small><strong>{{ inr(totals().gst) }}</strong></div>
+      <div><small>Grand total</small><strong>{{ inr(totals().grandTotal) }}</strong></div>
+    </div>
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+    <button type="button" class="save-btn" [disabled]="saving()" (click)="save()"><i class="bi bi-check2"></i> Save Changes</button>
+  </div>
+</div>

@@ -1,10 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
-import { CENTRAL_STORE, PurchaseOption, Priority, lineTotals } from '../../../../../shared/models/purchase.model';
+import { PurchaseOption, Priority, lineTotals } from '../../../../../shared/models/purchase.model';
 
 @Component({
   selector: 'app-purchase-request-form',
@@ -18,20 +18,34 @@ export class PurchaseRequestForm {
   private readonly dialogRef = inject(MatDialogRef<PurchaseRequestForm>);
   readonly purchase = inject(PurchaseService);
 
-  readonly vendors = toSignal(this.purchase.vendorOptions(), { initialValue: [] });
+  readonly vendors = this.purchase.vendors;
   readonly products = toSignal(this.purchase.productOptions(), { initialValue: [] as PurchaseOption[] });
   readonly submitted = signal(false);
+  readonly saving = signal(false);
   readonly priorities: Priority[] = ['Low', 'Normal', 'Urgent'];
   readonly today = new Date().toISOString().slice(0, 10);
 
   readonly form = this.fb.group({
-    branch: [this.purchase.branches[0], Validators.required],
+    branchId: [null as number | null, Validators.required],
     vendorId: [null as number | null, Validators.required],
     requiredBy: [null as string | null],
     priority: ['Normal' as Priority],
     remarks: ['', Validators.maxLength(255)],
     items: this.fb.array([this.newItem()]),
   });
+
+  constructor() {
+    // On-hand qty shown per line; stock is not part of the Purchase Requests tab load.
+    void this.purchase.reload('stock');
+    // Default to the user's own branch (else the first branch) once the store list has loaded.
+    effect(() => {
+      const branches = this.purchase.branchOptions();
+      const control = this.form.controls.branchId;
+      if (control.value !== null || !branches.length) return;
+      const mine = branches.find(b => b.id === this.purchase.meta().userStoreId);
+      control.setValue((mine ?? branches[0]).id);
+    });
+  }
 
   get items(): FormArray {
     return this.form.controls.items;
@@ -58,7 +72,7 @@ export class PurchaseRequestForm {
 
   centralQty(index: number): number {
     const p = this.product(index);
-    return p ? this.purchase.storeQty(CENTRAL_STORE, p.id) : 0;
+    return p ? this.purchase.storeQtyById(null, p.id) : 0;
   }
 
   lineAmount(index: number): number {
@@ -100,28 +114,27 @@ export class PurchaseRequestForm {
     return !!c && c.invalid && (c.touched || this.submitted());
   }
 
-  submit(): void {
+  async submit(): Promise<void> {
     this.submitted.set(true);
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
+    if (this.saving()) return;
 
     const raw = this.form.getRawValue();
-    const vendor = this.vendors().find(v => v.id === raw.vendorId);
-    this.purchase.createRequest({
-      branch: raw.branch ?? '',
+    this.saving.set(true);
+    const request = await this.purchase.createRequest({
+      orgUnitId: Number(raw.branchId),
       vendorId: raw.vendorId,
-      vendorName: vendor?.name ?? '-',
       requiredBy: raw.requiredBy,
       priority: raw.priority ?? 'Normal',
       remarks: (raw.remarks ?? '').trim(),
-      items: raw.items.map((row: { productId: string | null; qty: number | null }) => {
-        const p = this.products().find(x => x.id === row.productId)!;
-        return { productId: p.id, productCode: p.code, productName: p.name, unitPrice: p.unitPrice, gstPercent: p.gstPercent, requestedQty: Number(row.qty) };
-      }),
+      // Price + GST are taken from the product master on the server.
+      items: raw.items.map((row: { productId: string | null; qty: number | null }) => ({ productId: String(row.productId), qty: Number(row.qty) })),
     });
-    this.dialogRef.close(true);
+    this.saving.set(false);
+    if (request) this.dialogRef.close(true);
   }
 
   close(): void {
