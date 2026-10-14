@@ -1,3 +1,8 @@
+@if (loading()) {
+  <!-- Same heartbeat loader the tables use, over the page while the franchise (and its overview) loads -->
+  <app-page-loader [content]="true"></app-page-loader>
+}
+
 @if (franchise(); as f) {
   <div class="purchase-page container-fluid px-0">
 
@@ -95,7 +100,7 @@
       </div>
 
       <div class="tab-body">
-        @if (tabLoading()) { <p class="muted-note">Loading...</p> }
+        @if (tabLoading()) { <app-page-loader [contained]="true"></app-page-loader> }
         @switch (tab()) {
 
           @case ('overview') {
@@ -290,7 +295,7 @@
     </div>
   </div>
 } @else if (loading()) {
-  <div class="purchase-page container-fluid px-0"><div class="panel not-found"><i class="bi bi-arrow-repeat"></i><strong>Loading franchise...</strong></div></div>
+  <!-- Not cached yet: the page loader above covers this until the API answers -->
 } @else {
   <div class="purchase-page container-fluid px-0">
     <div class="panel not-found"><i class="bi bi-shop-window"></i><strong>Franchise not found</strong><span>It may have been removed.</span><a class="add-lead-btn" routerLink="/app/franchises">Back to franchises</a></div>

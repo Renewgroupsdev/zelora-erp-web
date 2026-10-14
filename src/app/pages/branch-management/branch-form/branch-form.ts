@@ -8,6 +8,8 @@ import { ToastService } from '../../../shared/common-services/toast.service';
 import { FileUploadService, uploadError } from '../../../shared/common-services/file-upload.service';
 import { BranchRecord, shrinkPhoto } from '../../../shared/models/branch-franchise.model';
 import { isoDate } from '../../../shared/utils/format.util';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
+import { finalize } from 'rxjs';
 
 type BranchInput = Omit<BranchRecord, 'id' | 'code'>;
 
@@ -15,9 +17,10 @@ type BranchInput = Omit<BranchRecord, 'id' | 'code'>;
 @Component({
   selector: 'app-branch-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, GeoLocationField],
+  imports: [CommonModule, FormsModule, MatDialogModule, GeoLocationField, PageLoader],
   templateUrl: './branch-form.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', '../../../shared/styles/branch-franchise-dialog.scss'],
+  styles: [':host .modal-body-custom { position: relative; }'],
 })
 export class BranchForm {
   private readonly dialogRef = inject(MatDialogRef<BranchForm, BranchRecord>);
@@ -26,31 +29,49 @@ export class BranchForm {
   private readonly uploads = inject(FileUploadService);
   private readonly toast = inject(ToastService);
 
-  readonly existing = this.data.branchId ? this.store.branch(this.data.branchId) ?? null : null;
-  readonly isEdit = !!this.existing;
+  /** Cached row first (instant header), replaced by the record fetched from the API. */
+  existing: BranchRecord | null = this.data.branchId ? this.store.branch(this.data.branchId) ?? null : null;
+  readonly isEdit = !!this.data.branchId;
   readonly submitted = signal(false);
   readonly serverError = signal<string | null>(null);
   readonly uploading = signal(false);
   readonly saving = signal(false);
+  /** Edit: the heartbeat loader covers the form until the branch is read from the API. */
+  readonly loading = signal(this.isEdit);
 
   model: BranchInput = this.existing
-    ? structuredClone((({ id, code, ...rest }) => rest)(this.existing))
+    ? toInput(this.existing)
     : { name: '', city: '', state: 'Tamil Nadu', phone: '', email: '', address: '', headName: '', headPhone: '', headEmail: '', status: 'Active', openedOn: isoDate(), latitude: null, longitude: null };
 
   /** The photo is uploaded to the server (uploads/branch_photo); replaced / unused files are cleaned up on save or close. */
-  private readonly photoDraft = this.uploads.draft('branch_photo', [this.existing?.photo]);
+  private photoDraft = this.uploads.draft('branch_photo', [this.existing?.photo]);
   private saved = false;
 
   constructor() {
     this.dialogRef.afterClosed().subscribe(() => {
       if (!this.saved) this.photoDraft.discard();
     });
+    if (this.data.branchId) this.loadBranch(this.data.branchId);
+  }
+
+  private loadBranch(id: string): void {
+    this.store.fetch(id).pipe(finalize(() => this.loading.set(false))).subscribe({
+      next: ({ branch }) => {
+        this.existing = branch;
+        this.model = toInput(branch);
+        this.photoDraft = this.uploads.draft('branch_photo', [branch.photo]);
+      },
+      error: err => {
+        this.toast.error(apiError(err, 'Failed to load the branch. Please try again.'));
+        if (!this.existing) this.dialogRef.close();
+      },
+    });
   }
 
   save(form: NgForm): void {
     this.submitted.set(true);
     this.serverError.set(null);
-    if (form.invalid || this.uploading() || this.saving()) return;
+    if (form.invalid || this.loading() || this.uploading() || this.saving()) return;
     this.saving.set(true);
     this.store.save(this.existing?.id ?? null, this.model).subscribe({
       next: branch => {
@@ -58,7 +79,7 @@ export class BranchForm {
         this.saving.set(false);
         // The API already freed the replaced photo; this drops uploads that were picked and then discarded.
         this.photoDraft.commit([this.model.photo]);
-        this.toast.success(this.existing ? 'Branch updated successfully' : 'Branch saved successfully');
+        this.toast.success(this.isEdit ? 'Branch updated successfully' : 'Branch saved successfully');
         this.dialogRef.close(branch);
       },
       error: err => {
@@ -101,4 +122,8 @@ export class BranchForm {
   close(): void {
     this.dialogRef.close();
   }
+}
+
+function toInput(branch: BranchRecord): BranchInput {
+  return structuredClone((({ id, code, ...rest }) => rest)(branch));
 }

@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { finalize } from 'rxjs';
 import { MatDialogModule } from '@angular/material/dialog';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { CommonDetailCard } from '../../../shared/components/common-detail-card/common-detail-card';
@@ -95,11 +96,15 @@ export class Employees extends HrListBase implements OnInit {
     this.openDialog(EmployeeProfile, { empId: row['id'] }, '920px');
   }
 
+  /** Table heartbeat loader while employees are fetched from the API. */
+  readonly loading = signal(false);
+
   ngOnInit(): void {
     this.hr.loadBranches().subscribe(branches => {
       this.filters = this.filters.map(f => (f.key === 'branch' ? { ...f, options: branches.map(b => b.name) } : f));
     });
-    this.hr.loadEmployees().subscribe({
+    this.loading.set(true);
+    this.hr.loadEmployees().pipe(finalize(() => this.loading.set(false))).subscribe({
       error: (err: any) => this.toast.error(err?.error?.message || 'Failed to load employees. Please try again.'),
     });
   }

@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { finalize } from 'rxjs';
 import { Router } from '@angular/router';
 import { MatDialogModule } from '@angular/material/dialog';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -43,12 +44,16 @@ export class Branches extends LocalListBase implements OnInit {
     { key: 'source', label: 'City', options: [] as string[] },
   ];
 
+  /** Table heartbeat loader while the list is fetched from the API. */
+  readonly loading = signal(false);
+
   ngOnInit(): void {
     this.reload();
   }
 
   private reload(): void {
-    this.store.load().subscribe({
+    this.loading.set(true);
+    this.store.load().pipe(finalize(() => this.loading.set(false))).subscribe({
       next: list => {
         this.filters = [this.filters[0], { key: 'source', label: 'City', options: [...new Set(list.map(b => b.city).filter(Boolean))].sort() }];
       },

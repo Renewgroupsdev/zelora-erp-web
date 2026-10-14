@@ -1,11 +1,12 @@
 import { GeoLocationCard } from '../../../shared/components/geo-location-card/geo-location-card';
 import { CommonModule } from '@angular/common';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { map } from 'rxjs';
+import { finalize, map } from 'rxjs';
 import { BranchService, BranchSummary, LabelValue, SeriesPoint } from '../../../shared/common-services/branch.service';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { BfBars } from '../../../shared/components/bf-charts/bf-bars/bf-bars';
@@ -37,7 +38,7 @@ function topGroups(rows: BfDatum[], n = 6): BfDatum[] {
 @Component({
   selector: 'app-branch-details',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatDialogModule, BfDonut, BfBars, BfColumns, HScroll, GeoLocationCard, CanActionDirective],
+  imports: [CommonModule, RouterLink, MatDialogModule, PageLoader, BfDonut, BfBars, BfColumns, HScroll, GeoLocationCard, CanActionDirective],
   templateUrl: './branch-details.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise.scss'],
 })
@@ -207,10 +208,16 @@ export class BranchDetails {
     return valid.find(t => t === wanted) ?? 'overview';
   }
 
+  /** Re-reads the header / overview after a change, behind the page loader. */
+  private refreshSummary(): void {
+    this.loading.set(true);
+    this.store.fetch(this.id()).pipe(finalize(() => this.loading.set(false))).subscribe(res => this.summary.set(res.summary));
+  }
+
   edit(): void {
     if (!this.branch()) return;
     this.dialog.open(BranchForm, { width: '860px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, disableClose: true, data: { branchId: this.branch()!.id } })
-      .afterClosed().subscribe(saved => saved && this.store.fetch(this.id()).subscribe(res => this.summary.set(res.summary)));
+      .afterClosed().subscribe(saved => saved && this.refreshSummary());
   }
 
   back(): void {

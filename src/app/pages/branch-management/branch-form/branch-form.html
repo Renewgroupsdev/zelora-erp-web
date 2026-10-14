@@ -4,7 +4,7 @@
       <div class="title-icon"><i class="bi bi-building"></i></div>
       <div class="title-content">
         <h2>{{ isEdit ? 'Edit Branch' : 'Add Branch' }}</h2>
-        <p>{{ isEdit ? existing!.code + ' · ' + existing!.name : 'A company owned branch with its branch head' }}</p>
+        <p>{{ isEdit ? (existing ? existing.code + ' · ' + existing.name : 'Loading branch...') : 'A company owned branch with its branch head' }}</p>
       </div>
     </div>
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
@@ -12,6 +12,8 @@
 
   <form #f="ngForm" (ngSubmit)="save(f)" novalidate>
     <div class="modal-body-custom">
+      <!-- Same heartbeat loader the tables use: while an edited branch loads, and while saving -->
+      @if (loading() || saving()) { <app-page-loader [contained]="true"></app-page-loader> }
       @if (serverError(); as err) { <div class="error-text" role="alert">{{ err }}</div> }
 
       <div class="section-title"><i class="bi bi-building"></i> Basic Information</div>
@@ -107,7 +109,7 @@
 
     <div class="modal-footer-custom">
       <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
-      <button type="submit" class="save-btn" [disabled]="uploading() || saving()"><i class="bi bi-floppy"></i> {{ saving() ? 'Saving...' : isEdit ? 'Update Branch' : 'Save Branch' }}</button>
+      <button type="submit" class="save-btn" [disabled]="loading() || uploading() || saving()"><i class="bi bi-floppy"></i> {{ saving() ? 'Saving...' : isEdit ? 'Update Branch' : 'Save Branch' }}</button>
     </div>
   </form>
 </div>

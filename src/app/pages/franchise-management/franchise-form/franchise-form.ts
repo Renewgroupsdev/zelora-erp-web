@@ -8,6 +8,8 @@ import { ToastService } from '../../../shared/common-services/toast.service';
 import { FileUploadService, uploadError } from '../../../shared/common-services/file-upload.service';
 import { FranchiseRecord, shrinkPhoto } from '../../../shared/models/branch-franchise.model';
 import { addDays, isoDate } from '../../../shared/utils/format.util';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
+import { finalize } from 'rxjs';
 
 type FranchiseInput = Omit<FranchiseRecord, 'id' | 'code'>;
 
@@ -15,9 +17,10 @@ type FranchiseInput = Omit<FranchiseRecord, 'id' | 'code'>;
 @Component({
   selector: 'app-franchise-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, GeoLocationField],
+  imports: [CommonModule, FormsModule, MatDialogModule, GeoLocationField, PageLoader],
   templateUrl: './franchise-form.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', '../../../shared/styles/branch-franchise-dialog.scss'],
+  styles: [':host .modal-body-custom { position: relative; }'],
 })
 export class FranchiseForm {
   private readonly dialogRef = inject(MatDialogRef<FranchiseForm, FranchiseRecord>);
@@ -26,15 +29,18 @@ export class FranchiseForm {
   private readonly uploads = inject(FileUploadService);
   private readonly toast = inject(ToastService);
 
-  readonly existing = this.data.franchiseId ? this.store.franchise(this.data.franchiseId) ?? null : null;
-  readonly isEdit = !!this.existing;
+  /** Cached row first (instant header), replaced by the record fetched from the API. */
+  existing: FranchiseRecord | null = this.data.franchiseId ? this.store.franchise(this.data.franchiseId) ?? null : null;
+  readonly isEdit = !!this.data.franchiseId;
   readonly submitted = signal(false);
   readonly serverError = signal<string | null>(null);
   readonly uploading = signal(false);
   readonly saving = signal(false);
+  /** Edit: the heartbeat loader covers the form until the franchise is read from the API. */
+  readonly loading = signal(this.isEdit);
 
   model: FranchiseInput = this.existing
-    ? structuredClone((({ id, code, ...rest }) => rest)(this.existing))
+    ? toInput(this.existing)
     : {
       name: '', ownerCompany: '', ownerName: '', ownerPhone: '', ownerEmail: '', city: '', state: 'Tamil Nadu', gstin: '', status: 'Pending',
       agreementFrom: isoDate(), agreementTo: addDays(isoDate(), 365 * 3), sharePercent: 70, shareEffectiveFrom: isoDate(), employees: 0, inventoryValue: 0,
@@ -42,12 +48,27 @@ export class FranchiseForm {
     };
 
   /** The photo is uploaded to the server (uploads/franchise_photo); replaced / unused files are cleaned up on save or close. */
-  private readonly photoDraft = this.uploads.draft('franchise_photo', [this.existing?.photo]);
+  private photoDraft = this.uploads.draft('franchise_photo', [this.existing?.photo]);
   private saved = false;
 
   constructor() {
     this.dialogRef.afterClosed().subscribe(() => {
       if (!this.saved) this.photoDraft.discard();
+    });
+    if (this.data.franchiseId) this.loadFranchise(this.data.franchiseId);
+  }
+
+  private loadFranchise(id: string): void {
+    this.store.fetch(id).pipe(finalize(() => this.loading.set(false))).subscribe({
+      next: ({ franchise }) => {
+        this.existing = franchise;
+        this.model = toInput(franchise);
+        this.photoDraft = this.uploads.draft('franchise_photo', [franchise.photo]);
+      },
+      error: err => {
+        this.toast.error(apiError(err, 'Failed to load the franchise. Please try again.'));
+        if (!this.existing) this.dialogRef.close();
+      },
     });
   }
 
@@ -67,7 +88,7 @@ export class FranchiseForm {
     this.submitted.set(true);
     this.serverError.set(null);
     const share = Number(this.model.sharePercent);
-    if (form.invalid || this.uploading() || this.saving() || !(share >= 0 && share <= 100)) return;
+    if (form.invalid || this.loading() || this.uploading() || this.saving() || !(share >= 0 && share <= 100)) return;
     const additionalOwners = (this.model.additionalOwners ?? [])
       .map(o => ({ company: o.company.trim(), name: o.name.trim(), phone: o.phone.trim(), email: o.email.trim() }))
       .filter(o => o.name);
@@ -79,7 +100,7 @@ export class FranchiseForm {
         this.saved = true;
         this.saving.set(false);
         this.photoDraft.commit([this.model.photo]);
-        this.toast.success(this.existing ? 'Franchise updated successfully' : 'Franchise saved successfully');
+        this.toast.success(this.isEdit ? 'Franchise updated successfully' : 'Franchise saved successfully');
         this.dialogRef.close(franchise);
       },
       error: err => {
@@ -118,4 +139,8 @@ export class FranchiseForm {
   close(): void {
     this.dialogRef.close();
   }
+}
+
+function toInput(franchise: FranchiseRecord): FranchiseInput {
+  return structuredClone((({ id, code, ...rest }) => rest)(franchise));
 }

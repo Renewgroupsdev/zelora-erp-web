@@ -337,7 +337,7 @@
   }
 }
 
-.tab-body { padding-top: 12px; animation: bf-rise 0.25s ease both; }
+.tab-body { position: relative; min-height: 160px; padding-top: 12px; animation: bf-rise 0.25s ease both; }
 
 .overview-grid {
   display: grid;

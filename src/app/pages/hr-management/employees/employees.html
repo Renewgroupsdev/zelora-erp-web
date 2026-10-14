@@ -31,6 +31,7 @@
 
   <div class="table-col">
     <app-common-table-card
+      [loading]="loading()"
       [recordCountText]="recordCountText"
       [columns]="columns"
       [rows]="rows"

@@ -33,6 +33,7 @@
       <div class="table-col">
         <app-common-table-card
           title="Franchises"
+          [loading]="loading()"
           [recordCountText]="recordCountText"
           [columns]="columns"
           [rows]="rows"
