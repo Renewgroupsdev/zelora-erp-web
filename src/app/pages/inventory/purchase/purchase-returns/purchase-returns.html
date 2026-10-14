@@ -32,6 +32,7 @@
     <app-common-table-card
       [recordCountText]="recordCountText"
       [columns]="columns"
+      [loading]="purchase.loading()"
       [rows]="rows"
       [totalRecords]="totalRecords"
       [pageSize]="pageSize"
@@ -42,6 +43,7 @@
       [sortDirection]="sortDirection"
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
+      (quickActionClick)="onQuickAction($event)"
     ></app-common-table-card>
   </div>
 </div>

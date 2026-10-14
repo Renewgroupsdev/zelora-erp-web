@@ -6,7 +6,7 @@ import { CommonTableCard } from '../../../../shared/components/common-table-card
 import { DetailCardData, FilterOption, QuickAction, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
 import { ToastService } from '../../../../shared/common-services/toast.service';
 import { displayDate, inr } from '../../../../shared/models/purchase.model';
-import { PurchaseListBase } from '../purchase-list-base';
+import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 
 /** Credit / debit notes raised during purchase inward / return for damaged, short or rate-difference items. */
@@ -20,9 +20,10 @@ import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 export class VendorNotes extends PurchaseListBase {
   private readonly toast = inject(ToastService);
   protected readonly noun = 'notes';
+  protected readonly collections: PurchaseCollection[] = ['notes'];
 
   readonly vendorFilters = computed<FilterOption[]>(() => [
-    { key: 'status', label: 'Status', options: ['Open', 'Adjusted'] },
+    { key: 'status', label: 'Status', options: ['Open', 'Adjusted', 'Cancelled'] },
     { key: 'source', label: 'Vendor', options: [...new Set(this.purchase.notes().map(n => n.vendorName))] },
   ]);
 
@@ -43,7 +44,7 @@ export class VendorNotes extends PurchaseListBase {
 
   readonly stats = computed<DetailCardData[]>(() => {
     const list = this.purchase.notes();
-    const sum = (type: string) => list.filter(n => n.type === type).reduce((s, n) => s + n.amount, 0);
+    const sum = (type: string) => list.filter(n => n.type === type && n.status !== 'Cancelled').reduce((s, n) => s + n.amount, 0);
     return [
       { label: 'Total Notes', value: list.length, icon: 'bi-journal-text', iconVariant: 'primary' },
       { label: 'Open Notes', value: list.filter(n => n.status === 'Open').length, icon: 'bi-hourglass-split', iconVariant: 'orange' },
@@ -54,9 +55,10 @@ export class VendorNotes extends PurchaseListBase {
 
   protected allRows(): TableRow[] {
     return this.purchase.notes().map(n => {
-      const actions: QuickAction[] = n.status === 'Open'
-        ? [{ key: 'adjust', icon: 'bi-check2-circle', label: 'Mark as adjusted', variant: 'primary' }]
-        : [{ key: 'reopen', icon: 'bi-arrow-counterclockwise', label: 'Reopen' }];
+      // Cancelled notes went with their GRN / return and stay read-only.
+      const actions: QuickAction[] = [{ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Note (PDF)' }];
+      if (n.status === 'Open' && this.purchase.canApprove()) actions.push({ key: 'adjust', icon: 'bi-check2-circle', label: 'Mark as adjusted', variant: 'primary' });
+      if (n.status === 'Adjusted' && this.purchase.canApprove()) actions.push({ key: 'reopen', icon: 'bi-arrow-counterclockwise', label: 'Reopen' });
       return {
         id: n.id,
         noteNo: n.noteNo,
@@ -77,11 +79,16 @@ export class VendorNotes extends PurchaseListBase {
 
   async onQuickAction(event: { row: TableRow; action: string }): Promise<void> {
     const id = String(event.row['id']);
-    if (event.action === 'reopen') {
-      this.purchase.setNoteStatus(id, 'Open');
+    if (event.action === 'pdf') {
+      void this.purchase.openPdf('vendor-note', id);
       return;
     }
+    if (event.action === 'reopen') {
+      await this.purchase.setNoteStatus(id, 'Open');
+      return;
+    }
+    if (event.action !== 'adjust') return;
     const ok = await this.toast.confirm('Mark note as adjusted?', `${event.row['noteNo']} will be settled against the vendor account.`, 'Yes, adjust');
-    if (ok) this.purchase.setNoteStatus(id, 'Adjusted');
+    if (ok) await this.purchase.setNoteStatus(id, 'Adjusted');
   }
 }

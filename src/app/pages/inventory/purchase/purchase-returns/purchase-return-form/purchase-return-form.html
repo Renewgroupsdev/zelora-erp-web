@@ -14,14 +14,14 @@
   </div>
 
   <div class="modal-body-custom">
-    <div class="form-grid cols-3">
+    <div class="form-grid cols-4">
       <div class="form-field">
         <label for="pr-grn">Purchase Inward (GRN) <span>*</span></label>
         <div class="input-wrap">
           <i class="bi bi-box-arrow-in-down"></i>
           <select id="pr-grn" [ngModel]="grnId()" (ngModelChange)="selectGrn($event)" [class.is-invalid]="submitted() && !g">
             <option [ngValue]="null">Select purchase inward</option>
-            @for (i of inwards; track i.id) {
+            @for (i of inwards(); track i.id) {
               <option [ngValue]="i.id">{{ i.grnNo }} · {{ i.poNo }} · {{ i.vendorName }} ({{ displayDate(i.receivedAt) }})</option>
             }
           </select>
@@ -36,11 +36,22 @@
           <i class="bi bi-flag"></i>
           <select id="pr-reason" [(ngModel)]="reason" [class.is-invalid]="submitted() && !reason">
             <option value="">Select reason</option>
-            @for (r of reasons; track r) { <option [value]="r">{{ r }}</option> }
+            @for (r of reasons(); track r) { <option [value]="r">{{ r }}</option> }
           </select>
           <i class="bi bi-chevron-down select-arrow"></i>
         </div>
         @if (submitted() && !reason) { <small class="error-text">Select a return reason.</small> }
+      </div>
+
+      <div class="form-field">
+        <label for="pr-type">Return Type <span>*</span></label>
+        <div class="input-wrap">
+          <i class="bi bi-arrow-repeat"></i>
+          <select id="pr-type" [(ngModel)]="returnType">
+            @for (t of returnTypes(); track t) { <option [value]="t">{{ t }}</option> }
+          </select>
+          <i class="bi bi-chevron-down select-arrow"></i>
+        </div>
       </div>
 
       <div class="form-field">
@@ -108,23 +119,35 @@
         <span class="bad"><i class="bi bi-currency-rupee"></i> Return value <strong>{{ inr(s.value) }}</strong></span>
       </div>
 
-      <div class="note-card" [class.on]="raiseNote">
-        <label class="note-toggle">
-          <input type="checkbox" [(ngModel)]="raiseNote" />
-          <span>
-            <strong>Raise Debit Note</strong>
-            <small>Creates a debit note on {{ g.vendorName }} for the return value. It shows under Credit / Debit Notes.</small>
+      @if (returnType === 'Debit Note') {
+        <div class="note-card" [class.on]="raiseNote">
+          <label class="note-toggle">
+            <input type="checkbox" [(ngModel)]="raiseNote" />
+            <span>
+              <strong>Raise Debit Note</strong>
+              <small>Creates a debit note on {{ g.vendorName }} for the return value. It shows under Credit / Debit Notes.</small>
+            </span>
+          </label>
+        </div>
+      } @else {
+        <div class="note-card on">
+          <span class="note-toggle">
+            <i class="bi bi-arrow-repeat"></i>
+            <span>
+              <strong>Replacement</strong>
+              <small>The returned qty is re-opened on {{ g.poNo }} and comes back from {{ g.vendorName }} on a later Purchase Inward. No debit note is raised.</small>
+            </span>
           </span>
-        </label>
-      </div>
+        </div>
+      }
     }
 
     @if (error(); as err) { <p class="error-text"><i class="bi bi-exclamation-circle"></i> {{ err }}</p> }
   </div>
 
   <div class="modal-footer-custom">
-    <span class="footer-note"><i class="bi bi-bell"></i> Branch head is alerted if any product drops below 10 units.</span>
+    <span class="footer-note"><i class="bi bi-bell"></i> Branch head is alerted if any product drops below {{ purchase.threshold() }} units.</span>
     <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
-    <button type="button" class="save-btn" [disabled]="!g" (click)="save()"><i class="bi bi-box-arrow-up"></i> Save Return</button>
+    <button type="button" class="save-btn" [disabled]="!g || saving()" (click)="save()"><i class="bi bi-box-arrow-up"></i> Save Return</button>
   </div>
 </div>

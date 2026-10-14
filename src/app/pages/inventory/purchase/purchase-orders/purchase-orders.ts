@@ -4,12 +4,13 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { CommonDetailCard } from '../../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../../shared/components/common-table-card/common-table-card';
-import { DetailCardData, QuickAction, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
+import { DetailCardData, FilterOption, QuickAction, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
 import { displayDate, inr, lineTotals } from '../../../../shared/models/purchase.model';
 import { GoodsInwardForm } from '../goods-inward/goods-inward-form/goods-inward-form';
-import { PurchaseListBase } from '../purchase-list-base';
+import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { PurchaseInvoice } from './purchase-invoice/purchase-invoice';
+import { PurchaseOrderEdit } from './purchase-order-edit/purchase-order-edit';
 
 @Component({
   selector: 'app-purchase-orders',
@@ -20,11 +21,12 @@ import { PurchaseInvoice } from './purchase-invoice/purchase-invoice';
 })
 export class PurchaseOrders extends PurchaseListBase {
   protected readonly noun = 'purchase orders';
+  protected readonly collections: PurchaseCollection[] = ['orders'];
 
-  override filters = [
-    { key: 'status', label: 'Status', options: ['Ordered', 'Partially Received', 'Received'] },
-    { key: 'branch', label: 'Branch', options: this.purchase.branches, multiSelect: true },
-  ];
+  readonly pageFilters = computed<FilterOption[]>(() => [
+    { key: 'status', label: 'Status', options: ['Ordered', 'Partially Received', 'Received', 'Closed', 'Cancelled'] },
+    { key: 'branch', label: 'Branch', options: this.purchase.branches(), multiSelect: true },
+  ]);
 
   columns: TableColumn[] = [
     { key: 'poNo', header: 'PO No', width: '10%' },
@@ -34,7 +36,7 @@ export class PurchaseOrders extends PurchaseListBase {
     { key: 'orderedAt', header: 'PO Date', width: '9%' },
     { key: 'expectedAt', header: 'Expected', width: '9%' },
     { key: 'amount', header: 'Amount', width: '10%' },
-    { key: 'qty', header: 'Request / Received', width: '10%' },
+    { key: 'qty', header: 'Ordered / Received / Pending', width: '12%' },
     { key: 'status', header: 'Status', type: 'badge', width: '9%' },
     { key: 'actions', header: 'Action', type: 'quickActions', width: '8%', sortable: false },
   ];
@@ -44,7 +46,7 @@ export class PurchaseOrders extends PurchaseListBase {
   readonly stats = computed<DetailCardData[]>(() => {
     const list = this.purchase.orders();
     const count = (s: string) => list.filter(o => o.status === s).length;
-    const value = list.reduce((sum, o) => sum + lineTotals(o.items).grandTotal, 0);
+    const value = list.filter(o => o.status !== 'Cancelled').reduce((sum, o) => sum + lineTotals(o.items).grandTotal, 0);
     return [
       { label: 'Purchase Orders', value: list.length, icon: 'bi-receipt', iconVariant: 'primary' },
       { label: 'Awaiting Delivery', value: count('Ordered'), icon: 'bi-truck', iconVariant: 'blue' },
@@ -58,8 +60,16 @@ export class PurchaseOrders extends PurchaseListBase {
       const total = lineTotals(o.items).grandTotal;
       const requested = o.items.reduce((s, i) => s + i.requestedQty, 0);
       const received = o.items.reduce((s, i) => s + i.receivedQty, 0);
-      const actions: QuickAction[] = [{ key: 'invoice', icon: 'bi-file-earmark-pdf-fill', label: 'View PO / Invoice' }];
-      if (o.status !== 'Received') actions.push({ key: 'inward', icon: 'bi-box-arrow-in-down', label: 'Purchase Inward', variant: 'primary' });
+      const pending = o.items.reduce((s, i) => s + (i.pendingQty ?? 0), 0);
+      // Same actions as the reference PO worklist, shown only when the server says they are allowed.
+      const actions: QuickAction[] = [
+        { key: 'invoice', icon: 'bi-receipt', label: 'View PO / Invoice' },
+        { key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Tax invoice (PDF)' },
+      ];
+      if (o.canInward) actions.push({ key: 'inward', icon: 'bi-box-arrow-in-down', label: 'Add PO Inward Entries', variant: 'primary' });
+      if (o.canEdit) actions.push({ key: 'edit', icon: 'bi-pencil-square', label: o.canEditQty ? 'Edit PO' : 'Change expected date' });
+      if (o.canClose) actions.push({ key: 'close', icon: 'bi-slash-circle', label: 'Close PO (write off pending)', variant: 'danger' });
+      if (o.canCancel) actions.push({ key: 'cancel', icon: 'bi-x-circle', label: 'Cancel PO', variant: 'danger' });
       return {
         id: o.id,
         poNo: o.poNo,
@@ -72,17 +82,36 @@ export class PurchaseOrders extends PurchaseListBase {
         __expectedAt: o.expectedAt ?? '',
         amount: inr(total),
         __amount: total,
-        qty: `${requested} / ${received}`,
+        qty: `${requested} / ${received} / ${pending}`,
         __qty: requested ? received / requested : 0,
         status: o.status,
+        searchText: `${o.poNo} ${o.invoiceNo} ${o.vendorName} ${o.requestNo} ${o.closeReason ?? ''}`,
         actions,
       };
     });
   }
 
-  onQuickAction(event: { row: TableRow; action: string }): void {
+  async onQuickAction(event: { row: TableRow; action: string }): Promise<void> {
     const orderId = String(event.row['id']);
-    if (event.action === 'invoice') this.openDialog(PurchaseInvoice, { orderId }, '860px');
-    if (event.action === 'inward') this.openDialog(GoodsInwardForm, { orderId }, '1100px');
+    const order = this.purchase.orders().find(o => o.id === orderId);
+    if (!order) return;
+
+    switch (event.action) {
+      case 'invoice': this.openDialog(PurchaseInvoice, { orderId }, '860px'); break;
+      case 'pdf': void this.purchase.openPdf('purchase-order', orderId); break;
+      case 'inward': this.openDialog(GoodsInwardForm, { orderId }, '1240px'); break;
+      case 'edit': this.openDialog(PurchaseOrderEdit, { orderId }, '820px'); break;
+      case 'cancel': {
+        const reason = await this.purchase.askReason(`Cancel ${order.poNo}?`, 'Nothing has been received against this PO. It will be cancelled and cannot be received any more.', 'Cancel PO');
+        if (reason) await this.purchase.cancelOrder(orderId, reason);
+        break;
+      }
+      case 'close': {
+        const pending = order.items.reduce((s, i) => s + (i.pendingQty ?? 0), 0);
+        const reason = await this.purchase.askReason(`Close ${order.poNo}?`, `${pending} pending unit(s) will no longer be expected from ${order.vendorName}. Received stock is not affected.`, 'Close PO');
+        if (reason) await this.purchase.closeOrder(orderId, reason);
+        break;
+      }
+    }
   }
 }

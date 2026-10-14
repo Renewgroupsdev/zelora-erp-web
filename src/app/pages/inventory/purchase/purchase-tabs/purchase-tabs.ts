@@ -41,6 +41,7 @@ export class PurchaseTabs implements OnInit, OnDestroy {
   private unregister?: () => void;
 
   ngOnInit(): void {
+    // Data is loaded by each tab page itself (PurchaseListBase), so only the open tab's API is called.
     this.unregister = this.tabGroups.register(this.tabs().map(tab => tab.path));
   }
 
@@ -55,9 +56,12 @@ export class PurchaseTabs implements OnInit, OnDestroy {
   /** Badge per tab path (pending work on that step). */
   private readonly badges = computed<Record<string, { badge: number; warn: boolean }>>(() => ({
     '/app/inventory/purchase-requests': { badge: this.purchase.pendingCount(), warn: false },
-    '/app/inventory/purchase-orders': { badge: this.purchase.orders().filter(o => o.status !== 'Received').length, warn: false },
+    '/app/inventory/purchase-orders': { badge: this.purchase.orders().filter(o => o.canInward).length, warn: false },
     '/app/inventory/vendor-notes': { badge: this.purchase.notes().filter(n => n.status === 'Open').length, warn: false },
-    '/app/inventory/stock': { badge: this.purchase.lowStock().length, warn: true },
+    // Transfers waiting for the receiving store, else low-stock lines.
+    '/app/inventory/stock': this.purchase.openTransfers().length
+      ? { badge: this.purchase.openTransfers().length, warn: false }
+      : { badge: this.purchase.lowStock().length, warn: true },
   }));
 
   /**

@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
-import { CENTRAL_STORE, PurchaseOrder, displayDate, lineTotals } from '../../../../../shared/models/purchase.model';
+import { PurchaseOrder, displayDate, lineTotals } from '../../../../../shared/models/purchase.model';
 import { CanActionDirective } from '../../../../../shared/directives/can-action.directive';
 
 export interface ReviewResult {
@@ -32,32 +32,44 @@ export class PurchaseRequestReview {
   remarks = '';
   expectedAt: string | null = null;
   readonly remarksError = signal(false);
+  readonly saving = signal(false);
   readonly today = new Date().toISOString().slice(0, 10);
 
+  constructor() {
+    // On-hand qty shown per line; stock is not part of the Purchase Requests tab load.
+    void this.purchase.reload('stock');
+  }
+
   centralQty(productId: string): number {
-    return this.purchase.storeQty(CENTRAL_STORE, productId);
+    return this.purchase.storeQtyById(null, productId);
   }
 
   branchQty(productId: string): number {
-    return this.purchase.storeQty(this.request().branch, productId);
+    return this.purchase.storeQtyById(this.request().branchId, productId);
   }
 
   statusClass(): string {
     return { Pending: 'orange', Approved: 'green', Rejected: 'red' }[this.request().status];
   }
 
-  approve(): void {
-    const order = this.purchase.approveRequest(this.request().id, this.remarks.trim(), this.expectedAt);
+  async approve(): Promise<void> {
+    if (this.saving()) return;
+    this.saving.set(true);
+    const order = await this.purchase.approveRequest(this.request().id, this.remarks.trim(), this.expectedAt);
+    this.saving.set(false);
     if (order) this.dialogRef.close({ action: 'approved', order });
   }
 
-  reject(): void {
+  async reject(): Promise<void> {
     if (!this.remarks.trim()) {
       this.remarksError.set(true);
       return;
     }
-    this.purchase.rejectRequest(this.request().id, this.remarks.trim());
-    this.dialogRef.close({ action: 'rejected' });
+    if (this.saving()) return;
+    this.saving.set(true);
+    const ok = await this.purchase.rejectRequest(this.request().id, this.remarks.trim());
+    this.saving.set(false);
+    if (ok) this.dialogRef.close({ action: 'rejected' });
   }
 
   close(): void {

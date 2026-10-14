@@ -1,16 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatDialogModule } from '@angular/material/dialog';
-import Swal from 'sweetalert2';
-import { NotificationService } from '../../../../shared/common-services/notification.service';
 import { CommonDetailCard } from '../../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../../shared/components/common-table-card/common-table-card';
-import { DetailCardData, QuickAction, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
-import { CENTRAL_STORE, LOW_STOCK_THRESHOLD, displayDate, inr } from '../../../../shared/models/purchase.model';
-import { PurchaseListBase } from '../purchase-list-base';
+import { DetailCardData, FilterOption, QuickAction, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
+import { displayDate, inr } from '../../../../shared/models/purchase.model';
+import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { StockTransferForm } from './stock-transfer-form/stock-transfer-form';
+import { StockTransferReceive } from './stock-transfer-receive/stock-transfer-receive';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 
 const STOCK_COLUMNS: TableColumn[] = [
@@ -27,15 +26,18 @@ const STOCK_COLUMNS: TableColumn[] = [
 ];
 
 const TRANSFER_COLUMNS: TableColumn[] = [
-  { key: 'transferNo', header: 'Transfer No', width: '11%' },
-  { key: 'fromStore', header: 'From', width: '12%' },
-  { key: 'store', header: 'To', type: 'branch', width: '12%' },
-  { key: 'product', header: 'Product', width: '18%' },
-  { key: 'batchNo', header: 'Batch No', width: '10%' },
-  { key: 'qty', header: 'Qty', width: '7%' },
-  { key: 'transferredBy', header: 'By', width: '11%' },
-  { key: 'transferredAt', header: 'Date', width: '9%' },
-  { key: 'remarks', header: 'Remarks', width: '10%' },
+  { key: 'transferNo', header: 'Transfer No', width: '10%' },
+  { key: 'kind', header: 'Type', width: '7%' },
+  { key: 'fromStore', header: 'From', width: '11%' },
+  { key: 'store', header: 'To', type: 'branch', width: '11%' },
+  { key: 'product', header: 'Products · Batches', width: '18%' },
+  { key: 'qty', header: 'Sent', width: '5%' },
+  { key: 'accepted', header: 'Accepted', width: '6%' },
+  { key: 'rejected', header: 'Rejected', width: '6%' },
+  { key: 'pending', header: 'In Transit', width: '6%' },
+  { key: 'transferredAt', header: 'Date', width: '8%' },
+  { key: 'status', header: 'Status', type: 'badge', width: '7%' },
+  { key: 'actions', header: 'Action', type: 'quickActions', width: '5%', sortable: false },
 ];
 
 /** Central store + branch store stock, batch-wise, with low-stock alerts and central -> branch transfers. */
@@ -47,15 +49,18 @@ const TRANSFER_COLUMNS: TableColumn[] = [
   styleUrl: '../../../../shared/styles/erp-page.scss',
 })
 export class StockOverview extends PurchaseListBase {
-  private readonly notifications = inject(NotificationService);
   protected readonly noun = 'records';
+  protected readonly collections: PurchaseCollection[] = ['stock', 'transfers'];
   readonly view = signal<'stock' | 'transfers'>('stock');
-  readonly threshold = LOW_STOCK_THRESHOLD;
+  readonly threshold = this.purchase.threshold;
 
-  override filters = [
-    { key: 'status', label: 'Status', options: ['In Stock', 'Low Stock', 'Out of Stock'] },
-    { key: 'branch', label: 'Store', options: this.purchase.stores, multiSelect: true },
-  ];
+  readonly pageFilters = computed<FilterOption[]>(() => [
+    {
+      key: 'status', label: 'Status',
+      options: this.view() === 'stock' ? ['In Stock', 'Low Stock', 'Out of Stock'] : ['In Transit', 'Partially Received', 'Received', 'Cancelled'],
+    },
+    { key: 'branch', label: 'Store', options: this.purchase.stores(), multiSelect: true },
+  ]);
 
   columns: TableColumn[] = STOCK_COLUMNS;
   override sortActive = 'storeTotal';
@@ -63,17 +68,21 @@ export class StockOverview extends PurchaseListBase {
 
   readonly stats = computed<DetailCardData[]>(() => {
     const stock = this.purchase.stock();
-    const units = (central: boolean) => stock.filter(b => (b.store === CENTRAL_STORE) === central).reduce((s, b) => s + b.qty, 0);
+    const units = (central: boolean) => stock.filter(b => (b.storeId === null) === central).reduce((s, b) => s + b.qty, 0);
+    const open = this.purchase.openTransfers();
     return [
       { label: 'Central Store · Stock in Hand', value: units(true).toLocaleString(), icon: 'bi-building', iconVariant: 'primary' },
       { label: 'Branch Stores · Stock in Hand', value: units(false).toLocaleString(), icon: 'bi-shop', iconVariant: 'blue' },
-      { label: `Low Stock (< ${LOW_STOCK_THRESHOLD})`, value: this.purchase.lowStock().length, icon: 'bi-exclamation-triangle', iconVariant: 'orange' },
-      { label: 'Stock Transfers', value: this.purchase.transfers().length, icon: 'bi-arrow-left-right', iconVariant: 'green' },
+      { label: `Low Stock (< ${this.threshold()})`, value: this.purchase.lowStock().length, icon: 'bi-exclamation-triangle', iconVariant: 'orange' },
+      { label: 'In Transit (awaiting accept)', value: `${open.length} · ${open.reduce((s, t) => s + t.pendingQty, 0)} units`, icon: 'bi-truck', iconVariant: 'green' },
     ];
   });
 
   setView(view: 'stock' | 'transfers'): void {
     this.view.set(view);
+    // Status options differ per view; the filter card is re-created too, so both start clean.
+    this.filterState = { status: null, source: null, branch: [], telecaller: null, dateFrom: null, dateTo: null };
+    this.searchTerm = '';
     this.columns = view === 'stock' ? STOCK_COLUMNS : TRANSFER_COLUMNS;
     this.sortActive = view === 'stock' ? 'storeTotal' : 'transferredAt';
     this.sortDirection = view === 'stock' ? 'asc' : 'desc';
@@ -83,24 +92,36 @@ export class StockOverview extends PurchaseListBase {
 
   protected allRows(): TableRow[] {
     if (this.view() === 'transfers') {
-      return this.purchase.transfers().map(t => ({
-        id: t.id,
-        transferNo: t.transferNo,
-        fromStore: t.fromStore,
-        store: t.toStore,
-        product: t.productName,
-        batchNo: t.batchNo,
-        qty: String(t.qty), __qty: t.qty,
-        transferredBy: t.transferredBy,
-        transferredAt: displayDate(t.transferredAt), __transferredAt: t.transferredAt,
-        remarks: t.remarks || '-',
-      }));
+      return this.purchase.transfers().map(t => {
+        const actions: QuickAction[] = [];
+        if (t.canReceive) actions.push({ key: 'receive', icon: 'bi-box-arrow-in-down', label: 'Accept / Reject', variant: 'primary' });
+        else actions.push({ key: 'view', icon: 'bi-eye-fill', label: `View ${t.kind}` });
+        if (t.canCancel) actions.push({ key: 'cancel-transfer', icon: 'bi-x-circle', label: `Cancel ${t.kind}`, variant: 'danger' });
+        actions.push({ key: 'print', icon: 'bi-printer', label: 'Re-print (PDF)' });
+        return {
+          id: t.id,
+          transferNo: t.transferNo,
+          kind: t.kind,
+          fromStore: t.fromStore,
+          store: t.toStore,
+          product: t.lines.map(l => `${l.productName} · ${l.batchNo}`).join(', '),
+          qty: String(t.qty), __qty: t.qty,
+          accepted: String(t.acceptedQty), __accepted: t.acceptedQty,
+          rejected: String(t.rejectedQty), __rejected: t.rejectedQty,
+          pending: String(t.pendingQty), __pending: t.pendingQty,
+          transferredAt: displayDate(t.transferredAt), __transferredAt: t.transferredAt,
+          __date: t.transferredAt,
+          status: t.status,
+          searchText: `${t.transferNo} ${t.fromStore} ${t.toStore} ${t.transferredBy} ${t.remarks} ${t.lines.map(l => `${l.productName} ${l.batchNo}`).join(' ')}`,
+          actions,
+        };
+      });
     }
 
     const stock = this.purchase.stock();
     return stock.map(b => {
-      const total = this.purchase.storeQty(b.store, b.productId);
-      const status = total <= 0 ? 'Out of Stock' : total < LOW_STOCK_THRESHOLD ? 'Low Stock' : 'In Stock';
+      const total = this.purchase.storeQtyById(b.storeId, b.productId);
+      const status = total <= 0 ? 'Out of Stock' : total < this.threshold() ? 'Low Stock' : 'In Stock';
       const actions: QuickAction[] = b.qty > 0 ? [{ key: 'transfer', icon: 'bi-arrow-left-right', label: 'Transfer stock', variant: 'primary' }] : [];
       return {
         id: b.id,
@@ -122,15 +143,31 @@ export class StockOverview extends PurchaseListBase {
     this.openDialog(StockTransferForm, batchId ? { batchId } : null, '640px');
   }
 
-  onQuickAction(event: { row: TableRow; action: string }): void {
-    if (event.action === 'transfer') this.openTransfer(String(event.row['id']));
+  async onQuickAction(event: { row: TableRow; action: string }): Promise<void> {
+    const id = String(event.row['id']);
+    if (event.action === 'transfer') {
+      this.openTransfer(id);
+      return;
+    }
+    const transfer = this.purchase.transfers().find(t => t.id === id);
+    if (!transfer) return;
+    switch (event.action) {
+      case 'receive':
+      case 'view':
+        this.openDialog(StockTransferReceive, { transferId: id }, '1000px');
+        break;
+      case 'print':
+        void this.purchase.openPdf('stock-transfer', id);
+        break;
+      case 'cancel-transfer': {
+        const reason = await this.purchase.askReason(`Cancel ${transfer.transferNo}?`, `${transfer.qty} unit(s) go back to ${transfer.fromStore}.`, `Cancel ${transfer.kind}`);
+        if (reason) await this.purchase.cancelTransfer(id, reason);
+        break;
+      }
+    }
   }
 
-  notifyBranchHead(): void {
-    const low = this.purchase.lowStock();
-    for (const item of low) {
-      this.notifications.add({ type: 'stock', title: 'Low stock alert', message: `${item.productName} is running low at ${item.store} (${item.qty} units left).`, link: '/app/inventory/stock' });
-    }
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Branch head notified', text: `${low.length} low-stock alert${low.length === 1 ? '' : 's'} sent.`, showConfirmButton: false, timer: 3000 });
+  async notifyBranchHead(): Promise<void> {
+    await this.purchase.notifyLowStock();
   }
 }

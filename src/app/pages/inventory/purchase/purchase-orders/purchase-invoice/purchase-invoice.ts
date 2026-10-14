@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, ElementRef, computed, inject, viewChild } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
-import { CENTRAL_STORE, displayDate, lineTotals } from '../../../../../shared/models/purchase.model';
+import { displayDate, lineTotals } from '../../../../../shared/models/purchase.model';
 import { CanActionDirective } from '../../../../../shared/directives/can-action.directive';
 
 /** Print stylesheet for the PDF window - the dialog's own styles don't travel with the HTML. */
@@ -39,7 +39,7 @@ export class PurchaseInvoice {
   readonly order = computed(() => this.purchase.orders().find(o => o.id === this.data.orderId)!);
   readonly totals = computed(() => lineTotals(this.order().items));
   readonly displayDate = displayDate;
-  readonly centralStore = CENTRAL_STORE;
+  readonly centralStore = this.purchase.meta().centralStore;
 
   /** Opens the invoice in a clean window and triggers print - choose "Save as PDF" to download. */
   downloadPdf(): void {

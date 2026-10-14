@@ -96,9 +96,26 @@ export class CommonTableCard {
 
   avatarTooltip: { top: number; left: number; name: string, empNo: string } | null = null;
 
+  /** Columns to render - an action column with no icon to show (permissions / row state) is left out entirely. */
   get displayedColumns(): string[] {
-    const keys = this.columns.map(column => column.key);
+    const keys = this.columns.filter(column => this.hasVisibleContent(column)).map(column => column.key);
     return this.dragDropEnabled ? ['dragHandle', ...keys] : keys;
+  }
+
+  private hasVisibleContent(column: TableColumn): boolean {
+    switch (column.type) {
+      case 'quickActions':
+        return this.rows.some(row => this.asQuickActions(row[column.key]).length > 0);
+      case 'rowActions':
+        return this.allowed('edit') || this.allowed('delete');
+      case 'action':
+        return ['call', 'edit', 'followUp', 'sendToBranch', 'delete'].some(key => this.allowed(key))
+          || (this.allowed('validate') && this.rows.some(row => !!row['canValidate']));
+      case 'callLog':
+        return this.allowed('viewCallLog');
+      default:
+        return true;
+    }
   }
 
   asLeadCell(value: TableRow[string]): LeadCell {

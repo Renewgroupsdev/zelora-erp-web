@@ -247,3 +247,18 @@ app-common-table-card {
     font-size: 14px;
   }
 }
+
+// Small counter inside a segment button (e.g. transfers waiting to be accepted).
+.segment .count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--status-orange-bg);
+  color: var(--status-orange-text);
+  font-size: 10px;
+  font-weight: 700;
+}

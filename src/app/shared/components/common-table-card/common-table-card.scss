@@ -179,16 +179,61 @@
     background: var(--table-row-hover-bg);
   }
 
-  /* Follow-ups: orange text within 30 minutes of the call-back time, red text within 5 minutes (and once overdue).
-     Only the letters change colour - the row background, status badges and action buttons stay as they are. */
-  .mat-mdc-row.row-followup-soon .mat-mdc-cell,
-  .mat-mdc-row.row-followup-soon .mat-mdc-cell :is(span, strong, small, a, div, p):not(.status-badge) {
-    color: #d97706 !important;
+  /* Follow-ups: amber within 30 minutes of the call-back time, crimson within 5 minutes (and once overdue).
+     The row gets a soft tinted wash and a left accent bar; the name carries the full tone while the other
+     cells use a softer shade so the row reads as highlighted rather than as an error. Status badges and
+     action buttons keep their own colours. */
+  .mat-mdc-row.row-followup-soon,
+  .mat-mdc-row.row-followup-urgent {
+    --fu-tone: #b45309;
+    --fu-text: #92400e;
+    --fu-soft: #fbbf24;
+
+    .mat-mdc-cell {
+      background: color-mix(in srgb, var(--fu-soft) 7%, var(--app-surface-solid)) !important;
+      border-bottom-color: color-mix(in srgb, var(--fu-soft) 22%, var(--table-border));
+      transition: background 0.18s ease;
+    }
+
+    .mat-mdc-cell:first-child {
+      box-shadow: inset 3px 0 0 var(--fu-tone);
+      background:
+        linear-gradient(90deg, color-mix(in srgb, var(--fu-soft) 16%, transparent), transparent 85%),
+        color-mix(in srgb, var(--fu-soft) 7%, var(--app-surface-solid)) !important;
+    }
+
+    .mat-mdc-cell :is(.text-cell, .lead-subtitle, span, small, p):not(.status-badge, .status-badge *, .avatar, .avatar *) {
+      color: var(--fu-text) !important;
+      opacity: 1;
+    }
+
+    .lead-name {
+      color: var(--fu-tone) !important;
+      letter-spacing: 0.005em;
+    }
+
+    .lead-subtitle {
+      color: color-mix(in srgb, var(--fu-text) 70%, var(--text-muted)) !important;
+      font-weight: var(--fw-semibold);
+    }
+
+    .avatar {
+      box-shadow: 0 0 0 2px var(--app-surface-solid), 0 0 0 3.5px color-mix(in srgb, var(--fu-tone) 55%, transparent);
+    }
+
+    &:hover .mat-mdc-cell {
+      background: color-mix(in srgb, var(--fu-soft) 13%, var(--app-surface-solid)) !important;
+    }
   }
 
-  .mat-mdc-row.row-followup-urgent .mat-mdc-cell,
-  .mat-mdc-row.row-followup-urgent .mat-mdc-cell :is(span, strong, small, a, div, p):not(.status-badge) {
-    color: #dc2626 !important;
+  .mat-mdc-row.row-followup-urgent {
+    --fu-tone: #be123c;
+    --fu-text: #9f1239;
+    --fu-soft: #fb7185;
+
+    .avatar {
+      animation: fu-urgent-pulse 2s ease-out infinite;
+    }
   }
 
   .mat-mdc-row:last-child .mat-mdc-cell {
@@ -810,4 +855,13 @@
 
 .data-table.drag-drop-enabled.cdk-drop-list-dragging .mat-mdc-row:not(.cdk-drag-placeholder) {
   transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+@keyframes fu-urgent-pulse {
+  0%   { box-shadow: 0 0 0 2px var(--app-surface-solid), 0 0 0 3.5px rgba(190, 18, 60, 0.55); }
+  70%  { box-shadow: 0 0 0 2px var(--app-surface-solid), 0 0 0 7px rgba(190, 18, 60, 0); }
+  100% { box-shadow: 0 0 0 2px var(--app-surface-solid), 0 0 0 3.5px rgba(190, 18, 60, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-followup-urgent .avatar { animation: none !important; }
 }

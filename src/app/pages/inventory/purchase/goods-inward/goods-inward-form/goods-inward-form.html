@@ -7,31 +7,38 @@
       <div class="title-icon"><i class="bi bi-box-arrow-in-down"></i></div>
       <div class="title-content">
         <h2>Purchase Inward · {{ o.poNo }}</h2>
-        <p>{{ o.vendorName }} · receive batch-wise, partial or full quantity</p>
+        <p>{{ o.vendorName }} · receive batch-wise, partial or full quantity, with the vendor bill</p>
       </div>
     </div>
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 
   <div class="modal-body-custom">
-    <div class="form-grid cols-3">
+    <div class="form-grid cols-4">
       <div class="form-field">
         <label for="gi-store">Receive Into <span>*</span></label>
         <div class="input-wrap">
           <i class="bi bi-building"></i>
-          <select id="gi-store" [(ngModel)]="store">
-            @for (st of purchase.stores; track st) { <option [value]="st">{{ st }}</option> }
+          <select id="gi-store" [(ngModel)]="storeId">
+            @for (st of purchase.storeOptions(); track st.id) { <option [ngValue]="st.id">{{ st.name }}</option> }
           </select>
           <i class="bi bi-chevron-down select-arrow"></i>
         </div>
       </div>
       <div class="form-field">
-        <label for="gi-invoice">Vendor Invoice / DC No <span>*</span></label>
+        <label for="gi-invoice">Bill Ref No (Vendor Invoice) <span>*</span></label>
         <div class="input-wrap">
           <i class="bi bi-receipt"></i>
-          <input id="gi-invoice" type="text" maxlength="40" placeholder="e.g. DSP/7781" [(ngModel)]="vendorInvoiceNo" [class.is-invalid]="submitted() && !vendorInvoiceNo.trim()" />
+          <input id="gi-invoice" type="text" maxlength="60" placeholder="e.g. DSP/7781" [(ngModel)]="vendorInvoiceNo" [class.is-invalid]="submitted() && !vendorInvoiceNo.trim()" />
         </div>
-        @if (submitted() && !vendorInvoiceNo.trim()) { <small class="error-text">Enter the vendor invoice number.</small> }
+        @if (submitted() && !vendorInvoiceNo.trim()) { <small class="error-text">Bill ref no required.</small> }
+      </div>
+      <div class="form-field">
+        <label for="gi-bill-date">Bill Date</label>
+        <div class="input-wrap">
+          <i class="bi bi-calendar3"></i>
+          <input id="gi-bill-date" type="date" [max]="today" [(ngModel)]="billDate" />
+        </div>
       </div>
       <div class="form-field">
         <label>Receipt Status</label>
@@ -44,7 +51,9 @@
 
     <div class="section-title"><i class="bi bi-upc-scan"></i> Batch-wise Receipt</div>
 
-    @if (!lines().length) {
+    @if (loadingLines()) {
+      <div class="empty-note"><i class="bi bi-hourglass-split"></i> Loading pending lines…</div>
+    } @else if (!lines().length) {
       <div class="empty-note"><i class="bi bi-check-circle"></i> Every item on this PO is already received.</div>
     } @else {
       <div class="items-table-wrap">
@@ -52,15 +61,18 @@
           <thead>
             <tr>
               <th>Product</th>
-              <th class="num">Central Store<br /><small>Stock in Hand</small></th>
-              <th class="num">Ordered</th>
-              <th class="num">Received</th>
+              <th class="num">Central<br /><small>In Hand</small></th>
               <th class="num">Pending</th>
-              <th>Batch No *</th>
+              <th>Batch No</th>
               <th>MFG</th>
               <th>Expiry</th>
-              <th>Recv Qty</th>
-              <th>Damaged</th>
+              <th>Recv</th>
+              <th>Dmg</th>
+              <th>Free</th>
+              <th>Rate ₹ *</th>
+              <th>Disc %</th>
+              <th>Selling ₹</th>
+              <th class="num">Total<br /><small>incl. GST</small></th>
               <th class="num">Balance</th>
               <th></th>
             </tr>
@@ -71,18 +83,22 @@
                 <td>
                   @if (!line.isExtraBatch) {
                     <strong>{{ line.productName }}</strong>
+                    <div class="muted">Ordered {{ line.orderedQty }} · received {{ line.previousQty }} · GST {{ line.gstPercent }}%</div>
                     <div class="progress"><span [style.width.%]="(line.previousQty + acceptedFor(line.productId)) / line.orderedQty * 100"></span></div>
                   } @else { <span class="muted"><i class="bi bi-arrow-return-right"></i> another batch</span> }
                 </td>
-                <td class="num">@if (!line.isExtraBatch) { <span class="pill" [class.red]="centralQty(line.productId) < 10" [class.green]="centralQty(line.productId) >= 10">{{ centralQty(line.productId) }}</span> }</td>
-                <td class="num">{{ line.isExtraBatch ? '' : line.orderedQty }}</td>
-                <td class="num">{{ line.isExtraBatch ? '' : line.previousQty }}</td>
-                <td class="num">@if (!line.isExtraBatch) { <span class="pill orange">{{ pendingQty(line) }}</span> }</td>
-                <td><input class="cell-input" type="text" maxlength="30" placeholder="Batch" readonly title="Auto-generated from the purchase order" [(ngModel)]="line.batchNo" [class.is-invalid]="(submitted() && line.receivedQty > 0 && !line.batchNo.trim()) || isDuplicateBatch(line)" /></td>
-                <td><input class="cell-input date" type="date" [(ngModel)]="line.mfgDate" (ngModelChange)="touch()" /></td>
-                <td><input class="cell-input date" type="date" [(ngModel)]="line.expiryDate" (ngModelChange)="touch()" /></td>
+                <td class="num">@if (!line.isExtraBatch) { <span class="pill" [class.red]="centralQty(line.productId) < purchase.threshold()" [class.green]="centralQty(line.productId) >= purchase.threshold()">{{ centralQty(line.productId) }}</span> }</td>
+                <td class="num">@if (!line.isExtraBatch) { <span class="pill orange">{{ line.pendingQty }}</span> }</td>
+                <td><input class="cell-input" type="text" maxlength="40" [placeholder]="line.isExtraBatch ? 'Auto' : 'Batch'" title="Generated from the PO - type the vendor's batch no to override" [(ngModel)]="line.batchNo" (ngModelChange)="touch()" [class.is-invalid]="isDuplicateBatch(line)" /></td>
+                <td><input class="cell-input date" type="date" [max]="today" [(ngModel)]="line.mfgDate" (ngModelChange)="touch()" /></td>
+                <td><input class="cell-input date" type="date" [min]="today" [(ngModel)]="line.expiryDate" (ngModelChange)="touch()" /></td>
                 <td><input class="cell-input qty" type="number" min="0" [(ngModel)]="line.receivedQty" (ngModelChange)="touch()" [class.is-invalid]="isOver(line)" /></td>
                 <td><input class="cell-input qty" type="number" min="0" [(ngModel)]="line.damagedQty" (ngModelChange)="touch()" [class.is-invalid]="line.damagedQty > line.receivedQty" /></td>
+                <td><input class="cell-input qty" type="number" min="0" title="Free units - go into stock, not billed" [(ngModel)]="line.freeQty" (ngModelChange)="touch()" /></td>
+                <td><input class="cell-input qty" type="number" min="0" step="0.01" [(ngModel)]="line.unitPrice" (ngModelChange)="touch()" [class.is-invalid]="line.receivedQty > 0 && !(line.unitPrice > 0)" /></td>
+                <td><input class="cell-input qty" type="number" min="0" max="99.99" step="0.01" [(ngModel)]="line.discountPercent" (ngModelChange)="touch()" /></td>
+                <td><input class="cell-input qty" type="number" min="0" step="0.01" placeholder="-" [(ngModel)]="line.sellingPrice" (ngModelChange)="touch()" /></td>
+                <td class="num">{{ inr(lineTotal(line)) }}</td>
                 <td class="num">
                   @if (!line.isExtraBatch) {
                     <span class="pill" [class.green]="!balanceFor(line)" [class.red]="balanceFor(line)">{{ balanceFor(line) }}</span>
@@ -98,7 +114,7 @@
               </tr>
               @if (lineError(line); as err) {
                 @if (submitted() || isOver(line) || line.damagedQty > line.receivedQty) {
-                  <tr class="error-row"><td colspan="12"><i class="bi bi-exclamation-circle"></i> {{ line.productName }}: {{ err }}</td></tr>
+                  <tr class="error-row"><td colspan="15"><i class="bi bi-exclamation-circle"></i> {{ line.productName }}: {{ err }}</td></tr>
                 }
               }
             }
@@ -109,8 +125,40 @@
       <div class="qty-summary">
         <span><i class="bi bi-box-seam"></i> Received <strong>{{ s.received }}</strong></span>
         <span class="bad"><i class="bi bi-x-octagon"></i> Damaged <strong>{{ s.damaged }}</strong></span>
-        <span class="ok"><i class="bi bi-check2-circle"></i> Accepted to stock <strong>{{ s.received - s.damaged }}</strong></span>
+        <span><i class="bi bi-gift"></i> Free <strong>{{ s.free }}</strong></span>
+        <span class="ok"><i class="bi bi-check2-circle"></i> Into stock <strong>{{ s.received - s.damaged + s.free }}</strong></span>
         <span class="warn"><i class="bi bi-hourglass-split"></i> Pending after inward <strong>{{ s.short }}</strong></span>
+      </div>
+
+      <div class="section-title"><i class="bi bi-calculator"></i> Bill Summary</div>
+      <div class="form-grid cols-4">
+        <div class="form-field">
+          <label for="gi-freight">Freight ₹</label>
+          <div class="input-wrap"><i class="bi bi-truck"></i><input id="gi-freight" type="number" min="0" step="0.01" placeholder="0.00" [(ngModel)]="freight" /></div>
+        </div>
+        <div class="form-field">
+          <label for="gi-other">Other Charges ₹</label>
+          <div class="input-wrap"><i class="bi bi-plus-circle"></i><input id="gi-other" type="number" min="0" step="0.01" placeholder="0.00" [(ngModel)]="otherCharges" /></div>
+        </div>
+        <div class="form-field">
+          <label for="gi-cash">Cash Discount ₹</label>
+          <div class="input-wrap"><i class="bi bi-dash-circle"></i><input id="gi-cash" type="number" min="0" step="0.01" placeholder="0.00" [(ngModel)]="cashDiscount" /></div>
+        </div>
+        <div class="form-field">
+          <label for="gi-round">Round Off ₹ <small>(±{{ purchase.meta().roundOffLimit }})</small></label>
+          <div class="input-wrap"><i class="bi bi-arrow-down-up"></i><input id="gi-round" type="number" step="0.01" placeholder="0.00" [(ngModel)]="roundOff" /></div>
+        </div>
+      </div>
+      <div class="info-grid">
+        <div><small>Items total (incl. GST)</small><strong>{{ inr(s.items) }}</strong></div>
+        <div><small>Charges − discount + round off</small><strong>{{ inr(netAmount() - s.items) }}</strong></div>
+        <div><small>Net bill amount</small><strong>{{ inr(netAmount()) }}</strong></div>
+      </div>
+      @if (billError(); as err) { <p class="error-text"><i class="bi bi-exclamation-circle"></i> {{ err }}</p> }
+
+      <div class="form-field">
+        <label for="gi-remarks">Remarks</label>
+        <div class="input-wrap"><i class="bi bi-chat-left-text"></i><input id="gi-remarks" type="text" maxlength="255" placeholder="Optional" [(ngModel)]="remarks" /></div>
       </div>
 
       <div class="note-card" [class.on]="raiseNote">
@@ -148,9 +196,9 @@
   </div>
 
   <div class="modal-footer-custom">
-    <span class="footer-note"><i class="bi bi-bell"></i> Branch head is alerted if any product drops below 10 units.</span>
+    <span class="footer-note"><i class="bi bi-bell"></i> Branch head is alerted if any product drops below {{ purchase.threshold() }} units.</span>
     <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
-    <button type="button" class="save-btn" [disabled]="!lines().length" (click)="save()">
+    <button type="button" class="save-btn" [disabled]="!lines().length || saving()" (click)="save()">
       <i class="bi bi-box-arrow-in-down"></i> {{ s.partial ? 'Save Partial Inward' : 'Save Inward' }}
     </button>
   </div>

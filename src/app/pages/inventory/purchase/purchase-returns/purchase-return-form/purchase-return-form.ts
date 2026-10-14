@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { PurchaseService, ReturnableLine } from '../../../../../shared/common-services/purchase.service';
-import { PURCHASE_RETURN_REASONS, PurchaseReturnReason, displayDate, inr } from '../../../../../shared/models/purchase.model';
+import { GoodsInward, PURCHASE_RETURN_REASONS, PurchaseReturnReason, PurchaseReturnType, displayDate, inr } from '../../../../../shared/models/purchase.model';
 
 interface ReturnRow extends ReturnableLine {
   qty: number | null;
@@ -21,35 +21,54 @@ export class PurchaseReturnForm {
   private readonly dialogRef = inject(MatDialogRef<PurchaseReturnForm>);
   private readonly data = inject<{ grnId?: string } | null>(MAT_DIALOG_DATA, { optional: true });
   readonly purchase = inject(PurchaseService);
-  readonly reasons = PURCHASE_RETURN_REASONS;
+  readonly reasons = computed(() => (this.purchase.meta().returnReasons.length ? this.purchase.meta().returnReasons : [...PURCHASE_RETURN_REASONS]));
+  readonly returnTypes = computed(() => this.purchase.meta().returnTypes);
   readonly displayDate = displayDate;
   readonly inr = inr;
 
-  readonly inwards = this.purchase.returnableInwards();
-  readonly grnId = signal<string | null>(this.data?.grnId ?? this.inwards[0]?.id ?? null);
-  readonly inward = computed(() => this.purchase.inwards().find(g => g.id === this.grnId()) ?? null);
+  /** GRNs with something left to return (from the server). */
+  readonly inwards = signal<GoodsInward[]>([]);
+  readonly grnId = signal<string | null>(this.data?.grnId ?? null);
+  readonly inward = computed(() => this.inwards().find(g => g.id === this.grnId()) ?? null);
   readonly rows = signal<ReturnRow[]>([]);
+  readonly loadingRows = signal(false);
   readonly submitted = signal(false);
+  readonly saving = signal(false);
   readonly error = signal<string | null>(null);
 
   reason: PurchaseReturnReason | '' = '';
+  /** Debit Note: vendor owes the value. Replacement: the qty re-opens on the PO for the vendor to resend. */
+  returnType: PurchaseReturnType = 'Debit Note';
   remarks = '';
   raiseNote = true;
 
   constructor() {
-    this.loadRows();
+    void this.init();
+  }
+
+  private async init(): Promise<void> {
+    this.inwards.set(await this.purchase.returnableInwards());
+    if (!this.grnId() && this.inwards().length) this.grnId.set(this.inwards()[0].id);
+    await this.loadRows();
   }
 
   selectGrn(id: string | null): void {
     this.grnId.set(id);
     this.submitted.set(false);
     this.error.set(null);
-    this.loadRows();
+    void this.loadRows();
   }
 
-  private loadRows(): void {
+  private async loadRows(): Promise<void> {
     const id = this.grnId();
-    this.rows.set(id ? this.purchase.returnableLines(id).map(l => ({ ...l, qty: null })) : []);
+    if (!id) {
+      this.rows.set([]);
+      return;
+    }
+    this.loadingRows.set(true);
+    const lines = await this.purchase.returnableLines(id);
+    this.loadingRows.set(false);
+    if (this.grnId() === id) this.rows.set(lines.map(l => ({ ...l, qty: null })));
   }
 
   /** Re-emit so the summary recomputes after a qty edit. */
@@ -77,26 +96,28 @@ export class PurchaseReturnForm {
     return { qty, value };
   });
 
-  save(): void {
+  async save(): Promise<void> {
     this.submitted.set(true);
     this.error.set(null);
     const inward = this.inward();
-    if (!inward || !this.reason) return;
+    if (!inward || !this.reason || this.saving()) return;
     if (this.rows().some(r => this.rowError(r))) return;
     if (!this.summary().qty) {
       this.error.set('Enter a return qty for at least one batch.');
       return;
     }
 
-    const result = this.purchase.recordReturn({
+    this.saving.set(true);
+    const result = await this.purchase.recordReturn({
       grnId: inward.id,
       reason: this.reason,
+      returnType: this.returnType,
       remarks: this.remarks.trim(),
       raiseNote: this.raiseNote,
       lines: this.rows().filter(r => Number(r.qty) > 0).map(r => ({ productId: r.productId, batchNo: r.batchNo, qty: Number(r.qty) })),
     });
+    this.saving.set(false);
     if (result) this.dialogRef.close(result);
-    else this.error.set('Could not post the return. Stock may have changed - reopen the form and try again.');
   }
 
   close(): void {
