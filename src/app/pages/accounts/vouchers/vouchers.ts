@@ -13,13 +13,14 @@ import { displayDate, inr } from '../../../shared/utils/format.util';
 import { AccountsListBase } from '../accounts-list-base';
 import { VoucherForm } from './voucher-form/voucher-form';
 import { VoucherView } from './voucher-view/voucher-view';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 type View = 'All' | 'Credit Note' | 'Debit Note';
 
 @Component({
   selector: 'app-vouchers',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './vouchers.html',
   styleUrl: '../../../shared/styles/erp-page.scss',
 })

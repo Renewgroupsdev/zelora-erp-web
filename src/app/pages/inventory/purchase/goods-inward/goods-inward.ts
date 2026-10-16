@@ -110,7 +110,7 @@ export class GoodsInward extends PurchaseListBase {
     return inwards.map(g => {
       const received = g.lines.reduce((s, l) => s + l.receivedQty, 0);
       const damaged = g.lines.reduce((s, l) => s + l.damagedQty, 0);
-      const actions: QuickAction[] = [{ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'GRN (PDF)' }];
+      const actions: QuickAction[] = [{ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'GRN (PDF)', permission: 'download-goods-inward' }];
       if (g.canCancel) actions.push({ key: 'cancel', icon: 'bi-x-circle', label: 'Cancel Inward', variant: 'danger' });
       return {
         id: g.id,

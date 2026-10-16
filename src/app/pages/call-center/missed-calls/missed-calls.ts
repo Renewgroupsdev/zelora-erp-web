@@ -17,6 +17,7 @@ import { TelephonyService } from '../../../core/telephony/telephony.service';
 import { CallAlert, callStatusLabel } from '../../../core/telephony/telephony.models';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'acknowledge', icon: 'bi-check2-circle', label: 'Acknowledge', variant: 'primary', permission: 'mark-call-alert-read' },
@@ -36,7 +37,7 @@ const ACKNOWLEDGED_ACTIONS: QuickAction[] = [
 @Component({
   selector: 'app-missed-calls',
   standalone: true,
-  imports: [CommonModule, CommonDetailCard, CommonFilterCard, CommonTableCard],
+  imports: [AutoModuleTabs, CommonModule, CommonDetailCard, CommonFilterCard, CommonTableCard],
   templateUrl: './missed-calls.html',
   styleUrl: './missed-calls.scss',
 })

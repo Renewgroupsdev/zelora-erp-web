@@ -8,7 +8,7 @@ import { escapeHtml, printDocument } from '../../../shared/utils/export.util';
 import { addDays, amountInWords, daysBetween, displayDate, inr, initials, isoDate } from '../../../shared/utils/format.util';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
-import { hrTabs } from '../hr-list-base';
+import { injectHrTabs } from '../hr-list-base';
 
 /** HR "in and out": joining checklist for new hires, exit clearance + full & final settlement for leavers. */
 @Component({
@@ -21,7 +21,7 @@ import { hrTabs } from '../hr-list-base';
 export class OnboardingExit {
   readonly hr = inject(HrService);
   private readonly auth = inject(AuthService);
-  readonly tabs = computed(() => hrTabs(this.hr));
+  readonly tabs = injectHrTabs();
   readonly view = signal<'in' | 'out'>('in');
   readonly expanded = signal<string | null>(null);
   readonly displayDate = displayDate;

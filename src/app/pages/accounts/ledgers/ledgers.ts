@@ -13,6 +13,7 @@ import { displayDate, inr, isoDate } from '../../../shared/utils/format.util';
 import { AccountsListBase } from '../accounts-list-base';
 import { LedgerStatement } from './ledger-statement/ledger-statement';
 import { CreateLedger } from './create-ledger/create-ledger';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 type View = 'ledgers' | 'trial' | 'pl';
 
@@ -37,7 +38,7 @@ const TRIAL_COLUMNS: TableColumn[] = [
 @Component({
   selector: 'app-ledgers',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, FormsModule, MatDialogModule, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './ledgers.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './ledgers.scss'],
 })

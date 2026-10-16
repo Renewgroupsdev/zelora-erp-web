@@ -97,7 +97,7 @@ export class StockOverview extends PurchaseListBase {
         if (t.canReceive) actions.push({ key: 'receive', icon: 'bi-box-arrow-in-down', label: 'Accept / Reject', variant: 'primary' });
         else actions.push({ key: 'view', icon: 'bi-eye-fill', label: `View ${t.kind}` });
         if (t.canCancel) actions.push({ key: 'cancel-transfer', icon: 'bi-x-circle', label: `Cancel ${t.kind}`, variant: 'danger' });
-        actions.push({ key: 'print', icon: 'bi-printer', label: 'Re-print (PDF)' });
+        actions.push({ key: 'print', icon: 'bi-printer', label: 'Re-print (PDF)', permission: 'download-stock-transfer' });
         return {
           id: t.id,
           transferNo: t.transferNo,

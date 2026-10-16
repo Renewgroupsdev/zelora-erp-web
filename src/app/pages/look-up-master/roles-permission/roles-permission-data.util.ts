@@ -1,7 +1,7 @@
 import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { ApiDataService } from '../../../shared/common-services/api-data.service';
 import { parseRoleIds } from './add-roles-permission-form/module-form.util';
-import { isSuccessResponse, RolePermissionModule } from './roles-permission.model';
+import { isSuccessResponse, RolePermissionModule, RolePermissionTab } from './roles-permission.model';
 
 /** Walks every page of the module-with-actions list endpoint and flattens it into one array.
  *  The API already nests sub_modules under each parent per page, so unlike a flat parent_id
@@ -61,6 +61,15 @@ export function buildModulePayloadFromNode(node: RolePermissionModule): any {
       permission: action.permission,
       role_ids: action.role_ids ?? '',
     })),
+    tabs: (node.tabs ?? []).map((tab) => ({
+      id: tab.id,
+      tab_name: tab.tab_name,
+      slug_name: tab.slug_name,
+      url: tab.url ?? null,
+      icon: tab.icon ?? null,
+      permission: tab.permission,
+      role_ids: tab.role_ids ?? '',
+    })),
     sub_modules: (node.sub_modules ?? []).map(buildModulePayloadFromNode),
   };
 }
@@ -68,7 +77,8 @@ export function buildModulePayloadFromNode(node: RolePermissionModule): any {
 /** A module node enriched with the one bit of UI-only state (expand/collapse) the permission
  *  matrix screen needs - unlike DisplayModuleNode (built for the read-only tree view), the
  *  matrix mutates role_ids directly on these nodes as the admin toggles checkboxes. */
-export interface MatrixModuleNode extends Omit<RolePermissionModule, 'sub_modules'> {
+export interface MatrixModuleNode extends Omit<RolePermissionModule, 'sub_modules' | 'tabs'> {
+  tabs: RolePermissionTab[];
   sub_modules: MatrixModuleNode[];
   expanded: boolean;
 }
@@ -77,6 +87,7 @@ export function toMatrixNode(module: RolePermissionModule): MatrixModuleNode {
   return {
     ...module,
     actions: module.actions ?? [],
+    tabs: [...(module.tabs ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
     sub_modules: (module.sub_modules ?? []).map(toMatrixNode),
     expanded: false,
   };
@@ -95,12 +106,15 @@ export function setRole(roleIds: string | null | undefined, roleId: number, chec
 }
 
 /** Checking a module grants the selected role access to it and everything under it in one
- *  click (all its actions and every nested sub-module's actions); unchecking revokes the same
+ *  click (all its tabs and actions and every nested sub-module's); unchecking revokes the same
  *  way - this is what turns "tick 20+ modules one at a time" into "tick the top node once". */
 export function cascadeSetRole(node: MatrixModuleNode, roleId: number, checked: boolean): void {
   node.role_ids = setRole(node.role_ids, roleId, checked);
   node.actions.forEach((action) => {
     action.role_ids = setRole(action.role_ids, roleId, checked);
+  });
+  node.tabs.forEach((tab) => {
+    tab.role_ids = setRole(tab.role_ids, roleId, checked);
   });
   node.sub_modules.forEach((child) => cascadeSetRole(child, roleId, checked));
 }
@@ -111,6 +125,7 @@ export function cascadeSetRole(node: MatrixModuleNode, roleId: number, checked: 
 export function collectRoleStates(node: MatrixModuleNode, roleId: number, states: boolean[]): void {
   states.push(hasRole(node.role_ids, roleId));
   node.actions.forEach((action) => states.push(hasRole(action.role_ids, roleId)));
+  node.tabs.forEach((tab) => states.push(hasRole(tab.role_ids, roleId)));
   node.sub_modules.forEach((child) => collectRoleStates(child, roleId, states));
 }
 

@@ -88,6 +88,7 @@
       </div>
     </div>
 
+    @if (tabs.length) {
     <div class="panel tabs-panel">
       <div class="tabs-wrap">
         <button type="button" class="tabs-arrow left" [class.show]="hs.canLeft()" (click)="hs.scrollBy(-1)" aria-label="Scroll tabs left" tabindex="-1"><i class="bi bi-chevron-left"></i></button>
@@ -290,9 +291,15 @@
               </section>
             </div>
           }
+          @default {
+            <app-wip-panel [label]="activeTab()?.label ?? ''" [compact]="true"></app-wip-panel>
+          }
         }
       </div>
     </div>
+    } @else {
+    <div class="panel"><p class="muted-note">No franchise sections are enabled for your role. Ask an admin to assign them on Roles &amp; Permissions.</p></div>
+    }
   </div>
 } @else if (loading()) {
   <!-- Not cached yet: the page loader above covers this until the API answers -->

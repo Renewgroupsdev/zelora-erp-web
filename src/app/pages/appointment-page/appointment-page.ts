@@ -25,6 +25,7 @@ import { CustomerDetailsDialog } from './customer-details-dialog/customer-detail
 import { NewAppointmentDialog, NewAppointmentResult } from './new-appointment-dialog/new-appointment-dialog';
 import { AuthService } from '../../core/auth/auth.service';
 import { CanActionDirective } from '../../shared/directives/can-action.directive';
+import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
 const STATUSES: FlowStatus[] = ['Scheduled', 'In Consultation', 'Awaiting Terms', 'Invoiced', 'Converted', 'Cancelled'];
 
@@ -35,7 +36,7 @@ const STATUSES: FlowStatus[] = ['Scheduled', 'In Consultation', 'Awaiting Terms'
 @Component({
   selector: 'app-appointment-page',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './appointment-page.html',
   styleUrl: './appointment-page.scss',
 })

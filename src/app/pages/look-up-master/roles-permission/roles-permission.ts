@@ -9,15 +9,17 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { ModuleReorderEvent, ModuleTreeNode } from './module-tree-node/module-tree-node';
 import { fetchFullModuleTree } from './roles-permission-data.util';
+import { parseRoleIds } from './add-roles-permission-form/module-form.util';
 import { DisplayModuleNode, isSuccessResponse, RolePermissionModule } from './roles-permission.model';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 @Component({
   selector: 'app-roles-permission',
   standalone: true,
-  imports: [CommonModule, DragDropModule, CommonFilterCard, ModuleTreeNode, PageLoader, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, DragDropModule, CommonFilterCard, ModuleTreeNode, PageLoader, CanActionDirective],
   templateUrl: './roles-permission.html',
   styleUrl: './roles-permission.scss',
 })
@@ -90,27 +92,21 @@ export class RolesPermission implements OnInit {
 
   private toDisplayNode(module: RolePermissionModule): DisplayModuleNode {
     const subModules = (module.sub_modules ?? []).map((child) => this.toDisplayNode(child));
+    const roles = this.resolveRoles(module.role_ids);
 
     return {
       ...module,
       actions: module.actions ?? [],
       sub_modules: subModules,
       expanded: false,
-      roleNames: this.resolveRoleNames(module.role_ids),
+      roleNames: roles.length ? roles.map((role) => role.name).join(', ') : 'No roles assigned',
+      roles,
       descendantCount: subModules.reduce((sum, child) => sum + 1 + child.descendantCount, 0),
     };
   }
 
-  private resolveRoleNames(roleIds: string | null | undefined): string {
-    if (!roleIds) return 'No roles assigned';
-
-    const names = roleIds
-      .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean)
-      .map((id) => this.rolesById.get(Number(id)) ?? `#${id}`);
-
-    return names.length ? names.join(', ') : 'No roles assigned';
+  private resolveRoles(roleIds: string | null | undefined): { id: number; name: string }[] {
+    return parseRoleIds(roleIds).map((id) => ({ id, name: this.rolesById.get(id) ?? `#${id}` }));
   }
 
   private computeSummary(nodes: DisplayModuleNode[]): void {

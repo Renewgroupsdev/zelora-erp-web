@@ -130,9 +130,29 @@ export class CommonTableCard {
     return Array.isArray(value) ? (value as CallerLogEntry[]) : [];
   }
 
-  /** Quick actions the signed-in role may use (the action's own `permission`, else `actionPermissions[key]`). */
+  /**
+   * Quick actions the signed-in role may use (the action's own `permission`, else `actionPermissions[key]`),
+   * labelled and iconed as their action is on Roles & Permissions (the page's own label / icon as fallback).
+   */
   asQuickActions(value: TableRow[string]): QuickAction[] {
-    return Array.isArray(value) ? (value as QuickAction[]).filter(a => this.allowed(a.key, a.permission)) : [];
+    return Array.isArray(value)
+      ? (value as QuickAction[])
+        .filter(a => this.allowed(a.key, a.permission))
+        .map(a => {
+          const slug = a.permission ?? this.actionPermissions[a.key];
+          return { ...a, label: this.actionName(a.key, a.label, slug), icon: this.actionIcon(a.key, a.icon, slug) };
+        })
+      : [];
+  }
+
+  /** The row button's Action Name from Roles & Permissions, or `fallback` (no action / empty name). */
+  actionName(key: string, fallback: string, slug = this.actionPermissions[key]): string {
+    return (slug && this.auth.actionDetails(slug)?.action_name?.trim()) || fallback;
+  }
+
+  /** The row button's Icon from Roles & Permissions, or `fallback` (no action / empty icon). */
+  actionIcon(key: string, fallback: string, slug = this.actionPermissions[key]): string {
+    return (slug && this.auth.actionDetails(slug)?.logo?.trim()) || fallback;
   }
 
   /** Whether a row button is shown: true unless it has an action slug the role is not ticked on. */

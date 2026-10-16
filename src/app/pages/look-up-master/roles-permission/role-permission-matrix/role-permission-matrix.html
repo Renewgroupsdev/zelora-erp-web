@@ -11,6 +11,8 @@
     </div>
   </div>
 
+  <app-auto-module-tabs></app-auto-module-tabs>
+
   <div class="matrix-controls-card">
 
     <div class="matrix-toolbar">
@@ -72,6 +74,7 @@
                 [searchTerm]="searchTerm"
                 (toggleModule)="toggleModule($event)"
                 (toggleAction)="onToggleAction($event)"
+                (toggleTab)="onToggleTab($event)"
                 (reorderChildren)="onChildrenReordered($event)">
               </app-matrix-tree-node>
             </div>

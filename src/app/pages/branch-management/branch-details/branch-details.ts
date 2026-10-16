@@ -19,8 +19,13 @@ import { inrShort } from '../../../shared/models/branch-franchise.model';
 import { displayDate, initials, inr } from '../../../shared/utils/format.util';
 import { HScroll } from '../../../shared/directives/h-scroll';
 import { BranchForm } from '../branch-form/branch-form';
+import { AuthService } from '../../../core/auth/auth.service';
+import { PageTab, allowedPageTabs, isPageTabKey } from '../../../shared/utils/module-tabs.util';
+import { WipPanel } from '../../../shared/components/wip-panel/wip-panel';
 
-type Tab = 'overview' | 'employees' | 'attendance' | 'leads' | 'customers' | 'appointments' | 'treatments' | 'sales' | 'inventory' | 'reports';
+/** Sections this page can render - which of them show, and their names / icons / order, come from the API. */
+const TAB_KEYS = ['overview', 'employees', 'attendance', 'leads', 'customers', 'appointments', 'treatments', 'sales', 'inventory', 'reports'] as const;
+type Tab = typeof TAB_KEYS[number];
 type Period = 'day' | 'month' | 'year';
 
 /** Largest `n` groups by value; everything else is rolled into "Others". */
@@ -38,7 +43,7 @@ function topGroups(rows: BfDatum[], n = 6): BfDatum[] {
 @Component({
   selector: 'app-branch-details',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatDialogModule, PageLoader, BfDonut, BfBars, BfColumns, HScroll, GeoLocationCard, CanActionDirective],
+  imports: [CommonModule, RouterLink, MatDialogModule, PageLoader, BfDonut, BfBars, BfColumns, HScroll, GeoLocationCard, CanActionDirective, WipPanel],
   templateUrl: './branch-details.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise.scss'],
 })
@@ -54,16 +59,12 @@ export class BranchDetails {
   readonly summary = signal<BranchSummary | null>(null);
   readonly loading = signal(true);
   readonly tabLoading = signal(false);
-  readonly tab = signal<Tab>(this.initialTab());
+  /** The branch-management tabs the role has, from the permissions API (Roles & Permissions -> Edit Module -> Tabs). */
+  readonly tabs: PageTab<Tab>[] = allowedPageTabs(inject(AuthService), 'branch-management', TAB_KEYS);
+  readonly tab = signal<string>(this.initialTab());
+  /** The open tab (its name for the Work in progress card when its section isn't built yet). */
+  readonly activeTab = computed(() => this.tabs.find(t => t.key === this.tab()));
   readonly period = signal<Period>('month');
-
-  readonly tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: 'overview', label: 'Overview', icon: 'bi-grid-1x2-fill' }, { key: 'employees', label: 'Employees', icon: 'bi-people-fill' },
-    { key: 'attendance', label: 'Attendance', icon: 'bi-person-check-fill' }, { key: 'leads', label: 'Leads', icon: 'bi-person-lines-fill' },
-    { key: 'customers', label: 'Customers', icon: 'bi-person-heart' }, { key: 'appointments', label: 'Appointments', icon: 'bi-calendar2-check-fill' },
-    { key: 'treatments', label: 'Treatments', icon: 'bi-heart-pulse-fill' }, { key: 'sales', label: 'Sales', icon: 'bi-graph-up-arrow' },
-    { key: 'inventory', label: 'Inventory', icon: 'bi-box-seam-fill' }, { key: 'reports', label: 'Reports', icon: 'bi-bar-chart-line-fill' },
-  ];
   readonly periods: { key: Period; label: string }[] = [{ key: 'day', label: 'Day' }, { key: 'month', label: 'Month' }, { key: 'year', label: 'Year' }];
 
   readonly inr = inr;
@@ -95,7 +96,7 @@ export class BranchDetails {
     });
   }
 
-  selectTab(tab: Tab): void {
+  selectTab(tab: string): void {
     this.tab.set(tab);
     this.loadTab();
   }
@@ -109,7 +110,7 @@ export class BranchDetails {
   private loadTab(): void {
     const id = this.id();
     const tab = this.tab();
-    if (!id || tab === 'overview') return;
+    if (!id || !isPageTabKey(TAB_KEYS, tab) || tab === 'overview' || !this.tabs.some(t => t.key === tab)) return;
     this.tabLoading.set(true);
     const done = () => this.tabLoading.set(false);
     const fail = (err: any) => { done(); this.toast.error(err?.error?.message || 'Failed to load this tab. Please try again.'); };
@@ -201,11 +202,10 @@ export class BranchDetails {
     return status === 'Present' ? 'active' : status === 'Absent' ? 'inactive' : 'pending';
   }
 
-  /** `?tab=customers` (used by the list page's quick actions) opens that tab straight away. */
-  private initialTab(): Tab {
+  /** `?tab=customers` (used by the list page's quick actions) opens that tab straight away, if the role has it. */
+  private initialTab(): string {
     const wanted = this.route.snapshot.queryParamMap.get('tab');
-    const valid: Tab[] = ['overview', 'employees', 'attendance', 'leads', 'customers', 'appointments', 'treatments', 'sales', 'inventory', 'reports'];
-    return valid.find(t => t === wanted) ?? 'overview';
+    return this.tabs.find(t => t.key === wanted)?.key ?? this.tabs[0]?.key ?? 'overview';
   }
 
   /** Re-reads the header / overview after a change, behind the page loader. */

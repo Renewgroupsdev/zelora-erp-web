@@ -1,0 +1,19 @@
+<div class="purchase-page container-fluid px-0">
+
+  <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div>
+      <h6 class="page-title"><i [class]="'bi ' + (match()?.current?.icon || 'bi-cone-striped')"></i> {{ match()?.current?.label || 'Work in progress' }}</h6>
+      <p class="page-subtitle">This page is being built and will be available soon.</p>
+    </div>
+  </div>
+
+  <app-auto-module-tabs></app-auto-module-tabs>
+
+  @if (isPurchase()) {
+    <app-purchase-tabs></app-purchase-tabs>
+  } @else if (moduleTabs().length) {
+    <app-module-tabs [tabs]="moduleTabs()" label="Module pages"></app-module-tabs>
+  }
+
+  <app-wip-panel [label]="match()?.current?.label ?? ''"></app-wip-panel>
+</div>

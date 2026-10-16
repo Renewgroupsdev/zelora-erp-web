@@ -9,7 +9,7 @@ import { ALL_WORK_TASK_TYPES, WORK_TASK_STATUSES, WorkTask, isTaskOverdue } from
 import { downloadExcel } from '../../../shared/utils/export.util';
 import { addDays, displayDate, isoDate } from '../../../shared/utils/format.util';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
-import { hrTabs } from '../hr-list-base';
+import { injectHrTabs } from '../hr-list-base';
 import { TaskForm } from './task-form/task-form';
 
 type Period = 'thisweek' | 'thismonth' | 'lastmonth' | 'all';
@@ -27,7 +27,7 @@ export class Tasks {
   private readonly hr = inject(HrService);
   protected readonly store = inject(WorkTaskService);
 
-  readonly tabs = computed(() => hrTabs(this.hr));
+  readonly tabs = injectHrTabs();
   readonly access = this.store.access;
   readonly statuses = WORK_TASK_STATUSES;
   readonly displayDate = displayDate;

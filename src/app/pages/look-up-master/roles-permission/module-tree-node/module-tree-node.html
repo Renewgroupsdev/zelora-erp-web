@@ -38,13 +38,27 @@
       </div>
 
       <div class="node-meta">
-        <span class="meta-chip roles-chip" [title]="node.roleNames">
+        <span
+          class="meta-chip roles-chip has-popover"
+          tabindex="0"
+          (mouseenter)="openPopover('roles', $event)"
+          (mouseleave)="schedulePopoverClose()"
+          (focus)="openPopover('roles', $event)"
+          (blur)="schedulePopoverClose()"
+          (click)="$event.stopPropagation()">
           <i class="bi bi-people-fill"></i>
           {{ node.roleNames }}
         </span>
 
         @if (node.actions.length) {
-          <span class="meta-chip actions-chip">
+          <span
+            class="meta-chip actions-chip has-popover"
+            tabindex="0"
+            (mouseenter)="openPopover('actions', $event)"
+            (mouseleave)="schedulePopoverClose()"
+            (focus)="openPopover('actions', $event)"
+            (blur)="schedulePopoverClose()"
+            (click)="$event.stopPropagation()">
             <i class="bi bi-key-fill"></i>
             {{ allowedActionsCount }}/{{ node.actions.length }} actions
           </span>
@@ -86,6 +100,88 @@
       </button>
     </div>
   </div>
+
+  <!-- Kept outside .node-row: its flex children carry z-index, which would trap the popover
+       in that row's stacking context and let the rows below paint over it. -->
+  @if (popoverKind) {
+    <div
+      class="hover-popover"
+      role="tooltip"
+      [class.above]="popoverAbove"
+      [style.top.px]="popoverTop"
+      [style.left.px]="popoverLeft"
+      [style.--arrow-left.px]="popoverArrowLeft"
+      (mouseenter)="cancelPopoverClose()"
+      (mouseleave)="schedulePopoverClose()"
+      (click)="$event.stopPropagation()">
+      <span class="popover-arrow"></span>
+
+      @if (popoverKind === 'roles') {
+        <div class="popover-header">
+          <span class="popover-header-icon roles"><i class="bi bi-shield-lock-fill"></i></span>
+          <div class="popover-title">
+            <span>Roles &amp; Permissions</span>
+            <small>{{ node.module_name }}</small>
+          </div>
+          <span class="popover-badge roles">{{ roleAccess.length }} role{{ roleAccess.length === 1 ? '' : 's' }}</span>
+        </div>
+        <div class="popover-body">
+          @for (role of roleAccess; track role.id) {
+            <div class="popover-role">
+              <div class="popover-role-head">
+                <span class="popover-avatar">{{ role.name.charAt(0) }}</span>
+                <span class="popover-role-name">{{ role.name }}</span>
+                @if (node.actions.length) {
+                  <span class="popover-role-count" [class.full]="role.actions.length === node.actions.length">
+                    {{ role.actions.length }}/{{ node.actions.length }}
+                  </span>
+                }
+              </div>
+              @if (node.actions.length) {
+                @if (role.actions.length) {
+                  <div class="popover-tag-list">
+                    @for (action of role.actions; track action.id ?? action.slug_name) {
+                      <span class="popover-tag">{{ action.action_name }}</span>
+                    }
+                  </div>
+                } @else {
+                  <span class="popover-empty">No actions allowed</span>
+                }
+              } @else {
+                <span class="popover-empty">Module access only</span>
+              }
+            </div>
+          } @empty {
+            <div class="popover-empty-state">
+              <i class="bi bi-person-x"></i>
+              No roles assigned to this module
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="popover-header">
+          <span class="popover-header-icon actions"><i class="bi bi-key-fill"></i></span>
+          <div class="popover-title">
+            <span>Actions</span>
+            <small>{{ node.module_name }}</small>
+          </div>
+          <span class="popover-badge actions">{{ allowedActionsCount }}/{{ node.actions.length }} enabled</span>
+        </div>
+        <div class="popover-body">
+          <ul class="popover-action-grid">
+            @for (action of node.actions; track action.id ?? action.slug_name) {
+              <li class="popover-action" [class.denied]="!isActionAllowed(action)" [title]="action.action_name">
+                <span class="popover-action-icon">
+                  <i class="bi" [ngClass]="isActionAllowed(action) ? 'bi-check-lg' : 'bi-x-lg'"></i>
+                </span>
+                <span class="popover-action-name">{{ action.action_name }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+  }
 
   @if (node.expanded && node.sub_modules.length) {
     <div

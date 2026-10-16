@@ -16,11 +16,12 @@ import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AddOrganizationForm } from './add-organization-form/add-organization-form';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 @Component({
   selector: 'app-organization',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './organization.html',
   styleUrl: './organization.scss',
 })

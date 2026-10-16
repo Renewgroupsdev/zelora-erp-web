@@ -1,6 +1,8 @@
 import { Routes } from '@angular/router';
 import { authGuard, branchHeadGuard, loginRedirectGuard } from './core/auth/auth.guard';
 import { purchaseTabGuard } from './pages/inventory/purchase/purchase-tabs/purchase-tab-list';
+import { hrTabGuard } from './pages/hr-management/hr-tab-list';
+import { workInProgressMatch } from './shared/utils/module-tabs.util';
 
 export const routes: Routes = [
   {
@@ -60,14 +62,14 @@ export const routes: Routes = [
       // HR Management
       { path: 'hr-management', pathMatch: 'full', redirectTo: 'hr/employees' },
       { path: 'hr', pathMatch: 'full', redirectTo: 'hr/employees' },
-      { path: 'hr/employees', loadComponent: () => import('./pages/hr-management/employees/employees').then(m => m.Employees) },
-      { path: 'hr/attendance', loadComponent: () => import('./pages/hr-management/attendance/attendance').then(m => m.Attendance) },
-      { path: 'hr/leave-permission', loadComponent: () => import('./pages/hr-management/leave-permission/leave-permission').then(m => m.LeavePermission) },
-      { path: 'hr/recruitment', loadComponent: () => import('./pages/hr-management/recruitment/recruitment').then(m => m.Recruitment) },
-      { path: 'hr/payroll', loadComponent: () => import('./pages/hr-management/payroll/payroll').then(m => m.Payroll) },
-      { path: 'hr/appraisals', loadComponent: () => import('./pages/hr-management/appraisals/appraisals').then(m => m.Appraisals) },
-      { path: 'hr/tasks', loadComponent: () => import('./pages/hr-management/tasks/tasks').then(m => m.Tasks) },
-      { path: 'hr/onboarding-exit', loadComponent: () => import('./pages/hr-management/onboarding-exit/onboarding-exit').then(m => m.OnboardingExit) },
+      { path: 'hr/employees', canActivate: [hrTabGuard], loadComponent: () => import('./pages/hr-management/employees/employees').then(m => m.Employees) },
+      { path: 'hr/attendance', canActivate: [hrTabGuard], loadComponent: () => import('./pages/hr-management/attendance/attendance').then(m => m.Attendance) },
+      { path: 'hr/leave-permission', canActivate: [hrTabGuard], loadComponent: () => import('./pages/hr-management/leave-permission/leave-permission').then(m => m.LeavePermission) },
+      { path: 'hr/recruitment', canActivate: [hrTabGuard], loadComponent: () => import('./pages/hr-management/recruitment/recruitment').then(m => m.Recruitment) },
+      { path: 'hr/payroll', canActivate: [hrTabGuard], loadComponent: () => import('./pages/hr-management/payroll/payroll').then(m => m.Payroll) },
+      { path: 'hr/appraisals', canActivate: [hrTabGuard], loadComponent: () => import('./pages/hr-management/appraisals/appraisals').then(m => m.Appraisals) },
+      { path: 'hr/tasks', canActivate: [hrTabGuard], loadComponent: () => import('./pages/hr-management/tasks/tasks').then(m => m.Tasks) },
+      { path: 'hr/onboarding-exit', canActivate: [hrTabGuard], loadComponent: () => import('./pages/hr-management/onboarding-exit/onboarding-exit').then(m => m.OnboardingExit) },
       // Branch Management
       { path: 'branches', loadComponent: () => import('./pages/branch-management/branches/branches').then(m => m.Branches) },
       { path: 'branches/:id', loadComponent: () => import('./pages/branch-management/branch-details/branch-details').then(m => m.BranchDetails) },
@@ -85,6 +87,9 @@ export const routes: Routes = [
       { path: 'reports', loadComponent: () => import('./pages/reports/reports').then(m => m.Reports) },
       { path: 'reports/:id', loadComponent: () => import('./pages/reports/report-detail/report-detail').then(m => m.ReportDetail) },
       { path: 'settings', loadComponent: () => import('./pages/settings-page/settings-page').then(m => m.SettingsPage) },
+      // A tab added on Roles & Permissions whose page isn't built yet opens a Work in progress page inside the
+      // layout. Must stay last; any other unknown URL fails the canMatch and falls through to the 404 page.
+      { path: '**', canMatch: [workInProgressMatch], loadComponent: () => import('./pages/work-in-progress/work-in-progress').then(m => m.WorkInProgress) },
 
     ],
   },

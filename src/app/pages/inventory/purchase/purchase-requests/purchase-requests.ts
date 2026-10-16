@@ -61,8 +61,7 @@ export class PurchaseRequests extends PurchaseListBase {
       const total = lineTotals(r.items).grandTotal;
       const actions: QuickAction[] = [{ key: 'view', icon: 'bi-eye-fill', label: 'View details' }];
       if (r.status === 'Pending' && canApprove) actions.push({ key: 'review', icon: 'bi-check2-square', label: 'Approve / Reject', variant: 'primary' });
-      if (r.poId) actions.push({ key: 'invoice', icon: 'bi-receipt', label: 'View PO / Invoice' });
-      actions.push({ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Print request (PDF)' });
+      actions.push({ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Print request (PDF)', permission: 'download-purchase-request' });
       return {
         id: r.id,
         requestNo: r.requestNo,
@@ -92,10 +91,6 @@ export class PurchaseRequests extends PurchaseListBase {
 
     if (event.action === 'pdf') {
       void this.purchase.openPdf('purchase-request', request.id);
-      return;
-    }
-    if (event.action === 'invoice' && request.poId) {
-      void this.openInvoice(request.poId);
       return;
     }
 

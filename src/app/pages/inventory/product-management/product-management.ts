@@ -17,6 +17,7 @@ import { InventoryService, ProductRecord } from '../../../shared/common-services
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AddProductForm } from './add-product-form/add-product-form';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 /** Table column key -> products API `sort_by` value. */
 const SORT_FIELDS: Record<string, string> = {
@@ -33,7 +34,7 @@ const SORT_FIELDS: Record<string, string> = {
 @Component({
   selector: 'app-product-management',
   standalone: true,
-  imports: [CanActionDirective, CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard],
+  imports: [AutoModuleTabs, CanActionDirective, CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard],
   templateUrl: './product-management.html',
   styleUrl: './product-management.scss',
 })

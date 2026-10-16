@@ -1,0 +1,187 @@
+<section
+  class="wip-card"
+  [class.compact]="compact"
+  (pointermove)="onPointerMove($event)"
+  (pointerleave)="onPointerLeave()"
+  [style.--tilt-x.deg]="tiltX"
+  [style.--tilt-y.deg]="tiltY">
+
+  <!-- Background: moving aurora, dotted grid, ECG monitor trace and drifting medical crosses -->
+  <span class="wip-aurora" aria-hidden="true"></span>
+  <span class="wip-grid" aria-hidden="true"></span>
+  <svg class="wip-monitor" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
+    <path class="monitor-base" pathLength="1000" d="M0 70 H260 l14 -26 l16 54 l18 -84 l18 72 l12 -16 H560 l14 -26 l16 54 l18 -84 l18 72 l12 -16 H860 l14 -26 l16 54 l18 -84 l18 72 l12 -16 H1200" />
+    <path class="monitor-trace" pathLength="1000" d="M0 70 H260 l14 -26 l16 54 l18 -84 l18 72 l12 -16 H560 l14 -26 l16 54 l18 -84 l18 72 l12 -16 H860 l14 -26 l16 54 l18 -84 l18 72 l12 -16 H1200" />
+  </svg>
+  <span class="wip-cross cross-1" aria-hidden="true"></span>
+  <span class="wip-cross cross-2" aria-hidden="true"></span>
+  <span class="wip-cross cross-3" aria-hidden="true"></span>
+  <span class="wip-cross cross-4" aria-hidden="true"></span>
+
+  <div class="wip-content">
+    <div class="wip-stage" aria-hidden="true">
+      <span class="wip-pulse pulse-1"></span>
+      <span class="wip-pulse pulse-2"></span>
+
+      <!-- Healthcare icons orbiting the illustration (each stays upright while the ring turns) -->
+      <div class="wip-orbit">
+        @for (item of orbitIcons; track item.icon) {
+          <span class="orbit-item" [style.--a.deg]="item.angle">
+            <span class="orbit-icon" [class]="'orbit-icon tone-' + item.tone"><i [class]="'bi ' + item.icon"></i></span>
+          </span>
+        }
+      </div>
+
+      <div class="wip-illustration">
+        <svg viewBox="0 0 300 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="wipHcSky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#e6f7f1" />
+              <stop offset="1" stop-color="#b5e3d4" />
+            </linearGradient>
+            <linearGradient id="wipHcRing" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#f3d58b" />
+              <stop offset="0.5" stop-color="#ffffff" />
+              <stop offset="1" stop-color="#8fd3bd" />
+            </linearGradient>
+            <linearGradient id="wipHcGround" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#3aa886" />
+              <stop offset="1" stop-color="#1f7d63" />
+            </linearGradient>
+            <linearGradient id="wipHcBuilding" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#ffffff" />
+              <stop offset="1" stop-color="#e3f1ec" />
+            </linearGradient>
+            <linearGradient id="wipHcTeal" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#1f8f71" />
+              <stop offset="1" stop-color="#0d5c48" />
+            </linearGradient>
+            <linearGradient id="wipHcHeart" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#ff8a9b" />
+              <stop offset="1" stop-color="#e5485f" />
+            </linearGradient>
+            <linearGradient id="wipHcGold" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#ffd977" />
+              <stop offset="1" stop-color="#f0a92a" />
+            </linearGradient>
+            <clipPath id="wipHcClip"><circle cx="150" cy="124" r="92" /></clipPath>
+          </defs>
+  
+          <!-- ring -->
+          <circle cx="150" cy="124" r="108" fill="#ffffff" />
+          <circle class="ring-spin" cx="150" cy="124" r="108" fill="none" stroke="url(#wipHcRing)" stroke-width="2.5" stroke-dasharray="6 7" />
+  
+          <g clip-path="url(#wipHcClip)">
+            <rect x="50" y="30" width="200" height="200" fill="url(#wipHcSky)" />
+  
+            <!-- skyline -->
+            <g fill="#ffffff" opacity="0.55">
+              <rect x="68" y="104" width="18" height="70" rx="2" />
+              <rect x="90" y="86" width="14" height="88" rx="2" />
+              <rect x="198" y="96" width="16" height="78" rx="2" />
+              <rect x="218" y="112" width="18" height="62" rx="2" />
+            </g>
+  
+            <!-- clinic building -->
+            <g>
+              <rect x="104" y="88" width="92" height="96" rx="6" fill="url(#wipHcBuilding)" />
+              <rect x="104" y="88" width="92" height="14" rx="6" fill="url(#wipHcTeal)" />
+              <rect x="104" y="96" width="92" height="6" fill="url(#wipHcTeal)" />
+              <!-- cross sign -->
+              <g class="sign-glow">
+                <rect x="132" y="56" width="36" height="36" rx="9" fill="#ffffff" stroke="#d6efe6" stroke-width="2" />
+                <path d="M146 63 h8 v9 h9 v8 h-9 v9 h-8 v-9 h-9 v-8 h9 Z" fill="url(#wipHcHeart)" />
+              </g>
+              <!-- windows -->
+              <g fill="#bfe6d9">
+                <rect x="114" y="110" width="16" height="13" rx="2.5" />
+                <rect x="142" y="110" width="16" height="13" rx="2.5" />
+                <rect x="170" y="110" width="16" height="13" rx="2.5" />
+                <rect x="114" y="131" width="16" height="13" rx="2.5" />
+                <rect x="170" y="131" width="16" height="13" rx="2.5" />
+              </g>
+              <g class="window-light" fill="#ffe7a3">
+                <rect x="142" y="131" width="16" height="13" rx="2.5" />
+              </g>
+              <!-- door -->
+              <rect x="138" y="152" width="24" height="32" rx="3" fill="url(#wipHcTeal)" />
+              <rect x="149" y="152" width="2" height="32" fill="#0a4a3a" opacity="0.5" />
+            </g>
+  
+            <!-- ground -->
+            <ellipse cx="150" cy="206" rx="130" ry="36" fill="url(#wipHcGround)" />
+  
+            <!-- heartbeat line -->
+            <path class="ecg-line" d="M58 196 H112 l7 -14 l9 30 l10 -46 l10 40 l7 -10 H242" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" />
+          </g>
+  
+          <!-- clipboard -->
+          <g class="float-a">
+            <rect x="206" y="150" width="46" height="58" rx="7" fill="#ffffff" stroke="#cfe9df" stroke-width="2" />
+            <rect x="219" y="144" width="20" height="10" rx="4" fill="url(#wipHcTeal)" />
+            <g stroke-linecap="round" stroke-width="3">
+              <path d="M214 168 l3 3 l5 -6" stroke="#2f9b7d" fill="none" />
+              <path d="M228 168 h16" stroke="#cfe3dc" />
+              <path d="M214 182 l3 3 l5 -6" stroke="#2f9b7d" fill="none" />
+              <path d="M228 182 h16" stroke="#cfe3dc" />
+              <path d="M214 196 h30" stroke="#f3d58b" />
+            </g>
+          </g>
+  
+          <!-- heart -->
+          <g class="heart-beat">
+            <path d="M70 176 c-12 -10 -22 -18 -22 -29 c0 -8 6 -14 13 -14 c4 0 7 2 9 5 c2 -3 5 -5 9 -5 c7 0 13 6 13 14 c0 11 -10 19 -22 29 Z" fill="url(#wipHcHeart)" />
+            <path d="M58 146 a7 7 0 0 1 7 -6" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" opacity="0.7" />
+          </g>
+  
+          <!-- leaves -->
+          <g fill="#7fd1b4">
+            <path d="M26 222 q20 -28 50 -24 q-15 26 -50 24 Z" />
+            <path d="M18 196 q24 -15 46 0 q-24 15 -46 0 Z" opacity="0.8" />
+            <path d="M274 222 q-20 -28 -50 -24 q15 26 50 24 Z" />
+            <path d="M282 196 q-24 -15 -46 0 q24 15 46 0 Z" opacity="0.8" />
+          </g>
+  
+          <!-- sparkles -->
+          <g fill="#f2b53a">
+            <path class="sparkle s1" d="M100 28 l2.5 7 l7 2.5 l-7 2.5 l-2.5 7 l-2.5 -7 l-7 -2.5 l7 -2.5 Z" />
+            <path class="sparkle s2" d="M270 112 l2 5.5 l5.5 2 l-5.5 2 l-2 5.5 l-2 -5.5 l-5.5 -2 l5.5 -2 Z" />
+            <path class="sparkle s3" d="M34 120 l1.6 4.4 l4.4 1.6 l-4.4 1.6 l-1.6 4.4 l-1.6 -4.4 l-4.4 -1.6 l4.4 -1.6 Z" />
+          </g>
+        </svg>
+      </div>
+
+      <!-- Frosted status chips -->
+      <div class="wip-chip chip-left">
+        <span class="chip-icon tone-green"><i class="bi bi-shield-fill-check"></i></span>
+        <span class="chip-text"><strong>Access ready</strong><small>Roles &amp; Permissions</small></span>
+      </div>
+      <div class="wip-chip chip-right">
+        <span class="chip-icon tone-gold"><i class="bi bi-palette2"></i></span>
+        <span class="chip-text">
+          <strong>Designing screen</strong>
+          <span class="chip-bar"><span></span></span>
+        </span>
+      </div>
+    </div>
+
+    <span class="wip-badge"><span class="badge-dot" aria-hidden="true"></span> Work in progress</span>
+
+    <h2 class="wip-title">{{ label || 'This page' }} <span>is coming soon</span></h2>
+    <p class="wip-text">
+      We're still building this screen. The tab is already set up in Roles &amp; Permissions,
+      so it will open here automatically as soon as the page is ready.
+    </p>
+
+    <div class="wip-actions">
+      <button type="button" class="wip-back" (click)="goBack()">
+        <i class="bi bi-arrow-left"></i>
+        <span>Go back</span>
+      </button>
+      <a class="wip-ghost" routerLink="/app/dashboard">
+        <i class="bi bi-grid-1x2"></i>
+        <span>Dashboard</span>
+      </a>
+    </div>
+  </div>
+</section>

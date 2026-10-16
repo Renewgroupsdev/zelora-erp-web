@@ -14,6 +14,7 @@ import { AccountsListBase } from '../accounts-list-base';
 import { BillForm } from '../bills/bill-form/bill-form';
 import { VoucherForm } from '../vouchers/voucher-form/voucher-form';
 import { VoucherView } from '../vouchers/voucher-view/voucher-view';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 const DAY_COLUMNS: TableColumn[] = [
   { key: 'time', header: 'Time', width: '7%' },
@@ -43,7 +44,7 @@ const HISTORY_COLUMNS: TableColumn[] = [
 @Component({
   selector: 'app-day-book',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, CommonTableCard, ModuleTabs, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, FormsModule, MatDialogModule, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './day-book.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './day-book.scss'],
 })

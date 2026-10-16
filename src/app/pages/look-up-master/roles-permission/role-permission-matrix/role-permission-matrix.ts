@@ -8,7 +8,7 @@ import { RoleOption } from '../../../../shared/models/role-option.model';
 import { ApiDataService } from '../../../../shared/common-services/api-data.service';
 import { ApiRoutesConstants } from '../../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../../shared/common-services/toast.service';
-import { ActionToggleEvent, MatrixReorderEvent, MatrixTreeNode } from './matrix-tree-node/matrix-tree-node';
+import { ActionToggleEvent, MatrixReorderEvent, MatrixTreeNode, TabToggleEvent } from './matrix-tree-node/matrix-tree-node';
 import {
   buildModulePayloadFromNode,
   cascadeSetRole,
@@ -22,6 +22,7 @@ import {
 import { isSuccessResponse } from '../roles-permission.model';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { PageLoader } from '../../../../shared/components/page-loader/page-loader';
+import { AutoModuleTabs } from '../../../../shared/components/module-tabs/auto-module-tabs';
 
 /** One screen to grant a single role access across the entire existing module/sub-module/action
  *  tree in one pass, instead of reopening "Add Module & Permissions" per module - checking a
@@ -29,7 +30,7 @@ import { PageLoader } from '../../../../shared/components/page-loader/page-loade
 @Component({
   selector: 'app-role-permission-matrix',
   standalone: true,
-  imports: [CommonModule, FormsModule, DragDropModule, CommonFilterCard, MatrixTreeNode, PageLoader],
+  imports: [AutoModuleTabs, CommonModule, FormsModule, DragDropModule, CommonFilterCard, MatrixTreeNode, PageLoader],
   templateUrl: './role-permission-matrix.html',
   styleUrl: './role-permission-matrix.scss',
 })
@@ -136,6 +137,12 @@ export class RolePermissionMatrix implements OnInit {
     event.action.role_ids = setRole(event.action.role_ids, this.selectedRoleId, checked);
   }
 
+  onToggleTab(event: TabToggleEvent): void {
+    if (this.selectedRoleId == null) return;
+    const checked = !hasRole(event.tab.role_ids, this.selectedRoleId);
+    event.tab.role_ids = setRole(event.tab.role_ids, this.selectedRoleId, checked);
+  }
+
   selectAllForRole(): void {
     if (this.selectedRoleId == null) return;
     this.tree.forEach((node) => cascadeSetRole(node, this.selectedRoleId!, true));
@@ -164,9 +171,10 @@ export class RolePermissionMatrix implements OnInit {
   private nodeChanged(node: MatrixModuleNode, snap: MatrixModuleNode | undefined): boolean {
     const ownChanged = node.role_ids !== snap?.role_ids;
     const actionsChanged = node.actions.some((action, ai) => action.role_ids !== snap?.actions?.[ai]?.role_ids);
+    const tabsChanged = node.tabs.some((tab, ti) => tab.role_ids !== snap?.tabs?.[ti]?.role_ids);
     const subChanged = node.sub_modules.some((child, ci) => this.nodeChanged(child, snap?.sub_modules?.[ci]));
 
-    return ownChanged || actionsChanged || subChanged;
+    return ownChanged || actionsChanged || tabsChanged || subChanged;
   }
 
   save(): void {

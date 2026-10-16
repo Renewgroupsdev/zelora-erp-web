@@ -21,6 +21,7 @@ import { LookupOption, TreatmentManagementService, TreatmentRecord } from '../..
 import { ToastService } from '../../shared/common-services/toast.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { CanActionDirective } from '../../shared/directives/can-action.directive';
+import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'view', icon: 'bi-eye', label: 'View', variant: 'default', permission: 'view-treatment' },
@@ -39,7 +40,7 @@ const SORT_FIELDS: Record<string, string> = {
 @Component({
   selector: 'app-treatment-management',
   standalone: true,
-  imports: [CommonModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './treatment-management.html',
   styleUrl: './treatment-management.scss',
 })
