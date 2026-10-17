@@ -13,13 +13,14 @@ import { displayDate, inr, isoDate } from '../../../shared/utils/format.util';
 import { AccountsListBase } from '../accounts-list-base';
 import { BillForm } from './bill-form/bill-form';
 import { BillView } from './bill-view/bill-view';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 type View = 'Service' | 'Proforma';
 
 @Component({
   selector: 'app-bills',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, ModuleTabs, CanActionDirective],
   templateUrl: './bills.html',
   styleUrl: '../../../shared/styles/erp-page.scss',
 })
@@ -135,7 +136,7 @@ export class Bills extends AccountsListBase {
       },
       {
         name: 'Line Items',
-        columns: [{ header: 'Bill No', key: 'billNo' }, { header: 'Description', key: 'description' }, { header: 'SAC/HSN', key: 'sac' }, { header: 'Qty', key: 'qty' }, { header: 'Rate', key: 'rate' }, { header: 'Disc %', key: 'discountPercent' }, { header: 'GST %', key: 'gstPercent' }],
+        columns: [{ header: 'Bill No', key: 'billNo' }, { header: 'Description', key: 'description' }, { header: 'SAC', key: 'sac' }, { header: 'Qty', key: 'qty' }, { header: 'Rate', key: 'rate' }, { header: 'Disc %', key: 'discountPercent' }, { header: 'GST %', key: 'gstPercent' }],
         rows: bills.flatMap(b => b.items.map(i => ({ billNo: b.billNo, ...i }))),
       },
     ]);

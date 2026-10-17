@@ -9,7 +9,6 @@ import { displayDate, inr, lineTotals } from '../../../../shared/models/purchase
 import { GoodsInwardForm } from '../goods-inward/goods-inward-form/goods-inward-form';
 import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
-import { PurchaseInvoice } from './purchase-invoice/purchase-invoice';
 import { PurchaseOrderEdit } from './purchase-order-edit/purchase-order-edit';
 
 @Component({
@@ -63,7 +62,6 @@ export class PurchaseOrders extends PurchaseListBase {
       const pending = o.items.reduce((s, i) => s + (i.pendingQty ?? 0), 0);
       // Same actions as the reference PO worklist, shown only when the server says they are allowed.
       const actions: QuickAction[] = [
-        { key: 'invoice', icon: 'bi-receipt', label: 'View PO / Invoice' },
         { key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Tax invoice (PDF)' },
       ];
       if (o.canInward) actions.push({ key: 'inward', icon: 'bi-box-arrow-in-down', label: 'Add PO Inward Entries', variant: 'primary' });
@@ -97,7 +95,6 @@ export class PurchaseOrders extends PurchaseListBase {
     if (!order) return;
 
     switch (event.action) {
-      case 'invoice': this.openDialog(PurchaseInvoice, { orderId }, '860px'); break;
       case 'pdf': void this.purchase.openPdf('purchase-order', orderId); break;
       case 'inward': this.openDialog(GoodsInwardForm, { orderId }, '1240px'); break;
       case 'edit': this.openDialog(PurchaseOrderEdit, { orderId }, '820px'); break;

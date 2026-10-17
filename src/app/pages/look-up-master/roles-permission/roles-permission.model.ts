@@ -15,6 +15,24 @@ export interface RolePermissionAction {
   role_ids?: string | null;
 }
 
+/** One page tab of a module (e.g. a step of the Purchase Management strip) - kept separate from its
+ *  actions so tabs have their own order and don't mix with buttons. */
+export interface RolePermissionTab {
+  id?: number;
+  permission_id?: number | null;
+  /** Order among the module's tabs - lower shows first. The array order on save becomes this. */
+  position?: number;
+  tab_name: string;
+  slug_name: string;
+  /** In-app page the tab opens (e.g. "/app/inventory/purchase-orders"). */
+  url?: string | null;
+  /** Bootstrap Icon class (e.g. "bi-receipt") shown on the tab. */
+  icon?: string | null;
+  permission: number;
+  /** Comma-separated role ids that see this tab - set on Assign Permissions. */
+  role_ids?: string | null;
+}
+
 export interface RolePermissionModule {
   id?: number;
   parent_id?: number | null;
@@ -29,6 +47,8 @@ export interface RolePermissionModule {
    *  module/sub-module wherever it appears - sidebar navigation, the module tree, etc. */
   icon?: string | null;
   actions: RolePermissionAction[];
+  /** Missing on older API responses - treat as no tabs. */
+  tabs?: RolePermissionTab[];
   sub_modules: RolePermissionModule[];
   created_at?: string;
   updated_at?: string;
@@ -42,6 +62,9 @@ export interface DisplayModuleNode extends Omit<RolePermissionModule, 'sub_modul
   sub_modules: DisplayModuleNode[];
   expanded: boolean;
   roleNames: string;
+  /** Resolved id/name pairs for role_ids - drives the roles hover popover, which needs ids to
+   *  work out which actions each individual role can use. */
+  roles: { id: number; name: string }[];
   descendantCount: number;
 }
 

@@ -1,5 +1,5 @@
 import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { RolePermissionAction, RolePermissionModule } from '../roles-permission.model';
+import { RolePermissionAction, RolePermissionModule, RolePermissionTab } from '../roles-permission.model';
 
 export function slugify(value: string): string {
   return (value ?? '')
@@ -17,9 +17,9 @@ export function parseRoleIds(roleIds?: string | null): number[] {
     .filter((value) => !Number.isNaN(value));
 }
 
-/** An action's slug is always derived from its name - unlike a module's slug (editable until the
- *  user types into it directly), the action slug field stays disabled for the row's entire life,
- *  so it re-derives on every action_name change with no manual-edit escape hatch. */
+/** A new action's slug is derived from its name (the field is read-only). Once saved, the slug is the key the
+ *  pages check (`*appCan="'add-appointment'"`, table actions, API `module.action:`), so renaming a saved action
+ *  only changes its displayed name - the slug stays, and the button keeps working with its new name. */
 export function buildActionGroup(fb: FormBuilder, action?: RolePermissionAction): FormGroup {
   const group = fb.group({
     id: [action?.id ?? null],
@@ -32,9 +32,39 @@ export function buildActionGroup(fb: FormBuilder, action?: RolePermissionAction)
     role_ids: [parseRoleIds(action?.role_ids)],
   });
 
-  group.get('action_name')?.valueChanges.subscribe((name: string | null) => {
-    group.get('slug_name')?.setValue(slugify(name ?? ''), { emitEvent: false });
+  if (!action?.id) {
+    group.get('action_name')?.valueChanges.subscribe((name: string | null) => {
+      group.get('slug_name')?.setValue(slugify(name ?? ''), { emitEvent: false });
+    });
+  }
+
+  return group;
+}
+
+/** A tab's slug follows its name with a "-tab" suffix (e.g. "Purchase Orders" -> purchase-orders-tab), so tab
+ *  slugs never collide with action slugs. Read-only, and fixed once the tab is saved (like an action's). */
+export function tabSlug(name: string): string {
+  const base = slugify(name);
+  return base ? `${base}-tab` : '';
+}
+
+export function buildTabGroup(fb: FormBuilder, tab?: RolePermissionTab): FormGroup {
+  const group = fb.group({
+    id: [tab?.id ?? null],
+    tab_name: [tab?.tab_name ?? '', [Validators.required, Validators.maxLength(100)]],
+    slug_name: [{ value: tab?.slug_name ?? '', disabled: true }, Validators.maxLength(100)],
+    url: [tab?.url ?? '', [Validators.required, Validators.maxLength(255)]],
+    icon: [tab?.icon ?? '', Validators.maxLength(100)],
+    permission: [tab?.permission ?? 1, Validators.required],
+    role_ids: [parseRoleIds(tab?.role_ids)],
   });
+
+  // Like actions: only a new tab's slug follows its name; a saved tab keeps its slug when renamed.
+  if (!tab?.id) {
+    group.get('tab_name')?.valueChanges.subscribe((name: string | null) => {
+      group.get('slug_name')?.setValue(tabSlug(name ?? ''), { emitEvent: false });
+    });
+  }
 
   return group;
 }
@@ -52,6 +82,11 @@ export function buildModuleGroup(fb: FormBuilder, module?: RolePermissionModule)
     icon: [module?.icon ?? '', Validators.maxLength(255)],
     role_ids: [parseRoleIds(module?.role_ids)],
     actions: fb.array((module?.actions ?? []).map((action) => buildActionGroup(fb, action))),
+    tabs: fb.array(
+      [...(module?.tabs ?? [])]
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .map((tab) => buildTabGroup(fb, tab)),
+    ),
     sub_modules: fb.array((module?.sub_modules ?? []).map((sub) => buildModuleGroup(fb, sub))),
   });
 }
@@ -62,6 +97,7 @@ export function extractModulePayload(group: FormGroup): any {
   const raw = group.getRawValue();
   const actionsArray = group.get('actions') as FormArray;
   const subModulesArray = group.get('sub_modules') as FormArray;
+  const tabsArray = group.get('tabs') as FormArray;
 
   return {
     ...(raw.id ? { id: raw.id } : {}),
@@ -81,6 +117,19 @@ export function extractModulePayload(group: FormGroup): any {
         logo: actionValue.logo ? actionValue.logo.trim() : null,
         permission: Number(actionValue.permission),
         role_ids: (actionValue.role_ids ?? []).join(','),
+      };
+    }),
+    // Array order is the tab order - the API stores it as each tab's position.
+    tabs: tabsArray.controls.map((control) => {
+      const tabValue = control.getRawValue();
+      return {
+        ...(tabValue.id ? { id: tabValue.id } : {}),
+        tab_name: tabValue.tab_name,
+        slug_name: tabValue.slug_name,
+        url: tabValue.url ? tabValue.url.trim() : null,
+        icon: tabValue.icon ? tabValue.icon.trim() : null,
+        permission: Number(tabValue.permission),
+        role_ids: (tabValue.role_ids ?? []).join(','),
       };
     }),
     sub_modules: subModulesArray.controls.map((control) => extractModulePayload(control as FormGroup)),

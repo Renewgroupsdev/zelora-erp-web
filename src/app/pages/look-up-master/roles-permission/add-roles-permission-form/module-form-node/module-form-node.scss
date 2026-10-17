@@ -346,6 +346,84 @@ app-icon-picker {
   font-style: italic;
 }
 
+/* ---- tabs (same row look as actions, plus a drag handle / order number in front) ---- */
+.actions-table-head.tab-row-grid,
+.action-row.tab-row-grid {
+  grid-template-columns: 44px 1fr 1fr 1fr 1fr 110px 30px;
+}
+
+.tab-drop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tab-drag-handle {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0;
+  border: 1px dashed var(--border-soft-strong);
+  border-radius: 7px;
+  background: var(--app-surface-bg);
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tab-drag-handle:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary-border-strong);
+  color: var(--primary-dark);
+}
+
+.tab-drag-handle:active {
+  cursor: grabbing;
+}
+
+.tab-order {
+  min-width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 9.5px;
+  font-weight: var(--fw-semibold);
+}
+
+.tab-drag-handle i {
+  font-size: 11px;
+}
+
+.tabs-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.action-row.tab-row-grid.cdk-drag-preview {
+  padding: 6px;
+  border-radius: 9px;
+  background: var(--app-surface-solid);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.2), 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.action-row.tab-row-grid.cdk-drag-placeholder {
+  opacity: 0.35;
+}
+
+.tab-drop-list.cdk-drop-list-dragging .action-row:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
 /* ---- nested sub-modules ---- */
 .sub-modules-section {
   display: flex;
@@ -371,7 +449,8 @@ app-icon-picker {
     display: none;
   }
 
-  .action-row {
+  .action-row,
+  .action-row.tab-row-grid {
     grid-template-columns: 1fr;
     gap: 5px;
     padding: 8px;

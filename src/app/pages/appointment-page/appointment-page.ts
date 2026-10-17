@@ -25,6 +25,7 @@ import { CustomerDetailsDialog } from './customer-details-dialog/customer-detail
 import { NewAppointmentDialog, NewAppointmentResult } from './new-appointment-dialog/new-appointment-dialog';
 import { AuthService } from '../../core/auth/auth.service';
 import { CanActionDirective } from '../../shared/directives/can-action.directive';
+import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
 const STATUSES: FlowStatus[] = ['Scheduled', 'In Consultation', 'Awaiting Terms', 'Invoiced', 'Converted', 'Cancelled'];
 
@@ -35,7 +36,7 @@ const STATUSES: FlowStatus[] = ['Scheduled', 'In Consultation', 'Awaiting Terms'
 @Component({
   selector: 'app-appointment-page',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './appointment-page.html',
   styleUrl: './appointment-page.scss',
 })
@@ -204,11 +205,9 @@ export class AppointmentPage implements OnInit, AfterViewInit {
     return map[status] ?? 'status-gray';
   }
 
+  /** Payment status as sent by the API (`payment_status`). */
   paymentStatus(a: FlowAppointmentRecord): 'Paid' | 'Partial' | 'Pending' {
-    const total = Number(a.total_amount);
-    const paid = Number(a.paid_amount);
-    if (total > 0 && paid >= total) return 'Paid';
-    return paid > 0 ? 'Partial' : 'Pending';
+    return a.payment_status ?? 'Pending';
   }
 
   paymentStatusClass(status: 'Paid' | 'Partial' | 'Pending'): string {
@@ -338,22 +337,24 @@ export class AppointmentPage implements OnInit, AfterViewInit {
     }).afterClosed().subscribe(() => this.loadAppointments());
   }
 
+  /** Loads the tax invoice as a blob and opens it in a new tab (download / print from the browser's PDF viewer). */
   downloadInvoice(appt: FlowAppointmentRecord): void {
+    const tab = window.open('', '_blank'); // opened before the request so the popup blocker allows it
     this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${appt.id}/invoice`).subscribe({
       next: (blob: Blob) => {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${appt.invoice_no}.pdf`;
-        link.click();
-        URL.revokeObjectURL(url);
+        const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
       },
-      error: () => this.toast.error('Could not download the invoice.'),
+      error: () => {
+        tab?.close();
+        this.toast.error('Could not open the invoice.');
+      },
     });
   }
 
   private mapRow(a: FlowAppointmentRecord): TableRow {
-    const payment = this.paymentStatus(a);
     return {
       id: a.id,
       lead: { name: a.name, subtitle: a.customer?.customer_code ?? `AP-${String(a.id).padStart(5, '0')}` },
@@ -365,7 +366,7 @@ export class AppointmentPage implements OnInit, AfterViewInit {
       status: a.status,
       total: Number(a.total_amount) ? inr(a.total_amount) : '-',
       totalSort: Number(a.total_amount),
-      paymentStatus: Number(a.total_amount) ? payment : '-',
+      paymentStatus: this.paymentStatus(a),
       actions: this.actionsFor(a),
     };
   }

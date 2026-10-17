@@ -66,7 +66,7 @@ export class PurchaseReturns extends PurchaseListBase {
     return this.purchase.returns().map(r => {
       const qty = r.lines.reduce((s, l) => s + l.qty, 0);
       const value = r.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
-      const actions: QuickAction[] = [{ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Return slip (PDF)' }];
+      const actions: QuickAction[] = [{ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Return slip (PDF)', permission: 'download-purchase-return' }];
       if (r.canCancel) actions.push({ key: 'cancel', icon: 'bi-x-circle', label: 'Cancel Return', variant: 'danger' });
       return {
         id: r.id,

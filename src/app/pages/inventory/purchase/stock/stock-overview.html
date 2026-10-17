@@ -10,7 +10,7 @@
         <button type="button" role="tab" [class.active]="view() === 'stock'" [attr.aria-selected]="view() === 'stock'" (click)="setView('stock')">Stock</button>
         <button type="button" role="tab" [class.active]="view() === 'transfers'" [attr.aria-selected]="view() === 'transfers'" (click)="setView('transfers')">Transfers @if (purchase.openTransfers().length) { <span class="count">{{ purchase.openTransfers().length }}</span> }</button>
       </div>
-      <button *appCan="'transfer-stock'" type="button" class="add-lead-btn" (click)="openTransfer()"><i class="bi bi-arrow-left-right"></i> Transfer Stock</button>
+      <button *appCan="'transfer-stock'; let action" type="button" class="add-lead-btn" (click)="openTransfer()"><i [class]="'bi ' + (action.logo || 'bi-arrow-left-right')"></i> {{ action.action_name || 'Transfer Stock' }}</button>
     </div>
   </div>
 
@@ -27,7 +27,7 @@
           }
         </div>
       </div>
-      <button *appCan="'notify-low-stock'" type="button" class="ghost-btn" (click)="notifyBranchHead()"><i class="bi bi-bell"></i> Notify Branch Head</button>
+      <button *appCan="'notify-low-stock'; let action" type="button" class="ghost-btn" (click)="notifyBranchHead()"><i [class]="'bi ' + (action.logo || 'bi-bell')"></i> {{ action.action_name || 'Notify Branch Head' }}</button>
     </div>
   }
 

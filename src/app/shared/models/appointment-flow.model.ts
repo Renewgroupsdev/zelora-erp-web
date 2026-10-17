@@ -103,6 +103,8 @@ export interface FlowAppointmentRecord {
   doctor_suggestion: string | null;
   payment_mode: PaymentMode | null;
   paid_amount: string;
+  /** Paid / Partial / Pending, worked out by the API from paid_amount against total_amount. */
+  payment_status: 'Paid' | 'Partial' | 'Pending';
   transaction_no: string | null;
   emi_months: number | null;
   terms_sent_at: string | null;

@@ -58,7 +58,7 @@
           <h3><i class="bi bi-folder2-open"></i> Patient history documents</h3>
           <div class="cd-docs">
             @for (doc of a.documents; track doc.id) {
-              <a [href]="doc.url" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> {{ doc.title }}</a>
+              <a href="#" (click)="viewDocument(doc, $event)"><i class="bi bi-file-earmark-text"></i> {{ doc.title }}</a>
             }
           </div>
         </section>

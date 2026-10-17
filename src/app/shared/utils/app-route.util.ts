@@ -33,3 +33,21 @@ export function isAppRoute(routes: Routes, url: string | null | undefined): bool
     return parts.every((part, i) => part.startsWith(':') || part === segments[i]);
   });
 }
+
+/**
+ * Every concrete in-app page URL in the router config (e.g. '/app/inventory/stock', '/app/branches/:id'), for
+ * suggesting valid URLs while typing one in Roles & Permissions. Lazy child modules and redirects are left out.
+ */
+export function appRoutePaths(routes: Routes): string[] {
+  const paths = new Set<string>();
+  const walk = (list: Routes, prefix: string[]) => {
+    for (const route of list) {
+      if (route.path === undefined || route.path === '**') continue;
+      const parts = [...prefix, ...route.path.split('/').filter(Boolean)];
+      if ((route.component || route.loadComponent) && parts.length) paths.add('/' + parts.join('/'));
+      walk(route.children ?? [], parts);
+    }
+  };
+  walk(routes, []);
+  return [...paths].sort();
+}

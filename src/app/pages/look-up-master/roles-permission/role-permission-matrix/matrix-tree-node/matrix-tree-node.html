@@ -38,6 +38,12 @@
         <!-- <span class="node-slug">{{ node.slug_name }}</span> -->
 
         <span class="row-end">
+          @if (node.tabs.length) {
+            <span class="count" [title]="(selectedRoleId ? grantedTabs + ' of ' : '') + node.tabs.length + ' tabs'">
+              <i class="bi bi-segmented-nav"></i>
+              {{ selectedRoleId ? grantedTabs + '/' + node.tabs.length : node.tabs.length }}
+            </span>
+          }
           @if (node.actions.length) {
             <span class="count" [title]="(selectedRoleId ? grantedActions + ' of ' : '') + node.actions.length + ' actions'">
               <i class="bi bi-key"></i>
@@ -52,6 +58,26 @@
     </div>
 
     @if (showChildren) {
+      <!-- Tabs: the module's page tabs, in their saved order -->
+      @if (node.tabs.length) {
+        <div class="tree-children" [class.continues]="node.actions.length || node.sub_modules.length">
+          @for (tab of node.tabs; track tab.id ?? tab.slug_name) {
+            <label class="tree-item tree-row action-row" [class.on]="isTabChecked(tab)" [class.disabled]="!selectedRoleId">
+              <span class="tick">
+                <input
+                  type="checkbox"
+                  [checked]="isTabChecked(tab)"
+                  [disabled]="!selectedRoleId"
+                  (change)="toggleTab.emit({ node, tab })" />
+              </span>
+              <i [class]="'bi leaf-icon ' + (tab.icon || 'bi-segmented-nav')"></i>
+              <span class="action-name">{{ tab.tab_name }}</span>
+              <span class="leaf-kind">Tab</span>
+            </label>
+          }
+        </div>
+      }
+
       <!-- Actions: leaves of this module, on the same tree line as its sub-modules -->
       @if (node.actions.length) {
         <div class="tree-children" [class.continues]="node.sub_modules.length">
@@ -90,6 +116,7 @@
               [searchTerm]="searchTerm"
               (toggleModule)="toggleModule.emit($event)"
               (toggleAction)="toggleAction.emit($event)"
+              (toggleTab)="toggleTab.emit($event)"
               (reorderChildren)="reorderChildren.emit($event)">
             </app-matrix-tree-node>
           }

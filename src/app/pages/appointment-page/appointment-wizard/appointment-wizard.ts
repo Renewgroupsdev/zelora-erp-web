@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { finalize } from 'rxjs';
@@ -8,7 +8,7 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { HairGradeIcon } from '../../../shared/components/hair-grade-icon/hair-grade-icon';
 import {
-  ALLERGIES, EMI_MONTHS, FAMILY_HISTORY, FlowAppointmentRecord, HAIR_LOSS_PATTERN, HEARD_FROM, LUDWIG_GRADES,
+  ALLERGIES, EMI_MONTHS, FAMILY_HISTORY, FlowAppointmentRecord, FlowDocument, HAIR_LOSS_PATTERN, HEARD_FROM, LUDWIG_GRADES,
   NORWOOD_GRADES, PAYMENT_MODES, PaymentMode, SKIN_CONCERNS, SKIN_TYPES, inr,
 } from '../../../shared/models/appointment-flow.model';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
@@ -115,6 +115,12 @@ export class AppointmentWizard implements OnInit {
   readonly treatments = signal<TreatmentOption[]>([]);
   readonly categories = signal<CategoryOption[]>([]);
   private changed = false;
+  private readonly body = viewChild<ElementRef<HTMLElement>>('wzBody');
+
+  /** The error banner sits above the step content - scroll up to it whenever a new error is shown. */
+  private readonly scrollToError = effect(() => {
+    if (this.error()) this.body()?.nativeElement.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 
   // Step 1
   profile = { name: '', email: '', age: null as number | null, gender: '', heard_from: '' };
@@ -204,7 +210,10 @@ export class AppointmentWizard implements OnInit {
 
   goTo(index: number): void {
     const reached = Math.max(0, (this.appt()?.current_step ?? 1) - 1);
-    if (index <= reached) this.step.set(index);
+    if (index <= reached) {
+      this.error.set(null); // a message from another step does not belong here
+      this.step.set(index);
+    }
   }
 
   back(): void {
@@ -252,6 +261,24 @@ export class AppointmentWizard implements OnInit {
 
   removeNewDoc(index: number): void {
     this.newDocs.splice(index, 1);
+  }
+
+  /** Patient documents are private: load through the API (with the login token) as a blob and open it in a new tab. */
+  viewDocument(doc: FlowDocument, event: Event): void {
+    event.preventDefault();
+    const tab = window.open('', '_blank'); // opened before the request so the popup blocker allows it
+    this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/documents/${doc.id}`).subscribe({
+      next: (blob: Blob) => {
+        const url = URL.createObjectURL(doc.mime ? new Blob([blob], { type: doc.mime }) : blob);
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: () => {
+        tab?.close();
+        this.toast.error('Could not open the document.');
+      },
+    });
   }
 
   deleteSavedDoc(id: number): void {
@@ -462,10 +489,29 @@ export class AppointmentWizard implements OnInit {
     });
   }
 
+  /** Loads the server-rendered tax invoice as a blob and opens it in a new tab (same as the purchase PDFs). */
+  viewInvoice(): void {
+    const a = this.appt();
+    if (!a?.invoice_no) return;
+    const tab = window.open('', '_blank'); // opened before the request so the popup blocker allows it
+    this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${a.id}/invoice`).subscribe({
+      next: (blob: Blob) => {
+        const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: () => {
+        tab?.close();
+        this.toast.error('Could not open the invoice.');
+      },
+    });
+  }
+
   downloadInvoice(): void {
     const a = this.appt();
     if (!a?.invoice_no) return;
-    this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${a.id}/invoice`).subscribe({
+    this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${a.id}/invoice?download=1`).subscribe({
       next: (blob: Blob) => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');

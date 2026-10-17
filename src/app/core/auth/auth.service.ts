@@ -145,14 +145,14 @@ export class AuthService {
    * User sign-out (Logout button, idle timeout): revokes the access + refresh token on the API, then clears
    * the local session. The local session is cleared even when the API call fails (offline, token already expired).
    */
-  signOut(): Observable<void> {
+  signOut(deviceName = 'web'): Observable<void> {
     const refreshToken = this.readRefreshToken();
     if (!this.readAccessToken()) {
       this.logout();
       return of(undefined);
     }
     this.idleService.stop();
-    return this.api.POST(ApiRoutesConstants.AUTH_LOGOUT, { device_name: 'web', refresh_token: refreshToken }).pipe(
+    return this.api.POST(ApiRoutesConstants.AUTH_LOGOUT, { refresh_token: refreshToken, device_name: deviceName }).pipe(
       map(() => undefined),
       catchError(() => of(undefined)),
       finalize(() => this.logout()),

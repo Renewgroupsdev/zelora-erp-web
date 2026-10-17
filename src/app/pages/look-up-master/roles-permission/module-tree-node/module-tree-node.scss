@@ -175,6 +175,313 @@
   color: var(--status-purple-text);
 }
 
+.meta-chip.has-popover {
+  cursor: help;
+  outline: none;
+  transition: box-shadow 0.15s ease;
+}
+
+.meta-chip.has-popover:hover,
+.meta-chip.has-popover:focus-visible {
+  box-shadow: 0 0 0 1px currentColor;
+}
+
+/* Fixed (not absolute) so the module tree's overflow scroll container can't clip it -
+   top/left come from the hovered chip's viewport rect in module-tree-node.ts. */
+.hover-popover {
+  --popover-bg: var(--app-surface-solid, #fff);
+  --popover-border: var(--border-soft-strong, rgba(0, 0, 0, 0.1));
+
+  position: fixed;
+  z-index: 1080;
+  width: 360px;
+  max-width: calc(100vw - 16px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: var(--popover-bg);
+  border: 1px solid var(--popover-border);
+  box-shadow: 0 16px 40px rgba(15, 40, 35, 0.18), 0 3px 10px rgba(15, 40, 35, 0.08);
+  cursor: default;
+  isolation: isolate;
+  animation: popover-in 0.14s ease-out;
+}
+
+.hover-popover.above {
+  transform: translateY(-100%);
+  animation-name: popover-in-above;
+}
+
+@keyframes popover-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popover-in-above {
+  from { opacity: 0; transform: translateY(calc(-100% + 4px)); }
+  to { opacity: 1; transform: translateY(-100%); }
+}
+
+/* Small rotated square bridging the gap to the chip - top edge normally, bottom edge when the
+   popover flips above the chip. */
+.popover-arrow {
+  position: absolute;
+  top: -6px;
+  left: var(--arrow-left, 18px);
+  width: 11px;
+  height: 11px;
+  background: var(--popover-bg);
+  border-top: 1px solid var(--popover-border);
+  border-left: 1px solid var(--popover-border);
+  transform: rotate(45deg);
+  z-index: -1;
+}
+
+.hover-popover.above .popover-arrow {
+  top: auto;
+  bottom: -6px;
+  border: 0;
+  border-right: 1px solid var(--popover-border);
+  border-bottom: 1px solid var(--popover-border);
+}
+
+.popover-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--popover-border);
+  background: var(--popover-bg);
+  border-radius: 12px 12px 0 0;
+}
+
+.popover-header-icon {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.popover-header-icon.roles,
+.popover-badge.roles {
+  background: var(--status-blue-bg, #e5f0fb);
+  color: var(--status-blue-text, #1868b0);
+}
+
+.popover-header-icon.actions,
+.popover-badge.actions {
+  background: var(--status-green-bg);
+  color: var(--status-green-text);
+}
+
+.popover-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.popover-title span {
+  font-size: 12.5px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-dark);
+}
+
+.popover-title small {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popover-badge {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+
+.popover-body {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 10px 14px 12px;
+  background: var(--popover-bg);
+  border-radius: 0 0 12px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) transparent;
+}
+
+/* Actions popover: tidy two-column grid instead of free-wrapping chips. */
+.popover-action-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.popover-action {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--status-green-bg);
+  color: var(--status-green-text);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+}
+
+.popover-action-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--status-green-text);
+  color: var(--popover-bg);
+  font-size: 9px;
+}
+
+.popover-action-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popover-action.denied {
+  background: var(--status-red-bg);
+  color: var(--status-red-text);
+}
+
+.popover-action.denied .popover-action-icon {
+  background: var(--status-red-text);
+}
+
+.popover-action.denied .popover-action-name {
+  text-decoration: line-through;
+  opacity: 0.85;
+}
+
+/* Roles popover: one block per role, its allowed actions as tags beneath. */
+.popover-role {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--popover-border);
+}
+
+.popover-role:first-child {
+  padding-top: 0;
+}
+
+.popover-role:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.popover-role-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.popover-avatar {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--status-blue-bg, #e5f0fb);
+  color: var(--status-blue-text, #1868b0);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+}
+
+.popover-role-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11.5px;
+  font-weight: var(--fw-semibold);
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popover-role-count {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--status-orange-bg);
+  color: var(--status-orange-text);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+}
+
+.popover-role-count.full {
+  background: var(--status-green-bg);
+  color: var(--status-green-text);
+}
+
+.popover-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-left: 30px;
+}
+
+.popover-tag {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 10px;
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+
+.popover-empty {
+  padding-left: 30px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.popover-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.popover-empty-state i {
+  font-size: 18px;
+}
+
+@media (max-width: 420px) {
+  .popover-action-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .row-actions {
   flex: 0 0 auto;
   display: flex;

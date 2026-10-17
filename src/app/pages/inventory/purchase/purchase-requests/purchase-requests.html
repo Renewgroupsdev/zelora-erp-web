@@ -6,7 +6,7 @@
       <p class="page-subtitle">Branches request stock and the branch head approves it into a purchase order.</p>
     </div>
     <div class="header-actions">
-      <button *appCan="'create-purchase-request'" type="button" class="add-lead-btn" (click)="openNewRequest()"><i class="bi bi-plus-lg"></i> New Request</button>
+      <button *appCan="'create-purchase-request'; let action" type="button" class="add-lead-btn" (click)="openNewRequest()"><i [class]="'bi ' + (action.logo || 'bi-plus-lg')"></i> {{ action.action_name || 'New Request' }}</button>
     </div>
   </div>
 
@@ -53,7 +53,7 @@
       [sortDirection]="sortDirection"
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
-      [actionPermissions]="{ view: 'view-purchase-request', review: 'approve-purchase-request', invoice: 'view-purchase-order' }"
+      [actionPermissions]="{ view: 'view-purchase-request', review: 'approve-purchase-request' }"
       (quickActionClick)="onQuickAction($event)"
     ></app-common-table-card>
   </div>

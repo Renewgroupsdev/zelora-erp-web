@@ -7,11 +7,12 @@ import { LeadReport } from '../lead-report/lead-report';
 import { LeadConversionReport } from '../lead-conversion-report/lead-conversion-report';
 import { LeadStatusReport } from '../lead-status-report/lead-status-report';
 import { FollowUpReport } from '../follow-up-report/follow-up-report';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 @Component({
   selector: 'app-report-detail',
   standalone: true,
-  imports: [CommonModule, LeadReport, LeadConversionReport, LeadStatusReport, FollowUpReport],
+  imports: [AutoModuleTabs, CommonModule, LeadReport, LeadConversionReport, LeadStatusReport, FollowUpReport],
   templateUrl: './report-detail.html',
   styleUrl: './report-detail.scss',
 })

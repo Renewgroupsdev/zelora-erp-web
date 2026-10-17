@@ -85,6 +85,82 @@
 
       <div class="section-block">
         <div class="section-header">
+          <span class="section-label"><i class="bi bi-segmented-nav"></i> Tabs ({{ tabsArray.length }})</span>
+          <button type="button" class="add-row-btn" (click)="addTab()">
+            <i class="bi bi-plus-lg"></i> Add Tab
+          </button>
+        </div>
+
+        <div class="actions-table tabs-table" formArrayName="tabs">
+          @if (tabsArray.controls.length) {
+            <div class="actions-table-head tab-row-grid">
+              <span></span>
+              <span>Tab Name</span>
+              <span>Slug</span>
+              <span>URL</span>
+              <span>Icon</span>
+              <span>Permission</span>
+              <span></span>
+            </div>
+          }
+
+          <div cdkDropList (cdkDropListDropped)="onTabDrop($event)" class="tab-drop-list">
+            @for (tabGroup of tabsArray.controls; track tabGroup; let i = $index) {
+              <div class="action-row tab-row-grid" [formGroupName]="i" cdkDrag cdkDragLockAxis="y">
+                <button type="button" class="tab-drag-handle" cdkDragHandle title="Drag to reorder" aria-label="Drag to reorder">
+                  <span class="tab-order">{{ i + 1 }}</span>
+                  <i class="bi bi-grip-vertical"></i>
+                </button>
+                <input
+                  type="text"
+                  formControlName="tab_name"
+                  placeholder="e.g. Purchase Orders"
+                  [class.is-invalid]="isTabInvalid(i, 'tab_name')" />
+                <input
+                  type="text"
+                  formControlName="slug_name"
+                  placeholder="Auto-generated from tab name"
+                  class="slug-readonly" />
+                <input
+                  type="text"
+                  formControlName="url"
+                  placeholder="e.g. /app/inventory/purchase-orders"
+                  [attr.list]="pageListId"
+                  [class.is-invalid]="isTabInvalid(i, 'url')"
+                  [class.url-unknown]="unknownTabUrl(i)"
+                  [title]="unknownTabUrl(i) ? 'No page built yet - this tab opens a Work in progress page.' : ''" />
+                <app-icon-picker formControlName="icon" placeholder="Choose icon"></app-icon-picker>
+                <select formControlName="permission">
+                  <option [value]="1">Allowed</option>
+                  <option [value]="0">Denied</option>
+                </select>
+                <button type="button" class="remove-row-btn" (click)="removeTab(i)" title="Remove tab">
+                  <i class="bi bi-trash3-fill"></i>
+                </button>
+              </div>
+            } @empty {
+              <div class="empty-row">No tabs added yet. Add one to show a tab strip on this module's pages.</div>
+            }
+          </div>
+          <datalist [id]="pageListId">
+            @for (path of appPagePaths; track path) {
+              <option [value]="path"></option>
+            }
+          </datalist>
+          @if (unknownTabUrls.length) {
+            <small class="url-warning">
+              <i class="bi bi-cone-striped"></i>
+              No page built yet for: {{ unknownTabUrls.join(', ') }}. These tabs still show and open a "Work in progress" page until their page is added.
+            </small>
+          }
+          @if (tabsArray.length) {
+            <small class="tabs-hint"><i class="bi bi-info-circle"></i> Drag rows to change the tab order. Every tab needs the URL of the page it opens.</small>
+          }
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="section-header">
           <span class="section-label"><i class="bi bi-key-fill"></i> Actions / Permissions ({{ actionsArray.length }})</span>
           <button type="button" class="add-row-btn" (click)="addAction()">
             <i class="bi bi-plus-lg"></i> Add Action

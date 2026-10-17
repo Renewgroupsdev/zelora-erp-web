@@ -1,0 +1,635 @@
+// Fills whatever space its parent gives it (the Work in progress page makes it the rest of the layout).
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.wip-card {
+  // Sizes of the illustration "stage" - the compact variant shrinks these.
+  --illus-w: 290px;
+  --stage-w: 420px;
+  --orbit-r: 148px;
+  --orbit-icon: 40px;
+
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 40px 20px;
+  border: 1px solid color-mix(in srgb, var(--primary) 12%, var(--card-border));
+  border-radius: 22px;
+  background: var(--app-surface-solid);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 22px 48px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+/* ---------------- background ---------------- */
+// Slowly turning aurora of brand teal, mint and gold.
+.wip-aurora {
+  position: absolute;
+  inset: -40%;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side at 30% 35%, color-mix(in srgb, var(--primary) 20%, transparent), transparent),
+    radial-gradient(closest-side at 70% 30%, color-mix(in srgb, #6fd0ae 22%, transparent), transparent),
+    radial-gradient(closest-side at 65% 72%, color-mix(in srgb, #f2b53a 16%, transparent), transparent),
+    radial-gradient(closest-side at 32% 70%, color-mix(in srgb, #8fd3bd 18%, transparent), transparent);
+  filter: blur(30px);
+  opacity: 0.85;
+  animation: wip-aurora 36s linear infinite;
+}
+
+.wip-grid {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(color-mix(in srgb, var(--primary) 22%, transparent) 1px, transparent 1.6px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse 62% 58% at 50% 46%, #000 0%, transparent 78%);
+  opacity: 0.5;
+}
+
+// Wide ECG monitor trace behind everything, with a bright pulse travelling along it.
+.wip-monitor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 58%;
+  z-index: -1;
+  width: 100%;
+  height: 110px;
+  pointer-events: none;
+  opacity: 0.55;
+  mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+
+  path {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+}
+
+.monitor-base {
+  stroke: color-mix(in srgb, var(--primary) 14%, transparent);
+  stroke-width: 1.5;
+}
+
+.monitor-trace {
+  stroke: var(--primary);
+  stroke-width: 2.4;
+  stroke-dasharray: 110 1000;
+  stroke-dashoffset: 1110;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 70%, transparent));
+  animation: wip-monitor 4.2s linear infinite;
+}
+
+// Soft medical crosses drifting in the corners.
+.wip-cross {
+  position: absolute;
+  z-index: -1;
+  width: 56px;
+  height: 56px;
+  pointer-events: none;
+  opacity: 0.45;
+  animation: wip-float 9s ease-in-out infinite;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    border-radius: 6px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 30%, transparent), color-mix(in srgb, var(--primary) 8%, transparent));
+  }
+
+  &::before { inset: 0 36% 0 36%; }
+  &::after { inset: 36% 0 36% 0; }
+}
+
+.cross-1 { top: 10%; left: 7%; rotate: 12deg; }
+.cross-2 { top: 16%; right: 10%; width: 34px; height: 34px; animation-delay: -3s; }
+.cross-3 { bottom: 12%; left: 13%; width: 30px; height: 30px; animation-delay: -5s; }
+.cross-4 { bottom: 9%; right: 7%; width: 64px; height: 64px; rotate: -10deg; animation-delay: -7s; opacity: 0.3; }
+
+/* ---------------- content ---------------- */
+.wip-content {
+  position: relative;
+  z-index: 1;
+  max-width: 660px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+
+  > * {
+    opacity: 0;
+    animation: wip-rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+
+  > :nth-child(1) { animation-delay: 0.05s; }
+  > :nth-child(2) { animation-delay: 0.25s; }
+  > :nth-child(3) { animation-delay: 0.35s; }
+  > :nth-child(4) { animation-delay: 0.45s; }
+  > :nth-child(5) { animation-delay: 0.55s; }
+}
+
+/* ---- illustration stage ---- */
+.wip-stage {
+  position: relative;
+  width: min(var(--stage-w), 92vw);
+  display: flex;
+  justify-content: center;
+  margin: calc(var(--orbit-r) - var(--illus-w) * 0.43 + 10px) 0 calc(var(--orbit-r) - var(--illus-w) * 0.43 + 4px);
+}
+
+.wip-illustration {
+  position: relative;
+  width: var(--illus-w);
+  max-width: 70vw;
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  filter: drop-shadow(0 20px 28px color-mix(in srgb, var(--primary) 20%, transparent));
+}
+
+.wip-illustration svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+// Rings pulsing out from behind the circle (circle centre is 50% / 47.7% of the 300x260 drawing).
+.wip-pulse {
+  position: absolute;
+  left: 50%;
+  top: 47.7%;
+  width: calc(var(--illus-w) * 0.72);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--primary) 32%, transparent);
+  translate: -50% -50%;
+  opacity: 0;
+  animation: wip-ring-pulse 3.8s ease-out infinite;
+}
+
+.pulse-2 { animation-delay: 1.9s; }
+
+/* ---- orbit ---- */
+.wip-orbit {
+  position: absolute;
+  left: 50%;
+  top: 47.7%;
+  width: calc(var(--orbit-r) * 2);
+  height: calc(var(--orbit-r) * 2);
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 1.5px dashed color-mix(in srgb, var(--primary) 22%, transparent);
+  animation: wip-spin 46s linear infinite;
+}
+
+.orbit-item {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: rotate(var(--a)) translateX(var(--orbit-r)) rotate(calc(-1 * var(--a)));
+}
+
+.orbit-icon {
+  position: absolute;
+  left: calc(var(--orbit-icon) / -2);
+  top: calc(var(--orbit-icon) / -2);
+  width: var(--orbit-icon);
+  height: var(--orbit-icon);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: color-mix(in srgb, var(--app-surface-solid) 82%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary) 16%, transparent);
+  font-size: calc(var(--orbit-icon) * 0.45);
+  // counter-rotates so the icon stays upright while the orbit turns
+  animation: wip-spin 46s linear infinite reverse;
+
+  i { animation: wip-pop 3.2s ease-in-out infinite; }
+}
+
+.orbit-item:nth-child(2) .orbit-icon i { animation-delay: 0.5s; }
+.orbit-item:nth-child(3) .orbit-icon i { animation-delay: 1s; }
+.orbit-item:nth-child(4) .orbit-icon i { animation-delay: 1.5s; }
+.orbit-item:nth-child(5) .orbit-icon i { animation-delay: 2s; }
+.orbit-item:nth-child(6) .orbit-icon i { animation-delay: 2.5s; }
+
+.tone-green { color: var(--status-green-text); }
+.tone-teal { color: var(--primary); }
+.tone-gold { color: #d99212; }
+.tone-rose { color: #e5485f; }
+
+/* ---- frosted chips ---- */
+.wip-chip {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px 9px 9px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  background: color-mix(in srgb, var(--app-surface-solid) 70%, transparent);
+  backdrop-filter: blur(10px) saturate(1.3);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--primary) 16%, transparent);
+  text-align: left;
+  animation: wip-bob 5s ease-in-out infinite;
+}
+
+.chip-left { left: -46px; bottom: 6%; }
+.chip-right { right: -54px; top: 4%; animation-delay: -2.5s; }
+
+.chip-icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  font-size: 15px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.chip-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  strong {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dark);
+    white-space: nowrap;
+  }
+
+  small {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+}
+
+.chip-bar {
+  width: 96px;
+  height: 5px;
+  border-radius: 99px;
+  background: color-mix(in srgb, #f2b53a 20%, transparent);
+  overflow: hidden;
+
+  span {
+    display: block;
+    width: 62%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #f2b53a, #f08a12);
+    animation: wip-bar 3.6s ease-in-out infinite;
+  }
+}
+
+/* ---- svg parts ---- */
+.ring-spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wip-spin 28s linear infinite;
+}
+
+.ecg-line {
+  stroke-dasharray: 260;
+  stroke-dashoffset: 260;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.9));
+  animation: wip-ecg 2.8s ease-in-out infinite;
+}
+
+.heart-beat {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wip-heart 1.4s ease-in-out infinite;
+}
+
+.sign-glow { animation: wip-glow 3s ease-in-out infinite; }
+.window-light { animation: wip-blink 4s ease-in-out infinite; }
+
+.float-a {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wip-bob 4.2s ease-in-out infinite;
+}
+
+.sparkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wip-twinkle 2.6s ease-in-out infinite;
+}
+
+.sparkle.s2 { animation-delay: 0.7s; }
+.sparkle.s3 { animation-delay: 1.4s; }
+
+/* ---------------- text ---------------- */
+.wip-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 18px 7px 14px;
+  border-radius: 99px;
+  border: 1px solid color-mix(in srgb, var(--status-orange-text) 18%, transparent);
+  background: linear-gradient(135deg, var(--status-orange-bg), color-mix(in srgb, var(--status-orange-bg) 60%, #ffffff));
+  color: var(--status-orange-text);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--status-orange-text) 12%, transparent);
+}
+
+.badge-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    opacity: 0;
+    animation: wip-dot 1.8s ease-out infinite;
+  }
+}
+
+.wip-title {
+  margin: 18px 0 10px;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+  color: var(--text-dark);
+}
+
+// Brand gradient text with a light sheen gliding across it.
+.wip-title span {
+  background: linear-gradient(100deg, var(--primary) 0%, #3fb894 35%, #b8f0dc 50%, #3fb894 65%, var(--primary) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: wip-sheen 4.5s linear infinite;
+}
+
+.wip-text {
+  max-width: 540px;
+  margin: 0 0 28px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+
+/* ---------------- buttons ---------------- */
+.wip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.wip-back,
+.wip-ghost {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 30px;
+  border-radius: 99px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+
+  i {
+    font-size: 17px;
+    transition: transform 0.2s ease;
+  }
+
+  &:hover { transform: translateY(-2px); }
+  &:active { transform: translateY(0) scale(0.98); }
+
+  &:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--primary) 40%, transparent);
+    outline-offset: 3px;
+  }
+}
+
+.wip-back {
+  border: 0;
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  color: #fff;
+  box-shadow: 0 12px 26px var(--primary-shadow), 0 1px 0 rgba(255, 255, 255, 0.25) inset;
+
+  // light sweep
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+    transform: skewX(-20deg);
+    animation: wip-sweep 4.5s ease-in-out infinite;
+  }
+
+  &:hover {
+    box-shadow: 0 18px 34px var(--primary-shadow);
+    i { transform: translateX(-4px); }
+  }
+}
+
+.wip-ghost {
+  border: 1.5px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  background: color-mix(in srgb, var(--app-surface-solid) 70%, transparent);
+  backdrop-filter: blur(6px);
+  color: var(--primary-dark);
+
+  &:hover {
+    color: var(--primary-dark);
+    background: var(--primary-soft);
+    box-shadow: 0 10px 22px color-mix(in srgb, var(--primary) 14%, transparent);
+    i { transform: scale(1.12); }
+  }
+}
+
+/* ---------------- animations ---------------- */
+@keyframes wip-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes wip-spin {
+  to { rotate: 360deg; }
+}
+
+@keyframes wip-aurora {
+  from { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.08); }
+  to { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes wip-monitor {
+  from { stroke-dashoffset: 1110; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes wip-ring-pulse {
+  0% { opacity: 0.55; scale: 0.92; }
+  100% { opacity: 0; scale: 1.32; }
+}
+
+@keyframes wip-ecg {
+  0% { stroke-dashoffset: 260; opacity: 1; }
+  55% { stroke-dashoffset: 0; opacity: 1; }
+  80% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 260; opacity: 0; }
+}
+
+@keyframes wip-heart {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.12); }
+  30% { transform: scale(0.97); }
+  45% { transform: scale(1.08); }
+  60% { transform: scale(1); }
+}
+
+@keyframes wip-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.82; }
+}
+
+@keyframes wip-blink {
+  0%, 60%, 100% { opacity: 1; }
+  70%, 90% { opacity: 0.2; }
+}
+
+@keyframes wip-bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -7px; }
+}
+
+@keyframes wip-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -12px; }
+}
+
+@keyframes wip-pop {
+  0%, 80%, 100% { transform: scale(1); }
+  88% { transform: scale(1.22); }
+}
+
+@keyframes wip-bar {
+  0%, 100% { width: 38%; }
+  50% { width: 78%; }
+}
+
+@keyframes wip-twinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.6); }
+}
+
+@keyframes wip-dot {
+  0% { opacity: 0.8; transform: scale(0.6); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+
+@keyframes wip-sheen {
+  from { background-position: 100% 0; }
+  to { background-position: -150% 0; }
+}
+
+@keyframes wip-sweep {
+  0%, 70% { left: -60%; }
+  100% { left: 130%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wip-card *,
+  .wip-card *::before,
+  .wip-card *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .wip-content > * { opacity: 1; }
+  .ecg-line { stroke-dashoffset: 0; }
+  .monitor-trace { display: none; }
+  .wip-illustration { transform: none; }
+}
+
+/* ---------------- responsive ---------------- */
+@media (max-width: 900px) {
+  .wip-chip { display: none; }
+}
+
+@media (max-width: 700px) {
+  .wip-card {
+    --illus-w: 230px;
+    --orbit-r: 120px;
+    --orbit-icon: 34px;
+  }
+
+  .wip-title { font-size: 24px; }
+  .wip-text { font-size: 13.5px; }
+  .cross-1, .cross-4 { display: none; }
+}
+
+@media (max-width: 420px) {
+  .wip-card {
+    --illus-w: 190px;
+    --orbit-r: 104px;
+    --orbit-icon: 30px;
+    padding: 24px 14px;
+  }
+
+  .wip-back, .wip-ghost { padding: 11px 22px; font-size: 14px; }
+}
+
+/* ---------------- compact: inside a details page's tab body ---------------- */
+.wip-card.compact {
+  --illus-w: 220px;
+  --stage-w: 360px;
+  --orbit-r: 116px;
+  --orbit-icon: 32px;
+
+  min-height: 0;
+  padding: 30px 16px 28px;
+  border: 0;
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.compact .wip-chip { display: none; }
+.compact .wip-badge { padding: 5px 14px 5px 12px; font-size: 11.5px; }
+.compact .wip-title { margin: 14px 0 8px; font-size: 22px; }
+.compact .wip-text { margin-bottom: 20px; font-size: 13px; }
+.compact .wip-back,
+.compact .wip-ghost { padding: 10px 24px; font-size: 13.5px; }
+.compact .cross-1,
+.compact .cross-4 { display: none; }

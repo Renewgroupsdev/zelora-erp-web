@@ -2,11 +2,16 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { collectRoleStates, hasRole, MatrixModuleNode, nodeMatchesSearch } from '../../roles-permission-data.util';
-import { RolePermissionAction } from '../../roles-permission.model';
+import { RolePermissionAction, RolePermissionTab } from '../../roles-permission.model';
 
 export interface ActionToggleEvent {
   node: MatrixModuleNode;
   action: RolePermissionAction;
+}
+
+export interface TabToggleEvent {
+  node: MatrixModuleNode;
+  tab: RolePermissionTab;
 }
 
 export interface MatrixReorderEvent {
@@ -36,6 +41,7 @@ export class MatrixTreeNode {
 
   @Output() toggleModule = new EventEmitter<MatrixModuleNode>();
   @Output() toggleAction = new EventEmitter<ActionToggleEvent>();
+  @Output() toggleTab = new EventEmitter<TabToggleEvent>();
   /** Bubbles a completed sub-module reorder up to the matrix screen, which is the only layer
    *  that holds the API service - each intermediate level just re-emits it unchanged. */
   @Output() reorderChildren = new EventEmitter<MatrixReorderEvent>();
@@ -77,6 +83,15 @@ export class MatrixTreeNode {
     return hasRole(action.role_ids, this.selectedRoleId);
   }
 
+  isTabChecked(tab: RolePermissionTab): boolean {
+    return hasRole(tab.role_ids, this.selectedRoleId);
+  }
+
+  /** How many of this module's tabs the selected role has (for the tabs chip). */
+  get grantedTabs(): number {
+    return this.node.tabs.filter(tab => this.isTabChecked(tab)).length;
+  }
+
   /** While a search is active, force this node's actions/sub-modules open so a match
    *  nested several levels down is never hidden behind a collapsed ancestor. */
   get showChildren(): boolean {
@@ -84,7 +99,7 @@ export class MatrixTreeNode {
   }
 
   get hasExpandableContent(): boolean {
-    return !!(this.node.sub_modules.length || this.node.actions.length);
+    return !!(this.node.sub_modules.length || this.node.actions.length || this.node.tabs.length);
   }
 
   /** Dragging is disabled while a search filter is active, since the visible list is a filtered

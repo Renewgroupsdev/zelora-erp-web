@@ -30,6 +30,7 @@ import { FollowUpLead } from '../../core/telephony/telephony.models';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { AuthService } from '../../core/auth/auth.service';
+import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'call', icon: 'bi-telephone-outbound', label: 'Call Lead', variant: 'primary', permission: 'call-follow-up-lead' },
@@ -46,7 +47,7 @@ const VALIDATION_ACTIONS: QuickAction[] = [
 @Component({
   selector: 'app-followups',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard],
+  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard],
   templateUrl: './followups.html',
   styleUrl: './followups.scss',
 })

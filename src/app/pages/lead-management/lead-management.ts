@@ -34,11 +34,12 @@ import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/compone
 import { AuthService } from '../../core/auth/auth.service';
 import { CanActionDirective } from '../../shared/directives/can-action.directive';
 import { COMBO_OFFERS, TREATMENTS } from '../../shared/data/treatment-catalog';
+import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
 @Component({
   selector: 'app-lead-management',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './lead-management.html',
   styleUrl: './lead-management.scss',
 })

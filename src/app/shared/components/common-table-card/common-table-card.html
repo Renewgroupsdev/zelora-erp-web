@@ -175,9 +175,9 @@
                   type="button"
                   class="row-action-btn call-log-btn"
                   (click)="viewCallLogClick.emit(row)"
-                  aria-label="View call log history"
-                  title="View call log history">
-                  <i class="bi bi-clock-history"></i>
+                  [attr.aria-label]="actionName('viewCallLog', 'View call log history')"
+                  [title]="actionName('viewCallLog', 'View call log history')">
+                  <i [class]="'bi ' + actionIcon('viewCallLog', 'bi-clock-history')"></i>
                 </button>
                 }
               </div>
@@ -191,9 +191,9 @@
                   type="button"
                   class="row-action-btn action-edit"
                   (click)="editClick.emit(row)"
-                  aria-label="Edit row"
-                  title="Edit">
-                  <i class="bi bi-pencil-fill"></i>
+                  [attr.aria-label]="actionName('edit', 'Edit row')"
+                  [title]="actionName('edit', 'Edit')">
+                  <i [class]="'bi ' + actionIcon('edit', 'bi-pencil-fill')"></i>
                 </button>
                 }
 
@@ -203,9 +203,9 @@
                   type="button"
                   class="row-action-btn action-delete"
                   (click)="deleteClick.emit(row)"
-                  aria-label="Delete row"
-                  title="Delete">
-                  <i class="bi bi-trash3-fill"></i>
+                  [attr.aria-label]="actionName('delete', 'Delete row')"
+                  [title]="actionName('delete', 'Delete')">
+                  <i [class]="'bi ' + actionIcon('delete', 'bi-trash3-fill')"></i>
                 </button>
                 }
               </div>
@@ -219,9 +219,9 @@
                     type="button"
                     class="row-action-btn action-call"
                     (click)="callClick.emit(row)"
-                    aria-label="Call lead"
-                    title="Call lead">
-                    <i class="bi bi-telephone-outbound-fill"></i>
+                    [attr.aria-label]="actionName('call', 'Call lead')"
+                    [title]="actionName('call', 'Call lead')">
+                    <i [class]="'bi ' + actionIcon('call', 'bi-telephone-outbound-fill')"></i>
                   </button>
                   }
 
@@ -251,9 +251,9 @@
                     type="button"
                     class="row-action-btn action-edit"
                     (click)="editClick.emit(row)"
-                    aria-label="Edit lead"
-                    title="Edit">
-                    <i class="bi bi-pencil-fill"></i>
+                    [attr.aria-label]="actionName('edit', 'Edit lead')"
+                    [title]="actionName('edit', 'Edit')">
+                    <i [class]="'bi ' + actionIcon('edit', 'bi-pencil-fill')"></i>
                   </button>
                   }
 
@@ -273,9 +273,9 @@
                     type="button"
                     class="row-action-btn action-followup"
                     (click)="followUpClick.emit(row)"
-                    aria-label="Follow-up"
-                    title="Follow-up">
-                    <i class="bi bi-arrow-repeat"></i>
+                    [attr.aria-label]="actionName('followUp', 'Follow-up')"
+                    [title]="actionName('followUp', 'Follow-up')">
+                    <i [class]="'bi ' + actionIcon('followUp', 'bi-arrow-repeat')"></i>
                   </button>
                   }
 
@@ -285,9 +285,9 @@
                     type="button"
                     class="row-action-btn action-branch"
                     (click)="sendToBranchClick.emit(row)"
-                    aria-label="Send to assigned branch"
-                    title="Send to assigned branch">
-                    <i class="bi bi-building-fill-add"></i>
+                    [attr.aria-label]="actionName('sendToBranch', 'Send to assigned branch')"
+                    [title]="actionName('sendToBranch', 'Send to assigned branch')">
+                    <i [class]="'bi ' + actionIcon('sendToBranch', 'bi-building-fill-add')"></i>
                   </button>
                   }
 
@@ -297,9 +297,9 @@
                     type="button"
                     class="row-action-btn action-delete"
                     (click)="deleteClick.emit(row)"
-                    aria-label="Delete lead"
-                    title="Delete">
-                    <i class="bi bi-trash3-fill"></i>
+                    [attr.aria-label]="actionName('delete', 'Delete lead')"
+                    [title]="actionName('delete', 'Delete')">
+                    <i [class]="'bi ' + actionIcon('delete', 'bi-trash3-fill')"></i>
                   </button>
                   }
                 </div>

@@ -23,6 +23,7 @@ import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { CustomerDetailsDialog } from '../appointment-page/customer-details-dialog/customer-details-dialog';
 import { Customer, CustomerSegment, CustomerStats } from './customer.model';
+import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'view', icon: 'bi-eye', label: 'View Profile', variant: 'primary', permission: 'view-customer' },
@@ -37,7 +38,7 @@ const QUICK_ACTIONS: QuickAction[] = [
 @Component({
   selector: 'app-customer-portal-page',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './customer-portal-page.html',
   styleUrl: './customer-portal-page.scss',
 })

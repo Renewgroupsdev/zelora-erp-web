@@ -12,7 +12,7 @@
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 
-  <div class="modal-body-custom">
+  <div class="modal-body-custom" #wzBody>
     @if (loading()) {
       <app-page-loader [inline]="true"></app-page-loader>
     } @else if (appt(); as a) {
@@ -27,6 +27,8 @@
           </li>
         }
       </ol>
+
+      @if (error(); as err) { <div class="wz-error" role="alert"><i class="bi bi-exclamation-triangle-fill"></i> {{ err }}</div> }
 
       @if (locked()) {
         <div class="wz-banner"><i class="bi bi-lock-fill"></i> Terms accepted and invoice {{ a.invoice_no }} issued - the consultation is read-only.</div>
@@ -94,7 +96,7 @@
           @for (d of a.documents ?? []; track d.id) {
             <div class="wz-doc">
               <i class="bi" [class.bi-file-earmark-pdf]="d.mime?.includes('pdf')" [class.bi-file-earmark-image]="!d.mime?.includes('pdf')"></i>
-              <a [href]="d.url" target="_blank" rel="noopener">{{ d.title }}</a>
+              <a href="#" (click)="viewDocument(d, $event)">{{ d.title }}</a>
               <span class="muted">Saved</span>
               <button type="button" class="icon-btn danger" (click)="deleteSavedDoc(d.id)" aria-label="Remove document"><i class="bi bi-trash3"></i></button>
             </div>
@@ -399,6 +401,7 @@
           @if (a.terms_url) { <p class="muted wz-note">Customer link: <a [href]="a.terms_url" target="_blank" rel="noopener">{{ a.terms_url }}</a></p> }
         } @else {
           <div class="wz-actions">
+            <button type="button" class="cancel-btn" (click)="viewInvoice()"><i class="bi bi-file-earmark-pdf"></i> View invoice</button>
             <button type="button" class="cancel-btn" (click)="downloadInvoice()"><i class="bi bi-download"></i> Download invoice</button>
             @if (a.status !== 'Converted') {
               <button type="button" class="save-btn" [disabled]="saving()" (click)="convert()"><i class="bi bi-person-check"></i> Generate customer &amp; sittings</button>
@@ -406,8 +409,6 @@
           </div>
         }
       }
-
-      @if (error(); as err) { <div class="wz-error"><i class="bi bi-exclamation-triangle-fill"></i> {{ err }}</div> }
     }
   </div>
 

@@ -11,11 +11,12 @@ import { BranchPerformance, CATEGORY_ICONS, IncentiveSlab, TREATMENT_CATEGORIES,
 import { downloadExcel } from '../../../shared/utils/export.util';
 import { inr, isoDate } from '../../../shared/utils/format.util';
 import { accountsTabs } from '../accounts-list-base';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 @Component({
   selector: 'app-targets',
   standalone: true,
-  imports: [CommonModule, FormsModule, ModuleTabs, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, FormsModule, ModuleTabs, CanActionDirective],
   templateUrl: './targets.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './targets.scss'],
 })

@@ -13,6 +13,8 @@
         </div>
       </div>
 
+      <app-auto-module-tabs></app-auto-module-tabs>
+
       <div class="row g-2 stat-row">
         @for (stat of stats(); track stat.label) {
           <div class="col-6 col-md-3">
@@ -102,6 +104,12 @@
             <div><span class="mi tone-orange"><i class="bi bi-calendar3"></i></span><dt>Opened</dt><dd>{{ displayDate(p.branch.openedOn) }}</dd></div>
             <div class="wide"><span class="mi tone-orange"><i class="bi bi-pin-map"></i></span><dt>Address</dt><dd>{{ p.branch.address || '-' }}</dd></div>
           </dl>
+
+          <h5>Geo Location</h5>
+          <app-geo-location-card [compact]="true" mapHeight="200px" [showAddress]="false"
+            [latitude]="p.branch.latitude" [longitude]="p.branch.longitude"
+            [address]="(p.branch.address ? p.branch.address + ', ' : '') + p.branch.city + (p.branch.state ? ', ' + p.branch.state : '')"
+            (addLocation)="onQuickAction({ row: { id: p.branch.id }, action: 'edit' })"></app-geo-location-card>
         </div>
 
         <footer class="drawer-foot">

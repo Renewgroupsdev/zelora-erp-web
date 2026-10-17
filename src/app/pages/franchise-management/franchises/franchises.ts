@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { MatDialogModule } from '@angular/material/dialog';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
+import { GeoLocationCard } from '../../../shared/components/geo-location-card/geo-location-card';
 import { FranchiseService } from '../../../shared/common-services/franchise.service';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { CommonDetailCard } from '../../../shared/components/common-detail-card/common-detail-card';
@@ -16,12 +17,13 @@ import { inrShort } from '../../../shared/models/branch-franchise.model';
 import { saveBlob } from '../../../shared/utils/export.util';
 import { displayDate } from '../../../shared/utils/format.util';
 import { FranchiseForm } from '../franchise-form/franchise-form';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 /** Franchise Management: partner outlets with their sales and the Renew company share. */
 @Component({
   selector: 'app-franchises',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective, GeoLocationCard],
   templateUrl: './franchises.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise-list.scss'],
 })

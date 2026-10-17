@@ -1,0 +1,29 @@
+<div class="gm-map" #mapEl></div>
+
+@if (failed()) {
+  <div class="gm-fallback"><i class="bi bi-wifi-off"></i> The map could not be loaded. Check the connection and try again.</div>
+}
+
+<div class="gm-layers" role="group" aria-label="Map type">
+  <button type="button" [class.active]="layer() === 'satellite'" [attr.aria-pressed]="layer() === 'satellite'" (click)="setLayer('satellite')">
+    <i class="bi bi-globe-asia-australia"></i> Satellite
+  </button>
+  <button type="button" [class.active]="layer() === 'street'" [attr.aria-pressed]="layer() === 'street'" (click)="setLayer('street')">
+    <i class="bi bi-map"></i> Map
+  </button>
+</div>
+
+<div class="gm-zoom">
+  <button type="button" (click)="zoomBy(1)" title="Zoom in" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button>
+  <button type="button" (click)="zoomBy(-1)" title="Zoom out" aria-label="Zoom out"><i class="bi bi-dash-lg"></i></button>
+  @if (hasPoint()) {
+    <button type="button" class="recenter" (click)="recenter()" title="Back to pin" aria-label="Back to pin"><i class="bi bi-bullseye"></i></button>
+  }
+</div>
+
+@if (editable() && ready()) {
+  <div class="gm-hint" [class.pulse]="!hasPoint()">
+    <i class="bi" [class.bi-cursor]="!hasPoint()" [class.bi-arrows-move]="hasPoint()"></i>
+    {{ hasPoint() ? 'Drag the pin or click the map to move it' : 'Click the map to drop a pin' }}
+  </div>
+}

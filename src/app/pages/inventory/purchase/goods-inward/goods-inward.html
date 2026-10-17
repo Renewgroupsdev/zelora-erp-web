@@ -10,7 +10,7 @@
         <button type="button" role="tab" [class.active]="view() === 'grn'" [attr.aria-selected]="view() === 'grn'" (click)="setView('grn')">GRN</button>
         <button type="button" role="tab" [class.active]="view() === 'batch'" [attr.aria-selected]="view() === 'batch'" (click)="setView('batch')">Batch-wise</button>
       </div>
-      <button *appCan="'record-goods-inward'" type="button" class="add-lead-btn" (click)="receiveGoods()"><i class="bi bi-plus-lg"></i> Receive Goods</button>
+      <button *appCan="'record-goods-inward'; let action" type="button" class="add-lead-btn" (click)="receiveGoods()"><i [class]="'bi ' + (action.logo || 'bi-plus-lg')"></i> {{ action.action_name || 'Receive Goods' }}</button>
     </div>
   </div>
 

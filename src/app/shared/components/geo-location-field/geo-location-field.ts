@@ -1,18 +1,19 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, input, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { currentPosition, geocodeAddress, isValidGeo, mapEmbedUrl } from '../../utils/geo.util';
-import { SafeUrlPipe } from './safe-url.pipe';
+import { GeoMap } from '../geo-map/geo-map';
+import { GeoPoint, currentPosition, geocodeAddress, isValidGeo } from '../../utils/geo.util';
 
 /**
  * Latitude / longitude inputs for the Branch and Franchise forms, with "Use current location"
- * (device GPS) and "Find from address" (OpenStreetMap lookup) plus a live map preview.
+ * (device GPS) and "Find from address" (OpenStreetMap lookup) plus an interactive satellite / street map:
+ * click the map or drag the pin to mark the location.
  * Usage: <app-geo-location-field [(latitude)]="model.latitude" [(longitude)]="model.longitude" [address]="..." />
  */
 @Component({
   selector: 'app-geo-location-field',
   standalone: true,
-  imports: [CommonModule, FormsModule, SafeUrlPipe],
+  imports: [CommonModule, FormsModule, GeoMap],
   templateUrl: './geo-location-field.html',
   styleUrls: ['../../styles/erp-dialog.scss', './geo-location-field.scss'],
 })
@@ -28,10 +29,16 @@ export class GeoLocationField {
   readonly error = signal<string | null>(null);
 
   readonly hasPoint = computed(() => isValidGeo(this.latitude(), this.longitude()));
-  readonly previewUrl = computed(() => (this.hasPoint() ? mapEmbedUrl({ latitude: Number(this.latitude()), longitude: Number(this.longitude()) }) : ''));
 
   readonly latInvalid = computed(() => this.outOfRange(this.latitude(), 90));
   readonly lngInvalid = computed(() => this.outOfRange(this.longitude(), 180));
+
+  /** The pin was placed / dragged on the map. */
+  setPoint(point: GeoPoint): void {
+    this.error.set(null);
+    this.latitude.set(point.latitude);
+    this.longitude.set(point.longitude);
+  }
 
   setLatitude(value: unknown): void {
     this.latitude.set(this.toNumber(value));

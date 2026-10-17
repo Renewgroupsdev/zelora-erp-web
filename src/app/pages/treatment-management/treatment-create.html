@@ -25,6 +25,8 @@
     </div>
   </div>
 
+  <app-auto-module-tabs></app-auto-module-tabs>
+
 <form [formGroup]="form" class="workspace" (ngSubmit)="save()">
    <!-- A disabled fieldset locks every native control inside it, so View mode is read-only even for dropdowns -->
    <fieldset class="form-lock" [disabled]="readOnly || (!!editingId && loading())">

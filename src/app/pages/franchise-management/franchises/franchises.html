@@ -13,6 +13,8 @@
         </div>
       </div>
 
+      <app-auto-module-tabs></app-auto-module-tabs>
+
       <div class="row g-2 stat-row">
         @for (stat of stats(); track stat.label) {
           <div class="col-6 col-md">
@@ -116,6 +118,12 @@
               <li class="eff">Effective from {{ displayDate(p.franchise.shareEffectiveFrom) }}</li>
             </ul>
           </div>
+
+          <h5>Geo Location</h5>
+          <app-geo-location-card [compact]="true" mapHeight="200px"
+            [latitude]="p.franchise.latitude" [longitude]="p.franchise.longitude"
+            [address]="p.franchise.city + (p.franchise.state ? ', ' + p.franchise.state : '')"
+            (addLocation)="onQuickAction({ row: { id: p.franchise.id }, action: 'edit' })"></app-geo-location-card>
         </div>
 
         <footer class="drawer-foot">

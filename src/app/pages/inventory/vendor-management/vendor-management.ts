@@ -17,6 +17,7 @@ import { InventoryService, VendorRecord } from '../../../shared/common-services/
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AddVendorForm } from './add-vendor-form/add-vendor-form';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 /** Table column key -> vendors API `sort_by` value. */
 const SORT_FIELDS: Record<string, string> = {
@@ -29,7 +30,7 @@ const SORT_FIELDS: Record<string, string> = {
 @Component({
   selector: 'app-vendor-management',
   standalone: true,
-  imports: [CanActionDirective, CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard],
+  imports: [AutoModuleTabs, CanActionDirective, CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard],
   templateUrl: './vendor-management.html',
   styleUrl: './vendor-management.scss',
 })

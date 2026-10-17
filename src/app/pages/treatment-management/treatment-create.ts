@@ -11,11 +11,12 @@ import { BreadcrumbItem } from '../../shared/models/common-components.model';
 import { ToastService } from '../../shared/common-services/toast.service';
 import { parseUnitKey, unitKey } from '../../shared/common-services/branch-options.service';
 import { CanActionDirective } from '../../shared/directives/can-action.directive';
+import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
 @Component({
   selector: 'app-treatment-create',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, Breadcrumb, PageLoader, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, ReactiveFormsModule, Breadcrumb, PageLoader, CanActionDirective],
   templateUrl: './treatment-create.html',
   styleUrl: './treatment-create.scss',
 })

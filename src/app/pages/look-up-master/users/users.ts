@@ -19,11 +19,12 @@ import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AddUserForm } from './add-user-form/add-user-form';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonFilterCard, CommonTableCard, CanActionDirective],
   templateUrl: './users.html',
   styleUrl: './users.scss',
 })
