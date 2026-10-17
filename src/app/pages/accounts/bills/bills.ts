@@ -136,7 +136,7 @@ export class Bills extends AccountsListBase {
       },
       {
         name: 'Line Items',
-        columns: [{ header: 'Bill No', key: 'billNo' }, { header: 'Description', key: 'description' }, { header: 'SAC/HSN', key: 'sac' }, { header: 'Qty', key: 'qty' }, { header: 'Rate', key: 'rate' }, { header: 'Disc %', key: 'discountPercent' }, { header: 'GST %', key: 'gstPercent' }],
+        columns: [{ header: 'Bill No', key: 'billNo' }, { header: 'Description', key: 'description' }, { header: 'SAC', key: 'sac' }, { header: 'Qty', key: 'qty' }, { header: 'Rate', key: 'rate' }, { header: 'Disc %', key: 'discountPercent' }, { header: 'GST %', key: 'gstPercent' }],
         rows: bills.flatMap(b => b.items.map(i => ({ billNo: b.billNo, ...i }))),
       },
     ]);

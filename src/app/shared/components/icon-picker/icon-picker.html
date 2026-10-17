@@ -1,59 +1,107 @@
-<div class="icon-picker" [class.open]="isOpen" [class.disabled]="disabled">
-  <button #trigger type="button" class="icon-picker-trigger" (click)="toggleOpen()" [disabled]="disabled">
+<div class="icon-picker" [class.open]="isOpen" [class.disabled]="disabled" [class.has-clear]="value && !disabled">
+  <button #trigger type="button" class="icon-picker-trigger" (click)="toggleOpen()" [disabled]="disabled"
+    aria-haspopup="listbox" [attr.aria-expanded]="isOpen">
     @if (value) {
-      <i class="bi" [ngClass]="value"></i>
+      <span class="trigger-chip"><i class="bi" [ngClass]="value"></i></span>
       <span class="trigger-label">{{ value }}</span>
     } @else {
-      <i class="bi bi-search trigger-placeholder-icon"></i>
+      <span class="trigger-chip empty"><i class="bi bi-emoji-smile"></i></span>
       <span class="trigger-placeholder">{{ placeholder }}</span>
     }
     <i class="bi bi-chevron-down trigger-caret"></i>
   </button>
 
   @if (value && !disabled) {
-    <button type="button" class="icon-picker-clear" (click)="clear($event)" title="Clear icon">
+    <button type="button" class="icon-picker-clear" (click)="clear($event)" title="Clear icon" aria-label="Clear icon">
       <i class="bi bi-x-lg"></i>
     </button>
   }
 </div>
 
 <ng-template #panelTemplate>
-  <div class="icon-picker-panel">
-    <div class="icon-picker-search">
+  <div class="icon-picker-panel" (keydown)="onKeydown($event)">
+    <div class="ip-search">
       <i class="bi bi-search"></i>
       <input
+        #searchInput
         type="text"
         [(ngModel)]="searchTerm"
         (ngModelChange)="onSearchChange()"
-        placeholder="Search bootstrap icons..."
-        autocomplete="off" />
-    </div>
-
-    <div class="icon-picker-count">
-      Showing {{ filteredIcons.length.toLocaleString() }} of {{ resultCount.toLocaleString() }} icon{{ resultCount === 1 ? '' : 's' }}
-    </div>
-
-    <div class="icon-picker-list">
-      @for (name of filteredIcons; track name) {
-        <button
-          type="button"
-          class="icon-option"
-          [class.selected]="value === ('bi-' + name)"
-          [title]="name"
-          (click)="select(name)">
-          <i class="bi" [ngClass]="'bi-' + name"></i>
-          <span>{{ name }}</span>
+        placeholder="Search {{ totalCount.toLocaleString() }} icons..."
+        autocomplete="off"
+        spellcheck="false" />
+      @if (searchTerm) {
+        <button type="button" class="ip-search-clear" (click)="clearSearch()" aria-label="Clear search">
+          <i class="bi bi-x-circle-fill"></i>
         </button>
-      } @empty {
-        <div class="icon-picker-empty">No icons match "{{ searchTerm }}"</div>
       }
     </div>
 
-    @if (hasMore) {
-      <button type="button" class="icon-picker-more" (click)="showMore()">
-        Show {{ remainingCount > pageSize ? pageSize : remainingCount }} more
-        <i class="bi bi-chevron-down"></i>
-      </button>
-    }
+    <div class="ip-filters" role="tablist">
+      @for (f of filters; track f.key) {
+        <button type="button" class="ip-filter" role="tab" [class.active]="filter === f.key"
+          [attr.aria-selected]="filter === f.key" (click)="setFilter(f.key)">
+          {{ f.label }}<span class="ip-filter-count">{{ countFor(f.key).toLocaleString() }}</span>
+        </button>
+      }
+    </div>
+
+    <div class="ip-list" #listEl (scroll)="onScroll()" role="listbox">
+      @if (showRecent) {
+        <div class="ip-section">Recently used</div>
+        <div class="ip-grid recent">
+          @for (name of recent; track name) {
+            <button type="button" class="ip-tile" role="option" [class.selected]="value === ('bi-' + name)"
+              [title]="name" (click)="select(name)" (mouseenter)="hovered = name" (mouseleave)="hovered = null">
+              <i class="bi" [ngClass]="'bi-' + name"></i>
+              <span>{{ name }}</span>
+            </button>
+          }
+        </div>
+        <div class="ip-section">All icons</div>
+      }
+
+      <div class="ip-grid">
+        @for (name of filteredIcons; track name; let i = $index) {
+          <button type="button" class="ip-tile" role="option"
+            [class.selected]="value === ('bi-' + name)"
+            [class.active]="activeIndex === i"
+            [attr.data-index]="i"
+            [attr.aria-selected]="value === ('bi-' + name)"
+            [title]="name"
+            (click)="select(name)"
+            (mouseenter)="hovered = name; activeIndex = i"
+            (mouseleave)="hovered = null">
+            <i class="bi" [ngClass]="'bi-' + name"></i>
+            <span>{{ name }}</span>
+            @if (value === ('bi-' + name)) { <i class="bi bi-check-circle-fill ip-check"></i> }
+          </button>
+        }
+      </div>
+
+      @if (!filteredIcons.length) {
+        <div class="ip-empty">
+          <i class="bi bi-search"></i>
+          <strong>No icons match "{{ searchTerm }}"</strong>
+          <span>Try a shorter word, like "user", "chart" or "bag".</span>
+        </div>
+      }
+    </div>
+
+    <div class="ip-footer">
+      @if (previewName; as p) {
+        <span class="ip-preview"><i class="bi" [ngClass]="'bi-' + p"></i></span>
+        <span class="ip-preview-text">
+          <strong>bi-{{ p }}</strong>
+          <small>{{ hovered || activeName ? 'Click or press Enter to select' : 'Currently selected' }}</small>
+        </span>
+      } @else {
+        <span class="ip-hint"><i class="bi bi-hand-index-thumb"></i> Pick an icon</span>
+      }
+      <span class="ip-footer-meta">
+        {{ filteredIcons.length.toLocaleString() }} / {{ resultCount.toLocaleString() }}
+        <kbd>&uarr;&darr;</kbd><kbd>&crarr;</kbd>
+      </span>
+    </div>
   </div>
 </ng-template>

@@ -37,7 +37,7 @@ export class BillView {
   readonly displayDate = displayDate;
   readonly amountInWords = amountInWords;
 
-  /** HSN/SAC-wise tax summary, as printed on GST invoices. */
+  /** SAC-wise tax summary, as printed on GST invoices. */
   readonly taxSummary = computed(() => {
     const map = new Map<string, { sac: string; rate: number; taxable: number; gst: number }>();
     for (const i of this.bill().items) {

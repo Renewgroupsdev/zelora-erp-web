@@ -1,0 +1,188 @@
+/* Global (ViewEncapsulation.None): Leaflet builds the pin and panes itself. Everything is scoped under .geo-map-host. */
+.geo-map-host {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 160px;
+  overflow: hidden;
+  border: 1px solid var(--border-soft, #e2e8e5);
+  border-radius: 12px;
+  background: #cfd8dc;
+  isolation: isolate; // keeps Leaflet's z-indexes inside the map, under dialogs / overlays
+
+  .gm-map {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    font-family: inherit;
+    background: #cfd8dc;
+
+    &.is-editable { cursor: crosshair; }
+    &.is-editable.leaflet-drag-target,
+    &.is-editable .leaflet-marker-draggable { cursor: grab; }
+  }
+
+  .leaflet-control-attribution {
+    padding: 1px 6px;
+    border-radius: 6px 0 0 0;
+    background: rgba(255, 255, 255, 0.78);
+    color: #374151;
+    font-size: 9px;
+    line-height: 1.5;
+
+    a { color: inherit; }
+  }
+
+  /* ---- floating controls ---- */
+  .gm-layers,
+  .gm-zoom {
+    position: absolute;
+    z-index: 800;
+    display: flex;
+    border-radius: 10px;
+    background: var(--app-surface-solid, #fff);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+    overflow: hidden;
+  }
+
+  .gm-layers {
+    top: 10px;
+    right: 10px;
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 10px;
+      border: 0;
+      background: transparent;
+      color: var(--text-muted, #6b7280);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+
+      &:hover { color: var(--primary-dark, #0b4533); background: var(--primary-soft, #e6f2ee); }
+      &.active { background: var(--primary, #0b6b4f); color: #fff; }
+    }
+  }
+
+  .gm-zoom {
+    right: 10px;
+    bottom: 26px;
+    flex-direction: column;
+
+    button {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border: 0;
+      background: transparent;
+      color: var(--text-dark, #1f2937);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+
+      & + button { border-top: 1px solid var(--border-soft, #e2e8e5); }
+      &:hover { background: var(--primary-soft, #e6f2ee); color: var(--primary-dark, #0b4533); }
+      &.recenter { color: var(--primary, #0b6b4f); }
+    }
+  }
+
+  .gm-hint {
+    position: absolute;
+    z-index: 800;
+    left: 10px;
+    bottom: 26px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: calc(100% - 70px);
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, 0.78);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+
+    &.pulse { animation: gm-hint-pulse 1.8s ease-in-out infinite; }
+  }
+
+  .gm-fallback {
+    position: absolute;
+    inset: 0;
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px;
+    background: var(--app-surface-solid, #fff);
+    color: var(--text-muted, #6b7280);
+    font-size: 12px;
+    text-align: center;
+  }
+
+  /* ---- the pin: a teardrop in the brand colour that drops in when placed ---- */
+  .gm-pin-wrap { background: none; border: 0; }
+
+  .gm-pin {
+    position: absolute;
+    left: 2px;
+    top: 6px; // puts the sharp tip of the drop exactly on the icon anchor
+    width: 30px;
+    height: 30px;
+    border-radius: 50% 50% 50% 0;
+    background: var(--primary, #0b6b4f);
+    border: 2px solid #fff;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+    transform: rotate(-45deg);
+    animation: gm-pin-drop 0.35s cubic-bezier(0.3, 1.4, 0.6, 1);
+
+    i {
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #fff;
+    }
+  }
+
+  .gm-pin-shadow {
+    position: absolute;
+    left: 7px;
+    bottom: 0;
+    width: 20px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    filter: blur(2px);
+  }
+
+  .leaflet-marker-draggable:active .gm-pin { transform: rotate(-45deg) translate(3px, -3px) scale(1.08); }
+}
+
+@keyframes gm-pin-drop {
+  from { opacity: 0; transform: rotate(-45deg) translate(14px, -26px); }
+  to { opacity: 1; transform: rotate(-45deg); }
+}
+
+@keyframes gm-hint-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .geo-map-host .gm-pin,
+  .geo-map-host .gm-hint.pulse { animation: none; }
+}
+
+@media (max-width: 420px) {
+  .geo-map-host .gm-layers button { padding: 6px 8px; font-size: 10.5px; }
+}

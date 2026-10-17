@@ -87,7 +87,7 @@ export type ServiceBillStatus = 'Unpaid' | 'Partially Paid' | 'Paid' | 'Cancelle
 
 export interface BillItem {
   description: string;
-  /** SAC for services / HSN for products. */
+  /** SAC code for services. */
   sac: string;
   qty: number;
   rate: number;

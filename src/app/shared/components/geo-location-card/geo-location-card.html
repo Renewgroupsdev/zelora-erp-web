@@ -1,6 +1,6 @@
 @if (point(); as p) {
   <div class="geo-card">
-    <iframe class="geo-map" [src]="embedUrl() | safeUrl" title="Location map" loading="lazy"></iframe>
+    <app-geo-map class="geo-map" [latitude]="p.latitude" [longitude]="p.longitude" [height]="mapHeight()"></app-geo-map>
 
     <div class="geo-facts">
       <div class="geo-fact">
@@ -13,10 +13,12 @@
         <div><small>Longitude</small><strong>{{ p.longitude.toFixed(6) }}</strong></div>
       </div>
 
-      <div class="geo-fact">
-        <span class="mi tone-orange"><i class="bi bi-pin-map-fill"></i></span>
-        <div><small>Address</small><strong class="wrap" [title]="address()">{{ address() || '-' }}</strong></div>
-      </div>
+      @if (showAddress()) {
+        <div class="geo-fact">
+          <span class="mi tone-orange"><i class="bi bi-pin-map-fill"></i></span>
+          <div><small>Address</small><strong class="wrap" [title]="address()">{{ address() || '-' }}</strong></div>
+        </div>
+      }
 
       <div class="geo-fact geo-actions">
         <span class="mi tone-purple"><i class="bi bi-signpost-split-fill"></i></span>

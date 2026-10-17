@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { MatDialogModule } from '@angular/material/dialog';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
+import { GeoLocationCard } from '../../../shared/components/geo-location-card/geo-location-card';
 import { BranchService } from '../../../shared/common-services/branch.service';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { CommonDetailCard } from '../../../shared/components/common-detail-card/common-detail-card';
@@ -22,7 +23,7 @@ import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-modu
 @Component({
   selector: 'app-branches',
   standalone: true,
-  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective, GeoLocationCard],
   templateUrl: './branches.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise-list.scss'],
 })

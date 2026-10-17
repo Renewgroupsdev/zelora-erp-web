@@ -4,7 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
-import { FlowAppointmentRecord, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
+import { FlowAppointmentRecord, FlowDocument, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { HairGradeIcon } from '../../../shared/components/hair-grade-icon/hair-grade-icon';
 
@@ -100,6 +100,24 @@ export class CustomerDetailsDialog implements OnInit {
       error: (err: any) => {
         this.toast.error(err?.error?.message || 'Could not load the customer details.');
         this.dialogRef.close();
+      },
+    });
+  }
+
+  /** Patient documents are private: load through the API (with the login token) as a blob and open it in a new tab. */
+  viewDocument(doc: FlowDocument, event: Event): void {
+    event.preventDefault();
+    const tab = window.open('', '_blank'); // opened before the request so the popup blocker allows it
+    this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/documents/${doc.id}`).subscribe({
+      next: (blob: Blob) => {
+        const url = URL.createObjectURL(doc.mime ? new Blob([blob], { type: doc.mime }) : blob);
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: () => {
+        tab?.close();
+        this.toast.error('Could not open the document.');
       },
     });
   }

@@ -36,7 +36,7 @@
       </div>
 
       <table>
-        <thead><tr><th>#</th><th>Description</th><th>SAC/HSN</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Disc</th><th class="num">Taxable</th><th class="num">GST</th><th class="num">Amount</th></tr></thead>
+        <thead><tr><th>#</th><th>Description</th><th>SAC</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Disc</th><th class="num">Taxable</th><th class="num">GST</th><th class="num">Amount</th></tr></thead>
         <tbody>
           @for (i of b.items; track $index) {
             <tr>
@@ -56,7 +56,7 @@
 
       <div class="doc-split">
         <table>
-          <thead><tr><th>SAC/HSN</th><th class="num">Taxable</th><th class="num">CGST</th><th class="num">SGST</th></tr></thead>
+          <thead><tr><th>SAC</th><th class="num">Taxable</th><th class="num">CGST</th><th class="num">SGST</th></tr></thead>
           <tbody>
             @for (x of taxSummary(); track x.sac + x.rate) {
               <tr><td>{{ x.sac }} &#64; {{ x.rate }}%</td><td class="num">{{ x.taxable | number:'1.2-2' }}</td><td class="num">{{ x.gst / 2 | number:'1.2-2' }}</td><td class="num">{{ x.gst / 2 | number:'1.2-2' }}</td></tr>

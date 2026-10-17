@@ -33,10 +33,9 @@
     </div>
     @if (error()) { <small class="error-text">{{ error() }}</small> }
 
-    @if (hasPoint()) {
-      <iframe class="geo-preview" [src]="previewUrl() | safeUrl" title="Location preview" loading="lazy"></iframe>
-    } @else {
-      <div class="geo-empty"><i class="bi bi-geo-alt"></i> No location set yet - use the buttons above or type the coordinates.</div>
+    <app-geo-map class="geo-preview" [editable]="true" [latitude]="latitude()" [longitude]="longitude()" (pointChange)="setPoint($event)"></app-geo-map>
+    @if (!hasPoint()) {
+      <small class="geo-note"><i class="bi bi-geo-alt"></i> No location set yet - click the map, use the buttons above or type the coordinates.</small>
     }
   </div>
 </div>
