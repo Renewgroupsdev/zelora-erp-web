@@ -15,17 +15,8 @@ import { ModuleTabs } from './module-tabs';
   selector: 'app-auto-module-tabs',
   standalone: true,
   imports: [ModuleTabs],
-  template: `
-    <!-- keyed by module so the strip re-registers its pages when moving to another module -->
-    @for (m of matches(); track m.module.slug_name) {
-      <div class="auto-module-tabs">
-        <app-module-tabs [tabs]="m.tabs" [label]="m.module.module_name + ' pages'"></app-module-tabs>
-      </div>
-    }
-  `,
-  styles: [`
-    :host { display: block; flex: 0 0 auto; }
-  `],
+  templateUrl: './auto-module-tabs.html',
+  styleUrl: './auto-module-tabs.scss',
 })
 export class AutoModuleTabs {
   private readonly router = inject(Router);

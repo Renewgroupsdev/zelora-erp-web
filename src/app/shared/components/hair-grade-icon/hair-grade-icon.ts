@@ -38,35 +38,8 @@ let nextId = 0;
 @Component({
   selector: 'app-hair-grade-icon',
   standalone: true,
-  template: `
-    <svg viewBox="0 0 100 110" role="img" [attr.aria-label]="grade() + ' illustration'">
-      <defs>
-        <clipPath [attr.id]="clipId"><ellipse cx="50" cy="56" rx="37" ry="47" /></clipPath>
-      </defs>
-      <!-- ears -->
-      <ellipse class="skin" cx="13" cy="62" rx="5" ry="9" />
-      <ellipse class="skin" cx="87" cy="62" rx="5" ry="9" />
-      <!-- nose tip below the forehead -->
-      <path class="skin" d="M44 101 Q50 112 56 101 Z" />
-      <!-- the head: hair everywhere, then the bald / thinning areas of this grade -->
-      <g [attr.clip-path]="'url(#' + clipId + ')'">
-        <ellipse class="hair" cx="50" cy="56" rx="37" ry="47" />
-        @if (female()) { <line class="part" x1="50" y1="14" x2="50" y2="100" /> }
-        @for (p of patches(); track $index) {
-          <ellipse class="skin" [attr.cx]="p.cx" [attr.cy]="p.cy" [attr.rx]="p.rx" [attr.ry]="p.ry" [attr.opacity]="p.opacity ?? 1" />
-        }
-      </g>
-      <ellipse class="outline" cx="50" cy="56" rx="37" ry="47" />
-    </svg>
-  `,
-  styles: [`
-    :host { display: inline-block; width: 56px; height: 62px; line-height: 0; }
-    svg { width: 100%; height: 100%; }
-    .hair { fill: var(--hair-grade-hair, var(--primary-dark, #0b4533)); }
-    .skin { fill: var(--hair-grade-skin, #f2d6c1); }
-    .part { stroke: var(--hair-grade-skin, #f2d6c1); stroke-width: 1.6; }
-    .outline { fill: none; stroke: var(--hair-grade-line, #8a6f5c); stroke-width: 1.4; }
-  `],
+  templateUrl: './hair-grade-icon.html',
+  styleUrl: './hair-grade-icon.scss',
 })
 export class HairGradeIcon {
   readonly grade = input.required<string>();

@@ -13,7 +13,7 @@ import { allowedPurchaseTabs } from './purchase-tab-list';
   selector: 'app-purchase-tabs',
   standalone: true,
   imports: [ModuleTabs],
-  template: `<app-module-tabs [tabs]="tabs()" label="Purchase management"></app-module-tabs>`,
+  templateUrl: './purchase-tabs.html',
 })
 export class PurchaseTabs {
   // Data is loaded by each tab page itself (PurchaseListBase), so only the open tab's API is called.

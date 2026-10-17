@@ -19,8 +19,7 @@ type BranchInput = Omit<BranchRecord, 'id' | 'code'>;
   standalone: true,
   imports: [CommonModule, FormsModule, MatDialogModule, GeoLocationField, PageLoader],
   templateUrl: './branch-form.html',
-  styleUrls: ['../../../shared/styles/erp-dialog.scss', '../../../shared/styles/branch-franchise-dialog.scss'],
-  styles: [':host .modal-body-custom { position: relative; }'],
+  styleUrls: ['../../../shared/styles/erp-dialog.scss', '../../../shared/styles/branch-franchise-dialog.scss', './branch-form.scss'],
 })
 export class BranchForm {
   private readonly dialogRef = inject(MatDialogRef<BranchForm, BranchRecord>);

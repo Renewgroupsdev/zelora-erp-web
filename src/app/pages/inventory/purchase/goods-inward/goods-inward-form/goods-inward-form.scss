@@ -1,27 +1,31 @@
 .inward-table {
-  min-width: 980px;
+  min-width: 1080px;
+
+  th, td { padding-inline: 6px; }
+
+  /* Product: name, one-line meta, progress bar and the split action - wide enough not to wrap letter by letter */
+  th:first-child, td:first-child { min-width: 170px; }
+
+  .muted { white-space: normal; line-height: 1.35; }
 
   .cell-input.qty {
-    width: 70px;
-    min-width: 70px;
+    width: 64px;
+    min-width: 64px;
+    text-align: right;
+    appearance: textfield;
+    -moz-appearance: textfield;
+
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   }
 
   .cell-input.date {
-    min-width: 120px;
+    width: 128px;
+    min-width: 128px;
   }
 
-  tr.extra td {
-    background: var(--primary-soft) !important;
-  }
-
-  .row-actions {
-    width: 34px;
-  }
-
-  .icon-btn.add {
-    background: var(--primary-soft);
-    color: var(--primary-dark);
-  }
+  td.num, th.num { text-align: right; }
+  td.num .pill { display: inline-block; }
 
   .error-row td {
     padding: 4px 8px;
@@ -47,6 +51,13 @@
     background: var(--status-orange-bg);
     color: var(--status-orange-text);
   }
+}
+
+/* favicon logo loader while the pending PO lines are fetched */
+.lines-loader {
+  --page-loader-min-height: 96px;
+  border-radius: 10px;
+  background: var(--status-green-bg);
 }
 
 .empty-note {
@@ -140,6 +151,3 @@
   margin-top: 8px;
 }
 
-.inward-table .cell-input.qty {
-  min-width: 64px;
-}

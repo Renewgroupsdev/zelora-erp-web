@@ -4,23 +4,22 @@ import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
 import { CENTRAL_STORE_KEY, InwardLine, VendorNoteType, inr } from '../../../../../shared/models/purchase.model';
+import { PageLoader } from '../../../../../shared/components/page-loader/page-loader';
 
 interface EditableLine extends InwardLine {
-  /** First row of a product shows ordered/previous/pending; extra rows are additional batches. */
-  isExtraBatch: boolean;
-  /** Units still pending on the PO for this product (first row only). */
+  /** Units still pending on the PO for this product. */
   pendingQty: number;
 }
 
 /**
- * Receive goods against a PO (reference "Add PO Inward Entries"): one or more batches per product, partial or full,
+ * Receive goods against a PO (reference "Add PO Inward Entries"): one batch per product, partial or full,
  * with the vendor bill - rate, discount %, free qty, selling price per line; freight, other charges, cash discount
  * and round off on the bill. The server repeats every check and computes the same totals.
  */
 @Component({
   selector: 'app-goods-inward-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatDialogModule, PageLoader],
   templateUrl: './goods-inward-form.html',
   styleUrls: ['../../../../../shared/styles/erp-dialog.scss', './goods-inward-form.scss'],
 })
@@ -65,7 +64,7 @@ export class GoodsInwardForm {
       this.dialogRef.close();
       return;
     }
-    this.lines.set(rows.map(l => ({ ...l, sellingPrice: null, isExtraBatch: false, pendingQty: l.orderedQty - l.previousQty - this.closedQty(l.productId) })));
+    this.lines.set(rows.map(l => ({ ...l, pendingQty: l.orderedQty - l.previousQty - this.closedQty(l.productId) })));
   }
 
   private closedQty(productId: string): number {
@@ -82,7 +81,7 @@ export class GoodsInwardForm {
   }
 
   pendingFor(productId: string): number {
-    return this.lines().find(l => l.productId === productId && !l.isExtraBatch)?.pendingQty ?? 0;
+    return this.lines().find(l => l.productId === productId)?.pendingQty ?? 0;
   }
 
   balanceFor(line: EditableLine): number {
@@ -99,6 +98,14 @@ export class GoodsInwardForm {
     return !!batch && this.lines().filter(l => l.productId === line.productId && (l.batchNo || '').trim().toUpperCase() === batch).length > 1;
   }
 
+  /** Rate per unit after the vendor discount (before GST) - what the selling price starts from. */
+  netRate(line: Pick<InwardLine, 'unitPrice' | 'discountPercent'>): number | null {
+    const rate = Number(line.unitPrice) || 0;
+    if (rate <= 0) return null;
+    const disc = Math.min(Math.max(Number(line.discountPercent) || 0, 0), 99.99);
+    return round2(rate * (1 - disc / 100));
+  }
+
   /** received x rate x (1 - disc%) x (1 + GST%) - same formula as the server. */
   lineTotal(line: InwardLine): number {
     const qty = Number(line.receivedQty) || 0;
@@ -112,7 +119,7 @@ export class GoodsInwardForm {
     const received = lines.reduce((s, l) => s + (Number(l.receivedQty) || 0), 0);
     const damaged = lines.reduce((s, l) => s + (Number(l.damagedQty) || 0), 0);
     const free = lines.reduce((s, l) => s + (Number(l.freeQty) || 0), 0);
-    const short = lines.filter(l => !l.isExtraBatch).reduce((s, l) => s + this.balanceFor(l), 0);
+    const short = lines.reduce((s, l) => s + this.balanceFor(l), 0);
     const items = round2(lines.reduce((s, l) => s + this.lineTotal(l), 0));
     return { received, damaged, free, short, partial: short > 0, items };
   });
@@ -120,21 +127,6 @@ export class GoodsInwardForm {
   /** Items + freight + other + round off - cash discount (reference calculateEntrySummary). */
   netAmount(): number {
     return round2(this.summary().items + (Number(this.freight) || 0) + (Number(this.otherCharges) || 0) + (Number(this.roundOff) || 0) - (Number(this.cashDiscount) || 0));
-  }
-
-  addBatch(line: EditableLine): void {
-    const list = [...this.lines()];
-    const lastIndex = list.map(l => l.productId).lastIndexOf(line.productId);
-    // Blank batch no: the server assigns the next suffix (B-...-01-2) unless the vendor's batch no is typed in.
-    list.splice(lastIndex + 1, 0, {
-      ...line, batchNo: '', mfgDate: null, expiryDate: null, receivedQty: this.balanceFor(line), damagedQty: 0, freeQty: 0,
-      sellingPrice: line.sellingPrice, isExtraBatch: true, pendingQty: 0,
-    });
-    this.lines.set(list);
-  }
-
-  removeBatch(index: number): void {
-    this.lines.update(list => list.filter((_, i) => i !== index));
   }
 
   touch(): void {
@@ -151,8 +143,9 @@ export class GoodsInwardForm {
     if (Number(line.receivedQty) > 0 && !(Number(line.unitPrice) > 0)) return 'Purchase price is required.';
     const disc = Number(line.discountPercent) || 0;
     if (disc < 0 || disc >= 100) return 'Discount must be between 0 and 100%.';
-    if (line.sellingPrice !== null && line.sellingPrice !== undefined && String(line.sellingPrice) !== '' && Number(line.sellingPrice) <= Number(line.unitPrice)) {
-      return 'Selling price should be greater than purchase price.';
+    const net = this.netRate(line);
+    if (net !== null && line.sellingPrice !== null && line.sellingPrice !== undefined && String(line.sellingPrice) !== '' && Number(line.sellingPrice) < net) {
+      return 'Selling price cannot be below the purchase rate after discount.';
     }
     if (this.isDuplicateBatch(line)) return 'Same batch no already added for this product.';
     if (line.expiryDate && line.mfgDate && line.expiryDate <= line.mfgDate) return 'Expiry must be after MFG.';

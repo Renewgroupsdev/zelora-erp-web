@@ -19,8 +19,7 @@ type FranchiseInput = Omit<FranchiseRecord, 'id' | 'code'>;
   standalone: true,
   imports: [CommonModule, FormsModule, MatDialogModule, GeoLocationField, PageLoader],
   templateUrl: './franchise-form.html',
-  styleUrls: ['../../../shared/styles/erp-dialog.scss', '../../../shared/styles/branch-franchise-dialog.scss'],
-  styles: [':host .modal-body-custom { position: relative; }'],
+  styleUrls: ['../../../shared/styles/erp-dialog.scss', '../../../shared/styles/branch-franchise-dialog.scss', './franchise-form.scss'],
 })
 export class FranchiseForm {
   private readonly dialogRef = inject(MatDialogRef<FranchiseForm, FranchiseRecord>);

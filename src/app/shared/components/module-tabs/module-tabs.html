@@ -1,0 +1,11 @@
+<nav class="module-tabs" [attr.aria-label]="label" (wheel)="onWheel($event, strip)" #strip>
+  @for (tab of tabs; track tab.path; let i = $index) {
+    <a class="tab" #el [routerLink]="tab.path" routerLinkActive="active" #rla="routerLinkActive" [attr.aria-current]="rla.isActive ? 'page' : null"
+       [attr.title]="tab.label" [attr.aria-label]="tab.label" (isActiveChange)="onActive($event, el)">
+      <span class="step">{{ i + 1 }}</span>
+      <i [class]="'bi ' + tab.icon"></i>
+      <span class="label">{{ tab.label }}</span>
+      @if (tab.badge) { <span class="badge" [class.warn]="tab.warn">{{ tab.badge }}</span> }
+    </a>
+  }
+</nav>

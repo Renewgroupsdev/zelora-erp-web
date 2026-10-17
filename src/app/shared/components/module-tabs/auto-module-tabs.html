@@ -1,0 +1,6 @@
+<!-- keyed by module so the strip re-registers its pages when moving to another module -->
+@for (m of matches(); track m.module.slug_name) {
+  <div class="auto-module-tabs">
+    <app-module-tabs [tabs]="m.tabs" [label]="m.module.module_name + ' pages'"></app-module-tabs>
+  </div>
+}

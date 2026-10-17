@@ -52,7 +52,7 @@
     <div class="section-title"><i class="bi bi-upc-scan"></i> Batch-wise Receipt</div>
 
     @if (loadingLines()) {
-      <div class="empty-note"><i class="bi bi-hourglass-split"></i> Loading pending lines…</div>
+      <div class="lines-loader"><app-page-loader [inline]="true"></app-page-loader></div>
     } @else if (!lines().length) {
       <div class="empty-note"><i class="bi bi-check-circle"></i> Every item on this PO is already received.</div>
     } @else {
@@ -66,55 +66,43 @@
               <th>Batch No</th>
               <th>MFG</th>
               <th>Expiry</th>
-              <th>Recv</th>
-              <th>Dmg</th>
-              <th>Free</th>
-              <th>Rate ₹ *</th>
-              <th>Disc %</th>
-              <th>Selling ₹</th>
+              <th class="num">Recv</th>
+              <th class="num">Dmg</th>
+              <th class="num">Free</th>
+              <th class="num">Rate ₹ *</th>
+              <th class="num">Disc %</th>
+              <th class="num">Selling ₹</th>
               <th class="num">Total<br /><small>incl. GST</small></th>
               <th class="num">Balance</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
-            @for (line of lines(); track $index; let i = $index) {
-              <tr [class.extra]="line.isExtraBatch">
+            @for (line of lines(); track $index) {
+              <tr>
                 <td>
-                  @if (!line.isExtraBatch) {
-                    <strong>{{ line.productName }}</strong>
-                    <div class="muted">Ordered {{ line.orderedQty }} · received {{ line.previousQty }} · GST {{ line.gstPercent }}%</div>
-                    <div class="progress"><span [style.width.%]="(line.previousQty + acceptedFor(line.productId)) / line.orderedQty * 100"></span></div>
-                  } @else { <span class="muted"><i class="bi bi-arrow-return-right"></i> another batch</span> }
+                  <strong>{{ line.productName }}</strong>
+                  <div class="muted">Ordered {{ line.orderedQty }} · received {{ line.previousQty }} · GST {{ line.gstPercent }}%</div>
+                  <div class="progress"><span [style.width.%]="(line.previousQty + acceptedFor(line.productId)) / line.orderedQty * 100"></span></div>
                 </td>
-                <td class="num">@if (!line.isExtraBatch) { <span class="pill" [class.red]="centralQty(line.productId) < purchase.threshold()" [class.green]="centralQty(line.productId) >= purchase.threshold()">{{ centralQty(line.productId) }}</span> }</td>
-                <td class="num">@if (!line.isExtraBatch) { <span class="pill orange">{{ line.pendingQty }}</span> }</td>
-                <td><input class="cell-input" type="text" maxlength="40" [placeholder]="line.isExtraBatch ? 'Auto' : 'Batch'" title="Generated from the PO - type the vendor's batch no to override" [(ngModel)]="line.batchNo" (ngModelChange)="touch()" [class.is-invalid]="isDuplicateBatch(line)" /></td>
+                <td class="num"><span class="pill" [class.red]="centralQty(line.productId) < purchase.threshold()" [class.green]="centralQty(line.productId) >= purchase.threshold()">{{ centralQty(line.productId) }}</span></td>
+                <td class="num"><span class="pill orange">{{ line.pendingQty }}</span></td>
+                <td><input class="cell-input" type="text" maxlength="40" placeholder="Batch" title="Generated from the PO - type the vendor's batch no to override" [(ngModel)]="line.batchNo" (ngModelChange)="touch()" [class.is-invalid]="isDuplicateBatch(line)" /></td>
                 <td><input class="cell-input date" type="date" [max]="today" [(ngModel)]="line.mfgDate" (ngModelChange)="touch()" /></td>
                 <td><input class="cell-input date" type="date" [min]="today" [(ngModel)]="line.expiryDate" (ngModelChange)="touch()" /></td>
-                <td><input class="cell-input qty" type="number" min="0" [(ngModel)]="line.receivedQty" (ngModelChange)="touch()" [class.is-invalid]="isOver(line)" /></td>
-                <td><input class="cell-input qty" type="number" min="0" [(ngModel)]="line.damagedQty" (ngModelChange)="touch()" [class.is-invalid]="line.damagedQty > line.receivedQty" /></td>
-                <td><input class="cell-input qty" type="number" min="0" title="Free units - go into stock, not billed" [(ngModel)]="line.freeQty" (ngModelChange)="touch()" /></td>
-                <td><input class="cell-input qty" type="number" min="0" step="0.01" [(ngModel)]="line.unitPrice" (ngModelChange)="touch()" [class.is-invalid]="line.receivedQty > 0 && !(line.unitPrice > 0)" /></td>
-                <td><input class="cell-input qty" type="number" min="0" max="99.99" step="0.01" [(ngModel)]="line.discountPercent" (ngModelChange)="touch()" /></td>
-                <td><input class="cell-input qty" type="number" min="0" step="0.01" placeholder="-" [(ngModel)]="line.sellingPrice" (ngModelChange)="touch()" /></td>
+                <td class="num"><input class="cell-input qty" type="number" min="0" [(ngModel)]="line.receivedQty" (ngModelChange)="touch()" [class.is-invalid]="isOver(line)" /></td>
+                <td class="num"><input class="cell-input qty" type="number" min="0" [(ngModel)]="line.damagedQty" (ngModelChange)="touch()" [class.is-invalid]="line.damagedQty > line.receivedQty" /></td>
+                <td class="num"><input class="cell-input qty" type="number" min="0" title="Free units - go into stock, not billed" [(ngModel)]="line.freeQty" (ngModelChange)="touch()" /></td>
+                <td class="num"><input class="cell-input qty" type="number" min="0" step="0.01" [(ngModel)]="line.unitPrice" (ngModelChange)="touch()" [class.is-invalid]="line.receivedQty > 0 && !(line.unitPrice > 0)" /></td>
+                <td class="num"><input class="cell-input qty" type="number" min="0" max="99.99" step="0.01" [(ngModel)]="line.discountPercent" (ngModelChange)="touch()" /></td>
+                <td class="num"><input class="cell-input qty" type="number" min="0" step="0.01" placeholder="-" title="Loaded from Product Management - edit to change it for this receipt" [(ngModel)]="line.sellingPrice" (ngModelChange)="touch()" /></td>
                 <td class="num">{{ inr(lineTotal(line)) }}</td>
                 <td class="num">
-                  @if (!line.isExtraBatch) {
-                    <span class="pill" [class.green]="!balanceFor(line)" [class.red]="balanceFor(line)">{{ balanceFor(line) }}</span>
-                  }
-                </td>
-                <td class="row-actions">
-                  @if (line.isExtraBatch) {
-                    <button type="button" class="icon-btn" (click)="removeBatch(i)" aria-label="Remove batch"><i class="bi bi-trash3"></i></button>
-                  } @else {
-                    <button type="button" class="icon-btn add" (click)="addBatch(line)" title="Split into another batch" aria-label="Add batch"><i class="bi bi-plus-lg"></i></button>
-                  }
+                  <span class="pill" [class.green]="!balanceFor(line)" [class.red]="balanceFor(line)">{{ balanceFor(line) }}</span>
                 </td>
               </tr>
               @if (lineError(line); as err) {
                 @if (submitted() || isOver(line) || line.damagedQty > line.receivedQty) {
-                  <tr class="error-row"><td colspan="15"><i class="bi bi-exclamation-circle"></i> {{ line.productName }}: {{ err }}</td></tr>
+                  <tr class="error-row"><td colspan="14"><i class="bi bi-exclamation-circle"></i> {{ line.productName }}: {{ err }}</td></tr>
                 }
               }
             }
