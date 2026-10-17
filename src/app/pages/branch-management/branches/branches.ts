@@ -59,7 +59,7 @@ export class Branches extends LocalListBase implements OnInit {
       next: list => {
         this.filters = [this.filters[0], { key: 'source', label: 'City', options: [...new Set(list.map(b => b.city).filter(Boolean))].sort() }];
       },
-      error: (err: any) => this.toast.error(err?.error?.message || 'Failed to load branches. Please try again.'),
+      error: (err: any) => this.toast.error(err?.error?.message || ''),
     });
   }
 

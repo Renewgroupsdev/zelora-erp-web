@@ -198,6 +198,8 @@ export class PurchaseService {
    */
   async load(...keys: PurchaseCollection[]): Promise<void> {
     this.resetIfUserChanged();
+    // Stores = branches + franchises, which change in Branch / Franchise Management: re-read meta on every tab open.
+    this.metaLoaded = false;
     this.active = new Set(keys);
     this.loading.set(true);
     try {

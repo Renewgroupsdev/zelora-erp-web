@@ -3,6 +3,7 @@ import { Observable, catchError, map, of, shareReplay, tap } from 'rxjs';
 import { ApiDataService } from '../../core/http/api.service';
 import { AuthScope, UnitType } from '../../core/auth/auth.model';
 import { ApiRoutesConstants } from './api-route-constants';
+import { ToastService } from './toast.service';
 
 /**
  * One entry of a "Select branch / franchise" dropdown. Records point at a branch or franchise with a type + id pair
@@ -39,6 +40,7 @@ export function parseUnitKey(key: string | null | undefined): { type: UnitType; 
 @Injectable({ providedIn: 'root' })
 export class BranchOptionsService {
   private readonly api = inject(ApiDataService);
+  private readonly toast = inject(ToastService);
 
   private readonly list = signal<BranchOption[]>([]);
   private readonly scopeInfo = signal<AuthScope | null>(null);
@@ -67,7 +69,12 @@ export class BranchOptionsService {
           return [...toOptions(data.branches, 'branch'), ...toOptions(data.franchises, 'franchise')];
         }),
         tap(rows => this.apply(rows)),
-        catchError(() => { this.request$ = null; return of(this.list()); }),
+        catchError(err => {
+          this.request$ = null;
+          console.error('GET /scope/options failed', err);
+          this.toast.error('Could not load the branch / franchise list. Check the server connection and try again.');
+          return of(this.list());
+        }),
         shareReplay(1),
       );
     }
