@@ -131,17 +131,34 @@
           </div>
         </div>
 
+        <!-- Branch or franchise the user belongs to (users.branch_or_franchise_type / _id) -->
         <div class="form-field">
-          <label for="user-branch">Branch <span>*</span></label>
+          <label id="user-unit-type-label">Belongs To <span>*</span></label>
+          <div class="unit-type-toggle" role="radiogroup" aria-labelledby="user-unit-type-label">
+            @for (t of unitTypes; track t.value) {
+              <button type="button" role="radio" class="unit-type-option" [class.active]="selectedUnitType === t.value"
+                [attr.aria-checked]="selectedUnitType === t.value" (click)="setUnitType(t.value)">
+                <i class="bi" [ngClass]="t.icon"></i> {{ t.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="user-branch">{{ selectedUnitType === 'franchise' ? 'Franchise' : 'Branch' }} <span>*</span></label>
           <div class="input-wrap select-wrap">
-            <i class="bi bi-building"></i>
-            <select id="user-branch" formControlName="org_unit_id" [class.is-invalid]="isInvalid('org_unit_id')">
-              <option value="">Select branch</option>
-              @for (branch of branches; track branch.id) { <option [value]="branch.id">{{ branch.name }}</option> }
+            <i class="bi" [ngClass]="selectedUnitType === 'franchise' ? 'bi-shop' : 'bi-building'"></i>
+            <select id="user-branch" formControlName="branch_or_franchise_id" [class.is-invalid]="isInvalid('branch_or_franchise_id')">
+              <option value="">Select {{ selectedUnitType }}</option>
+              @for (unit of typedUnits; track unit.id) { <option [value]="unit.id">{{ unit.shortName || unit.name }}</option> }
             </select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
-          @if (isInvalid('org_unit_id')) { <small class="error-text">Branch is required.</small> }
+          @if (isInvalid('branch_or_franchise_id')) {
+            <small class="error-text">{{ selectedUnitType === 'franchise' ? 'Franchise' : 'Branch' }} is required.</small>
+          } @else if (!typedUnits.length) {
+            <small class="hint-text">No active {{ selectedUnitType === 'franchise' ? 'franchises' : 'branches' }} yet.</small>
+          }
         </div>
 
         <div class="form-field full-width">

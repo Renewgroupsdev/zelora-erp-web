@@ -17,6 +17,7 @@ import { forkJoin } from 'rxjs/internal/observable/forkJoin';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { TelephonyService } from '../../../core/telephony/telephony.service';
 import { TelecallerRow } from '../../../core/telephony/telephony.models';
+import { BranchOptionsService, parseUnitKey, unitKey } from '../../../shared/common-services/branch-options.service';
 import { catchError } from 'rxjs/operators';
 import { of } from 'rxjs/internal/observable/of';
 
@@ -58,6 +59,7 @@ export class AddLeadForm implements OnInit{
    telecallerOptions: TelecallerRow[] = [];
 
   private readonly telephony = inject(TelephonyService);
+  readonly branchOptions = inject(BranchOptionsService);
 
   constructor(
     private fb: FormBuilder,
@@ -78,12 +80,21 @@ export class AddLeadForm implements OnInit{
       sub_category: [data?.treatment_id ?? ''],
       status: [data?.status_id ?? '', Validators.required],
       reason: [data?.reason ?? '', Validators.maxLength(250)],
-      organization_id: ['1'],
+      // "branch:9" / "franchise:7"; sent as branch_type + branch_id.
+      branch_key: [unitKey(data?.branch_type, data?.branch_id), Validators.required],
       assigned_to: [data?.assigned_to ?? null],
     })
   }
 
   ngOnInit(): void {
+    // A new lead starts on the login's own branch / franchise (the API files a non-admin's lead there anyway).
+    this.branchOptions.load().subscribe(options => {
+      const control = this.leadForm.get('branch_key');
+      if (control?.value) return;
+      const own = this.branchOptions.scope()?.unit;
+      const pick = (own ? this.branchOptions.byRef(own.type, own.id) : undefined) ?? (options.length === 1 ? options[0] : undefined);
+      if (pick) control?.setValue(pick.key);
+    });
     this.loadTelecallers();
     this.applyPreloadedLookups();
     this.loadSubCategories();
@@ -198,7 +209,9 @@ export class AddLeadForm implements OnInit{
       return;
     }
 
-    const formValue = this.leadForm.getRawValue();
+    const { branch_key, ...rest } = this.leadForm.getRawValue();
+    const unit = parseUnitKey(branch_key);
+    const formValue = { ...rest, branch_type: unit?.type ?? null, branch_id: unit?.id ?? null };
 
     this.isSaving = true;
 

@@ -27,7 +27,8 @@ export class BranchInfoPage implements OnInit {
 
   ngOnInit(): void {
     // New QR codes carry everything as a "d" query param, so scanning them needs no network
-    // call at all. Older/manually-typed "/branch-info/:id" links still fall back to the API.
+    // call at all. "/branch-info/branch:9" / "/branch-info/franchise:7" links (and older numeric
+    // branch ids) fall back to the API.
     const encoded = this.route.snapshot.queryParamMap.get('d');
     if (encoded) {
       const payload = decodeBranchQrPayload(encoded);
@@ -76,8 +77,16 @@ export class BranchInfoPage implements OnInit {
     });
   }
 
+  /** `id` is a unit key ("branch:9" / "franchise:7"); a bare number (older links) is a branch id. */
   private loadBranchFromApi(id: string): void {
-    this.apiDataService.GET(`${ApiRoutesConstants.ORGANIZATION_UNIT_PUBLIC_SHOW}/${id}`).subscribe({
+    const [type, unitId] = id.includes(':') ? id.split(':', 2) : ['branch', id];
+    if (!['branch', 'franchise'].includes(type) || !/^\d+$/.test(unitId)) {
+      this.loading = false;
+      this.notFound = true;
+      return;
+    }
+
+    this.apiDataService.GET(`${ApiRoutesConstants.PUBLIC_UNIT_SHOW}/${type}/${unitId}`).subscribe({
       next: (response: any) => {
         if (response?.success && response?.data) {
           this.loadSettingsThenApply(response.data);

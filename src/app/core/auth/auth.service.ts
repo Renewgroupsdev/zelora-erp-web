@@ -1,11 +1,12 @@
 import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, finalize, map, of, tap } from 'rxjs';
+import { Observable, catchError, finalize, from, map, of, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiDataService } from '../http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { ApiResponse, AuthUser, LoginResponse, LoginResponseData, ResetPasswordPayload } from './auth.model';
 import { IdleService } from '../idle-service/idle.service';
+import { GeoLocationService } from './geo-location.service';
 import { SidebarAction, SidebarModule, findAction, flattenActionSlugs, flattenModuleSlugs } from '../../shared/models/permission.model';
 
 const ACCESS_TOKEN_KEY = 'token';
@@ -28,6 +29,7 @@ export class AuthService {
     private api: ApiDataService,
     private router: Router,
     private idleService: IdleService,
+    private geo: GeoLocationService,
   ) {
     if (this.isAuthenticated()) {
       this.idleService.start(() => this.signOut().subscribe());
@@ -65,15 +67,21 @@ export class AuthService {
   }
 
   login(username: string, password: string, deviceName = 'web'): Observable<LoginResponse> {
-    return this.api
-      .POST(ApiRoutesConstants.AUTH_LOGIN, { username, password, device_name: deviceName })
+    return this.withLocation({ username, password, device_name: deviceName }, body => this.api.POST(ApiRoutesConstants.AUTH_LOGIN, body))
       .pipe(tap((response: LoginResponse) => this.handleAuthResponse(response)));
+  }
+
+  /**
+   * Sends a sign-in with the device location (latitude / longitude) when the browser can give one. The API checks the
+   * credentials first and only then uses the location; a denied / slow / missing location never blocks the sign-in.
+   */
+  private withLocation(body: Record<string, unknown>, send: (body: Record<string, unknown>) => Observable<any>): Observable<LoginResponse> {
+    return from(this.geo.current()).pipe(switchMap(loc => send(loc ? { ...body, ...loc } : body)));
   }
 
   /** Employee sign-in: employee ID (emp_code) + password, checked against hr_employees. */
   loginEmployee(empCode: string, password: string, deviceName = 'web'): Observable<LoginResponse> {
-    return this.api
-      .POST(ApiRoutesConstants.AUTH_EMPLOYEE_LOGIN, { emp_code: empCode, password, device_name: deviceName })
+    return this.withLocation({ emp_code: empCode, password, device_name: deviceName }, body => this.api.POST(ApiRoutesConstants.AUTH_EMPLOYEE_LOGIN, body))
       .pipe(tap((response: LoginResponse) => this.handleAuthResponse(response)));
   }
 
@@ -84,8 +92,7 @@ export class AuthService {
 
   /** Customer sign-in step 2: verify the OTP and start the session. */
   verifyCustomerOtp(phone: string, otp: string, deviceName = 'web'): Observable<LoginResponse> {
-    return this.api
-      .POST(ApiRoutesConstants.AUTH_CUSTOMER_OTP_VERIFY, { phone, otp, device_name: deviceName })
+    return this.withLocation({ phone, otp, device_name: deviceName }, body => this.api.POST(ApiRoutesConstants.AUTH_CUSTOMER_OTP_VERIFY, body))
       .pipe(tap((response: LoginResponse) => this.handleAuthResponse(response)));
   }
 
@@ -145,7 +152,7 @@ export class AuthService {
       return of(undefined);
     }
     this.idleService.stop();
-    return this.api.POST(ApiRoutesConstants.AUTH_LOGOUT, { refresh_token: refreshToken }).pipe(
+    return this.api.POST(ApiRoutesConstants.AUTH_LOGOUT, { device_name: 'web', refresh_token: refreshToken }).pipe(
       map(() => undefined),
       catchError(() => of(undefined)),
       finalize(() => this.logout()),

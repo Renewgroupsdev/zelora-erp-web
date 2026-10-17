@@ -39,7 +39,7 @@ export class Users implements OnInit {
   // The filter card is keyed by fixed names; `source` is reused here for the Role filter.
   filters: FilterOption[] = [
     { key: 'source', label: 'Role', options: [] },
-    { key: 'branch', label: 'Branch', multiSelect: true, options: [] },
+    { key: 'branch', label: 'Branch / Franchise', multiSelect: true, options: [] },
     { key: 'status', label: 'Status', options: ['Active', 'Inactive'] },
   ];
 
@@ -54,12 +54,14 @@ export class Users implements OnInit {
 
   columns: TableColumn[] = [
     { key: 'name', header: 'Name', type: 'text', width: '14%' },
-    { key: 'email', header: 'Email', type: 'text', width: '18%' },
-    { key: 'phone_no', header: 'Phone', type: 'text', width: '10%' },
+    { key: 'email', header: 'Email', type: 'text', width: '14%' },
+    { key: 'phone_no', header: 'Phone', type: 'text', width: '9%' },
     { key: 'extension', header: 'Extension', type: 'text', width: '7%' },
     { key: 'user_type', header: 'Type', type: 'text', width: '8%' },
     { key: 'role', header: 'Role', type: 'text', width: '11%' },
-    { key: 'branch', header: 'Branch', type: 'text', width: '12%' },
+    { key: 'branch', header: 'Branch / Franchise', type: 'text', width: '11%' },
+    // users.device_name / device_type: the device of the user's last login (web, or mobile + Android / iOS)
+    { key: 'device', header: 'Device', type: 'text', width: '6%' },
     { key: 'status', header: 'Status', type: 'badge', width: '9%' },
     { key: 'action', header: 'Action', type: 'rowActions', width: '11%', sortable: false },
   ];
@@ -132,7 +134,9 @@ export class Users implements OnInit {
       extension: user.telephony_extension?.extension ?? '-',
       user_type: user.user_type === 'management' ? 'Management' : 'Staff',
       role: user.role?.name ?? '',
-      branch: user.branch?.name ?? '-',
+      // Same display name as the dropdown options (a franchise reads "Name (Franchise)"), so the filter matches.
+      branch: user.branch?.name ? (user.branch_or_franchise_type === 'franchise' ? `${user.branch.name} (Franchise)` : user.branch.name) : '-',
+      device: [user.device_name, user.device_type].filter(Boolean).join(' · ') || '-',
       status: this.formatStatus(user.status),
       id: user.id,
     };

@@ -9,6 +9,7 @@ import { Breadcrumb } from '../../shared/components/breadcrumb/breadcrumb';
 import { PageLoader } from '../../shared/components/page-loader/page-loader';
 import { BreadcrumbItem } from '../../shared/models/common-components.model';
 import { ToastService } from '../../shared/common-services/toast.service';
+import { parseUnitKey, unitKey } from '../../shared/common-services/branch-options.service';
 import { CanActionDirective } from '../../shared/directives/can-action.directive';
 
 @Component({
@@ -38,7 +39,8 @@ export class TreatmentCreate implements OnInit {
   readonly form = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(255)]],
     treatment_category_id: [null as number | null, Validators.required],
-    branch_id: [null as number | null, Validators.required],
+    /** "branch:9" / "franchise:7"; sent as branch_type + branch_id. */
+    branch_key: [null as string | null, Validators.required],
     description: ['', Validators.maxLength(255)],
     price: [0, [Validators.required, Validators.min(0)]],
     discount: [0, [Validators.min(0)]],
@@ -237,7 +239,7 @@ export class TreatmentCreate implements OnInit {
     this.form.patchValue({
       name: t.name,
       treatment_category_id: t.category?.id ?? null,
-      branch_id: t.branch?.id ?? null,
+      branch_key: t.branch ? (t.branch.key ?? unitKey(t.branch.type, t.branch.id)) || null : null,
       description: t.description ?? '',
       price: Number(t.amount),
       discount: Number(t.discount),
@@ -275,10 +277,17 @@ export class TreatmentCreate implements OnInit {
 
     const raw = this.form.getRawValue();
     const isCombo = this.isCombo();
+    const unit = parseUnitKey(raw.branch_key);
+    if (!unit) {
+      this.form.controls.branch_key.setErrors({ required: true });
+      this.form.controls.branch_key.markAsTouched();
+      return;
+    }
 
     const payload: TreatmentPayload = {
       treatment_category_id: Number(raw.treatment_category_id),
-      branch_id: Number(raw.branch_id),
+      branch_type: unit.type,
+      branch_id: unit.id,
       name: (raw.name ?? '').trim(),
       description: (raw.description ?? '').trim(),
       amount: Number(raw.price) || 0,
@@ -329,7 +338,7 @@ export class TreatmentCreate implements OnInit {
     this.form.reset({
       name: '',
       treatment_category_id: null,
-      branch_id: null,
+      branch_key: null,
       description: '',
       price: 0,
       discount: 0,

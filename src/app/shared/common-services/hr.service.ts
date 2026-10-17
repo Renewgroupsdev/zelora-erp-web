@@ -253,8 +253,11 @@ export class HrService {
       userType: r.user_type === 'management' ? 'Management' : 'Staff',
       extension: r.telephony_extension?.extension ?? '', deviceType: r.telephony_extension?.device_type ?? 'sip',
       sipUsername: r.telephony_extension?.sip_username ?? '', sipDomain: r.telephony_extension?.sip_domain ?? '',
-      designation: r.designation ?? '', department: r.department ?? '', branch: r.branch?.name ?? '', reportingTo: r.reporting_to ?? '',
-      joinDate: r.join_date, employmentType: r.employment_type,
+      designation: r.designation ?? '', department: r.department ?? '', branch: r.branch?.name ?? '',
+      branchId: r.branch_or_franchise_id ?? null,
+      branchType: r.branch_or_franchise_type === 'franchise' || r.branch?.type === 'franchise' ? 'franchise' : 'branch',
+      reportingTo: r.reporting_to ?? '',
+      joinDate: r.join_date, employmentType: r.employment_type, isWfh: Number(r.is_wfh) === 0 ? 0 : 1,
       pan: r.pan ?? '', aadhaarLast4: r.aadhaar_last4 ?? '', uan: r.uan ?? '', bankName: r.bank_name ?? '',
       accountNo: r.account_no ?? r.account_no_masked ?? '', ifsc: r.ifsc ?? '', emergencyContact: r.emergency_contact ?? '',
       referralSource: r.referral_source ?? '', referredBy: r.referred_by ?? '', referralPhone: r.referral_phone ?? '',
@@ -273,14 +276,20 @@ export class HrService {
   private employeeFormData(e: NewEmployeeInput, photo: File | null, removePhoto: boolean): FormData {
     const f = new FormData();
     const put = (key: string, value: unknown) => f.append(key, value === null || value === undefined ? '' : String(value));
-    const orgUnit = this.branchOptions().find(b => b.name === e.branch);
+    // Names are unique across types (a franchise's ends in "(Franchise)"); prefer an option of the picked type.
+    const unit = this.branchOptions().find(b => b.name === e.branch && (!e.branchType || b.type === e.branchType))
+      ?? this.branchOptions().find(b => b.name === e.branch);
+    // The saved unit is no longer on offer (deactivated) and was not changed: keep it.
+    const unitId = unit?.id ?? (e.branchId ?? null);
+    const unitType = unit?.type ?? e.branchType ?? null;
 
     put('name', e.name); put('gender', e.gender); put('dob', e.dob);
     put('phone', e.phone); put('secondary_phone', e.secondaryPhone); put('email', e.email);
     put('address', e.address); put('blood_group', e.bloodGroup);
     put('user_type', (e.userType ?? 'Staff').toLowerCase());
-    put('designation', e.designation); put('department', e.department); put('org_unit_id', orgUnit?.id);
+    put('designation', e.designation); put('department', e.department); put('branch_or_franchise_type', unitType); put('branch_or_franchise_id', unitId);
     put('reporting_to', e.reportingTo); put('join_date', e.joinDate); put('employment_type', e.employmentType);
+    put('is_wfh', e.isWfh === 0 ? '0' : '1'); // 0 = WFH, 1 = WFO
     put('pan', e.pan); put('aadhaar_last4', e.aadhaarLast4); put('uan', e.uan);
     put('bank_name', e.bankName); put('account_no', e.accountNo); put('ifsc', e.ifsc);
     put('emergency_contact', e.emergencyContact);

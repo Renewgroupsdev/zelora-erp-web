@@ -15,9 +15,9 @@
       <div class="section-title"><i class="bi bi-briefcase"></i> Position</div>
       <div class="form-grid cols-3">
         <div class="form-field">
-          <label for="mp-branch">Branch</label>
+          <label for="mp-branch">Branch / Franchise</label>
           <div class="input-wrap"><i class="bi bi-building"></i>
-            <select id="mp-branch" name="branch" [(ngModel)]="model.branch"><option value="">Select branch</option>@for (b of hr.branches; track b) { <option [value]="b">{{ b }}</option> }</select>
+            <select id="mp-branch" name="branch" [(ngModel)]="model.branch"><option value="">Select branch / franchise</option>@for (b of hr.branches; track b) { <option [value]="b">{{ b }}</option> }</select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
         </div>

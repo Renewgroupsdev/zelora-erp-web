@@ -119,7 +119,6 @@ export class LeadManagement implements OnInit {
 
   private statusIdByName = new Map<string, number>();
   private sourceIdByName = new Map<string, number>();
-  private branchIdByName = new Map<string, number>();
   private telecallerIdByName = new Map<string, number>();
   private telecallerBranchByName: Record<string, string> = {};
 
@@ -180,8 +179,8 @@ export class LeadManagement implements OnInit {
     }
   }
 
+  /** Filter / dialog offer display names; a name maps back to its branch / franchise with branchOptions.byName(). */
   private applyBranchOptions(list: BranchOption[]): void {
-    this.branchIdByName = new Map(list.map(b => [b.name, b.id]));
     const names = list.map(b => b.name);
 
     if (names.length) {
@@ -225,10 +224,11 @@ export class LeadManagement implements OnInit {
     const sourceId = this.filterState.source ? this.sourceIdByName.get(this.filterState.source) : undefined;
     if (sourceId) params.set('source_id', String(sourceId));
 
+    // branch_id[] = keys ("branch:9" / "franchise:7"): an id alone is ambiguous.
     this.filterState.branch
-      .map(name => this.branchIdByName.get(name))
-      .filter((id): id is number => id !== undefined)
-      .forEach(id => params.append('organization_id[]', String(id)));
+      .map(name => this.branchOptions.byName(name)?.key)
+      .filter((key): key is string => !!key)
+      .forEach(key => params.append('branch_id[]', key));
 
     const telecallerId = this.filterState.telecaller ? this.telecallerIdByName.get(this.filterState.telecaller) : undefined;
     if (telecallerId) params.set('assigned_to', String(telecallerId));
@@ -291,7 +291,7 @@ export class LeadManagement implements OnInit {
       source: lead.source_name ?? '',
       service_category: lead.service_category_name ?? '',
       service_request: lead.service_request_name ?? '',
-      branch: lead.organization_name ?? lead.location ?? '',
+      branch: lead.branch_name ?? lead.location ?? '',
       status: lead.status_name || 'Lead',
       // A telecaller checks each lead assigned to them (the API only returns theirs) before following it up.
       canValidate: this.telephony.isTelecaller() && ['New Lead', 'Lead'].includes(lead.status_name || 'Lead') && !!lead.assigned_to ? 1 : 0,
@@ -512,7 +512,7 @@ export class LeadManagement implements OnInit {
         lead: this.toFlowLead(row),
         stage,
         telecallers: [...this.telecallerIdByName.keys()],
-        branches: [...this.branchIdByName.keys()],
+        branches: this.branchOptions.names(),
         telecallerBranches: this.telecallerBranchByName,
         isNewBooking: stage === 'appointment',
         treatments: TREATMENTS,
@@ -529,14 +529,14 @@ export class LeadManagement implements OnInit {
   private handleLeadProfileResult(row: TableRow, result: LeadProfileDialogResult): void {
     if (result.action === 'followup') {
       const telecallerId = this.telecallerIdByName.get(result.lead.telecaller);
-      const branchId = this.branchIdByName.get(result.lead.branch);
+      const unit = this.branchOptions.byName(result.lead.branch);
 
       if (!telecallerId) {
         this.toast.error('Select a valid telecaller.');
         return;
       }
 
-      this.telephony.assignLeads([Number(row['id'])], telecallerId, branchId ?? null).subscribe({
+      this.telephony.assignLeads([Number(row['id'])], telecallerId, unit ? { type: unit.type, id: unit.id } : null).subscribe({
         next: () => {
           this.crmFlow.addFollowUp(result.lead);
           this.removeLeadRow(row);
@@ -623,10 +623,10 @@ export class LeadManagement implements OnInit {
     );
     if (!confirmed) return;
 
-    const branchId = this.branchIdByName.get(String(row['branch'] ?? ''));
+    const unit = this.branchOptions.byName(String(row['branch'] ?? ''));
     this.ApiDataService.POST(ApiRoutesConstants.LEAD_AUTO_ASSIGN, {
       lead_ids: [Number(row['id'])],
-      ...(branchId ? { organization_id: branchId } : {}),
+      ...(unit ? { branch_type: unit.type, branch_id: unit.id } : {}),
     }).subscribe({
       next: (res: any) => {
         this.toast.success(res?.message || 'Lead sent to the branch.');

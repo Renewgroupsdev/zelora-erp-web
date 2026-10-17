@@ -72,7 +72,7 @@ export class CustomerDetailsDialog implements OnInit {
     if (!a) return [];
     return this.present([
       ['Appointment', `${this.formatDate(a.appointment_date)} ${this.formatTime(a.appointment_time)}`.trim()],
-      ['Branch', a.branch?.name],
+      ['Branch / Franchise', a.branch_name ?? a.branch?.name],
       ['Counselor', a.counselor?.name],
       ['Category', a.category ?? a.lead?.service_category?.name],
       ['Treatment', a.treatment?.name],

@@ -359,7 +359,7 @@ export class AppointmentPage implements OnInit, AfterViewInit {
       lead: { name: a.name, subtitle: a.customer?.customer_code ?? `AP-${String(a.id).padStart(5, '0')}` },
       contact: a.mobile_no,
       service: a.customer_treatment?.treatment?.name ?? a.treatment?.name ?? (a.category ? `${a.category} consultation` : 'Consultation'),
-      branch: a.branch?.name ?? '',
+      branch: a.branch_name ?? a.branch?.name ?? '',
       schedule: `${this.formatDisplayDate(a.appointment_date)}, ${this.formatTime(a.appointment_time)}`,
       scheduleSort: `${a.appointment_date} ${a.appointment_time ?? ''}`,
       status: a.status,
@@ -372,7 +372,7 @@ export class AppointmentPage implements OnInit, AfterViewInit {
 
   private refreshRows(): void {
     const branches = this.filterState.branch;
-    const filtered = this.appointments.filter(a => !branches.length || branches.includes(a.branch?.name ?? ''));
+    const filtered = this.appointments.filter(a => !branches.length || branches.includes(a.branch_name ?? a.branch?.name ?? ''));
     const sorted = this.sortRows(filtered.map(a => this.mapRow(a)));
 
     this.totalRecords = sorted.length;

@@ -112,6 +112,9 @@ export interface FlowAppointmentRecord {
   invoice_no: string | null;
   invoiced_at: string | null;
   branch?: { id: number; name: string } | null;
+  branch_type?: 'branch' | 'franchise' | null;
+  /** Branch / franchise display name (a franchise reads "Name (Franchise)"). */
+  branch_name?: string | null;
   counselor?: { id: number; name: string } | null;
   location?: string | null;
   pincode?: string | null;

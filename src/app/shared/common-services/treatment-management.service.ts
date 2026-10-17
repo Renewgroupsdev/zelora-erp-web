@@ -25,7 +25,8 @@ export interface TreatmentRecord {
   name: string;
   description: string;
   category: { id: number; name: string } | null;
-  branch: { id: number; name: string } | null;
+  /** A franchise's name reads "Name (Franchise)"; key = "branch:9" / "franchise:7". */
+  branch: { type: 'branch' | 'franchise'; id: number; key: string; name: string } | null;
   is_combo: boolean;
   materials: TreatmentMaterialRow[];
   combo_items: TreatmentComboRow[];
@@ -41,6 +42,7 @@ export interface TreatmentRecord {
 
 export interface TreatmentPayload {
   treatment_category_id: number;
+  branch_type: 'branch' | 'franchise';
   branch_id: number;
   name: string;
   description: string;
@@ -61,7 +63,8 @@ export interface TreatmentListQuery {
   sortBy?: string;
   sortDirection?: 'asc' | 'desc';
   categoryId?: number | null;
-  branchId?: number | null;
+  /** Branch / franchise key ("branch:9" / "franchise:7"). */
+  branchKey?: string | null;
   isActive?: boolean | null;
 }
 
@@ -81,7 +84,7 @@ export class TreatmentManagementService {
     if (query.sortBy) params.set('sort_by', query.sortBy);
     if (query.sortDirection) params.set('sort_direction', query.sortDirection);
     if (query.categoryId) params.set('treatment_category_id', String(query.categoryId));
-    if (query.branchId) params.set('branch_id', String(query.branchId));
+    if (query.branchKey) params.set('branch_id', query.branchKey);
     if (query.isActive !== null && query.isActive !== undefined) params.set('is_active', query.isActive ? '1' : '0');
     return this.api.GET(`${ApiRoutesConstants.TREATMENT_GET_List}?${params.toString()}`);
   }
@@ -130,8 +133,8 @@ export class TreatmentManagementService {
     );
   }
 
-  /** Active branches (GET /branches/options, shared with every other branch dropdown). */
+  /** Active branches + franchises (GET /scope/options); id is the key "branch:9" / "franchise:7". */
   branches(): Observable<LookupOption[]> {
-    return this.branchOptions.load().pipe(map(rows => rows.map(r => ({ id: r.id, name: r.name }))));
+    return this.branchOptions.load().pipe(map(rows => rows.map(r => ({ id: r.key, name: r.name }))));
   }
 }

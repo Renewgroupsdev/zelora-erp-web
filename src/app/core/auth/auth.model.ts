@@ -18,12 +18,40 @@ export interface AuthUser {
   role?: AuthUserRole | null;
   /** Role name sent by the login API (Branch Manager, Staff, ...); shown in the top bar. */
   role_name?: string | null;
-  org_unit_id: number | null;
+  branch_or_franchise_id: number | null;
+  /** Whether branch_or_franchise_id is a branch or a franchise (users.branch_or_franchise_type). */
+  branch_or_franchise_type?: UnitType | null;
+  /** Header branch / franchise filter: may this login switch, and the branch / franchise it belongs to. */
+  scope?: AuthScope | null;
+  /** Device of the last login: "web" | "mobile"; device_type (Android | iOS) is set by the mobile app only. */
+  device_name?: string | null;
+  device_type?: string | null;
+  /** Checked in today and not checked out yet (false without an employee record). */
+  is_checkedin?: boolean;
+  /** hr_employees.is_wfh: 0 = work from home, 1 = work from office; null without an employee record. */
+  is_wfh?: 0 | 1 | null;
+  /** true when is_wfh = 1 (punches in / out at the branch / franchise). */
+  /** Location of the account's branch / franchise (null when it has none). */
+  branch_latitude?: number | null;
+  branch_longitude?: number | null;
+  /** The device location sent with this login (null on refresh / me, or when not sent) and the distance from the branch. */
+  user_latitude?: number | null;
+  user_longitude?: number | null;
+  distance_from_branch_m?: number | null;
   phone_no: string | null;
   status: string;
   profile_photo: string | null;
   profile_photo_url?: string;
   [key: string]: unknown;
+}
+
+export type UnitType = 'branch' | 'franchise';
+
+export interface AuthScope {
+  /** Role has the "Header Branch / Franchise Filter" action; otherwise the API holds the login to `unit`. */
+  can_switch: boolean;
+  /** users.branch_or_franchise_id resolved: the login's own branch / franchise (null = none assigned). */
+  unit: { id: number; name: string; code: string; type: UnitType | string } | null;
 }
 
 export interface ResetPasswordPayload {

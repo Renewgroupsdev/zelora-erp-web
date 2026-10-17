@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { BranchOptionsService } from '../../../shared/common-services/branch-options.service';
+import { BranchOptionsService, parseUnitKey, unitKey } from '../../../shared/common-services/branch-options.service';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { finalize } from 'rxjs';
@@ -21,6 +21,7 @@ interface LookupResult {
   location: string | null;
   pincode: string | null;
   heard_from: string | null;
+  branch_type: 'branch' | 'franchise' | null;
   branch_id: number | null;
   open_appointment_id: number | null;
   /** Set for a converted customer: new treatments / sittings go on this appointment, no new record is made. */
@@ -46,7 +47,8 @@ export interface NewAppointmentResult {
 
 const emptyForm = () => ({
   name: '', email: '', gender: '', age: null as number | null, location: '', pincode: '', heard_from: '',
-  branch_id: null as number | null, appointment_date: '', appointment_time: '', notes: '',
+  /** "branch:9" / "franchise:7"; sent as branch_type + branch_id. */
+  branch_key: '', appointment_date: '', appointment_time: '', notes: '',
 });
 
 /**
@@ -72,7 +74,7 @@ export class NewAppointmentDialog implements OnInit {
   readonly heardFrom = HEARD_FROM;
   readonly today = toIsoDate(new Date());
 
-  readonly branches = signal<{ id: number; name: string }[]>([]);
+  readonly branches = signal<{ key: string; name: string }[]>([]);
   readonly categories = signal<{ id: number; name: string }[]>([]);
   readonly treatmentOptions = signal<TreatmentOption[]>([]);
   readonly looking = signal(false);
@@ -109,7 +111,7 @@ export class NewAppointmentDialog implements OnInit {
     this.form.appointment_time = time;
     this.plan.start_date = this.today;
     this.plan.start_time = time;
-    this.branchOptions.load().subscribe(list => this.branches.set(list.map(b => ({ id: b.id, name: b.name }))));
+    this.branchOptions.load().subscribe(list => this.branches.set(list.map(b => ({ key: b.key, name: b.name }))));
     this.api.GetAllPages(ApiRoutesConstants.SERVICE_CATEGORY_TREE_LIST).subscribe({
       next: (cats: any[]) => {
         const active = cats.filter(c => c.is_active !== false);
@@ -153,7 +155,7 @@ export class NewAppointmentDialog implements OnInit {
       ...this.form,
       name: r.name ?? '', email: r.email ?? '', gender: r.gender ?? '', age: r.age ?? null,
       location: r.location ?? '', pincode: r.pincode ?? '', heard_from: r.heard_from ?? '',
-      branch_id: r.branch_id ?? this.form.branch_id,
+      branch_key: unitKey(r.branch_type, r.branch_id) || this.form.branch_key,
     };
     const interval = r.sitting_interval_days || 30;
     this.extra = { count: 1, interval };
@@ -185,8 +187,12 @@ export class NewAppointmentDialog implements OnInit {
     if (!this.form.appointment_date || !this.form.appointment_time) return void this.error.set('Pick the appointment date and time.');
 
     this.saving.set(true);
+    const { branch_key, ...form } = this.form;
+    const unit = parseUnitKey(branch_key);
     this.api.POST(ApiRoutesConstants.APPOINTMENT_FLOW, {
-      ...this.form,
+      ...form,
+      branch_type: unit?.type ?? null,
+      branch_id: unit?.id ?? null,
       name: this.form.name.trim(),
       mobile_no: this.mobile,
       email: this.form.email || null,

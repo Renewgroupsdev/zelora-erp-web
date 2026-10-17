@@ -169,6 +169,20 @@
           </div>
         </div>
 
+        <div class="form-field">
+          <label for="lead-branch">Branch / Franchise <span class="required-asterisk">*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-building"></i>
+            <select id="lead-branch" formControlName="branch_key" [class.is-invalid]="isInvalid('branch_key')">
+              <option value="">Select Branch / Franchise</option>
+              @for (unit of branchOptions.options(); track unit.key) {
+                <option [value]="unit.key">{{ unit.name }}</option>
+              }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
         @if (showAssign) {
           <div class="form-field">
             <label for="lead-assigned-to">Assign Telecaller</label>

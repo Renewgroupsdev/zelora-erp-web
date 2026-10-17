@@ -6,10 +6,21 @@ import { ApiDataService } from '../../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../../shared/common-services/toast.service';
 
+type UnitType = 'branch' | 'franchise';
+
+/** A branch or franchise the user can belong to (GET /scope/options, see BranchOptionsService). */
+export interface UserUnitOption {
+  id: number;
+  name: string;
+  /** Name without the "(Franchise)" suffix. */
+  shortName?: string;
+  type?: UnitType | string;
+}
+
 export interface AddUserFormData {
   user: any | null;
   roles: { id: number; name: string; slug: string }[];
-  branches: { id: number; name: string }[];
+  branches: UserUnitOption[];
 }
 
 @Component({
@@ -30,7 +41,12 @@ export class AddUserForm {
   /** True when the user clicked Remove on a photo that is already saved - tells the API to clear it. */
   private photoRemoved = false;
   readonly roles;
-  readonly branches;
+  /** Every branch and franchise on offer (plus the user's current one, even if it is no longer active). */
+  readonly units: UserUnitOption[];
+  readonly unitTypes: { value: UnitType; label: string; icon: string }[] = [
+    { value: 'branch', label: 'Branch', icon: 'bi-diagram-3' },
+    { value: 'franchise', label: 'Franchise', icon: 'bi-shop' },
+  ];
 
   constructor(
     private fb: FormBuilder,
@@ -41,7 +57,10 @@ export class AddUserForm {
   ) {
     const user = data.user;
     this.roles = data.roles ?? [];
-    this.branches = data.branches ?? [];
+    this.units = AddUserForm.withCurrentUnit(data.branches ?? [], user);
+    const unitId = user?.branch_or_franchise_id ?? '';
+    // An id alone is ambiguous (branch 7 vs franchise 7): the saved type decides.
+    const unitType = AddUserForm.typeOf(user?.branch_or_franchise_type) ?? 'branch';
 
     // The API always returns a URL (the default avatar when none is set); only preview a real upload.
     this.photoPreview = user?.profile_photo ? user.profile_photo_url : null;
@@ -54,7 +73,9 @@ export class AddUserForm {
       password_confirmation: [''],
       role_id: [user?.role_id ?? '', Validators.required],
       user_type: [user?.user_type ?? 'management', Validators.required],
-      org_unit_id: [user?.org_unit_id ?? '', Validators.required],
+      // Branch or franchise first; the second dropdown then lists only units of that type.
+      branch_or_franchise_type: [unitType, Validators.required],
+      branch_or_franchise_id: [unitId, Validators.required],
       phone_no: [user?.phone_no ?? '', Validators.maxLength(20)],
       // Telephony extension - only used (and required) for the telecaller role.
       extension: [user?.telephony_extension?.extension ?? '', [Validators.maxLength(30), Validators.pattern(/^[A-Za-z0-9*#_-]+$/)]],
@@ -66,10 +87,49 @@ export class AddUserForm {
 
     this.userForm.get('role_id')?.valueChanges.subscribe(() => this.syncExtensionValidator());
     this.syncExtensionValidator();
+
+    // Switching Branch <-> Franchise clears a unit of the other type.
+    this.userForm.get('branch_or_franchise_type')?.valueChanges.subscribe(type => {
+      const id = Number(this.userForm.get('branch_or_franchise_id')?.value);
+      if (id && !this.unitsOfType(type).some(u => u.id === id)) {
+        this.userForm.get('branch_or_franchise_id')?.setValue('');
+      }
+    });
   }
 
   get isEdit(): boolean {
     return !!this.data.user?.id;
+  }
+
+  get selectedUnitType(): UnitType {
+    return AddUserForm.typeOf(this.userForm.get('branch_or_franchise_type')?.value) ?? 'branch';
+  }
+
+  /** Options of the second dropdown. */
+  get typedUnits(): UserUnitOption[] {
+    return this.unitsOfType(this.selectedUnitType);
+  }
+
+  unitsOfType(type: string): UserUnitOption[] {
+    return this.units.filter(u => (AddUserForm.typeOf(u.type) ?? 'branch') === type);
+  }
+
+  setUnitType(type: UnitType): void {
+    const control = this.userForm.get('branch_or_franchise_type');
+    control?.setValue(type);
+    control?.markAsTouched();
+  }
+
+  private static typeOf(value: unknown): UnitType | null {
+    return value === 'branch' || value === 'franchise' ? value : null;
+  }
+
+  /** On edit, keep the user's current unit selectable even when it is not in the active list. */
+  private static withCurrentUnit(units: UserUnitOption[], user: any): UserUnitOption[] {
+    const id = Number(user?.branch_or_franchise_id);
+    const type = AddUserForm.typeOf(user?.branch_or_franchise_type);
+    if (!id || !type || units.some(u => u.id === id && u.type === type) || !user?.branch?.name) return units;
+    return [...units, { id, name: user.branch.name, shortName: user.branch.name, type }];
   }
 
   /** Telecaller calls are routed to their extension, so it is mandatory for that role (and unused for others). */
@@ -149,7 +209,8 @@ export class AddUserForm {
     payload.append('email', value.email);
     payload.append('role_id', String(value.role_id));
     payload.append('user_type', value.user_type);
-    payload.append('org_unit_id', String(value.org_unit_id));
+    payload.append('branch_or_franchise_type', String(value.branch_or_franchise_type));
+    payload.append('branch_or_franchise_id', String(value.branch_or_franchise_id));
     payload.append('phone_no', value.phone_no ?? '');
     payload.append('status', String(value.status));
     if (value.password) {

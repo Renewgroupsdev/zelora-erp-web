@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import { ApiDataService } from '../../core/http/api.service';
 import {
   CENTRAL_STORE,
+  CENTRAL_STORE_KEY,
   DocumentStatus,
   GoodsInward,
   InwardLine,
@@ -30,11 +31,13 @@ import {
 } from '../models/purchase.model';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationService } from './notification.service';
+import { parseUnitKey, unitKey } from './branch-options.service';
 
 const BASE = 'purchase';
 
 export interface NewRequestInput {
-  orgUnitId: number;
+  /** Requesting branch / franchise as a key: "branch:9" | "franchise:7". */
+  branchKey: string;
   vendorId: number | null;
   requiredBy: string | null;
   priority: Priority;
@@ -44,7 +47,8 @@ export interface NewRequestInput {
 
 export interface InwardInput {
   poId: string;
-  storeId: number | null;
+  /** Store key: "central" | "branch:9" | "franchise:7". */
+  storeKey: string;
   vendorInvoiceNo: string;
   billDate: string | null;
   freight: number;
@@ -66,8 +70,8 @@ export interface ReturnInput {
 }
 
 export interface TransferInput {
-  fromStoreId: number | null;
-  toStoreId: number | null;
+  fromStoreKey: string;
+  toStoreKey: string;
   remarks: string;
   lines: { batchId: string; qty: number }[];
 }
@@ -119,7 +123,7 @@ const ENDPOINTS: Record<PurchaseCollection, string> = {
 };
 
 const DEFAULT_META: PurchaseMeta = {
-  stores: [{ id: null, name: CENTRAL_STORE }],
+  stores: [{ key: CENTRAL_STORE_KEY, type: null, id: null, name: CENTRAL_STORE }],
   branches: [],
   vendors: [],
   priorities: ['Low', 'Normal', 'Urgent'],
@@ -130,7 +134,7 @@ const DEFAULT_META: PurchaseMeta = {
   roundOffLimit: 5,
   centralStore: CENTRAL_STORE,
   canApprove: false,
-  userStoreId: null,
+  userStoreKey: null,
 };
 
 /**
@@ -180,7 +184,7 @@ export class PurchaseService {
   readonly lowStock = computed(() => {
     const totals = new Map<string, { store: string; productName: string; qty: number }>();
     for (const b of this.stock()) {
-      const key = `${b.storeId ?? 0}|${b.productId}`;
+      const key = `${b.storeKey}|${b.productId}`;
       const row = totals.get(key) ?? { store: b.store, productName: b.productName, qty: 0 };
       row.qty += b.qty;
       totals.set(key, row);
@@ -267,8 +271,8 @@ export class PurchaseService {
     return (this.api.GET(`${BASE}/meta`) as Observable<any>).pipe(map(res => (res?.data?.vendors ?? []) as { id: number; name: string }[]));
   }
 
-  storeName(storeId: number | null): string {
-    return this.meta().stores.find(s => s.id === storeId)?.name ?? (storeId === null ? this.meta().centralStore : `Store #${storeId}`);
+  storeName(storeKey: string): string {
+    return this.meta().stores.find(s => s.key === storeKey)?.name ?? (storeKey === CENTRAL_STORE_KEY ? this.meta().centralStore : storeKey);
   }
 
   /** Units of a product held by a store (by store name, as the pages show it). */
@@ -276,14 +280,14 @@ export class PurchaseService {
     return this.stock().filter(b => b.store === store && b.productId === productId).reduce((s, b) => s + b.qty, 0);
   }
 
-  storeQtyById(storeId: number | null, productId: string): number {
-    return this.stock().filter(b => b.storeId === storeId && b.productId === productId).reduce((s, b) => s + b.qty, 0);
+  storeQtyByKey(storeKey: string, productId: string): number {
+    return this.stock().filter(b => b.storeKey === storeKey && b.productId === productId).reduce((s, b) => s + b.qty, 0);
   }
 
   /** Batches of a store with qty on hand, earliest expiry first (FEFO) - the order transfers should pick from. */
-  availableBatches(storeId: number | null): StockBatch[] {
+  availableBatches(storeKey: string): StockBatch[] {
     return this.stock()
-      .filter(b => b.storeId === storeId && b.qty > 0)
+      .filter(b => b.storeKey === storeKey && b.qty > 0)
       .sort((a, b) => (a.expiryDate ?? '9999').localeCompare(b.expiryDate ?? '9999') || a.batchNo.localeCompare(b.batchNo));
   }
 
@@ -291,7 +295,7 @@ export class PurchaseService {
 
   async createRequest(input: NewRequestInput): Promise<PurchaseRequest | null> {
     const res = await this.send('POST', `${BASE}/requests`, {
-      org_unit_id: input.orgUnitId, vendor_id: input.vendorId, required_by: input.requiredBy || null,
+      ...unitPair(input.branchKey), vendor_id: input.vendorId, required_by: input.requiredBy || null,
       priority: input.priority, remarks: input.remarks || null,
       items: input.items.map(i => ({ product_id: Number(i.productId), qty: i.qty })),
     });
@@ -349,7 +353,7 @@ export class PurchaseService {
 
   async recordInward(input: InwardInput): Promise<GoodsInward | null> {
     const res = await this.send('POST', `${BASE}/orders/${input.poId}/inward`, {
-      store_id: input.storeId, vendor_invoice_no: input.vendorInvoiceNo, bill_date: input.billDate || null,
+      store_id: input.storeKey, vendor_invoice_no: input.vendorInvoiceNo, bill_date: input.billDate || null,
       freight: input.freight || 0, other_charges: input.otherCharges || 0, cash_discount: input.cashDiscount || 0,
       round_off: input.roundOff || 0, remarks: input.remarks || null,
       lines: input.lines.map(l => ({
@@ -363,7 +367,7 @@ export class PurchaseService {
     // Stock is always re-read: the low-stock check below needs current quantities.
     await Promise.all([this.refresh('orders', 'inwards', 'notes'), this.reload('stock')]);
     const inward = toInward(res.data);
-    this.checkLowStock(inward.storeId, inward.lines.map(l => l.productId));
+    this.checkLowStock(inward.storeKey, inward.lines.map(l => l.productId));
     return inward;
   }
 
@@ -399,7 +403,7 @@ export class PurchaseService {
     // Stock is always re-read: the low-stock check below needs current quantities.
     await Promise.all([this.refresh('returns', 'notes', 'orders'), this.reload('stock')]);
     const ret = toReturn(res.data);
-    this.checkLowStock(ret.storeId, ret.lines.map(l => l.productId));
+    this.checkLowStock(ret.storeKey, ret.lines.map(l => l.productId));
     return ret;
   }
 
@@ -421,14 +425,14 @@ export class PurchaseService {
 
   async dispatchTransfer(input: TransferInput): Promise<StockTransfer | null> {
     const res = await this.send('POST', `${BASE}/stock/transfers`, {
-      from_store_id: input.fromStoreId, to_store_id: input.toStoreId, remarks: input.remarks || null,
+      from_store_id: input.fromStoreKey, to_store_id: input.toStoreKey, remarks: input.remarks || null,
       lines: input.lines.map(l => ({ batch_id: Number(l.batchId), qty: l.qty })),
     });
     if (!res) return null;
     await this.refresh('stock', 'transfers');
     const transfer = toTransfer(res.data);
     this.notifications.add({ type: 'stock', title: 'Stock dispatched', message: `${transfer.transferNo}: ${transfer.qty} unit(s) in transit to ${transfer.toStore}. Waiting for the store to accept.`, link: '/app/inventory/stock' });
-    this.checkLowStock(transfer.fromStoreId, transfer.lines.map(l => l.productId));
+    this.checkLowStock(transfer.fromStoreKey, transfer.lines.map(l => l.productId));
     return transfer;
   }
 
@@ -489,13 +493,13 @@ export class PurchaseService {
       this.metaLoaded = false; // retried by the next tab load
       return;
     }
-    const stores = ((d.stores ?? []) as any[]).map(s => ({ id: s.id ?? null, name: s.name }) as StoreOption);
+    const stores = ((d.stores ?? []) as any[]).map(s => ({ key: s.key ?? CENTRAL_STORE_KEY, type: s.type ?? null, id: s.id ?? null, name: s.name }) as StoreOption);
     this.meta.set({
       stores, branches: stores.filter(s => s.id !== null), vendors: d.vendors ?? [],
       priorities: d.priorities ?? DEFAULT_META.priorities, returnReasons: d.return_reasons ?? [],
       returnTypes: d.return_types ?? DEFAULT_META.returnTypes, transferRejectReasons: d.transfer_reject_reasons ?? [],
       lowStockThreshold: Number(d.low_stock_threshold) || LOW_STOCK_THRESHOLD, roundOffLimit: Number(d.round_off_limit) || 0,
-      centralStore: d.central_store || CENTRAL_STORE, canApprove: !!d.can_approve, userStoreId: d.user_store_id ?? null,
+      centralStore: d.central_store || CENTRAL_STORE, canApprove: !!d.can_approve, userStoreKey: d.user_store_key ?? null,
     });
   }
 
@@ -540,12 +544,12 @@ export class PurchaseService {
   }
 
   /** Bell notification for every product that dropped under the threshold at a store. */
-  private checkLowStock(storeId: number | null, productIds: string[]): void {
+  private checkLowStock(storeKey: string, productIds: string[]): void {
     for (const productId of new Set(productIds)) {
-      const qty = this.storeQtyById(storeId, productId);
+      const qty = this.storeQtyByKey(storeKey, productId);
       if (qty >= this.threshold()) continue;
       const name = this.stock().find(b => b.productId === productId)?.productName ?? 'Product';
-      this.notifications.add({ type: 'stock', title: 'Low stock alert', message: `${name} is running low at ${this.storeName(storeId)} (${qty} units left).`, link: '/app/inventory/stock' });
+      this.notifications.add({ type: 'stock', title: 'Low stock alert', message: `${name} is running low at ${this.storeName(storeKey)} (${qty} units left).`, link: '/app/inventory/stock' });
     }
   }
 }
@@ -568,9 +572,15 @@ function errorHtml(e: unknown): string {
   return esc(e instanceof Error ? e.message : 'Something went wrong.');
 }
 
+/** "branch:9" -> the type + id pair the API takes for a requesting branch / franchise. */
+function unitPair(key: string): { branch_or_franchise_type: string | null; branch_or_franchise_id: number | null } {
+  const ref = parseUnitKey(key);
+  return { branch_or_franchise_type: ref?.type ?? null, branch_or_franchise_id: ref?.id ?? null };
+}
+
 function toRequest(r: any): PurchaseRequest {
   return {
-    id: str(r.id), requestNo: r.request_no, branch: r.branch?.name ?? '-', branchId: r.org_unit_id ?? null,
+    id: str(r.id), requestNo: r.request_no, branch: r.branch?.name ?? '-', branchKey: unitKey(r.branch_or_franchise_type, r.branch_or_franchise_id) || null,
     vendorId: r.vendor_id ?? null, vendorName: r.vendor_name ?? '-', requestedBy: r.requested_by ?? '-',
     requestedAt: r.requested_at, requiredBy: r.required_by ?? null, priority: r.priority, remarks: r.remarks ?? '',
     status: r.status as PurchaseRequestStatus, reviewedBy: r.reviewed_by ?? undefined, reviewedAt: r.reviewed_at ?? undefined,
@@ -610,7 +620,7 @@ function toInwardLine(l: any): InwardLine {
 function toInward(g: any): GoodsInward {
   return {
     id: str(g.id), grnNo: g.grn_no, poId: str(g.po_id), poNo: g.po_no ?? '-', vendorName: g.vendor_name ?? '-',
-    store: g.store ?? CENTRAL_STORE, storeId: g.store_id ?? null, receivedBy: g.received_by ?? '-', receivedAt: g.received_at,
+    store: g.store ?? CENTRAL_STORE, storeKey: g.store_key ?? CENTRAL_STORE_KEY, receivedBy: g.received_by ?? '-', receivedAt: g.received_at,
     vendorInvoiceNo: g.vendor_invoice_no ?? '', isPartial: !!g.is_partial, noteId: g.note_id ? str(g.note_id) : undefined,
     noteNo: g.note_no ?? undefined, status: (g.status ?? 'Posted') as DocumentStatus, billDate: g.bill_date ?? null,
     freight: num(g.freight), otherCharges: num(g.other_charges), cashDiscount: num(g.cash_discount), roundOff: num(g.round_off),
@@ -622,7 +632,7 @@ function toInward(g: any): GoodsInward {
 function toReturn(r: any): PurchaseReturn {
   return {
     id: str(r.id), returnNo: r.return_no, grnId: str(r.grn_id), grnNo: r.grn_no ?? '-', poNo: r.po_no ?? '-',
-    vendorName: r.vendor_name ?? '-', store: r.store ?? CENTRAL_STORE, storeId: r.store_id ?? null, reason: r.reason,
+    vendorName: r.vendor_name ?? '-', store: r.store ?? CENTRAL_STORE, storeKey: r.store_key ?? CENTRAL_STORE_KEY, reason: r.reason,
     returnType: (r.return_type ?? 'Debit Note') as PurchaseReturnType, remarks: r.remarks ?? '', returnedBy: r.returned_by ?? '-',
     returnedAt: r.returned_at, noteId: r.note_id ? str(r.note_id) : undefined, noteNo: r.note_no ?? undefined,
     status: (r.status ?? 'Posted') as DocumentStatus, cancelReason: r.cancel_reason ?? null, canCancel: !!r.can_cancel,
@@ -640,7 +650,7 @@ function toNote(n: any): VendorNote {
 
 function toBatch(b: any): StockBatch {
   return {
-    id: str(b.id), store: b.store ?? CENTRAL_STORE, storeId: b.store_id ?? null, productId: str(b.product_id), productCode: b.product_code ?? '',
+    id: str(b.id), store: b.store ?? CENTRAL_STORE, storeKey: b.store_key ?? CENTRAL_STORE_KEY, productId: str(b.product_id), productCode: b.product_code ?? '',
     productName: b.product_name, batchNo: b.batch_no, expiryDate: b.expiry_date ?? null, qty: num(b.qty), unitPrice: num(b.unit_price),
     sellingPrice: b.selling_price === null || b.selling_price === undefined ? null : num(b.selling_price),
   };
@@ -649,7 +659,7 @@ function toBatch(b: any): StockBatch {
 function toTransfer(t: any): StockTransfer {
   return {
     id: str(t.id), transferNo: t.transfer_no, kind: t.kind === 'Return' ? 'Return' : 'Transfer', status: t.status as TransferStatus,
-    fromStoreId: t.from_store_id ?? null, fromStore: t.from_store, toStoreId: t.to_store_id ?? null, toStore: t.to_store,
+    fromStoreKey: t.from_store_key ?? CENTRAL_STORE_KEY, fromStore: t.from_store, toStoreKey: t.to_store_key ?? CENTRAL_STORE_KEY, toStore: t.to_store,
     qty: num(t.qty), acceptedQty: num(t.accepted_qty), rejectedQty: num(t.rejected_qty), pendingQty: num(t.pending_qty),
     transferredBy: t.transferred_by ?? '-', transferredAt: t.transferred_at, remarks: t.remarks ?? '',
     receivedBy: t.received_by ?? null, receivedAt: t.received_at ?? null, cancelReason: t.cancel_reason ?? null,

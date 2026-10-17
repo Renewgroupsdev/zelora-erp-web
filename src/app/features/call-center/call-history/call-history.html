@@ -12,7 +12,7 @@
   <div class="table-wrap">
     <table>
       <thead>
-        <tr><th>Call ID</th><th>Customer</th><th>Direction</th><th>Branch</th><th>Telecaller</th><th>Status</th><th>Outcome</th><th>Duration</th><th>Recording</th></tr>
+        <tr><th>Call ID</th><th>Customer</th><th>Direction</th><th>Branch / Franchise</th><th>Telecaller</th><th>Status</th><th>Outcome</th><th>Duration</th><th>Recording</th></tr>
       </thead>
       <tbody>
         @for (call of calls; track call.id) {
@@ -20,7 +20,7 @@
             <td (click)="openCall(call)">{{ call.call_id }}</td>
             <td (click)="openCall(call)">{{ customerNumber(call) }}<small>{{ call.lead?.name }}</small></td>
             <td (click)="openCall(call)"><span class="direction">{{ call.direction }}</span></td>
-            <td (click)="openCall(call)">{{ call.branch?.name || '—' }}</td>
+            <td (click)="openCall(call)">{{ call.branch ? call.branch.name + (call.branch_type === 'franchise' ? ' (Franchise)' : '') : '—' }}</td>
             <td (click)="openCall(call)">{{ call.telecaller?.name || 'Unassigned' }}</td>
             <td (click)="openCall(call)"><span class="status" [class]="statusClass(call.status)">{{ call.status }}</span></td>
             <td (click)="openCall(call)">{{ call.disposition || '—' }}</td>

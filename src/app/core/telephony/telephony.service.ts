@@ -29,7 +29,7 @@ function toCallAlert(raw: any): CallAlert {
     id: String(raw.id),
     callId: raw.call_id ?? raw.callId,
     telecallerName: raw.telecaller_name ?? raw.telecaller?.name ?? '',
-    branchName: raw.branch_name ?? raw.branch?.name ?? '',
+    branchName: raw.branch_name ?? (raw.branch?.name ? raw.branch.name + (raw.branch_type === 'franchise' ? ' (Franchise)' : '') : ''),
     customerNumber: raw.customer_number ?? raw.caller_number ?? raw.destination_number ?? '',
     status: (raw.status ?? 'no_answer') as CallAlertStatus,
     occurredAt: raw.occurred_at ?? raw.created_at ?? new Date().toISOString(),
@@ -140,11 +140,12 @@ export class TelephonyService {
     return this.api.GET(ApiRoutesConstants.CALL_AGENT_LIST).pipe(map((res: any) => (res?.data ?? []) as TelecallerRow[]));
   }
 
-  assignLeads(leadIds: number[], assignedTo: number | null, organizationId: number | null = null): Observable<any> {
+  /** `unit` also moves the leads to that branch / franchise. */
+  assignLeads(leadIds: number[], assignedTo: number | null, unit: { type: string; id: number } | null = null): Observable<any> {
     return this.api.POST(ApiRoutesConstants.LEAD_ASSIGN, {
       lead_ids: leadIds,
       assigned_to: assignedTo,
-      ...(organizationId ? { organization_id: organizationId } : {}),
+      ...(unit ? { branch_type: unit.type, branch_id: unit.id } : {}),
     });
   }
 
@@ -157,14 +158,15 @@ export class TelephonyService {
     per_page?: number;
     search?: string;
     status_id?: number;
-    branch_id?: number;
+    /** Branch / franchise key ("branch:9" / "franchise:7"). */
+    branch_id?: string;
     type?: number;
   } = {}): Observable<FollowUpLead[]> {
     const query = new URLSearchParams();
     if (params.per_page) query.set('per_page', String(params.per_page));
     if (params.search) query.set('search', params.search);
     if (params.status_id) query.set('status_id', String(params.status_id));
-    if (params.branch_id) query.set('branch_id', String(params.branch_id));
+    if (params.branch_id) query.set('branch_id', params.branch_id);
     if (params.type !== undefined && params.type !== null) query.set('type', String(params.type));
     const qs = query.toString();
 

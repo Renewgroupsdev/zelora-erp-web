@@ -245,11 +245,11 @@
           </div>
           @if (branches().length) {
             <div class="form-field">
-              <label for="na-branch">Branch</label>
+              <label for="na-branch">Branch / Franchise</label>
               <div class="input-wrap"><i class="bi bi-building"></i>
-                <select id="na-branch" name="branch" [(ngModel)]="form.branch_id">
-                  <option [ngValue]="null">My branch</option>
-                  @for (b of branches(); track b.id) { <option [ngValue]="b.id">{{ b.name }}</option> }
+                <select id="na-branch" name="branch" [(ngModel)]="form.branch_key">
+                  <option value="">My branch / franchise</option>
+                  @for (b of branches(); track b.key) { <option [value]="b.key">{{ b.name }}</option> }
                 </select>
                 <i class="bi bi-chevron-down select-arrow"></i>
               </div>

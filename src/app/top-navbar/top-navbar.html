@@ -20,6 +20,124 @@
 
   <div class="top-navbar-right">
 
+    <!-- Branch / franchise filter: every module shows only the picked branch's / franchise's data.
+         Roles without the "Header Branch / Franchise Filter" permission only see their own branch / franchise. -->
+    @if (branchContext.enabled()) {
+      @if (branchContext.canSwitch()) {
+        @let scope = branchContext.selection();
+        @let typeInfo = scopeTypeInfo(scope.type);
+        <div class="scope-filter">
+          @if (scopeMenu()) {
+            <div class="scope-backdrop" (click)="closeScopeMenu()"></div>
+          }
+
+          <!-- 1. All / Branch / Franchise -->
+          <div class="scope-picker">
+            <button type="button" class="scope-trigger" [class.open]="scopeMenu() === 'type'"
+              (click)="toggleScopeMenu('type')" aria-haspopup="listbox" [attr.aria-expanded]="scopeMenu() === 'type'"
+              title="Show data of all, a branch or a franchise">
+              <span class="scope-trigger-icon"><i class="bi" [ngClass]="typeInfo.icon"></i></span>
+              <span class="scope-trigger-text">
+                <small>View</small>
+                <strong>{{ typeInfo.label }}</strong>
+              </span>
+              <i class="bi bi-chevron-down scope-chevron"></i>
+            </button>
+
+            @if (scopeMenu() === 'type') {
+              <div class="scope-menu scope-menu-type" role="listbox" aria-label="Branch or franchise">
+                @for (t of scopeTypes; track t.value) {
+                  <button type="button" class="scope-option" role="option" [class.selected]="scope.type === t.value"
+                    [attr.aria-selected]="scope.type === t.value" (click)="pickScopeType(t.value)">
+                    <span class="scope-option-icon"><i class="bi" [ngClass]="t.icon"></i></span>
+                    <span class="scope-option-text">
+                      <strong>{{ t.label }}</strong>
+                      <small>{{ t.hint }}</small>
+                    </span>
+                    @if (scope.type === t.value) { <i class="bi bi-check2 scope-check"></i> }
+                  </button>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- 2. Which branch / franchise -->
+          @if (scope.type !== 'all') {
+            <div class="scope-picker">
+              <button type="button" class="scope-trigger" [class.open]="scopeMenu() === 'unit'"
+                (click)="toggleScopeMenu('unit')" aria-haspopup="listbox" [attr.aria-expanded]="scopeMenu() === 'unit'"
+                [title]="scopeUnitLabel()">
+                <span class="scope-trigger-icon"><i class="bi" [ngClass]="typeInfo.icon"></i></span>
+                <span class="scope-trigger-text">
+                  <small>{{ typeInfo.label }}</small>
+                  <strong>{{ scopeUnitLabel() }}</strong>
+                </span>
+                <i class="bi bi-chevron-down scope-chevron"></i>
+              </button>
+
+              @if (scopeMenu() === 'unit') {
+                <div class="scope-menu scope-menu-unit" role="listbox" [attr.aria-label]="'Select ' + typeInfo.label.toLowerCase()">
+                  <div class="scope-menu-head">
+                    <strong>Select {{ typeInfo.label.toLowerCase() }}</strong>
+                    <span>{{ scopeUnits().length }} available</span>
+                  </div>
+
+                  @if (scopeUnits().length > 5) {
+                    <div class="scope-search">
+                      <i class="bi bi-search"></i>
+                      <input #scopeSearchInput type="text" [placeholder]="'Search ' + typeInfo.label.toLowerCase() + '...'"
+                        [value]="scopeSearch()" (input)="scopeSearch.set(scopeSearchInput.value)" autocomplete="off">
+                    </div>
+                  }
+
+                  <div class="scope-options">
+                    @if (!scopeSearch()) {
+                      <button type="button" class="scope-option" role="option" [class.selected]="scope.id === null"
+                        [attr.aria-selected]="scope.id === null" (click)="pickScopeUnit(null)">
+                        <span class="scope-option-icon"><i class="bi bi-grid"></i></span>
+                        <span class="scope-option-text">
+                          <strong>All {{ typeInfo.plural }}</strong>
+                          <small>Every {{ typeInfo.label.toLowerCase() }} together</small>
+                        </span>
+                        @if (scope.id === null) { <i class="bi bi-check2 scope-check"></i> }
+                      </button>
+                      @if (filteredScopeUnits().length) { <div class="scope-divider"></div> }
+                    }
+
+                    @for (u of filteredScopeUnits(); track u.id) {
+                      <button type="button" class="scope-option" role="option" [class.selected]="scope.id === u.id"
+                        [attr.aria-selected]="scope.id === u.id" (click)="pickScopeUnit(u.id)">
+                        <span class="scope-option-icon unit">{{ initials(u.shortName) }}</span>
+                        <span class="scope-option-text">
+                          <strong>{{ u.shortName }}</strong>
+                          <small>{{ u.code }}</small>
+                        </span>
+                        @if (scope.id === u.id) { <i class="bi bi-check2 scope-check"></i> }
+                      </button>
+                    } @empty {
+                      <div class="scope-empty">
+                        <i class="bi" [ngClass]="scopeSearch() ? 'bi-search' : typeInfo.icon"></i>
+                        <span>{{ scopeSearch() ? 'No match for "' + scopeSearch() + '"' : 'No active ' + typeInfo.plural.toLowerCase() + ' yet' }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="scope-trigger read-only" title="Your branch / franchise (set on your user account)">
+          <span class="scope-trigger-icon"><i class="bi" [ngClass]="branchContext.ownUnit()?.type === 'franchise' ? 'bi-shop' : 'bi-diagram-3'"></i></span>
+          <span class="scope-trigger-text">
+            <small>{{ branchContext.ownUnit()?.type === 'franchise' ? 'Franchise' : 'Branch' }}</small>
+            <strong>{{ branchContext.ownLabel() }}</strong>
+          </span>
+          <i class="bi bi-lock-fill scope-chevron"></i>
+        </div>
+      }
+    }
+
     <!-- Branch group chat & posts - only the signed-in user's own branch -->
     <app-branch-chat></app-branch-chat>
 

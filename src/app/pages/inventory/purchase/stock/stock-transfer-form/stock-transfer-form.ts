@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
-import { StockBatch, displayDate } from '../../../../../shared/models/purchase.model';
+import { CENTRAL_STORE_KEY, StockBatch, displayDate } from '../../../../../shared/models/purchase.model';
 
 interface TransferRow {
   batchId: string | null;
@@ -28,34 +28,34 @@ export class StockTransferForm {
   readonly displayDate = displayDate;
 
   private readonly startBatch = this.purchase.stock().find(b => b.id === this.data?.batchId) ?? null;
-  readonly fromStoreId = signal<number | null>(this.startBatch?.storeId ?? null);
+  readonly fromStoreKey = signal<string>(this.startBatch?.storeKey ?? CENTRAL_STORE_KEY);
   readonly rows = signal<TransferRow[]>([{ batchId: this.startBatch?.id ?? null, qty: null }]);
   readonly submitted = signal(false);
   readonly saving = signal(false);
   remarks = '';
 
   /** Earliest expiry first, so the batch that should go out first is on top. */
-  readonly batches = computed(() => this.purchase.availableBatches(this.fromStoreId()));
-  readonly targets = computed(() => this.purchase.storeOptions().filter(s => s.id !== this.fromStoreId()));
-  toStoreId: number | null = this.defaultTarget();
+  readonly batches = computed(() => this.purchase.availableBatches(this.fromStoreKey()));
+  readonly targets = computed(() => this.purchase.storeOptions().filter(s => s.key !== this.fromStoreKey()));
+  toStoreKey: string = this.defaultTarget();
 
-  readonly kind = computed(() => (this.toStoreIdSignal() === null ? 'Stock Return to Central Store' : 'Stock Transfer'));
-  private readonly toStoreIdSignal = signal<number | null>(this.toStoreId);
+  readonly kind = computed(() => (this.toStoreKeySignal() === CENTRAL_STORE_KEY ? 'Stock Return to Central Store' : 'Stock Transfer'));
+  private readonly toStoreKeySignal = signal<string>(this.toStoreKey);
 
-  private defaultTarget(): number | null {
-    const others = this.purchase.storeOptions().filter(s => s.id !== this.fromStoreId());
-    return others[0]?.id ?? null;
+  private defaultTarget(): string {
+    const others = this.purchase.storeOptions().filter(s => s.key !== this.fromStoreKey());
+    return others[0]?.key ?? CENTRAL_STORE_KEY;
   }
 
-  setFrom(storeId: number | null): void {
-    this.fromStoreId.set(storeId);
+  setFrom(storeKey: string): void {
+    this.fromStoreKey.set(storeKey);
     this.rows.set([{ batchId: null, qty: null }]);
-    if (this.toStoreId === storeId) this.setTo(this.defaultTarget());
+    if (this.toStoreKey === storeKey) this.setTo(this.defaultTarget());
   }
 
-  setTo(storeId: number | null): void {
-    this.toStoreId = storeId;
-    this.toStoreIdSignal.set(storeId);
+  setTo(storeKey: string): void {
+    this.toStoreKey = storeKey;
+    this.toStoreKeySignal.set(storeKey);
   }
 
   batch(row: TransferRow): StockBatch | null {
@@ -97,17 +97,17 @@ export class StockTransferForm {
     const b = this.batch(row);
     if (!b) return 0;
     const out = this.rows().filter(r => this.batch(r)?.productId === b.productId).reduce((s, r) => s + (Number(r.qty) || 0), 0);
-    return this.purchase.storeQtyById(this.fromStoreId(), b.productId) - out;
+    return this.purchase.storeQtyByKey(this.fromStoreKey(), b.productId) - out;
   }
 
   async save(): Promise<void> {
     this.submitted.set(true);
-    if (this.toStoreId === this.fromStoreId() || this.rows().some(r => this.rowError(r)) || this.saving()) return;
+    if (this.toStoreKey === this.fromStoreKey() || this.rows().some(r => this.rowError(r)) || this.saving()) return;
 
     this.saving.set(true);
     const transfer = await this.purchase.dispatchTransfer({
-      fromStoreId: this.fromStoreId(),
-      toStoreId: this.toStoreId,
+      fromStoreKey: this.fromStoreKey(),
+      toStoreKey: this.toStoreKey,
       remarks: this.remarks.trim(),
       lines: this.rows().map(r => ({ batchId: r.batchId!, qty: Number(r.qty) })),
     });

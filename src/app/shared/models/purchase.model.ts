@@ -18,8 +18,13 @@ export type PurchaseReturnType = 'Debit Note' | 'Replacement';
 export const LOW_STOCK_THRESHOLD = 10;
 export const CENTRAL_STORE = 'Central Store';
 
-/** A branch store, or the Central Store (id null). */
+/** Key of the Central Store; a branch / franchise store is "branch:9" / "franchise:7" (the API exchanges stores as these keys). */
+export const CENTRAL_STORE_KEY = 'central';
+
+/** A branch / franchise store, or the Central Store (key "central", type and id null). */
 export interface StoreOption {
+  key: string;
+  type: 'branch' | 'franchise' | null;
   id: number | null;
   name: string;
 }
@@ -36,7 +41,9 @@ export interface PurchaseMeta {
   roundOffLimit: number;
   centralStore: string;
   canApprove: boolean;
-  userStoreId: number | null;
+  /** The user's own branch / franchise as a store key, null when the user has none. */
+  /** The user's own branch / franchise as a store key, null when the user has none. */
+  userStoreKey: string | null;
 }
 
 export interface PurchaseLineItem {
@@ -62,7 +69,8 @@ export interface PurchaseRequest {
   id: string;
   requestNo: string;
   branch: string;
-  branchId: number | null;
+  /** "branch:9" | "franchise:7" (null when not set). */
+  branchKey: string | null;
   vendorId: number | null;
   vendorName: string;
   requestedBy: string;
@@ -132,7 +140,7 @@ export interface GoodsInward {
   poNo: string;
   vendorName: string;
   store: string;
-  storeId: number | null;
+  storeKey: string;
   receivedBy: string;
   receivedAt: string;
   vendorInvoiceNo: string;
@@ -180,7 +188,7 @@ export interface PurchaseReturn {
   poNo: string;
   vendorName: string;
   store: string;
-  storeId: number | null;
+  storeKey: string;
   reason: PurchaseReturnReason;
   returnType: PurchaseReturnType;
   remarks: string;
@@ -213,7 +221,7 @@ export interface VendorNote {
 export interface StockBatch {
   id: string;
   store: string;
-  storeId: number | null;
+  storeKey: string;
   productId: string;
   productCode: string;
   productName: string;
@@ -248,9 +256,9 @@ export interface StockTransfer {
   transferNo: string;
   kind: 'Transfer' | 'Return';
   status: TransferStatus;
-  fromStoreId: number | null;
+  fromStoreKey: string;
   fromStore: string;
-  toStoreId: number | null;
+  toStoreKey: string;
   toStore: string;
   lines: StockTransferLine[];
   qty: number;

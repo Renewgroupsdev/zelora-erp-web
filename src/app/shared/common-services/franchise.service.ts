@@ -3,6 +3,7 @@ import { Observable, map, tap } from 'rxjs';
 import { ApiDataService } from '../../core/http/api.service';
 import { FranchiseRecord, FranchiseStatus } from '../models/branch-franchise.model';
 import { ApiRoutesConstants } from './api-route-constants';
+import { BranchOptionsService } from './branch-options.service';
 
 /** The five cards on the list page (GET /franchises -> stats). */
 export interface FranchiseOverview {
@@ -85,6 +86,7 @@ export function apiError(err: any, fallback = 'Something went wrong. Please try 
 @Injectable({ providedIn: 'root' })
 export class FranchiseService {
   private readonly api = inject(ApiDataService);
+  private readonly branchOptions = inject(BranchOptionsService);
 
   private readonly list = signal<FranchiseRecord[]>([]);
   private readonly overviewState = signal<FranchiseOverview | null>(null);
@@ -197,6 +199,8 @@ export class FranchiseService {
   /** Stat cards and per-row totals depend on every franchise, so re-read them after a change. */
   private refresh(): void {
     this.load().subscribe({ error: () => undefined });
+    // Every branch / franchise dropdown and the header filter list franchises too.
+    this.branchOptions.refresh();
   }
 }
 

@@ -45,10 +45,17 @@ export interface Employee {
   sipDomain?: string;
   designation: string;
   department: string;
+  /** Branch / franchise name as the API shows it (a franchise ends in "(Franchise)"). */
   branch: string;
+  /** branches.id / franchises.id of `branch` as saved (with branchType; keeps an inactive one savable on edit). */
+  branchId?: number | null;
+  /** Whether `branch` is a branch or a franchise. */
+  branchType?: 'branch' | 'franchise';
   reportingTo: string;
   joinDate: string;
   employmentType: 'Full Time' | 'Part Time' | 'Contract' | 'Intern';
+  /** 0 = work from home (WFH), 1 = work from office (WFO - punches in / out at the branch / franchise). Default 1. */
+  isWfh?: 0 | 1;
   pan: string;
   aadhaarLast4: string;
   uan: string;

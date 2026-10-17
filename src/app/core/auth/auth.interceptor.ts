@@ -2,6 +2,7 @@ import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpInterceptorFn, HttpReq
 import { inject } from '@angular/core';
 import { BehaviorSubject, Observable, catchError, filter, switchMap, take, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
+import { ScopeHeaderStore } from '../../shared/common-services/scope-header.store';
 
 // Module-level so it's shared across every request this interceptor handles,
 // letting concurrent 401s wait on a single in-flight refresh instead of each firing their own.
@@ -15,7 +16,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const isAuthEndpoint = authService.isAuthEndpoint(req.url);
   const attachAuth = isApiRequest && !isAuthEndpoint;
 
-  const authorizedReq = attachAuth ? withAuthHeader(req, authService) : req;
+  // Header branch / franchise filter (BranchContextService) - only on authenticated API calls.
+  const scopeHeaders = attachAuth ? inject(ScopeHeaderStore).headers() : null;
+  const scopedReq = scopeHeaders ? req.clone({ setHeaders: scopeHeaders }) : req;
+  const authorizedReq = attachAuth ? withAuthHeader(scopedReq, authService) : req;
 
   return next(authorizedReq).pipe(
     catchError(error => {

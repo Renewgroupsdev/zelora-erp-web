@@ -9,7 +9,10 @@ export interface Customer {
   mobile_no: string;
   email: string | null;
   gender: string | null;
+  branch_type: 'branch' | 'franchise' | null;
   branch_id: number | null;
+  /** "branch:9" / "franchise:7". */
+  branch_key: string | null;
   branch_name: string | null;
   /** "New" up to 2 visits, "Regular" from the 3rd. */
   segment: CustomerSegment;
@@ -33,6 +36,7 @@ export interface CustomerStats {
   active: number;
   new_this_month: number;
   avg_total_amount: number;
-  branches: { id: number; name: string }[];
+  /** Branches / franchises that have customers; filter with key (a franchise's name reads "Name (Franchise)"). */
+  branches: { key: string; type: 'branch' | 'franchise'; id: number; name: string }[];
   services: { id: number; name: string }[];
 }

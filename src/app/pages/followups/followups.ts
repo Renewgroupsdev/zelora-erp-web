@@ -262,7 +262,7 @@ export class Followups implements OnInit, OnDestroy {
       follow_up_date: lead.next_follow_up_at
         ? this.formatDateTime(lead.next_follow_up_at)
         : (callLog.length ? callLog[callLog.length - 1].dateTime : ''),
-      branch: lead.organization_name ?? '',
+      branch: lead.branch_name ?? '',
       telecaller: callers,
       status: lead.status_name ?? '',
       follow_up_type_label: this.FOLLOW_UP_TYPE_LABELS[lead.follow_up_type ?? 0] ?? '',

@@ -5,7 +5,7 @@ import { CommonDetailCard } from '../../../../shared/components/common-detail-ca
 import { CommonFilterCard } from '../../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../../shared/components/common-table-card/common-table-card';
 import { DetailCardData, FilterOption, QuickAction, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
-import { displayDate, inr } from '../../../../shared/models/purchase.model';
+import { CENTRAL_STORE_KEY, displayDate, inr } from '../../../../shared/models/purchase.model';
 import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { StockTransferForm } from './stock-transfer-form/stock-transfer-form';
@@ -68,7 +68,7 @@ export class StockOverview extends PurchaseListBase {
 
   readonly stats = computed<DetailCardData[]>(() => {
     const stock = this.purchase.stock();
-    const units = (central: boolean) => stock.filter(b => (b.storeId === null) === central).reduce((s, b) => s + b.qty, 0);
+    const units = (central: boolean) => stock.filter(b => (b.storeKey === CENTRAL_STORE_KEY) === central).reduce((s, b) => s + b.qty, 0);
     const open = this.purchase.openTransfers();
     return [
       { label: 'Central Store · Stock in Hand', value: units(true).toLocaleString(), icon: 'bi-building', iconVariant: 'primary' },
@@ -120,7 +120,7 @@ export class StockOverview extends PurchaseListBase {
 
     const stock = this.purchase.stock();
     return stock.map(b => {
-      const total = this.purchase.storeQtyById(b.storeId, b.productId);
+      const total = this.purchase.storeQtyByKey(b.storeKey, b.productId);
       const status = total <= 0 ? 'Out of Stock' : total < this.threshold() ? 'Low Stock' : 'In Stock';
       const actions: QuickAction[] = b.qty > 0 ? [{ key: 'transfer', icon: 'bi-arrow-left-right', label: 'Transfer stock', variant: 'primary' }] : [];
       return {

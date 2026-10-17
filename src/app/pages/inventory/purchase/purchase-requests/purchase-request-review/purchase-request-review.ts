@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
-import { PurchaseOrder, displayDate, lineTotals } from '../../../../../shared/models/purchase.model';
+import { CENTRAL_STORE_KEY, PurchaseOrder, displayDate, lineTotals } from '../../../../../shared/models/purchase.model';
 import { CanActionDirective } from '../../../../../shared/directives/can-action.directive';
 
 export interface ReviewResult {
@@ -41,11 +41,11 @@ export class PurchaseRequestReview {
   }
 
   centralQty(productId: string): number {
-    return this.purchase.storeQtyById(null, productId);
+    return this.purchase.storeQtyByKey(CENTRAL_STORE_KEY, productId);
   }
 
   branchQty(productId: string): number {
-    return this.purchase.storeQtyById(this.request().branchId, productId);
+    return this.purchase.storeQtyByKey(this.request().branchKey ?? CENTRAL_STORE_KEY, productId);
   }
 
   statusClass(): string {

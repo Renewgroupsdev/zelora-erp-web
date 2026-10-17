@@ -6,7 +6,7 @@
       <app-left-side-navbar></app-left-side-navbar>
       <div class="content-shell">
         <main class="layout-content">
-          <router-outlet></router-outlet>
+          @if (showPage()) { <router-outlet></router-outlet> }
         </main>
       </div>
     </div>
@@ -16,7 +16,7 @@
     </div>
     <div class="content-shell">
       <main class="layout-content horizontal-content">
-        <router-outlet></router-outlet>
+        @if (showPage()) { <router-outlet></router-outlet> }
       </main>
     </div>
   }

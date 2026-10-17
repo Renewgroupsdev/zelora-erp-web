@@ -68,12 +68,37 @@ export class EmployeeForm implements OnInit {
   }
   readonly photoError = signal<string | null>(null);
   readonly isSaving = signal(false);
-  /** Branches come from the API; the employee stores the branch by name and the API receives its id. */
+  /** Branch or franchise first; the second dropdown then lists only units of that type. */
+  readonly unitTypes: { value: 'branch' | 'franchise'; label: string; icon: string }[] = [
+    { value: 'branch', label: 'Branch', icon: 'bi-diagram-3' },
+    { value: 'franchise', label: 'Franchise', icon: 'bi-shop' },
+  ];
+  readonly unitType = signal<'branch' | 'franchise'>(
+    this.model.branchType ?? (/\(Franchise\)$/.test(this.model.branch ?? '') ? 'franchise' : 'branch'),
+  );
+  /** Branches / franchises come from the API; the employee stores the unit by name and the API receives its id. */
   readonly branches = computed(() => {
-    const names = this.hr.branchOptions().map(b => b.name);
+    const type = this.unitType();
+    const options = this.hr.branchOptions().filter(b => b.type === type);
+    const names = options.map(b => b.name);
     const current = this.model.branch;
-    return current && !names.includes(current) ? [current, ...names] : names;
+    // Keep a saved unit of this type that is no longer on offer (deactivated) selectable.
+    const keepCurrent = current && !names.includes(current) && (this.model.branchType ?? 'branch') === type
+      && !this.hr.branchOptions().some(b => b.name === current);
+    return (keepCurrent ? [current, ...names] : names).map(name => ({
+      name,
+      label: options.find(o => o.name === name)?.shortName ?? name.replace(/ \(Franchise\)$/, ''),
+    }));
   });
+
+  setUnitType(type: 'branch' | 'franchise'): void {
+    if (type === this.unitType()) return;
+    this.unitType.set(type);
+    this.model.branchType = type;
+    // A unit of the other type no longer fits: pick the first of the new type (or none).
+    const list = this.branches();
+    if (!list.some(b => b.name === this.model.branch)) this.model.branch = list[0]?.name ?? '';
+  }
   private photoFile: File | null = null;
   private photoRemoved = false;
   private removedKycIds: string[] = [];
@@ -96,8 +121,19 @@ export class EmployeeForm implements OnInit {
       });
     }
     this.hr.loadBranches().subscribe(list => {
-      if (!this.model.branch || !list.some(b => b.name === this.model.branch)) {
-        if (!this.isEdit && list.length) this.model.branch = list.find(b => b.name === this.data.branch)?.name ?? list[0].name;
+      // The saved unit's type wins (a franchise employee opens on "Franchise").
+      const saved = list.find(b => b.name === this.model.branch);
+      if (saved) {
+        this.unitType.set(saved.type);
+        this.model.branchType = saved.type;
+      }
+      if (!this.model.branch || !saved) {
+        if (!this.isEdit && list.length) {
+          const pick = list.find(b => b.name === this.data.branch) ?? list.find(b => b.type === this.unitType()) ?? list[0];
+          this.unitType.set(pick.type);
+          this.model.branchType = pick.type;
+          this.model.branch = pick.name;
+        }
       }
     });
     this.api.GetAllPages(ApiRoutesConstants.ROLES_GET_List).pipe(catchError(() => of([]))).subscribe((roles: { name: string; slug?: string }[]) => {

@@ -26,7 +26,6 @@ export class ApiRoutesConstants {
    public static Source_List_Options ='sources';
    public static Type_List_Options    ='service-category-requests';
    public static Status_List_Options    ='lead-statuses';
-   public static Branch_List_Options    ='organization-units';
 
    //Service Category (CURD)
    public static SERVICE_CATEGORY_GET_List = "service-category-requests/2";
@@ -138,24 +137,26 @@ export class ApiRoutesConstants {
    public static UPLOADS = "uploads";
    public static BRANCHES = "branches";
    public static BRANCH_OPTIONS = "branches/options";
+   /** Branches + franchises for the header filter and every branch / franchise dropdown (see BranchOptionsService). */
+   public static SCOPE_OPTIONS = "scope/options";
    public static FRANCHISES = "franchises";
 
    //Settings (key-value)
    public static SETTINGS_GET = "settings";
    public static SETTINGS_UPDATE = "settings";
 
-   //Organization Unit QR landing page (public, no auth)
-   public static ORGANIZATION_UNIT_PUBLIC_SHOW = "public/organization-units";
+   //Branch / franchise QR landing page (public, no auth): public/units/{type}/{id}
+   public static PUBLIC_UNIT_SHOW = "public/units";
 
-   //Organization (CURD)
-   public static ORGANIZATION_GET_List = "organization-units";
-   public static ORGANIZATION_ADD = "organization-units";
-   public static ORGANIZATION_DELETE = "organization-units";
+   //Working hours of a branch / franchise (branch_type + branch_id)
+   public static WORKING_HOURS = "working-hours";
 
    //QR scan tracking (public write, auth required for reporting)
    public static QR_SCAN_STORE = "qr-scans";
    public static QR_SCAN_CLICK = "qr-scans";
    public static QR_SCAN_LIST = "qr-scans";
    public static QR_SCAN_SUMMARY = "qr-scans/summary";
+   /** ?branch_type=&branch_id= -> encrypted code the branch / franchise QR carries. */
+   public static QR_SCAN_TOKEN = "qr-scans/token";
 
 }

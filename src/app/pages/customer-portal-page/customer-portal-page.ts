@@ -99,7 +99,7 @@ export class CustomerPortalPage implements OnInit {
   sortDirection: SortDirection = 'asc';
   private searchTerm = '';
 
-  private branchIdByName = new Map<string, number>();
+  private branchKeyByName = new Map<string, string>();
   private serviceIdByName = new Map<string, number>();
   private listSub?: Subscription;
 
@@ -118,7 +118,7 @@ export class CustomerPortalPage implements OnInit {
         const s: CustomerStats | undefined = res?.data;
         if (!s) return;
         this.stats = this.buildStats(s);
-        this.branchIdByName = new Map(s.branches.map(b => [b.name, b.id]));
+        this.branchKeyByName = new Map(s.branches.map(b => [b.name, b.key]));
         this.serviceIdByName = new Map(s.services.map(t => [t.name, t.id]));
         this.filters = this.filters.map(f =>
           f.key === 'branch' ? { ...f, options: s.branches.map(b => b.name) }
@@ -140,9 +140,9 @@ export class CustomerPortalPage implements OnInit {
     if (this.filterState.status) params.set('status', this.filterState.status);
     if (this.filterState.source) params.set('segment', this.filterState.source);
     this.filterState.branch
-      .map(name => this.branchIdByName.get(name))
-      .filter((id): id is number => id !== undefined)
-      .forEach(id => params.append('branch_id[]', String(id)));
+      .map(name => this.branchKeyByName.get(name))
+      .filter((key): key is string => !!key)
+      .forEach(key => params.append('branch_id[]', key));
     const serviceId = this.filterState.telecaller ? this.serviceIdByName.get(this.filterState.telecaller) : undefined;
     if (serviceId) params.set('treatment_id', String(serviceId));
     if (this.filterState.dateFrom) params.set('date_from', this.filterState.dateFrom);

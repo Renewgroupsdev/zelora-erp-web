@@ -1,21 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import * as QRCode from 'qrcode';
 import { NavLayoutService } from '../../services/nav-layout.service';
 import { IdleService } from '../../core/idle-service/idle.service';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
+import { BranchOptionsService, parseUnitKey } from '../../shared/common-services/branch-options.service';
 import { ToastService } from '../../shared/common-services/toast.service';
-
-interface OrganizationUnitOption {
-  id: number;
-  name: string;
-  code: string;
-  /** Encrypted stand-in for `code` (from the backend's `qr_token` accessor) - this is what
-   *  actually goes in the QR, so scanning it never exposes the real branch code in plain text. */
-  qrToken: string;
-}
 
 @Component({
   selector: 'app-settings-page',
@@ -26,6 +19,8 @@ interface OrganizationUnitOption {
 })
 export class SettingsPage implements OnInit {
   readonly idlePresets = [5, 15, 30, 60];
+  /** Branches + franchises the QR can be generated for (key "branch:9" / "franchise:7" is the dropdown value). */
+  readonly branchOptions = inject(BranchOptionsService);
 
   constructor(
     public navLayout: NavLayoutService,
@@ -49,10 +44,9 @@ export class SettingsPage implements OnInit {
   appBaseUrl = '';
   savingAppBaseUrl = false;
 
-  // Organization unit QR code
-  branches: OrganizationUnitOption[] = [];
+  // Branch / franchise QR code
   loadingBranches = false;
-  selectedBranchId: number | null = null;
+  selectedBranchKey: string | null = null;
   generatingQr = false;
   qrDataUrl: string | null = null;
   qrTargetUrl: string | null = null;
@@ -170,32 +164,24 @@ export class SettingsPage implements OnInit {
 
   private loadBranches(): void {
     this.loadingBranches = true;
-    this.apiDataService.GetAllPages(ApiRoutesConstants.Branch_List_Options).subscribe({
-      next: (units: any[]) => {
+    this.branchOptions.load().subscribe({
+      next: (options) => {
         this.loadingBranches = false;
-        this.branches = (units ?? []).map((unit: any) => ({
-          id: unit.id,
-          name: unit.name,
-          code: unit.code,
-          qrToken: unit.qr_token,
-        }));
-
-        if (!this.selectedBranchId && this.branches.length) {
-          this.selectedBranchId = this.branches[0].id;
+        if (!this.selectedBranchKey && options.length) {
+          this.selectedBranchKey = options[0].key;
         }
       },
-      error: (err: any) => {
+      error: () => {
         this.loadingBranches = false;
-        this.toast.error('Failed to load organization units.');
-        console.error('Failed to load organization units:', err);
+        this.toast.error('Failed to load branches / franchises.');
       },
     });
   }
 
   async generateQr(): Promise<void> {
-    const branch = this.branches.find((b) => b.id === this.selectedBranchId);
-    if (!branch) {
-      this.toast.warning('Select an organization unit first.');
+    const unit = parseUnitKey(this.selectedBranchKey);
+    if (!unit) {
+      this.toast.warning('Select a branch / franchise first.');
       return;
     }
 
@@ -205,30 +191,32 @@ export class SettingsPage implements OnInit {
       return;
     }
 
-    if (!branch.qrToken) {
-      this.toast.error('This branch has no encrypted code yet. Try reloading the page.');
-      return;
-    }
-
     this.generatingQr = true;
     this.qrDataUrl = null;
 
-    // The QR points at our own /scan page, not the lead form directly - that page logs the
-    // scan (device/branch data) before handing the visitor on to the lead form URL above.
-    // Only the encrypted branch code travels in the QR itself; only our backend (same
-    // APP_KEY) can decrypt it back to the real branch code. It's already URL-safe (the
-    // backend urlencodes it), so it's appended as-is.
-    const targetUrl = `${this.effectiveAppOrigin}/scan?code=${branch.qrToken}`;
-    this.qrTargetUrl = targetUrl;
-
     try {
+      // The encrypted unit code (only our backend, same APP_KEY, can decrypt it back to the real code).
+      const params = new URLSearchParams({ branch_type: unit.type, branch_id: String(unit.id) });
+      const res: any = await firstValueFrom(this.apiDataService.GET(`${ApiRoutesConstants.QR_SCAN_TOKEN}?${params}`));
+      const qrToken: string | null = res?.data?.qr_token ?? null;
+      if (!qrToken) {
+        this.toast.error(res?.message || 'This branch / franchise has no code yet.');
+        return;
+      }
+
+      // The QR points at our own /scan page, not the lead form directly - that page logs the
+      // scan (device/branch data) before handing the visitor on to the lead form URL above.
+      // The token is already URL-safe (the backend urlencodes it), so it's appended as-is.
+      const targetUrl = `${this.effectiveAppOrigin}/scan?code=${qrToken}`;
+      this.qrTargetUrl = targetUrl;
+
       this.qrDataUrl = await QRCode.toDataURL(targetUrl, {
         width: 320,
         margin: 2,
         errorCorrectionLevel: 'M',
       });
-    } catch (err) {
-      this.toast.error('Failed to generate QR code.');
+    } catch (err: any) {
+      this.toast.error(err?.error?.message || 'Failed to generate QR code.');
       console.error('Failed to generate QR code:', err);
     } finally {
       this.generatingQr = false;
@@ -238,8 +226,8 @@ export class SettingsPage implements OnInit {
   downloadQr(): void {
     if (!this.qrDataUrl) return;
 
-    const branch = this.branches.find((b) => b.id === this.selectedBranchId);
-    const fileName = `qr-${branch?.code ?? this.selectedBranchId}.png`;
+    const unit = this.branchOptions.byKey(this.selectedBranchKey);
+    const fileName = `qr-${unit?.code || String(this.selectedBranchKey).replace(':', '-')}.png`;
 
     const link = document.createElement('a');
     link.href = this.qrDataUrl;

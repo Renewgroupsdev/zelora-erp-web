@@ -5,7 +5,7 @@ import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { BranchOptionsService } from '../../../../../shared/common-services/branch-options.service';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
-import { PurchaseOption, Priority, lineTotals } from '../../../../../shared/models/purchase.model';
+import { CENTRAL_STORE_KEY, PurchaseOption, Priority, lineTotals } from '../../../../../shared/models/purchase.model';
 
 @Component({
   selector: 'app-purchase-request-form',
@@ -30,7 +30,7 @@ export class PurchaseRequestForm {
   readonly today = new Date().toISOString().slice(0, 10);
 
   readonly form = this.fb.group({
-    branchId: [null as number | null, Validators.required],
+    branchKey: [null as string | null, Validators.required],
     vendorId: [null as number | null, Validators.required],
     requiredBy: [null as string | null],
     priority: ['Normal' as Priority],
@@ -45,10 +45,10 @@ export class PurchaseRequestForm {
     // Default to the user's own branch (else the first branch) once the branch list has loaded.
     effect(() => {
       const branches = this.branches();
-      const control = this.form.controls.branchId;
+      const control = this.form.controls.branchKey;
       if (control.value !== null || !branches.length) return;
-      const mine = branches.find(b => b.id === this.purchase.meta().userStoreId);
-      control.setValue((mine ?? branches[0]).id);
+      const mine = branches.find(b => b.key === this.purchase.meta().userStoreKey);
+      control.setValue((mine ?? branches[0]).key);
     });
   }
 
@@ -77,7 +77,7 @@ export class PurchaseRequestForm {
 
   centralQty(index: number): number {
     const p = this.product(index);
-    return p ? this.purchase.storeQtyById(null, p.id) : 0;
+    return p ? this.purchase.storeQtyByKey(CENTRAL_STORE_KEY, p.id) : 0;
   }
 
   lineAmount(index: number): number {
@@ -130,7 +130,7 @@ export class PurchaseRequestForm {
     const raw = this.form.getRawValue();
     this.saving.set(true);
     const request = await this.purchase.createRequest({
-      orgUnitId: Number(raw.branchId),
+      branchKey: String(raw.branchKey),
       vendorId: raw.vendorId,
       requiredBy: raw.requiredBy,
       priority: raw.priority ?? 'Normal',

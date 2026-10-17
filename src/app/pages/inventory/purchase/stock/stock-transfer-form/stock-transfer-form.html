@@ -17,8 +17,8 @@
         <label for="st-from">From Store <span>*</span></label>
         <div class="input-wrap">
           <i class="bi bi-building"></i>
-          <select id="st-from" [ngModel]="fromStoreId()" (ngModelChange)="setFrom($event)">
-            @for (s of purchase.storeOptions(); track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
+          <select id="st-from" [ngModel]="fromStoreKey()" (ngModelChange)="setFrom($event)">
+            @for (s of purchase.storeOptions(); track s.key) { <option [ngValue]="s.key">{{ s.name }}</option> }
           </select>
           <i class="bi bi-chevron-down select-arrow"></i>
         </div>
@@ -28,8 +28,8 @@
         <label for="st-to">To Store <span>*</span></label>
         <div class="input-wrap">
           <i class="bi bi-shop"></i>
-          <select id="st-to" [ngModel]="toStoreId" (ngModelChange)="setTo($event)">
-            @for (s of targets(); track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
+          <select id="st-to" [ngModel]="toStoreKey" (ngModelChange)="setTo($event)">
+            @for (s of targets(); track s.key) { <option [ngValue]="s.key">{{ s.name }}</option> }
           </select>
           <i class="bi bi-chevron-down select-arrow"></i>
         </div>
@@ -46,7 +46,7 @@
 
     <div class="section-title"><i class="bi bi-upc-scan"></i> Products &amp; Batches</div>
     @if (!batches().length) {
-      <div class="empty-note"><i class="bi bi-inbox"></i> No stock available in {{ purchase.storeName(fromStoreId()) }}.</div>
+      <div class="empty-note"><i class="bi bi-inbox"></i> No stock available in {{ purchase.storeName(fromStoreKey()) }}.</div>
     } @else {
       <div class="items-table-wrap">
         <table class="items-table">
@@ -92,7 +92,7 @@
   </div>
 
   <div class="modal-footer-custom">
-    <span class="footer-note"><i class="bi bi-info-circle"></i> {{ purchase.storeName(toStoreId) }} accepts or rejects each line; rejected units come back here.</span>
+    <span class="footer-note"><i class="bi bi-info-circle"></i> {{ purchase.storeName(toStoreKey) }} accepts or rejects each line; rejected units come back here.</span>
     <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
     <button type="button" class="save-btn" [disabled]="!batches().length || saving()" (click)="save()"><i class="bi bi-truck"></i> Dispatch</button>
   </div>

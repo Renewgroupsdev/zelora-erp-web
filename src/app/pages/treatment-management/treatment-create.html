@@ -52,15 +52,15 @@
           </select>
           @if (invalid(form.controls.treatment_category_id)) { <small class="error-text">Select a category</small> }
         </label>
-        <label class="field" [class.has-error]="invalid(form.controls.branch_id)">
-          <span>Branch <span class="required-asterisk">*</span></span>
-          <select formControlName="branch_id">
-            <option [ngValue]="null">Select branch</option>
+        <label class="field" [class.has-error]="invalid(form.controls.branch_key)">
+          <span>Branch / Franchise <span class="required-asterisk">*</span></span>
+          <select formControlName="branch_key">
+            <option [ngValue]="null">Select branch / franchise</option>
             @for (branch of branches(); track branch.id) {
               <option [ngValue]="branch.id">{{ branch.name }}</option>
             }
           </select>
-          @if (invalid(form.controls.branch_id)) { <small class="error-text">Select a branch</small> }
+          @if (invalid(form.controls.branch_key)) { <small class="error-text">Select a branch / franchise</small> }
         </label>
         <label class="field" [class.has-error]="invalid(form.controls.maxSessions)">
           <span>Max sittings <span class="required-asterisk">*</span></span>

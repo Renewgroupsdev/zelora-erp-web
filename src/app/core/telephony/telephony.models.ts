@@ -32,7 +32,8 @@ export interface CallLead {
   id: number;
   name: string;
   mobile_no: string;
-  organization_id?: number;
+  branch_type?: 'branch' | 'franchise' | null;
+  branch_id?: number | null;
   status_id?: number;
   status_name?: string;
   assigned_to?: number | null;
@@ -50,6 +51,7 @@ export interface CallLog {
   caller_number: string;
   destination_number: string | null;
   employee_id: number | null;
+  branch_type?: 'branch' | 'franchise' | null;
   branch_id: number | null;
   lead?: CallLead | null;
   lead_id?: number | null;
@@ -117,7 +119,8 @@ export interface TelecallerRow {
   id: number;
   name: string;
   phone_no: string | null;
-  branch: { id: number; name: string } | null;
+  /** A franchise's name reads "Name (Franchise)". */
+  branch: { type: 'branch' | 'franchise'; id: number; key: string; name: string } | null;
   status: AgentStatus;
   assigned_leads_count: number;
   status_changed_at: string | null;
@@ -163,7 +166,10 @@ export interface FollowUpLead {
   service_category_name: string | null;
   service_request_name: string | null;
   status_name: string | null;
-  organization_name: string | null;
+  /** Branch / franchise display name (a franchise reads "Name (Franchise)"). */
+  branch_name: string | null;
+  branch_type?: 'branch' | 'franchise' | null;
+  branch_id?: number | null;
   assigned_to: number | null;
   assigned_to_name: string | null;
   /** HR employee code (hr_employees.emp_code) of the assigned telecaller. */

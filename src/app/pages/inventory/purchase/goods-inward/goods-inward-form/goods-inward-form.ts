@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
-import { InwardLine, VendorNoteType, inr } from '../../../../../shared/models/purchase.model';
+import { CENTRAL_STORE_KEY, InwardLine, VendorNoteType, inr } from '../../../../../shared/models/purchase.model';
 
 interface EditableLine extends InwardLine {
   /** First row of a product shows ordered/previous/pending; extra rows are additional batches. */
@@ -38,7 +38,8 @@ export class GoodsInwardForm {
   readonly noteTypes: VendorNoteType[] = ['Debit Note', 'Credit Note'];
   readonly today = new Date().toISOString().slice(0, 10);
 
-  storeId: number | null = null;
+  /** Store key: "central" | "branch:9" | "franchise:7". */
+  storeKey: string = CENTRAL_STORE_KEY;
   vendorInvoiceNo = '';
   billDate: string | null = this.today;
   freight: number | null = null;
@@ -72,7 +73,7 @@ export class GoodsInwardForm {
   }
 
   centralQty(productId: string): number {
-    return this.purchase.storeQtyById(null, productId);
+    return this.purchase.storeQtyByKey(CENTRAL_STORE_KEY, productId);
   }
 
   /** Accepted qty (received - damaged) across every batch row of the product. */
@@ -183,7 +184,7 @@ export class GoodsInwardForm {
     this.saving.set(true);
     const inward = await this.purchase.recordInward({
       poId: this.order().id,
-      storeId: this.storeId,
+      storeKey: this.storeKey,
       vendorInvoiceNo: this.vendorInvoiceNo.trim(),
       billDate: this.billDate,
       freight: Number(this.freight) || 0,

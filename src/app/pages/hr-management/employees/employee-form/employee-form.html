@@ -151,12 +151,27 @@
           </div>
         </div>
         <div class="form-field">
-          <label for="em-branch">Branch <span>*</span></label>
-          <div class="input-wrap"><i class="bi bi-building"></i>
-            <select id="em-branch" name="branch" required [(ngModel)]="model.branch" #branch="ngModel" [class.is-invalid]="submitted() && branch.invalid"><option value="">Select branch</option>@for (b of branches(); track b) { <option [value]="b">{{ b }}</option> }</select>
+          <label id="em-unit-type-label">Belongs To <span>*</span></label>
+          <div class="unit-type-toggle" role="radiogroup" aria-labelledby="em-unit-type-label">
+            @for (t of unitTypes; track t.value) {
+              <button type="button" role="radio" class="unit-type-option" [class.active]="unitType() === t.value"
+                [attr.aria-checked]="unitType() === t.value" (click)="setUnitType(t.value)">
+                <i class="bi" [ngClass]="t.icon"></i> {{ t.label }}
+              </button>
+            }
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="em-branch">{{ unitType() === 'franchise' ? 'Franchise' : 'Branch' }} <span>*</span></label>
+          <div class="input-wrap"><i class="bi" [ngClass]="unitType() === 'franchise' ? 'bi-shop' : 'bi-building'"></i>
+            <select id="em-branch" name="branch" required [(ngModel)]="model.branch" #branch="ngModel" [class.is-invalid]="submitted() && branch.invalid"><option value="">Select {{ unitType() }}</option>@for (b of branches(); track b.name) { <option [value]="b.name">{{ b.label }}</option> }</select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
-          @if (submitted() && branch.invalid) { <small class="error-text">Branch is required.</small> }
+          @if (submitted() && branch.invalid) {
+            <small class="error-text">{{ unitType() === 'franchise' ? 'Franchise' : 'Branch' }} is required.</small>
+          } @else if (!branches().length) {
+            <small class="hint-text">No active {{ unitType() === 'franchise' ? 'franchises' : 'branches' }} yet.</small>
+          }
         </div>
         <div class="form-field">
           <label for="em-join">Joining Date <span>*</span></label>
@@ -167,6 +182,20 @@
           <div class="input-wrap"><i class="bi bi-clock"></i>
             <select id="em-type" name="employmentType" [(ngModel)]="model.employmentType"><option>Full Time</option><option>Part Time</option><option>Contract</option><option>Intern</option></select>
             <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+        <!-- Where the employee works (employees.is_wfh: 1 = WFO, 0 = WFH). WFO punches in / out at the branch / franchise. -->
+        <div class="form-field">
+          <label id="em-wfh-label">Work Mode</label>
+          <div class="unit-type-toggle" role="radiogroup" aria-labelledby="em-wfh-label">
+            <button type="button" role="radio" class="unit-type-option" [class.active]="model.isWfh !== 0"
+              [attr.aria-checked]="model.isWfh !== 0" (click)="model.isWfh = 1">
+              <i class="bi bi-building"></i> Office (WFO)
+            </button>
+            <button type="button" role="radio" class="unit-type-option" [class.active]="model.isWfh === 0"
+              [attr.aria-checked]="model.isWfh === 0" (click)="model.isWfh = 0">
+              <i class="bi bi-house-door"></i> Home (WFH)
+            </button>
           </div>
         </div>
         <div class="form-field">

@@ -1,8 +1,9 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, inject, provideAppInitializer, provideBrowserGlobalErrorListeners, provideZoneChangeDetection } from '@angular/core';
 import { NavigationError, provideRouter, withNavigationErrorHandler } from '@angular/router';
 import { routes } from './app.routes';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from './core/auth/auth.interceptor';
+import { BranchContextService } from './shared/common-services/branch-context.service';
 
 const CHUNK_RELOAD_KEY = 'chunk_reload_at';
 const CHUNK_ERROR = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError/i;
@@ -26,6 +27,8 @@ function reloadOnStaleChunk(error: NavigationError): void {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideHttpClient(withInterceptors([authInterceptor])),
+    // The header branch / franchise filter must be in force before the first page asks for data.
+    provideAppInitializer(() => { inject(BranchContextService); }),
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withNavigationErrorHandler(reloadOnStaleChunk))

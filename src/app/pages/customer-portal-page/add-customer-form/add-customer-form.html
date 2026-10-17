@@ -99,11 +99,11 @@
         </div>
 
         <div class="form-field">
-          <label for="cust-branch">Branch <span class="required-asterisk">*</span></label>
+          <label for="cust-branch">Branch / Franchise <span class="required-asterisk">*</span></label>
           <div class="input-wrap select-wrap">
             <i class="bi bi-geo-alt"></i>
             <select id="cust-branch" formControlName="branch" [class.is-invalid]="isInvalid('branch')">
-              <option value="">Select branch</option>
+              <option value="">Select branch / franchise</option>
               @for (branch of branches(); track branch) {
                 <option [value]="branch">{{ branch }}</option>
               }
