@@ -43,14 +43,13 @@ export class PurchaseOrders extends PurchaseListBase {
   override sortActive = 'orderedAt';
 
   readonly stats = computed<DetailCardData[]>(() => {
-    const list = this.purchase.orders();
-    const count = (s: string) => list.filter(o => o.status === s).length;
-    const value = list.filter(o => o.status !== 'Cancelled').reduce((sum, o) => sum + lineTotals(o.items).grandTotal, 0);
+    const s = this.purchase.summaries().orders ?? {};
+    const n = (key: string) => Number(s[key]) || 0;
     return [
-      { label: 'Purchase Orders', value: list.length, icon: 'bi-receipt', iconVariant: 'primary' },
-      { label: 'Awaiting Delivery', value: count('Ordered'), icon: 'bi-truck', iconVariant: 'blue' },
-      { label: 'Partially Received', value: count('Partially Received'), icon: 'bi-hourglass-split', iconVariant: 'orange' },
-      { label: 'Total PO Value', value: inr(value), icon: 'bi-currency-rupee', iconVariant: 'green' },
+      { label: 'Purchase Orders', value: n('total'), icon: 'bi-receipt', iconVariant: 'primary' },
+      { label: 'Awaiting Delivery', value: n('awaiting_delivery'), icon: 'bi-truck', iconVariant: 'blue' },
+      { label: 'Partially Received', value: n('partially_received'), icon: 'bi-hourglass-split', iconVariant: 'orange' },
+      { label: 'Total PO Value', value: inr(n('total_value')), icon: 'bi-currency-rupee', iconVariant: 'green' },
     ];
   });
 

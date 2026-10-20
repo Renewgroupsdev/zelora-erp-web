@@ -650,3 +650,68 @@ div:where(.swal2-container) h2:where(.swal2-title) {
 .rg-group { background-image: linear-gradient(135deg, #9a7226 0%, #d9b865 48%, #b58a30 100%); }
 :root[data-theme='dark'] .rg-renew { background-image: linear-gradient(135deg, #2f9e83 0%, #6bc4ab 100%); }
 :root[data-theme='dark'] .rg-group { background-image: linear-gradient(135deg, #d9b865 0%, #f0d98f 100%); }
+
+
+/* ==========================================================
+   Responsive safety net (mobile -> large monitors)
+   Breakpoints: 480 phone, 768 tablet, 1024 small laptop,
+   1440 desktop, 1920 full-HD, 2560 QHD / 4K.
+   ========================================================== */
+img, video, canvas, svg {
+  max-width: 100%;
+}
+
+img, video {
+  height: auto;
+}
+
+/* Long words / emails / ids never push a card wider than the screen. */
+.page-title, .detail-label, td, th {
+  overflow-wrap: anywhere;
+}
+
+/* Extra-large monitors: keep growing the type scale one more step. */
+@media (min-width: 2560px) {
+  :root {
+    --fs-2xs: 14px;
+    --fs-xs: 15px;
+    --fs-sm: 16px;
+    --fs-base: 17px;
+    --fs-md: 18px;
+    --fs-lg: 22px;
+    --fs-xl: 25px;
+    --fs-2xl: 30px;
+    --fs-3xl: 38px;
+  }
+}
+
+/* Tablet and below: dialogs / overlays can never be wider than the viewport. */
+@media (max-width: 768px) {
+  .cdk-overlay-pane {
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  .mat-mdc-dialog-container .mdc-dialog__surface {
+    max-height: calc(100dvh - 16px);
+  }
+
+  .tempus-dominus-widget {
+    max-width: calc(100vw - 16px);
+  }
+}
+
+/* Phones: Material dialogs use the full width. */
+@media (max-width: 480px) {
+  .cdk-overlay-pane.mat-mdc-dialog-panel {
+    max-width: 100vw !important;
+    width: calc(100vw - 16px) !important;
+  }
+}
+
+/* Touch screens: comfortable tap targets for icon buttons. */
+@media (hover: none) and (pointer: coarse) {
+  .mat-mdc-icon-button .mat-mdc-button-touch-target {
+    width: 40px !important;
+    height: 40px !important;
+  }
+}

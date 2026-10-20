@@ -14,6 +14,7 @@ import { ApiDataService } from '../../../core/http/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ApiRoutesConstants } from '../../common-services/api-route-constants';
 import { ToastService } from '../../common-services/toast.service';
+import { to12Hour } from '../../utils/format.util';
 import {
   BaldnessType,
   ComboOffer,
@@ -351,7 +352,7 @@ export class LeadProfileDialog {
         this.toast.error('The appointment date must be today or later.');
         return;
       }
-      body = { kind, date: value.scheduleDate, time: value.scheduleTime, notes: String(value.notes ?? '').trim() || null };
+      body = { kind, date: value.scheduleDate, time: to12Hour(value.scheduleTime), notes: String(value.notes ?? '').trim() || null };
     } else {
       // A note typed in the form but not added yet is saved too.
       const entries = [...this.pendingEntries];
@@ -369,7 +370,7 @@ export class LeadProfileDialog {
         this.toast.error(`Follow-up date ${this.formatDateDisplay(past.date)} is in the past. Pick today or a later date.`);
         return;
       }
-      body = { kind, entries: entries.map(e => ({ notes: e.notes, date: e.date, time: e.time || null })) };
+      body = { kind, entries: entries.map(e => ({ notes: e.notes, date: e.date, time: to12Hour(e.time) })) };
     }
 
     this.saving = true;

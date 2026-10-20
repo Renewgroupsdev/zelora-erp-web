@@ -51,14 +51,13 @@ export class PurchaseReturns extends PurchaseListBase {
   override sortActive = 'returnedAt';
 
   readonly stats = computed<DetailCardData[]>(() => {
-    const list = this.purchase.returns().filter(r => r.status === 'Posted');
-    const lines = list.flatMap(r => r.lines);
-    const noteIds = new Set(list.map(r => r.noteId).filter(Boolean));
+    const s = this.purchase.summaries().returns ?? {};
+    const n = (key: string) => Number(s[key]) || 0;
     return [
-      { label: 'Purchase Returns', value: list.length, icon: 'bi-box-arrow-up', iconVariant: 'primary' },
-      { label: 'Units Returned', value: lines.reduce((s, l) => s + l.qty, 0), icon: 'bi-boxes', iconVariant: 'blue' },
-      { label: 'Return Value', value: inr(lines.reduce((s, l) => s + l.qty * l.unitPrice, 0)), icon: 'bi-currency-rupee', iconVariant: 'purple' },
-      { label: 'Open Debit Notes', value: this.purchase.notes().filter(n => noteIds.has(n.id) && n.status === 'Open').length, icon: 'bi-journal-text', iconVariant: 'orange' },
+      { label: 'Purchase Returns', value: n('returns'), icon: 'bi-box-arrow-up', iconVariant: 'primary' },
+      { label: 'Units Returned', value: n('units_returned'), icon: 'bi-boxes', iconVariant: 'blue' },
+      { label: 'Return Value', value: inr(n('return_value')), icon: 'bi-currency-rupee', iconVariant: 'purple' },
+      { label: 'Open Debit Notes', value: n('open_debit_notes'), icon: 'bi-journal-text', iconVariant: 'orange' },
     ];
   });
 

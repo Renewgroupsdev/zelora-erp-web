@@ -65,3 +65,21 @@
   cursor: pointer;
   margin-top: 8px;
 }
+
+@media (max-width: 480px) {
+  .modal-backdrop {
+    padding: 10px;
+    align-items: end;
+  }
+
+  .call-modal {
+    padding: 18px 16px;
+    border-radius: 16px;
+    max-height: calc(100dvh - 20px);
+    overflow-y: auto;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -75,6 +75,8 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   readonly pageSizeOptions = [10, 30, 50, 100];
 
   appointments: FlowAppointmentRecord[] = [];
+  /** Stat-card counts from the list API's top-level `summary`. */
+  summary = { total: 0, today: 0, scheduled: 0, in_progress: 0, converted: 0 };
   rows: TableRow[] = [];
   loading = false;
   currentPage = 1;
@@ -121,6 +123,8 @@ export class AppointmentPage implements OnInit, AfterViewInit {
     this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}?${params}`).subscribe({
       next: (res: any) => {
         this.appointments = res?.data?.data ?? [];
+        const s = res?.summary;
+        if (s) this.summary = { total: +s.total || 0, today: +s.today || 0, scheduled: +s.scheduled || 0, in_progress: +s.in_progress || 0, converted: +s.converted || 0 };
         this.loading = false;
         this.refreshRows();
         setTimeout(() => this.updateTimelineScrollState());
@@ -217,16 +221,14 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   // ---------------------------------------------------------------- stats
 
   get stats(): DetailCardData[] {
-    const today = this.todaysAppointments.length;
-    const count = (s: FlowStatus) => this.appointments.filter(a => a.status === s).length;
-    const converted = count('Converted');
-    const total = this.appointments.length;
-    const rate = total ? Math.round((converted / total) * 100) : 0;
+    const s = this.summary;
+    const converted = s.converted;
+    const rate = s.total ? Math.round((converted / s.total) * 100) : 0;
 
     return [
-      { label: "Today's Appointments", value: today, trendText: 'Visits booked for today', trendDirection: 'neutral', icon: 'bi-calendar-check', iconVariant: 'primary' },
-      { label: 'Scheduled', value: count('Scheduled'), trendText: 'Waiting for consultation', trendDirection: 'neutral', icon: 'bi-clock-history', iconVariant: 'blue' },
-      { label: 'In Progress', value: count('In Consultation') + count('Awaiting Terms') + count('Invoiced'), trendText: 'Consultation / terms / invoice', trendDirection: 'neutral', icon: 'bi-clipboard2-pulse', iconVariant: 'orange' },
+      { label: "Today's Appointments", value: s.today, trendText: 'Visits booked for today', trendDirection: 'neutral', icon: 'bi-calendar-check', iconVariant: 'primary' },
+      { label: 'Scheduled', value: s.scheduled, trendText: 'Waiting for consultation', trendDirection: 'neutral', icon: 'bi-clock-history', iconVariant: 'blue' },
+      { label: 'In Progress', value: s.in_progress, trendText: 'Consultation / terms / invoice', trendDirection: 'neutral', icon: 'bi-clipboard2-pulse', iconVariant: 'orange' },
       { label: 'Converted', value: converted, trendText: `${rate}% of appointments`, trendDirection: 'neutral', icon: 'bi-person-check', iconVariant: 'green' },
     ];
   }

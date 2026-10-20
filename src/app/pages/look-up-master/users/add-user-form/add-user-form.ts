@@ -85,8 +85,12 @@ export class AddUserForm {
       status: [this.resolveStatus(user?.status), Validators.required],
     }, { validators: AddUserForm.passwordsMatch });
 
-    this.userForm.get('role_id')?.valueChanges.subscribe(() => this.syncExtensionValidator());
+    this.userForm.get('role_id')?.valueChanges.subscribe(() => {
+      this.syncExtensionValidator();
+      this.syncUnitValidators();
+    });
     this.syncExtensionValidator();
+    this.syncUnitValidators();
 
     // Switching Branch <-> Franchise clears a unit of the other type.
     this.userForm.get('branch_or_franchise_type')?.valueChanges.subscribe(type => {
@@ -130,6 +134,28 @@ export class AddUserForm {
     const type = AddUserForm.typeOf(user?.branch_or_franchise_type);
     if (!id || !type || units.some(u => u.id === id && u.type === type) || !user?.branch?.name) return units;
     return [...units, { id, name: user.branch.name, shortName: user.branch.name, type }];
+  }
+
+  /** Super Admin and Admin see every branch and franchise, so they are not tied to one. */
+  get isAllAccessRole(): boolean {
+    const role = this.roles.find(r => r.id === Number(this.userForm?.get('role_id')?.value));
+    return role?.slug === 'super_admin' || role?.slug === 'admin';
+  }
+
+  /** Branch / franchise is mandatory for every role except Super Admin / Admin (who get all of them). */
+  private syncUnitValidators(): void {
+    const type = this.userForm.get('branch_or_franchise_type');
+    const id = this.userForm.get('branch_or_franchise_id');
+    if (this.isAllAccessRole) {
+      type?.clearValidators();
+      id?.clearValidators();
+      id?.setValue('', { emitEvent: false });
+    } else {
+      type?.setValidators(Validators.required);
+      id?.setValidators(Validators.required);
+    }
+    type?.updateValueAndValidity({ emitEvent: false });
+    id?.updateValueAndValidity({ emitEvent: false });
   }
 
   /** Telecaller calls are routed to their extension, so it is mandatory for that role (and unused for others). */
@@ -209,8 +235,9 @@ export class AddUserForm {
     payload.append('email', value.email);
     payload.append('role_id', String(value.role_id));
     payload.append('user_type', value.user_type);
-    payload.append('branch_or_franchise_type', String(value.branch_or_franchise_type));
-    payload.append('branch_or_franchise_id', String(value.branch_or_franchise_id));
+    // Blank for Super Admin / Admin: the API stores no unit and the user sees every branch and franchise.
+    payload.append('branch_or_franchise_type', this.isAllAccessRole ? '' : String(value.branch_or_franchise_type));
+    payload.append('branch_or_franchise_id', this.isAllAccessRole ? '' : String(value.branch_or_franchise_id));
     payload.append('phone_no', value.phone_no ?? '');
     payload.append('status', String(value.status));
     if (value.password) {

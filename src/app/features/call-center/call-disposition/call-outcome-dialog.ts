@@ -10,6 +10,7 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { CallDisposition, CallLog, DispositionPayload, customerNumber, formatCallDuration } from '../../../core/telephony/telephony.models';
 import { TelephonyService } from '../../../core/telephony/telephony.service';
+import { to12Hour } from '../../../shared/utils/format.util';
 
 /** Same "lead" module type used by the Lead Management list (lead-management.ts) to scope
  *  service-category options - kept in sync here so Create Lead offers the same Type list. */
@@ -197,13 +198,13 @@ export class CallOutcomeDialog implements OnInit {
     if (disposition.action === 'follow_up' || disposition.action === 'callback') {
       Object.assign(payload, {
         follow_up_date: this.followUpDate,
-        follow_up_time: this.followUpTime || null,
+        follow_up_time: to12Hour(this.followUpTime),
         follow_up_type: disposition.action === 'follow_up' ? this.followUpType : 0,
       });
     } else if (disposition.action === 'appointment') {
       Object.assign(payload, {
         appointment_date: this.appointmentDate,
-        appointment_time: this.appointmentTime,
+        appointment_time: to12Hour(this.appointmentTime),
         counselor_id: this.counselorId,
         appointment_reason: this.appointmentReason.trim() || null,
       });

@@ -43,13 +43,13 @@ export class VendorNotes extends PurchaseListBase {
   override sortActive = 'createdAt';
 
   readonly stats = computed<DetailCardData[]>(() => {
-    const list = this.purchase.notes();
-    const sum = (type: string) => list.filter(n => n.type === type && n.status !== 'Cancelled').reduce((s, n) => s + n.amount, 0);
+    const s = this.purchase.summaries().notes ?? {};
+    const n = (key: string) => Number(s[key]) || 0;
     return [
-      { label: 'Total Notes', value: list.length, icon: 'bi-journal-text', iconVariant: 'primary' },
-      { label: 'Open Notes', value: list.filter(n => n.status === 'Open').length, icon: 'bi-hourglass-split', iconVariant: 'orange' },
-      { label: 'Debit Note Value', value: inr(sum('Debit Note')), icon: 'bi-arrow-up-right-circle', iconVariant: 'purple' },
-      { label: 'Credit Note Value', value: inr(sum('Credit Note')), icon: 'bi-arrow-down-left-circle', iconVariant: 'blue' },
+      { label: 'Total Notes', value: n('total'), icon: 'bi-journal-text', iconVariant: 'primary' },
+      { label: 'Open Notes', value: n('open'), icon: 'bi-hourglass-split', iconVariant: 'orange' },
+      { label: 'Debit Note Value', value: inr(n('debit_value')), icon: 'bi-arrow-up-right-circle', iconVariant: 'purple' },
+      { label: 'Credit Note Value', value: inr(n('credit_value')), icon: 'bi-arrow-down-left-circle', iconVariant: 'blue' },
     ];
   });
 

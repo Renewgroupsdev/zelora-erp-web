@@ -39,6 +39,7 @@
           <tr>
             <th>#</th>
             <th>Product</th>
+            <th>HSN</th>
             <th class="num">Qty</th>
             <th class="num">Unit Price</th>
             <th class="num">Taxable</th>
@@ -51,6 +52,7 @@
             <tr>
               <td>{{ i + 1 }}</td>
               <td>{{ item.productName }}<br /><small>{{ item.productCode }}</small></td>
+              <td>{{ item.hsnCode || '-' }}</td>
               <td class="num">{{ item.requestedQty }}</td>
               <td class="num">₹{{ item.unitPrice | number:'1.2-2' }}</td>
               <td class="num">₹{{ item.unitPrice * item.requestedQty | number:'1.2-2' }}</td>

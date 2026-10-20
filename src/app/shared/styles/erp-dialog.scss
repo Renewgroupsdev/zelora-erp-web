@@ -442,6 +442,13 @@
     &.done .dot { background: var(--primary); border-color: var(--primary); color: #fff; }
     &.current .dot { border-color: var(--primary); color: var(--primary-dark); box-shadow: 0 0 0 3px var(--primary-soft); }
     &.current small { color: var(--primary-dark); }
+
+    /* A step the role has no permission for: greyed out, still clickable so it can explain why. */
+    &.denied {
+      .step-btn { cursor: not-allowed; }
+      .dot, small { opacity: .5; }
+      .dot { background: var(--app-surface-bg); }
+    }
   }
 }
 

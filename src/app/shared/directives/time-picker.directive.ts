@@ -20,8 +20,9 @@ import { TEMPUS_DOMINUS_ICONS } from './tempus-dominus-icons';
   ],
 })
 export class TimePickerDirective implements AfterViewInit, ControlValueAccessor, OnDestroy {
-  /** Minutes between each selectable value on the clock (e.g. 5 -> :00, :05, :10, ...). */
-  @Input() minuteStepping = 5;
+  /** Minutes between each selectable value on the clock. 1 keeps the exact minute that was picked or typed;
+   *  a larger value (e.g. 5) makes Tempus Dominus round it (4:49 PM would be saved as 16:50). */
+  @Input() minuteStepping = 1;
 
   private picker?: TempusDominus;
   private pendingValue: string | null = null;

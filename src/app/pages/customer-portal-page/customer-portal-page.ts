@@ -106,28 +106,22 @@ export class CustomerPortalPage implements OnInit {
 
   ngOnInit(): void {
     this.loadCustomers();
-    this.loadStats();
   }
 
   // ---------------------------------------------------------------------
   // API
   // ---------------------------------------------------------------------
 
-  private loadStats(): void {
-    this.api.GET(ApiRoutesConstants.CUSTOMER_STATS).subscribe({
-      next: (res: any) => {
-        const s: CustomerStats | undefined = res?.data;
-        if (!s) return;
-        this.stats = this.buildStats(s);
-        this.branchKeyByName = new Map(s.branches.map(b => [b.name, b.key]));
-        this.serviceIdByName = new Map(s.services.map(t => [t.name, t.id]));
-        this.filters = this.filters.map(f =>
-          f.key === 'branch' ? { ...f, options: s.branches.map(b => b.name) }
-            : f.key === 'telecaller' ? { ...f, options: s.services.map(t => t.name) }
-              : f);
-      },
-      error: () => undefined,
-    });
+  /** Stat cards + filter options arrive with the customer list (GET customers -> summary): no second request. */
+  private applySummary(s: CustomerStats | undefined): void {
+    if (!s) return;
+    this.stats = this.buildStats(s);
+    this.branchKeyByName = new Map(s.branches.map(b => [b.name, b.key]));
+    this.serviceIdByName = new Map(s.services.map(t => [t.name, t.id]));
+    this.filters = this.filters.map(f =>
+      f.key === 'branch' ? { ...f, options: s.branches.map(b => b.name) }
+        : f.key === 'telecaller' ? { ...f, options: s.services.map(t => t.name) }
+          : f);
   }
 
   private loadCustomers(): void {
@@ -159,6 +153,7 @@ export class CustomerPortalPage implements OnInit {
         this.totalRecords = Number(page?.total ?? this.customers.length);
         this.rows = this.customers.map(c => this.mapCustomerToRow(c));
         this.loading = false;
+        this.applySummary(res?.summary);
       },
       error: (err: any) => {
         this.loading = false;

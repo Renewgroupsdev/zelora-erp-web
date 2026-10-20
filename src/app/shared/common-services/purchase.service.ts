@@ -150,6 +150,8 @@ export class PurchaseService {
 
   private readonly state = signal<PurchaseState>(emptyState());
   readonly meta = signal<PurchaseMeta>(DEFAULT_META);
+  /** Server-side overall counts / sums (the list response's top-level `summary`) per list; stat cards read these. */
+  readonly summaries = signal<Partial<Record<PurchaseCollection, Record<string, any>>>>({});
   /** True while the open tab's lists are loading. */
   readonly loading = signal(false);
   /** Lists fetched at least once (for the signed-in user). */
@@ -249,6 +251,7 @@ export class PurchaseService {
     if (user === this.cachedFor) return;
     this.cachedFor = user;
     this.state.set(emptyState());
+    this.summaries.set({});
     this.meta.set(DEFAULT_META);
     this.metaLoaded = false;
     this.loaded.clear();
@@ -262,7 +265,7 @@ export class PurchaseService {
     const query = vendorId ? `?vendor_id=${vendorId}` : '';
     return (this.api.GET(`${BASE}/products${query}`) as Observable<any>).pipe(
       map(res => ((res?.data ?? []) as any[]).map(p => ({
-        id: String(p.id), code: p.code, name: p.name, vendorId: p.vendor_id ?? null,
+        id: String(p.id), code: p.code, name: p.name, hsnCode: p.hsn_code ?? null, vendorId: p.vendor_id ?? null,
         unitPrice: Number(p.unit_price) || 0, gstPercent: Number(p.gst_percent) || 0,
       }))),
     );
@@ -510,7 +513,7 @@ export class PurchaseService {
       requests: toRequest, orders: toOrder, inwards: toInward, returns: toReturn, notes: toNote, stock: toBatch, transfers: toTransfer,
     };
     try {
-      const rows = await firstValueFrom(this.fetchAll(ENDPOINTS[key]));
+      const rows = await firstValueFrom(this.fetchAll(ENDPOINTS[key], summary => this.summaries.update(s => ({ ...s, [key]: summary }))));
       this.state.update(s => ({ ...s, [key]: rows.map(mapper[key]) }));
     } catch (e) {
       this.loaded.delete(key);
@@ -519,8 +522,13 @@ export class PurchaseService {
   }
 
   /** Every page of a paginated list ({data, pagination: {last_page}}). */
-  private fetchAll(path: string): Observable<any[]> {
-    const page = (n: number) => this.api.GET(`${path}?per_page=200&page=${n}`) as Observable<any>;
+  private fetchAll(path: string, onSummary?: (summary: Record<string, any>) => void): Observable<any[]> {
+    const page = (n: number) => (this.api.GET(`${path}?per_page=200&page=${n}`) as Observable<any>).pipe(
+      map(res => {
+        if (n === 1 && res?.summary) onSummary?.(res.summary);
+        return res;
+      }),
+    );
     return page(1).pipe(
       expand(res => {
         const current = Number(res?.pagination?.current_page ?? 1);
@@ -588,7 +596,7 @@ function toRequest(r: any): PurchaseRequest {
     status: r.status as PurchaseRequestStatus, reviewedBy: r.reviewed_by ?? undefined, reviewedAt: r.reviewed_at ?? undefined,
     reviewRemarks: r.review_remarks ?? undefined, poId: r.po_id ? str(r.po_id) : undefined,
     items: ((r.items ?? []) as any[]).map(i => ({
-      productId: str(i.product_id), productCode: i.product_code, productName: i.product_name, unitPrice: num(i.unit_price),
+      productId: str(i.product_id), productCode: i.product_code, hsnCode: i.hsn_code ?? null, productName: i.product_name, unitPrice: num(i.unit_price),
       gstPercent: num(i.gst_percent), requestedQty: num(i.qty), receivedQty: 0,
     })),
   };
@@ -602,7 +610,7 @@ function toOrder(o: any): PurchaseOrder {
     closeReason: o.close_reason ?? null, closedBy: o.closed_by ?? null, closedAt: o.closed_at ?? null,
     canEdit: !!o.can_edit, canEditQty: !!o.can_edit_qty, canInward: !!o.can_inward, canCancel: !!o.can_cancel, canClose: !!o.can_close,
     items: ((o.items ?? []) as any[]).map((i): PurchaseLineItem => ({
-      id: str(i.id), productId: str(i.product_id), productCode: i.product_code, productName: i.product_name,
+      id: str(i.id), productId: str(i.product_id), productCode: i.product_code, hsnCode: i.hsn_code ?? null, productName: i.product_name,
       unitPrice: num(i.unit_price), gstPercent: num(i.gst_percent), requestedQty: num(i.requested_qty), receivedQty: num(i.received_qty),
       closedQty: num(i.closed_qty), pendingQty: num(i.pending_qty), batchNo: i.batch_no,
     })),

@@ -65,8 +65,9 @@ export class ProductManagement implements OnInit {
 
   columns: TableColumn[] = [
     { key: 'code', header: 'Code', type: 'text', width: '8%' },
-    { key: 'name', header: 'Product', type: 'text', width: '18%' },
-    { key: 'vendor', header: 'Vendor', type: 'text', width: '15%', sortable: false },
+    { key: 'name', header: 'Product', type: 'text', width: '15%' },
+    { key: 'hsn', header: 'HSN', type: 'text', width: '7%' },
+    { key: 'vendor', header: 'Vendor', type: 'text', width: '14%', sortable: false },
     { key: 'purchase', header: 'Purchase Price', type: 'text', width: '10%' },
     { key: 'margin', header: 'Margin', type: 'text', width: '7%' },
     { key: 'selling', header: 'Selling Price', type: 'text', width: '10%' },
@@ -216,6 +217,7 @@ export class ProductManagement implements OnInit {
       id: p.id,
       code: p.code,
       name: p.name,
+      hsn: p.hsn_code || '-',
       vendor: p.vendor?.name ?? '-',
       purchase: inr(p.purchase_price),
       margin: `${Number(p.margin_percent)}%`,

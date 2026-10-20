@@ -49,6 +49,7 @@ export interface PurchaseMeta {
 export interface PurchaseLineItem {
   productId: string;
   productCode: string;
+  hsnCode?: string | null;
   productName: string;
   unitPrice: number;
   gstPercent: number;
@@ -279,6 +280,7 @@ export interface PurchaseOption {
   id: string;
   code: string;
   name: string;
+  hsnCode?: string | null;
   vendorId: number | null;
   unitPrice: number;
   gstPercent: number;

@@ -33,6 +33,7 @@
         <thead>
           <tr>
             <th>Product</th>
+            <th>HSN</th>
             <th class="num">Central Store<br /><small>Stock in Hand</small></th>
             <th class="num">Branch Store<br /><small>Stock in Hand</small></th>
             <th class="num">Request Qty</th>
@@ -45,6 +46,7 @@
           @for (item of r.items; track item.productId) {
             <tr>
               <td><strong>{{ item.productName }}</strong><div class="muted">{{ item.productCode }}</div></td>
+              <td>{{ item.hsnCode || '-' }}</td>
               <td class="num"><span class="pill" [class.red]="centralQty(item.productId) < 10" [class.green]="centralQty(item.productId) >= 10">{{ centralQty(item.productId) }}</span></td>
               <td class="num"><span class="pill" [class.red]="branchQty(item.productId) < 10" [class.green]="branchQty(item.productId) >= 10">{{ branchQty(item.productId) }}</span></td>
               <td class="num"><strong>{{ item.requestedQty }}</strong></td>

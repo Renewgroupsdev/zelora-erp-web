@@ -52,7 +52,7 @@
             >
           </div>
           <div *ngIf="formSubmitted && formValues['user_name'].invalid" class="invalid-feedback">
-            <div *ngIf="formValues['user_name'].errors?.['required']">User Name is required.</div>
+            <div *ngIf="formValues['user_name'].errors?.['required']">{{ identifierLabel }} is required.</div>
           </div>
         </div>
         }

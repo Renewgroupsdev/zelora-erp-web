@@ -27,12 +27,13 @@
     <div class="items-table-wrap">
       <table class="items-table">
         <thead>
-          <tr><th>Product</th><th>Batch</th><th class="num">Rate</th><th class="num">GST %</th><th>Qty</th><th class="num">Received</th></tr>
+          <tr><th>Product</th><th>HSN</th><th>Batch</th><th class="num">Rate</th><th class="num">GST %</th><th>Qty</th><th class="num">Received</th></tr>
         </thead>
         <tbody>
           @for (i of o.items; track i.id) {
             <tr>
               <td><strong>{{ i.productName }}</strong><div class="muted">{{ i.productCode }}</div></td>
+              <td>{{ i.hsnCode || '-' }}</td>
               <td>{{ i.batchNo }}</td>
               <td class="num">{{ inr(i.unitPrice) }}</td>
               <td class="num">{{ i.gstPercent }}</td>

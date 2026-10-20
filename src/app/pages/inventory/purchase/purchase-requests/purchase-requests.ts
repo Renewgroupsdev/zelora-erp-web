@@ -45,13 +45,13 @@ export class PurchaseRequests extends PurchaseListBase {
   override sortActive = 'requestedAt';
 
   readonly stats = computed<DetailCardData[]>(() => {
-    const list = this.purchase.requests();
-    const count = (s: string) => list.filter(r => r.status === s).length;
+    const s = this.purchase.summaries().requests ?? {};
+    const n = (key: string) => Number(s[key]) || 0;
     return [
-      { label: 'Total Requests', value: list.length, icon: 'bi-cart3', iconVariant: 'primary' },
-      { label: 'Pending Approval', value: count('Pending'), icon: 'bi-hourglass-split', iconVariant: 'orange' },
-      { label: 'Approved', value: count('Approved'), icon: 'bi-check2-circle', iconVariant: 'green' },
-      { label: 'Rejected', value: count('Rejected'), icon: 'bi-x-circle', iconVariant: 'purple' },
+      { label: 'Total Requests', value: n('total'), icon: 'bi-cart3', iconVariant: 'primary' },
+      { label: 'Pending Approval', value: n('pending'), icon: 'bi-hourglass-split', iconVariant: 'orange' },
+      { label: 'Approved', value: n('approved'), icon: 'bi-check2-circle', iconVariant: 'green' },
+      { label: 'Rejected', value: n('rejected'), icon: 'bi-x-circle', iconVariant: 'purple' },
     ];
   });
 

@@ -62,6 +62,17 @@ export function flattenActionSlugs(modules: SidebarModule[] | null | undefined):
 }
 
 /** The role's action with this slug anywhere in the module tree (its url / logo / name as set in Roles & Permissions). */
+/** The action's label (as renamed on Roles & Permissions) whether or not the role may use it. */
+export function actionLabel(modules: SidebarModule[] | null | undefined, actionSlug: string): string | undefined {
+  for (const node of modules ?? []) {
+    const found = (node.actions ?? []).find(a => a.slug_name === actionSlug) ?? undefined;
+    if (found) return found.action_name;
+    const nested = actionLabel(node.sub_modules, actionSlug);
+    if (nested) return nested;
+  }
+  return undefined;
+}
+
 export function findAction(modules: SidebarModule[] | null | undefined, actionSlug: string): SidebarAction | undefined {
   for (const node of modules ?? []) {
     const found = (node.actions ?? []).find(a => a.slug_name === actionSlug && Number(a.permission) === 1)

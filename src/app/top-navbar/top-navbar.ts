@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, HostListener, afterNextRender, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { NavLayoutService } from '../services/nav-layout.service';
 import { AppNotification, NotificationService } from '../shared/common-services/notification.service';
@@ -31,6 +31,22 @@ export class TopNavbar {
   readonly branchOptions = inject(BranchOptionsService);
 
   readonly currentUser = this.authService.currentUser;
+
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  /** Publishes the live header height (it is two rows on phones) so the mobile sidebar and dropdowns sit right below it. */
+  private readonly trackHeight = (() => {
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      const bar = this.host.nativeElement.querySelector('.top-navbar') as HTMLElement | null;
+      if (!bar || typeof ResizeObserver === 'undefined') return;
+      const publish = () => document.documentElement.style.setProperty('--topnavbar-height', bar.offsetHeight + 'px');
+      const observer = new ResizeObserver(publish);
+      observer.observe(bar);
+      publish();
+      destroyRef.onDestroy(() => observer.disconnect());
+    });
+  })();
 
   /** Units offered by the second header dropdown for the picked type. */
   readonly scopeUnits = computed(() => {
@@ -140,6 +156,15 @@ export class TopNavbar {
 
   onToggleNotifications(): void {
     this.navLayout.toggleNotifications();
+  }
+
+  /** Phones only: the View / Branch pickers stay hidden until picked from the three-dot menu. */
+  readonly scopeRowOpen = signal(false);
+
+  toggleScopeRow(): void {
+    this.scopeRowOpen.update(open => !open);
+    this.scopeMenu.set(null);
+    this.navLayout.closeSettingsMenu();
   }
 
   goToSettings(): void {

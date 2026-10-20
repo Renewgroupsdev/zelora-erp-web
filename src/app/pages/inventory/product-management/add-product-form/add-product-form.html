@@ -48,6 +48,15 @@
         </div>
 
         <div class="form-field">
+          <label for="product-hsn">HSN Code</label>
+          <div class="input-wrap">
+            <i class="bi bi-upc"></i>
+            <input id="product-hsn" type="text" inputmode="numeric" maxlength="8" formControlName="hsnCode" placeholder="4, 6 or 8 digits" [class.is-invalid]="isInvalid('hsnCode')" />
+          </div>
+          @if (isInvalid('hsnCode')) { <small class="error-text">HSN code must be 4, 6 or 8 digits.</small> }
+        </div>
+
+        <div class="form-field">
           <label for="product-vendor">Supplier (Vendor) <span>*</span></label>
           <div class="input-wrap select-wrap">
             <i class="bi bi-truck"></i>

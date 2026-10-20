@@ -166,3 +166,18 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+@media (max-width: 480px) {
+  .branch-card,
+  .qr-card {
+    padding: 22px 16px;
+    border-radius: 16px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .branch-card,
+  .qr-card {
+    max-width: 480px;
+  }
+}

@@ -1,4 +1,4 @@
-<header class="top-navbar">
+<header class="top-navbar" [class.scope-row-open]="scopeRowOpen()">
   <div class="top-navbar-left">
     <button
       type="button"
@@ -218,6 +218,11 @@
       @if (navLayout.settingsMenuOpen()) {
         <div class="settings-backdrop" (click)="navLayout.closeSettingsMenu()"></div>
         <div class="settings-dropdown">
+          @if (branchContext.enabled()) {
+            <button type="button" class="dropdown-item scope-menu-item" (click)="toggleScopeRow()">
+              <i class="bi" [ngClass]="scopeRowOpen() ? 'bi-eye-slash' : 'bi-diagram-3'"></i> {{ scopeRowOpen() ? 'Hide branch / franchise' : 'Choose branch / franchise' }}
+            </button>
+          }
           <button type="button" class="dropdown-item" (click)="goToSettings()"><i class="bi bi-gear"></i> Settings</button>
           <button type="button" class="dropdown-item danger" [disabled]="signingOut()" (click)="logout()">
             <i class="bi bi-box-arrow-right"></i> {{ signingOut() ? 'Logging out…' : 'Logout' }}

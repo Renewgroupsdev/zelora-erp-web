@@ -97,3 +97,12 @@ export function saveState(key: string, state: unknown): void {
     localStorage.setItem(key, JSON.stringify(state));
   } catch { /* storage full / blocked - state still works in memory */ }
 }
+
+/** "16:30" (the 24-hour value the time pickers hold) -> "04:30 PM" (what the API is sent). Anything else is passed through unchanged. */
+export function to12Hour(value: string | null | undefined): string | null {
+  const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(String(value ?? "").trim());
+  if (!match) return value ? String(value) : null;
+  const hours = Number(match[1]);
+  const suffix = hours >= 12 ? "PM" : "AM";
+  return `${String(hours % 12 || 12).padStart(2, "0")}:${match[2]} ${suffix}`;
+}

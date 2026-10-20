@@ -131,6 +131,8 @@
           </div>
         </div>
 
+        <!-- Super Admin / Admin are not tied to one unit: they see every branch and franchise, so nothing is required here. -->
+        @if (!isAllAccessRole) {
         <!-- Branch or franchise the user belongs to (users.branch_or_franchise_type / _id) -->
         <div class="form-field">
           <label id="user-unit-type-label">Belongs To <span>*</span></label>
@@ -160,6 +162,7 @@
             <small class="hint-text">No active {{ selectedUnitType === 'franchise' ? 'franchises' : 'branches' }} yet.</small>
           }
         </div>
+        }
 
         <div class="form-field full-width">
           <label for="user-status">Status <span>*</span></label>

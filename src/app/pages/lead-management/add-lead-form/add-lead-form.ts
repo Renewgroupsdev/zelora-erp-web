@@ -18,8 +18,9 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { TelephonyService } from '../../../core/telephony/telephony.service';
 import { TelecallerRow } from '../../../core/telephony/telephony.models';
 import { BranchOptionsService, parseUnitKey, unitKey } from '../../../shared/common-services/branch-options.service';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { of } from 'rxjs/internal/observable/of';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-add-lead-form',
@@ -133,10 +134,38 @@ export class AddLeadForm implements OnInit{
     this.subCategoryOptions = this.treatmentsByCategory.get(categoryId) ?? [];
   }
 
+  /**
+   * The list page hands over the dropdown lists it has loaded so far. Straight after a page refresh they
+   * can still be empty (the page is loading them), so anything missing is fetched here instead.
+   */
   private applyPreloadedLookups(): void {
-    this.sourceOptions = this.data.sourceOptions;
-    this.typeOptions = this.data.typeOptions;
-    this.statusOptions = this.data.statusOptions;
+    const { sourceOptions, typeOptions, statusOptions } = this.data ?? {};
+    const lists = { sources: sourceOptions ?? [], types: typeOptions ?? [], statuses: statusOptions ?? [] };
+
+    if (lists.sources.length && lists.types.length && lists.statuses.length) {
+      this.setLookups(lists.sources, lists.types, lists.statuses);
+      return;
+    }
+
+    const fetchList = (route: string, current: any[]): Observable<any[]> =>
+      current.length
+        ? of(current)
+        : this.apiDataService.GET(route).pipe(
+            map((res: any) => (res?.data?.data ?? []) as any[]),
+            catchError(() => of([] as any[])),
+          );
+
+    forkJoin({
+      sources: fetchList(ApiRoutesConstants.Source_List_Options, lists.sources),
+      types: fetchList(`${ApiRoutesConstants.Type_List_Options}/1`, lists.types),
+      statuses: fetchList(ApiRoutesConstants.Status_List_Options, lists.statuses),
+    }).subscribe(({ sources, types, statuses }) => this.setLookups(sources, types, statuses));
+  }
+
+  private setLookups(sources: any[], types: any[], statuses: any[]): void {
+    this.sourceOptions = sources;
+    this.typeOptions = types;
+    this.statusOptions = statuses;
 
     if (this.isEdit) {
       this.patchEditDropdowns();

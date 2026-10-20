@@ -23,6 +23,7 @@ export interface ProductRecord {
   code: string;
   name: string;
   description: string | null;
+  hsn_code: string | null;
   vendor_id: number | null;
   vendor: { id: number; name: string } | null;
   purchase_price: number | string;
@@ -39,6 +40,7 @@ export interface ProductRecord {
 export interface ProductPayload {
   name: string;
   description: string;
+  hsn_code: string;
   vendor_id: number;
   purchase_price: number;
   margin_percent: number;

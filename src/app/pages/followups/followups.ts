@@ -23,10 +23,11 @@ import { CallLogHistoryDialog } from '../../shared/components/call-log-history-d
 import { ToastService } from '../../shared/common-services/toast.service';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs/operators';
 import { FlowLead, FollowUpEntry } from '../../shared/common-services/crm-flow.service';
 import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
 import { TelephonyService } from '../../core/telephony/telephony.service';
-import { FollowUpLead } from '../../core/telephony/telephony.models';
+import { FollowUpLead, FollowUpSummary } from '../../core/telephony/telephony.models';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { AuthService } from '../../core/auth/auth.service';
@@ -75,18 +76,10 @@ export class Followups implements OnInit, OnDestroy {
     { label: 'Appointment', value: 0, trendText: 'Appointments booked', trendDirection: 'neutral', icon: 'bi-calendar-check', iconVariant: 'purple' },
   ];
 
-  /** Cards are counted from the rows the API returned - no made-up numbers. */
-  private updateStats(): void {
-    const rows = this.allRows;
-    const today = new Date().toDateString();
-    const count = (fn: (r: TableRow) => boolean) => rows.filter(fn).length;
-    const values = [
-      rows.length,
-      count(r => !!r['follow_up_at']),
-      count(r => !!r['follow_up_at'] && new Date(String(r['follow_up_at'])).toDateString() === today),
-      count(r => r['status'] === 'Customer'),
-      count(r => r['status'] === 'Schedule'),
-    ];
+  /** Cards come from the follow-up list response itself (summary), counted by the API - no separate call, no made-up numbers. */
+  private updateStats(s: FollowUpSummary | null): void {
+    if (!s) return;
+    const values = [s.total_leads, s.total_follow_ups, s.due_today, s.completed, s.appointments];
     this.stats = this.stats.map((stat, i) => ({ ...stat, value: values[i] }));
   }
 
@@ -224,10 +217,10 @@ export class Followups implements OnInit, OnDestroy {
       status_id: statusId,
       type: type !== undefined && type >= 0 ? type : undefined,
     }).subscribe({
-      next: (leads) => {
+      next: ({ leads, summary }) => {
         const rows = leads.map((lead) => this.leadToRow(lead));
         this.allRows = rows;
-        this.updateStats();
+        this.updateStats(summary);
         this.refreshRows();
       },
       error: (err: any) => {
@@ -245,7 +238,7 @@ export class Followups implements OnInit, OnDestroy {
     const callLog: CallerLogEntry[] = (lead.caller_histories ?? []).map((history) => ({
       telecallerName: history.telecaller?.name ?? lead.assigned_to_name ?? 'Unknown',
       empNo: history.telecaller?.emp_code ?? '',
-      dateTime: this.formatDateTime(history.created_at),
+      dateTime: this.formatDateTime(this.scheduledAt(history.notes) ?? history.created_at),
       notes: history.notes ?? '',
     }));
 
@@ -270,6 +263,22 @@ export class Followups implements OnInit, OnDestroy {
       action: lead.status_name === 'Contacted' ? [...QUICK_ACTIONS, ...VALIDATION_ACTIONS] : QUICK_ACTIONS,
       callLogEntries: callLog,
     };
+  }
+
+  /**
+   * A follow-up / appointment note starts with the slot that was booked ("Next follow-up on 2026-10-20 4:30 PM. ...").
+   * The log shows that slot as the entry's date and time, so it matches the note, instead of the moment the note was
+   * saved (which was 5:07 PM for a 4:30 PM follow-up). Notes without a slot keep their saved time.
+   */
+  private scheduledAt(notes: string | null | undefined): string | null {
+    const match = /^(?:Next follow-up on|Appointment booked for)\s+(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?/.exec(notes ?? '');
+    if (!match) return null;
+
+    let hours = Number(match[2]);
+    const suffix = match[4]?.toUpperCase();
+    if (suffix === 'PM' && hours < 12) hours += 12;
+    if (suffix === 'AM' && hours === 12) hours = 0;
+    return `${match[1]}T${String(hours).padStart(2, '0')}:${match[3]}:00`;
   }
 
   /** Matches the "DD-Mon-YYYY, hh:mm AM/PM" format the mock data used, so sorting/parsing
@@ -368,7 +377,12 @@ export class Followups implements OnInit, OnDestroy {
   }
 
   /** Telecaller verdict. Invalid (note required) unassigns the lead and sends it back to Lead Management. */
+  /** Leads whose verdict is being saved: a second click cannot send it twice. */
+  private readonly validatingLeads = new Set<unknown>();
+
   private async validateLead(row: TableRow, valid: boolean): Promise<void> {
+    const leadId = row['id'];
+    if (this.validatingLeads.has(leadId)) return;
     let reason = '';
     if (!valid) {
       const result = await Swal.fire({
@@ -385,7 +399,8 @@ export class Followups implements OnInit, OnDestroy {
       reason = String(result.value ?? '').trim();
     }
 
-    this.apiDataService.POST(`${ApiRoutesConstants.LEAD_VALIDATE}/${row['id']}/validate`, { valid, reason }).subscribe({
+    this.validatingLeads.add(leadId);
+    this.apiDataService.POST(`${ApiRoutesConstants.LEAD_VALIDATE}/${leadId}/validate`, { valid, reason }).pipe(finalize(() => this.validatingLeads.delete(leadId))).subscribe({
       next: (res: any) => {
         this.toast.success(res?.message || (valid ? 'Lead marked valid.' : 'Lead marked invalid.'));
         this.loadFollowUps();

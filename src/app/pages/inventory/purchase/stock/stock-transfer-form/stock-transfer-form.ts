@@ -68,14 +68,6 @@ export class StockTransferForm {
     return this.batches().filter(b => !taken.has(b.id));
   }
 
-  addRow(): void {
-    this.rows.update(list => [...list, { batchId: null, qty: null }]);
-  }
-
-  removeRow(index: number): void {
-    this.rows.update(list => (list.length > 1 ? list.filter((_, i) => i !== index) : list));
-  }
-
   touch(): void {
     this.rows.update(list => [...list]);
   }

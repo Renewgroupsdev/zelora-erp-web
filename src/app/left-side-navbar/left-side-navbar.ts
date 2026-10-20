@@ -1,4 +1,4 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, signal, untracked } from '@angular/core';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map } from 'rxjs';
@@ -58,17 +58,43 @@ export class LeftSideNavbar {
     { initialValue: this.router.url.split(/[?#]/)[0] },
   );
 
-  constructor(public navLayout: NavLayoutService) { }
+  /** Every link path -> the paths of its sub-menu items (all levels), so a parent can tell when one of its pages is open. */
+  private readonly descendantPaths = computed(() => {
+    const map = new Map<string, string[]>();
+    const walk = (link: NavLink): string[] => {
+      const paths = (link.children ?? []).flatMap(child => [child.path, ...walk(child)]);
+      if (paths.length) map.set(link.path, paths);
+      return paths;
+    };
+    this.navLinks().forEach(walk);
+    return map;
+  });
 
-  /** A link is active on its own page and on every sibling page of the in-page tab strip it belongs to. */
+  constructor(public navLayout: NavLayoutService) {
+    // Open the group that holds the current page (e.g. Settings for User Management) on load, on a
+    // direct URL / refresh and after navigating from elsewhere - not only when its header is clicked.
+    effect(() => {
+      const url = this.currentUrl();
+      this.tabGroups.groups();
+      const parent = this.navLinks().find(link => link.children?.length && this.pathActive(link.path, url, true));
+      if (parent && untracked(() => this.expandedParent()) !== parent.path) {
+        untracked(() => this.expandedParent.set(parent.path));
+      }
+    });
+  }
+
+  private pathActive(path: string, url: string, descendantsOnly = false): boolean {
+    const own = (p: string) => url === p || url.startsWith(p + '/');
+    const inTabGroup = (p: string) => this.tabGroups.groups().some(group =>
+      group.includes(url) && group.some(q => q === p || q.startsWith(p + '/')));
+    const children = this.descendantPaths().get(path) ?? [];
+    const childActive = children.some(p => own(p) || inTabGroup(p));
+    return descendantsOnly ? childActive : own(path) || inTabGroup(path) || childActive;
+  }
+
+  /** A link is active on its own page, on every sibling page of its in-page tab strip, and (for a group) on any page inside it. */
   isGroupActive(path: string): boolean {
-    const url = this.currentUrl();
-    if (url === path || url.startsWith(path + '/')) {
-      return true;
-    }
-
-    return this.tabGroups.groups().some(group =>
-      group.includes(url) && group.some(p => p === path || p.startsWith(path + '/')));
+    return this.pathActive(path, this.currentUrl());
   }
 
   childrenExpanded(path: string): boolean {

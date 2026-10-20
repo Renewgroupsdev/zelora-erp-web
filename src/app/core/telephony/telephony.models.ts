@@ -156,6 +156,15 @@ export interface CallerHistoryEntry {
 }
 
 /** A lead with an open or past follow-up, as returned by GET /telephony/leads/followups. */
+/** Stat-card counts the follow-up list API sends with the rows (GET telephony/leads/followups -> summary). */
+export interface FollowUpSummary {
+  total_leads: number;
+  total_follow_ups: number;
+  due_today: number;
+  completed: number;
+  appointments: number;
+}
+
 export interface FollowUpLead {
   id: number;
   name: string;

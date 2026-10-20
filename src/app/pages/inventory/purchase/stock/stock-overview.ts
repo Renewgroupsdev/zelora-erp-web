@@ -5,7 +5,7 @@ import { CommonDetailCard } from '../../../../shared/components/common-detail-ca
 import { CommonFilterCard } from '../../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../../shared/components/common-table-card/common-table-card';
 import { DetailCardData, FilterOption, QuickAction, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
-import { CENTRAL_STORE_KEY, displayDate, inr } from '../../../../shared/models/purchase.model';
+import { displayDate, inr } from '../../../../shared/models/purchase.model';
 import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { StockTransferForm } from './stock-transfer-form/stock-transfer-form';
@@ -67,14 +67,13 @@ export class StockOverview extends PurchaseListBase {
   override sortDirection: 'asc' | 'desc' = 'asc';
 
   readonly stats = computed<DetailCardData[]>(() => {
-    const stock = this.purchase.stock();
-    const units = (central: boolean) => stock.filter(b => (b.storeKey === CENTRAL_STORE_KEY) === central).reduce((s, b) => s + b.qty, 0);
-    const open = this.purchase.openTransfers();
+    const s = this.purchase.summaries().stock ?? {};
+    const n = (key: string) => Number(s[key]) || 0;
     return [
-      { label: 'Central Store · Stock in Hand', value: units(true).toLocaleString(), icon: 'bi-building', iconVariant: 'primary' },
-      { label: 'Branch Stores · Stock in Hand', value: units(false).toLocaleString(), icon: 'bi-shop', iconVariant: 'blue' },
-      { label: `Low Stock (< ${this.threshold()})`, value: this.purchase.lowStock().length, icon: 'bi-exclamation-triangle', iconVariant: 'orange' },
-      { label: 'In Transit (awaiting accept)', value: `${open.length} · ${open.reduce((s, t) => s + t.pendingQty, 0)} units`, icon: 'bi-truck', iconVariant: 'green' },
+      { label: 'Central Store · Stock in Hand', value: n('central_units').toLocaleString(), icon: 'bi-building', iconVariant: 'primary' },
+      { label: 'Branch Stores · Stock in Hand', value: n('branch_units').toLocaleString(), icon: 'bi-shop', iconVariant: 'blue' },
+      { label: `Low Stock (< ${this.threshold()})`, value: n('low_stock'), icon: 'bi-exclamation-triangle', iconVariant: 'orange' },
+      { label: 'In Transit (awaiting accept)', value: `${n('transfers_open')} · ${n('in_transit_units')} units`, icon: 'bi-truck', iconVariant: 'green' },
     ];
   });
 

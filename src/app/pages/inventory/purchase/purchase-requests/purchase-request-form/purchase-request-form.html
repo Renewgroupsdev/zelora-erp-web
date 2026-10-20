@@ -75,6 +75,7 @@
               <th style="width: 34%">Product</th>
               <th class="num">Central Store<br /><small>Stock in Hand</small></th>
               <th style="width: 14%">Request Qty</th>
+              <th>HSN</th>
               <th class="num">Unit Price</th>
               <th class="num">GST</th>
               <th class="num">Amount</th>
@@ -98,6 +99,7 @@
                   } @else { <span class="muted">-</span> }
                 </td>
                 <td><input class="cell-input" type="number" min="1" formControlName="qty" [class.is-invalid]="invalid('items.' + i + '.qty')" /></td>
+                <td>{{ product(i)?.hsnCode || '-' }}</td>
                 <td class="num">₹{{ (product(i)?.unitPrice ?? 0) | number:'1.2-2' }}</td>
                 <td class="num">{{ product(i)?.gstPercent ?? 0 }}%</td>
                 <td class="num"><strong>₹{{ lineAmount(i) | number:'1.2-2' }}</strong></td>

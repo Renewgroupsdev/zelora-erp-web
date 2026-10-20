@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, OnInit, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { finalize } from 'rxjs';
 import { ApiDataService } from '../../../core/http/api.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { HairGradeIcon } from '../../../shared/components/hair-grade-icon/hair-grade-icon';
@@ -89,13 +90,36 @@ export class AppointmentWizard implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<AppointmentWizard, boolean>);
   private readonly data = inject<{ appointmentId: number }>(MAT_DIALOG_DATA);
 
-  readonly steps = [
-    { label: 'Profile & History', icon: 'bi-person-vcard' },
-    { label: 'Clinical Examination', icon: 'bi-clipboard2-pulse' },
-    { label: 'Treatment', icon: 'bi-capsule' },
-    { label: 'Payment', icon: 'bi-credit-card' },
-    { label: 'Terms & Invoice', icon: 'bi-receipt' },
+  private readonly auth = inject(AuthService);
+
+  /** Each step is a Roles & Permissions action of the Appointment module (seeded from config/module_actions.php):
+   *  a role only sees the steps ticked for it, under the name set there. */
+  private static readonly STEP_DEFS = [
+    { slug: 'consultation-profile-history', label: 'Profile & History', icon: 'bi-person-vcard' },
+    { slug: 'consultation-clinical-examination', label: 'Clinical Examination', icon: 'bi-clipboard2-pulse' },
+    { slug: 'consultation-treatment', label: 'Treatment', icon: 'bi-capsule' },
+    { slug: 'consultation-payment', label: 'Payment', icon: 'bi-credit-card' },
+    { slug: 'consultation-terms-invoice', label: 'Terms & Invoice', icon: 'bi-receipt' },
   ];
+
+  readonly steps = computed(() => AppointmentWizard.STEP_DEFS.map((def, index) => ({
+    index,
+    icon: def.icon,
+    label: this.auth.actionName(def.slug, def.label),
+    // The API only sends the actions a role is ticked for, so a step missing from the list is denied.
+    allowed: this.auth.hasActionAccess(def.slug),
+  })));
+
+  /** The closest step the role may open, moving in `direction` from `from` (stays put when there is none). */
+  private allowedStep(from: number, direction: 1 | -1): number {
+    for (let i = from + direction; i >= 0 && i <= 4; i += direction) {
+      if (this.steps()[i].allowed) return i;
+    }
+    return from;
+  }
+
+  readonly hasPrevStep = computed(() => this.allowedStep(this.step(), -1) !== this.step());
+  readonly hasNextStep = computed(() => this.allowedStep(this.step(), 1) !== this.step());
 
   readonly inr = inr;
   readonly heardFrom = HEARD_FROM;
@@ -172,7 +196,11 @@ export class AppointmentWizard implements OnInit {
     this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}`).subscribe({
       next: (res: any) => {
         this.apply(res.data);
-        if (jumpToCurrent) this.step.set(Math.min(4, Math.max(0, (res.data.current_step ?? 1) - 1)));
+        if (jumpToCurrent) {
+          const target = Math.min(4, Math.max(0, (res.data.current_step ?? 1) - 1));
+          // Land on the current step, or the nearest one this role may open.
+          this.step.set(this.steps()[target].allowed ? target : this.steps().some((s, i) => i < target && s.allowed) ? this.allowedStep(target, -1) : this.allowedStep(target, 1));
+        }
         this.loading.set(false);
       },
       error: (err: any) => {
@@ -209,8 +237,13 @@ export class AppointmentWizard implements OnInit {
   // ---------------------------------------------------------------- navigation
 
   goTo(index: number): void {
+    const target = this.steps()[index];
+    if (target && !target.allowed) {
+      this.toast.warning('Access denied', `Your role does not have permission to open "${target.label}". Ask your administrator to enable it for your role in Roles & Permissions.`);
+      return;
+    }
     const reached = Math.max(0, (this.appt()?.current_step ?? 1) - 1);
-    if (index <= reached) {
+    if (index <= reached && this.steps()[index]?.allowed) {
       this.error.set(null); // a message from another step does not belong here
       this.step.set(index);
     }
@@ -218,13 +251,13 @@ export class AppointmentWizard implements OnInit {
 
   back(): void {
     this.error.set(null);
-    this.step.update(s => Math.max(0, s - 1));
+    this.step.update(s => this.allowedStep(s, -1));
   }
 
   next(): void {
     this.error.set(null);
     if (this.locked()) {
-      this.step.update(s => Math.min(4, s + 1));
+      this.step.update(s => this.allowedStep(s, 1));
       return;
     }
     const savers = [() => this.saveProfile(), () => this.saveClinical(), () => this.saveTreatment(), () => this.savePayment()];
@@ -482,6 +515,34 @@ export class AppointmentWizard implements OnInit {
     this.reload();
   }
 
+  /**
+   * While the Terms & Invoice step waits for the customer, look for their acceptance (the SMS link opens on their own
+   * phone, so nothing here would otherwise change): every few seconds, and as soon as this tab is looked at again.
+   * Failures are ignored - the next tick simply tries again.
+   */
+  private readonly termsWatcher = (() => {
+    const destroyRef = inject(DestroyRef);
+    const check = () => {
+      const a = this.appt();
+      if (!a || a.terms_accepted_at || this.step() !== 4 || this.saving() || document.visibilityState === 'hidden') return;
+      this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}`).subscribe({
+        next: (res: any) => {
+          if (!res?.data?.terms_accepted_at) return;
+          this.changed = true;
+          this.apply(res.data);
+          this.toast.success('The customer accepted the terms.');
+        },
+        error: () => undefined,
+      });
+    };
+    const timer = setInterval(check, 5000);
+    document.addEventListener('visibilitychange', check);
+    destroyRef.onDestroy(() => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', check);
+    });
+  })();
+
   convert(): void {
     this.act('convert', res => {
       this.toast.success(res?.message || 'Customer created.');
@@ -545,7 +606,7 @@ export class AppointmentWizard implements OnInit {
         this.apply(res.data);
         after?.();
         notify ? notify(res) : this.toast.success(res?.message || 'Saved.');
-        this.step.update(s => Math.min(4, s + 1));
+        this.step.update(s => this.allowedStep(s, 1));
       },
       error: (err: any) => this.showError(err),
     });

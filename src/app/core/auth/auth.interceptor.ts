@@ -1,6 +1,6 @@
 import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { BehaviorSubject, Observable, catchError, filter, switchMap, take, throwError } from 'rxjs';
+import { BehaviorSubject, EMPTY, Observable, catchError, filter, switchMap, take, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 import { ScopeHeaderStore } from '../../shared/common-services/scope-header.store';
 
@@ -23,6 +23,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authorizedReq).pipe(
     catchError(error => {
+      // The session already ended (idle timeout / sign-out): requests still in flight must fail quietly,
+      // otherwise a page's own error popup ("Failed to load ...") lands on top of the login screen.
+      if (attachAuth && !authService.isAuthenticated()) {
+        return EMPTY;
+      }
       if (error instanceof HttpErrorResponse && error.status === 401 && attachAuth) {
         return handleUnauthorized(authorizedReq, next, authService);
       }
@@ -43,7 +48,7 @@ function handleUnauthorized(
 ): Observable<HttpEvent<unknown>> {
   if (!authService.getRefreshToken()) {
     authService.logout();
-    return throwError(() => new Error('Session expired. Please log in again.'));
+    return EMPTY; // the redirect to the login page is the message; no page-level error popup
   }
 
   if (!isRefreshing) {
@@ -60,7 +65,7 @@ function handleUnauthorized(
       catchError(refreshError => {
         isRefreshing = false;
         authService.logout();
-        return throwError(() => refreshError);
+        return EMPTY; // session is gone: sign out quietly instead of surfacing the refresh error
       })
     );
   }

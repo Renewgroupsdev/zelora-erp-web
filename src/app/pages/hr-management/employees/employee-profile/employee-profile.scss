@@ -108,3 +108,9 @@
   color: #f5a524;
   white-space: nowrap;
 }
+
+@media (max-width: 480px) {
+  .kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

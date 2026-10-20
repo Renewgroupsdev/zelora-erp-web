@@ -13,6 +13,7 @@ import {
   CallerProfile,
   DispositionPayload,
   FollowUpLead,
+  FollowUpSummary,
   TelecallerRow,
   TelephonyConnectionState,
 } from './telephony.models';
@@ -161,7 +162,7 @@ export class TelephonyService {
     /** Branch / franchise key ("branch:9" / "franchise:7"). */
     branch_id?: string;
     type?: number;
-  } = {}): Observable<FollowUpLead[]> {
+  } = {}): Observable<{ leads: FollowUpLead[]; summary: FollowUpSummary | null }> {
     const query = new URLSearchParams();
     if (params.per_page) query.set('per_page', String(params.per_page));
     if (params.search) query.set('search', params.search);
@@ -171,7 +172,7 @@ export class TelephonyService {
     const qs = query.toString();
 
     return this.api.GET(`${ApiRoutesConstants.LEAD_FOLLOWUPS}${qs ? '?' + qs : ''}`).pipe(
-      map((res: any) => (res?.data?.data ?? []) as FollowUpLead[])
+      map((res: any) => ({ leads: (res?.data?.data ?? []) as FollowUpLead[], summary: (res?.summary ?? null) as FollowUpSummary | null }))
     );
   }
 

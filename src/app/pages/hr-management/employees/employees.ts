@@ -35,7 +35,7 @@ export class Employees extends HrListBase implements OnInit {
 
   columns: TableColumn[] = [
     { key: 'empCode', header: 'Emp Code', width: '8%' },
-    { key: 'name', header: 'Employee', type: 'lead', width: '18%' },
+    { key: 'name', header: 'Employee', type: 'lead', width: '13%' },
     { key: 'department', header: 'Department', width: '11%' },
     { key: 'branch', header: 'Branch', type: 'branch', width: '11%' },
     { key: 'phone', header: 'Mobile', width: '10%' },
@@ -50,14 +50,12 @@ export class Employees extends HrListBase implements OnInit {
   override sortDirection: 'asc' | 'desc' = 'asc';
 
   readonly stats = computed<DetailCardData[]>(() => {
-    const list = this.hr.employees();
-    const active = list.filter(e => e.status === 'Active' || e.status === 'On Notice');
-    const payroll = active.reduce((s, e) => s + salaryBreakup(e.salary).gross, 0);
+    const s = this.hr.employeeSummary();
     return [
-      { label: 'Active Employees', value: active.length, icon: 'bi-people-fill', iconVariant: 'primary' },
-      { label: 'Onboarding', value: list.filter(e => e.status === 'Onboarding').length, icon: 'bi-person-plus', iconVariant: 'blue' },
-      { label: 'On Notice', value: list.filter(e => e.status === 'On Notice').length, icon: 'bi-door-open', iconVariant: 'orange' },
-      { label: 'Monthly Payroll', value: inr(payroll), icon: 'bi-currency-rupee', iconVariant: 'green' },
+      { label: 'Active Employees', value: s.active, icon: 'bi-people-fill', iconVariant: 'primary' },
+      { label: 'Onboarding', value: s.onboarding, icon: 'bi-person-plus', iconVariant: 'blue' },
+      { label: 'On Notice', value: s.on_notice, icon: 'bi-door-open', iconVariant: 'orange' },
+      { label: 'Monthly Payroll', value: inr(s.monthly_payroll), icon: 'bi-currency-rupee', iconVariant: 'green' },
     ];
   });
 

@@ -7,7 +7,7 @@ import { ApiRoutesConstants } from '../../shared/common-services/api-route-const
 import { ApiResponse, AuthUser, LoginResponse, LoginResponseData, ResetPasswordPayload } from './auth.model';
 import { IdleService } from '../idle-service/idle.service';
 import { GeoLocationService } from './geo-location.service';
-import { SidebarAction, SidebarModule, findAction, flattenActionSlugs, flattenModuleSlugs } from '../../shared/models/permission.model';
+import { SidebarAction, SidebarModule, actionLabel, findAction, flattenActionSlugs, flattenModuleSlugs } from '../../shared/models/permission.model';
 
 const ACCESS_TOKEN_KEY = 'token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
@@ -124,6 +124,11 @@ export class AuthService {
    * Follows the matrix for every role; the API already hands Super Admin the Roles & Permissions actions
    * it can never lose, so no special case is needed here.
    */
+  /** The action's label as set on Roles & Permissions, or the fallback when it is not defined. */
+  actionName(actionSlug: string, fallback: string): string {
+    return actionLabel(this.permissions(), actionSlug) || fallback;
+  }
+
   hasActionAccess(actionSlug: string): boolean {
     return flattenActionSlugs(this.permissions()).has(actionSlug);
   }

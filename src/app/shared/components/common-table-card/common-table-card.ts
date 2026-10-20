@@ -54,6 +54,26 @@ export class CommonTableCard {
   @Input() title = '';
   @Input() recordCountText = '';
   @Input() columns: TableColumn[] = [];
+
+  /**
+   * Width of a column. Action columns never get narrower than their buttons (26px each + gaps + padding),
+   * so edit / delete icons are not clipped when the configured percentage is too small.
+   */
+  colWidth(col: TableColumn): string | undefined {
+    const buttons =
+      col.type === 'quickActions' ? Math.max(0, ...this.rows.map(row => this.asQuickActions(row[col.key]).length))
+      : col.type === 'rowActions' ? 2
+      : col.type === 'action' ? 3
+      : 0;
+    if (!buttons) return col.width;
+    const minPx = buttons * 30 + 24;
+    return col.width ? `max(${col.width}, ${minPx}px)` : `${minPx}px`;
+  }
+
+  /** Each column keeps a readable width; narrower screens scroll the table sideways instead of squeezing the columns. */
+  get minTableWidth(): number {
+    return Math.max(this.columns.length, 1) * 120;
+  }
   @Input() rows: TableRow[] = [];
   /** Shows a heartbeat loader over the rows while a page of data is (re)loading - the
    *  initial load and every subsequent page/sort/page-size change. */

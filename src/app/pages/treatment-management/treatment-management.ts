@@ -88,7 +88,6 @@ export class TreatmentManagement implements OnInit {
   readonly columns: TableColumn[] = [
     { key: 'treatment', header: 'Treatment', type: 'lead' },
     { key: 'category', header: 'Category', type: 'text', sortable: false },
-    { key: 'branch', header: 'Branch', type: 'text', sortable: false },
     { key: 'pricing', header: 'Price (incl. GST)', type: 'text' },
     { key: 'sessions', header: 'Sittings', type: 'text' },
     { key: 'status', header: 'Status', type: 'badge' },
@@ -229,7 +228,6 @@ export class TreatmentManagement implements OnInit {
       id: item.id,
       treatment: { name: item.name, subtitle: item.description || 'No description added' } as LeadCell,
       category: item.category?.name ?? '-',
-      branch: item.branch?.name ?? '-',
       pricing: `₹${this.formatCurrency(Number(item.total_amount))}`,
       sessions: `${item.default_sittings} ${item.default_sittings === 1 ? 'sitting' : 'sittings'}`,
       status: item.is_active ? 'Active' : 'Inactive',

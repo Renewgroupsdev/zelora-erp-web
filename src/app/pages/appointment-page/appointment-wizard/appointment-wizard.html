@@ -18,10 +18,12 @@
     } @else if (appt(); as a) {
 
       <ol class="emp-stepper" aria-label="Consultation steps">
-        @for (s of steps; track s.label; let i = $index) {
-          <li [class.done]="i < a.current_step - 1 || (i === 4 && !!a.invoice_no)" [class.current]="i === step()">
-            <button type="button" class="step-btn" [disabled]="i > a.current_step - 1" [attr.aria-current]="i === step() ? 'step' : null" (click)="goTo(i)">
-              <span class="dot"><i class="bi" [class]="i < a.current_step - 1 ? 'bi-check-lg' : s.icon"></i></span>
+        @for (s of steps(); track s.index; let i = $index) {
+          <li [class.done]="s.allowed && (i < a.current_step - 1 || (i === 4 && !!a.invoice_no))" [class.current]="s.allowed && i === step()" [class.denied]="!s.allowed">
+            <!-- A step the role may not open stays visible but greyed out; clicking it explains why. -->
+            <button type="button" class="step-btn" [disabled]="s.allowed && i > a.current_step - 1" [attr.aria-disabled]="!s.allowed" [attr.aria-current]="s.allowed && i === step() ? 'step' : null"
+              [attr.title]="s.allowed ? null : 'Your role does not have permission for this step'" (click)="goTo(i)">
+              <span class="dot"><i class="bi" [class]="!s.allowed ? 'bi-lock-fill' : i < a.current_step - 1 ? 'bi-check-lg' : s.icon"></i></span>
               <small>{{ s.label }}</small>
             </button>
           </li>
@@ -34,10 +36,14 @@
         <div class="wz-banner"><i class="bi bi-lock-fill"></i> Terms accepted and invoice {{ a.invoice_no }} issued - the consultation is read-only.</div>
       }
 
+      @if (!steps()[step()].allowed) {
+        <div class="wz-banner"><i class="bi bi-shield-lock-fill"></i> Your role does not have access to this step of the consultation.</div>
+      }
+
       <fieldset [disabled]="locked() || saving()" class="wz-fieldset">
 
       <!-- ================= Step 1: Profile & patient history ================= -->
-      @if (step() === 0) {
+      @if (step() === 0 && steps()[0].allowed) {
         <div class="section-title"><i class="bi bi-person-vcard"></i> Profile</div>
         <div class="wz-profile">
           <div class="photo-upload">
@@ -118,7 +124,7 @@
       }
 
       <!-- ================= Step 2: Clinical examination ================= -->
-      @if (step() === 1) {
+      @if (step() === 1 && steps()[1].allowed) {
         <div class="section-title"><i class="bi bi-ui-checks"></i> Examination For</div>
         <div class="wz-choice-row">
           <div class="wz-seg">
@@ -284,7 +290,7 @@
       }
 
       <!-- ================= Step 3: Treatment ================= -->
-      @if (step() === 2) {
+      @if (step() === 2 && steps()[2].allowed) {
         <div class="section-title"><i class="bi bi-capsule"></i> Treatment Details</div>
         <div class="form-grid">
           <div class="form-field full-width">
@@ -323,7 +329,7 @@
       }
 
       <!-- ================= Step 4: Payment ================= -->
-      @if (step() === 3) {
+      @if (step() === 3 && steps()[3].allowed) {
         <div class="wz-calc compact">
           <div><small>Treatment</small><strong>{{ a.treatment?.name }}</strong></div>
           <div><small>Sittings</small><strong>{{ a.sittings_count }} × {{ inr(a.price_per_sitting) }}</strong></div>
@@ -371,7 +377,7 @@
       </fieldset>
 
       <!-- ================= Step 5: Terms & invoice (outside the lock - actions stay usable) ================= -->
-      @if (step() === 4) {
+      @if (step() === 4 && steps()[4].allowed) {
         <div class="section-title"><i class="bi bi-shield-check"></i> Terms &amp; Conditions</div>
         <div class="wz-track">
           <div class="wz-track-item" [class.ok]="!!a.terms_sent_at">
@@ -414,9 +420,9 @@
 
   <div class="modal-footer-custom">
     <button type="button" class="cancel-btn" (click)="close()">Close</button>
-    @if (step() > 0) { <button type="button" class="cancel-btn" (click)="back()"><i class="bi bi-arrow-left"></i> Back</button> }
+    @if (hasPrevStep()) { <button type="button" class="cancel-btn" (click)="back()"><i class="bi bi-arrow-left"></i> Back</button> }
     @if (step() < 4) {
-      <button type="button" class="save-btn" [disabled]="saving() || loading()" (click)="next()">
+      <button type="button" class="save-btn" [disabled]="saving() || loading() || !steps()[step()].allowed" (click)="next()">
         <i class="bi" [class.bi-arrow-repeat]="saving()" [class.spin]="saving()"></i>
         {{ saving() ? 'Saving…' : locked() ? 'Next' : step() === 3 ? 'Save & send terms' : 'Save & next' }}
         @if (!saving()) { <i class="bi bi-arrow-right"></i> }

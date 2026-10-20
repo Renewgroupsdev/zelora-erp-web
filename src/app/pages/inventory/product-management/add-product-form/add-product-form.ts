@@ -34,6 +34,7 @@ export class AddProductForm {
   readonly productForm = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(150)]],
     description: ['', Validators.maxLength(255)],
+    hsnCode: ['', Validators.pattern(/^\d{4}(\d{2}(\d{2})?)?$/)],
     vendorId: [null as number | null, Validators.required],
     purchasePrice: [null as number | null, [Validators.required, Validators.min(0)]],
     marginPercent: [0, [Validators.required, Validators.min(0)]],
@@ -62,6 +63,7 @@ export class AddProductForm {
       this.productForm.patchValue({
         name: product.name,
         description: product.description ?? '',
+        hsnCode: product.hsn_code ?? '',
         vendorId: product.vendor_id,
         purchasePrice: Number(product.purchase_price),
         marginPercent: Number(product.margin_percent),
@@ -129,6 +131,7 @@ export class AddProductForm {
     const payload: ProductPayload = {
       name: (raw.name ?? '').trim(),
       description: (raw.description ?? '').trim(),
+      hsn_code: (raw.hsnCode ?? '').trim(),
       vendor_id: Number(raw.vendorId),
       purchase_price: Number(raw.purchasePrice),
       margin_percent: Number(raw.marginPercent),
@@ -166,7 +169,7 @@ export class AddProductForm {
     this.dialogRef.close();
   }
 
-  isInvalid(controlName: 'name' | 'description' | 'vendorId' | 'purchasePrice' | 'marginPercent' | 'discountPercent' | 'gstPercent'): boolean {
+  isInvalid(controlName: 'name' | 'description' | 'hsnCode' | 'vendorId' | 'purchasePrice' | 'marginPercent' | 'discountPercent' | 'gstPercent'): boolean {
     const control = this.productForm.controls[controlName];
     return control.invalid && (control.touched || control.dirty);
   }

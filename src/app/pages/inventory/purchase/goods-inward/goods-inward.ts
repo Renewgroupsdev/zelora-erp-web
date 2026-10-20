@@ -65,13 +65,13 @@ export class GoodsInward extends PurchaseListBase {
   readonly openOrders = computed(() => this.purchase.orders().filter(o => o.canInward));
 
   readonly stats = computed<DetailCardData[]>(() => {
-    const list = this.purchase.inwards().filter(g => g.status === 'Posted');
-    const lines = list.flatMap(g => g.lines);
+    const s = this.purchase.summaries().inwards ?? {};
+    const n = (key: string) => Number(s[key]) || 0;
     return [
-      { label: 'Goods Receipts', value: list.length, icon: 'bi-box-arrow-in-down', iconVariant: 'primary' },
-      { label: 'Batches Received', value: lines.length, icon: 'bi-upc-scan', iconVariant: 'blue' },
-      { label: 'Partial Receipts', value: list.filter(g => g.isPartial).length, icon: 'bi-hourglass-split', iconVariant: 'orange' },
-      { label: 'Bill Value', value: inr(list.reduce((s, g) => s + g.netAmount, 0)), icon: 'bi-currency-rupee', iconVariant: 'purple' },
+      { label: 'Goods Receipts', value: n('receipts'), icon: 'bi-box-arrow-in-down', iconVariant: 'primary' },
+      { label: 'Batches Received', value: n('batches'), icon: 'bi-upc-scan', iconVariant: 'blue' },
+      { label: 'Partial Receipts', value: n('partial_receipts'), icon: 'bi-hourglass-split', iconVariant: 'orange' },
+      { label: 'Bill Value', value: inr(n('bill_value')), icon: 'bi-currency-rupee', iconVariant: 'purple' },
     ];
   });
 

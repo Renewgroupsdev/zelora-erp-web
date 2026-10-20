@@ -42,8 +42,6 @@ export interface TreatmentRecord {
 
 export interface TreatmentPayload {
   treatment_category_id: number;
-  branch_type: 'branch' | 'franchise';
-  branch_id: number;
   name: string;
   description: string;
   amount: number;

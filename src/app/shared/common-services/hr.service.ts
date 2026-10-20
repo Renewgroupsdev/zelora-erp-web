@@ -83,6 +83,8 @@ export class HrService {
   private readonly state = signal<HrState>(loadState(STORAGE_KEY, seedState));
 
   readonly employees = computed(() => this.state().employees);
+  /** Employee stat-card counts from the list API's `summary` (overall, not search/page dependent). */
+  readonly employeeSummary = signal<{ active: number; onboarding: number; on_notice: number; monthly_payroll: number }>({ active: 0, onboarding: 0, on_notice: 0, monthly_payroll: 0 });
   readonly attendance = computed(() => this.state().attendance);
   readonly leaves = computed(() => this.state().leaves);
   readonly manpower = computed(() => this.state().manpower);
@@ -157,6 +159,8 @@ export class HrService {
     const page = (n: number) => this.api.GET(`${ApiRoutesConstants.HR_EMPLOYEES}?per_page=200&page=${n}`) as Observable<any>;
     return page(1).pipe(
       switchMap(first => {
+        const s = first?.summary;
+        if (s) this.employeeSummary.set({ active: Number(s.active) || 0, onboarding: Number(s.onboarding) || 0, on_notice: Number(s.on_notice) || 0, monthly_payroll: Number(s.monthly_payroll) || 0 });
         const last = Number(first?.pagination?.last_page ?? 1);
         const rest = last > 1 ? forkJoin(Array.from({ length: last - 1 }, (_, i) => page(i + 2))) : of([] as any[]);
         return rest.pipe(map(more => [first, ...more].flatMap(r => (r?.data ?? []) as any[])));

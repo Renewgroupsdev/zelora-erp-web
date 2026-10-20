@@ -23,12 +23,12 @@ import { AddLeadForm } from './add-lead-form/add-lead-form';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription, forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, finalize } from 'rxjs/operators';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { ToastService } from '../../shared/common-services/toast.service';
 import { TelephonyService } from '../../core/telephony/telephony.service';
-import { CallReportSummary, LeadWorkStats, TelecallerRow } from '../../core/telephony/telephony.models';
+import { TelecallerRow } from '../../core/telephony/telephony.models';
 import { CrmFlowService, FlowAppointment, FlowLead } from '../../shared/common-services/crm-flow.service';
 import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
 import { AuthService } from '../../core/auth/auth.service';
@@ -143,10 +143,8 @@ export class LeadManagement implements OnInit {
         catchError(() => of(null))
       ),
       telecallers: this.telephony.telecallers().pipe(catchError(() => of([]))),
-      workStats: this.ApiDataService.GET(ApiRoutesConstants.LEAD_WORK_STATS).pipe(catchError(() => of(null))),
-      reportStats: this.ApiDataService.GET(ApiRoutesConstants.CALL_REPORTS).pipe(catchError(() => of(null))),
     }).subscribe((result: any) => {
-      const { statuses, sources, branches, types, telecallers, workStats, reportStats } = result;
+      const { statuses, sources, branches, types, telecallers } = result;
       this.sourceOptions = sources?.data?.data ?? [];
       this.typeOptions = types?.data?.data ?? [];
       this.statusOptions = statuses?.data?.data ?? [];
@@ -155,8 +153,6 @@ export class LeadManagement implements OnInit {
       this.applySourceOptions(sources);
       this.applyBranchOptions(branches);
       this.applyTelecallerOptions(telecallers);
-      this.applyWorkStats(workStats);
-      this.applyReportStats(reportStats);
     });
   }
 
@@ -199,18 +195,14 @@ export class LeadManagement implements OnInit {
     }
   }
 
-  private applyWorkStats(res: any): void {
-    const s: LeadWorkStats | undefined = res?.data;
+  /** Stat cards come with the lead list itself (GET customer-leads -> summary): no separate stats / report calls. */
+  private applySummary(s: any): void {
     if (!s) return;
-    this.setStat('Total Leads', s.assigned.toLocaleString());
-    this.setStat('Follow-ups Today', s.follow_ups_today);
-    this.setStat('Overdue', s.follow_ups_overdue);
-    this.setStat('Not Contacted', s.never_contacted);
-  }
-
-  private applyReportStats(res: any): void {
-    const r: CallReportSummary | undefined = res?.data;
-    if (r) this.setStat('Conversion Rate', `${r.conversion_rate}%`);
+    this.setStat('Total Leads', Number(s.assigned ?? 0).toLocaleString());
+    this.setStat('Follow-ups Today', s.follow_ups_today ?? 0);
+    this.setStat('Overdue', s.follow_ups_overdue ?? 0);
+    this.setStat('Not Contacted', s.never_contacted ?? 0);
+    this.setStat('Conversion Rate', `${s.conversion_rate ?? 0}%`);
   }
 
   private buildQueryParams(): string {
@@ -264,6 +256,7 @@ export class LeadManagement implements OnInit {
         this.rows = (page?.data ?? []).map((lead: any) => this.mapLeadToRow(lead));
         this.totalRecords = Number(page?.total ?? this.rows.length);
         this.loading = false;
+        this.applySummary(res?.summary);
 
         // The page asked for no longer exists (e.g. last row of the last page was removed).
         const lastPage = Number(page?.last_page ?? 1);
@@ -476,7 +469,12 @@ export class LeadManagement implements OnInit {
   }
 
   /** Telecaller verdict on an assigned lead. Invalid leads go back to Lead Management (unassigned) for the branch manager. */
+  /** Leads whose verdict is being saved: a second click cannot send it twice. */
+  private readonly validatingLeads = new Set<unknown>();
+
   async onValidateLead(row: TableRow, valid: boolean): Promise<void> {
+    const leadId = row['id'];
+    if (this.validatingLeads.has(leadId)) return;
     let reason = '';
     if (!valid) {
       const result = await Swal.fire({
@@ -493,7 +491,8 @@ export class LeadManagement implements OnInit {
       reason = String(result.value ?? '').trim();
     }
 
-    this.ApiDataService.POST(`${ApiRoutesConstants.LEAD_VALIDATE}/${row['id']}/validate`, { valid, reason }).subscribe({
+    this.validatingLeads.add(leadId);
+    this.ApiDataService.POST(`${ApiRoutesConstants.LEAD_VALIDATE}/${leadId}/validate`, { valid, reason }).pipe(finalize(() => this.validatingLeads.delete(leadId))).subscribe({
       next: (res: any) => {
         this.toast.success(res?.message || (valid ? 'Lead marked valid.' : 'Lead marked invalid.'));
         this.loadLeadData();

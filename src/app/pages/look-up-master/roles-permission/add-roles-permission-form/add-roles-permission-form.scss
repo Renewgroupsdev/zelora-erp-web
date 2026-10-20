@@ -164,3 +164,15 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .page-header-text {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+}
