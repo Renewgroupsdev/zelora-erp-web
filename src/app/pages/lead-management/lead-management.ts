@@ -35,6 +35,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { CanActionDirective } from '../../shared/directives/can-action.directive';
 import { COMBO_OFFERS, TREATMENTS } from '../../shared/data/treatment-catalog';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
+import { BranchContextService } from '../../shared/common-services/branch-context.service';
 
 @Component({
   selector: 'app-lead-management',
@@ -45,6 +46,7 @@ import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-
 })
 export class LeadManagement implements OnInit {
   private readonly branchOptions = inject(BranchOptionsService);
+  private readonly branchContext = inject(BranchContextService);
 
   constructor(
     private dialog: MatDialog,
@@ -288,6 +290,7 @@ export class LeadManagement implements OnInit {
       branch: lead.branch_name ?? lead.location ?? '',
       status: lead.status_name || 'Lead',
       // A telecaller checks each lead assigned to them (the API only returns theirs) before following it up.
+      editDeleteOnly: String(lead.status_name ?? '').trim().toLowerCase() === 'invalid' ? 1 : 0,
       canValidate: this.telephony.isTelecaller() && ['New Lead', 'Lead'].includes(lead.status_name || 'Lead') && !!lead.assigned_to ? 1 : 0,
       created_at: this.formatDate(lead.created_at),
       gender: lead.gender ?? '',
@@ -614,19 +617,71 @@ export class LeadManagement implements OnInit {
     });
   }
 
+  /**
+   * Where "Send to branch" goes, by the top-bar filter: a specific branch / franchise sends straight to it (after a
+   * confirm); "All" asks Branch or Franchise first and lists all of that type; "All branches" / "All franchises"
+   * lists just that type. Resolves null when cancelled.
+   */
+  private async pickTargetUnit(row: TableRow): Promise<BranchOption | null> {
+    await new Promise<void>(resolve => this.branchOptions.load().subscribe(() => resolve()));
+    const scope = this.branchContext.selection();
+
+    if (scope.id !== null) {
+      const unit = this.branchOptions.byRef(scope.type, scope.id);
+      if (!unit) return null;
+      const confirmed = await this.toast.confirm(
+        `Send this lead to ${unit.name}?`,
+        'It is assigned automatically to one of its telecallers; each telecaller gets leads in batches of 10.',
+        'Yes, send',
+      );
+      return confirmed ? unit : null;
+    }
+
+    const own = this.branchOptions.byName(String(row['branch'] ?? ''));
+    const fixedType = scope.type === 'all' ? null : scope.type;
+    const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const optionsFor = (type: string) =>
+      '<option value="">Select ' + type + '</option>' +
+      this.branchOptions.options().filter(o => o.type === type)
+        .map(o => `<option value="${o.key}"${o.key === own?.key ? ' selected' : ''}>${esc(o.name)}</option>`).join('');
+    const startType = fixedType ?? own?.type ?? 'branch';
+
+    const result = await Swal.fire({
+      title: 'Send lead to branch / franchise',
+      html:
+        '<div style="text-align:left;display:grid;gap:8px">' +
+        (fixedType ? '' :
+          '<label style="font-size:13px;font-weight:600">Type</label>' +
+          `<select id="send-unit-type" class="swal2-select" style="margin:0;width:100%"><option value="branch"${startType === 'branch' ? ' selected' : ''}>Branch</option><option value="franchise"${startType === 'franchise' ? ' selected' : ''}>Franchise</option></select>`) +
+        `<label style="font-size:13px;font-weight:600">${fixedType === 'franchise' ? 'Franchise' : fixedType === 'branch' ? 'Branch' : 'Branch / Franchise'}</label>` +
+        `<select id="send-unit" class="swal2-select" style="margin:0;width:100%">${optionsFor(startType)}</select>` +
+        '</div>',
+      showCancelButton: true,
+      confirmButtonText: 'Send',
+      confirmButtonColor: '#dc4c4c',
+      didOpen: () => {
+        const typeEl = document.getElementById('send-unit-type') as HTMLSelectElement | null;
+        const unitEl = document.getElementById('send-unit') as HTMLSelectElement;
+        typeEl?.addEventListener('change', () => (unitEl.innerHTML = optionsFor(typeEl.value)));
+      },
+      preConfirm: () => {
+        const key = (document.getElementById('send-unit') as HTMLSelectElement).value;
+        if (!key) Swal.showValidationMessage('Choose a branch or franchise.');
+        return key;
+      },
+    });
+    return result.isConfirmed ? this.branchOptions.byKey(result.value) ?? null : null;
+  }
+
   /** Hands the lead to one of the branch's telecallers (batches of 10 per telecaller - see the API). */
   async sendToBranch(row: TableRow): Promise<void> {
-    const confirmed = await this.toast.confirm(
-      'Send this lead to the branch telecallers?',
-      'It is assigned automatically; each telecaller gets leads in batches of 10.',
-      'Yes, send',
-    );
-    if (!confirmed) return;
+    const unit = await this.pickTargetUnit(row);
+    if (!unit) return;
 
-    const unit = this.branchOptions.byName(String(row['branch'] ?? ''));
     this.ApiDataService.POST(ApiRoutesConstants.LEAD_AUTO_ASSIGN, {
       lead_ids: [Number(row['id'])],
-      ...(unit ? { branch_type: unit.type, branch_id: unit.id } : {}),
+      branch_type: unit.type,
+      branch_id: unit.id,
     }).subscribe({
       next: (res: any) => {
         this.toast.success(res?.message || 'Lead sent to the branch.');

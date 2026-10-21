@@ -1,0 +1,53 @@
+<div class="appointment-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex align-items-center justify-content-between">
+    <h6 class="page-title"><i class="bi bi-clipboard2-pulse"></i> Nill Card</h6>
+  </div>
+
+  <app-auto-module-tabs></app-auto-module-tabs>
+
+  <div class="row g-2 g-md-3 stat-row">
+    @for (stat of stats; track stat.label) {
+      <div class="col-6 col-md">
+        <app-common-detail-card
+          [label]="stat.label"
+          [value]="stat.value"
+          [trendText]="stat.trendText"
+          [trendDirection]="stat.trendDirection ?? 'neutral'"
+          [icon]="stat.icon"
+          [iconVariant]="stat.iconVariant ?? 'primary'"
+        ></app-common-detail-card>
+      </div>
+    }
+  </div>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by customer, phone or invoice no"
+    [filters]="filters"
+    (searchChange)="onSearch($event)"
+    (filterClick)="onFilterClick($event)"
+    (filtersChange)="onFiltersChange($event)"
+    [showExport]="false"
+  ></app-common-filter-card>
+
+  <div class="table-col">
+    <app-common-table-card
+      title="In Consultation"
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [rows]="rows"
+      [loading]="loading"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+      (quickActionClick)="onQuickAction($event)"
+    ></app-common-table-card>
+  </div>
+
+</div>

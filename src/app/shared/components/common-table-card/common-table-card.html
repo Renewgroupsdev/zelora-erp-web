@@ -215,7 +215,8 @@
             @else if (col.type === 'action') {
               <div class="action-cell">
                   <!-- Call -->
-                  @if (allowed('call')) {
+                  <!-- Rows flagged editDeleteOnly (e.g. an Invalid lead) keep only Edit and Delete -->
+                  @if (allowed('call') && !row['editDeleteOnly']) {
                   <button
                     type="button"
                     class="row-action-btn action-call"
@@ -227,7 +228,7 @@
                   }
 
                   <!-- Telecaller check: is this lead genuine? -->
-                  @if (row['canValidate'] && allowed('validate')) {
+                  @if (row['canValidate'] && allowed('validate') && !row['editDeleteOnly']) {
                     <button
                       type="button"
                       class="row-action-btn action-valid"
@@ -269,7 +270,7 @@
                   </button> -->
 
                   <!-- Follow-up -->
-                  @if (allowed('followUp')) {
+                  @if (allowed('followUp') && !row['editDeleteOnly']) {
                   <button
                     type="button"
                     class="row-action-btn action-followup"
@@ -281,7 +282,7 @@
                   }
 
                   <!-- Send to Branch -->
-                  @if (allowed('sendToBranch')) {
+                  @if (allowed('sendToBranch') && !row['editDeleteOnly']) {
                   <button
                     type="button"
                     class="row-action-btn action-branch"

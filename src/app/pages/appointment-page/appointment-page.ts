@@ -167,7 +167,7 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   get todaysAppointments(): FlowAppointmentRecord[] {
     const today = this.toIso(this.today);
     return this.appointments
-      .filter(a => a.appointment_date === today && a.status !== 'Cancelled')
+      .filter(a => a.appointment_date === today && a.status !== 'Cancelled' && a.status !== 'Converted')
       .sort((a, b) => (a.appointment_time ?? '').localeCompare(b.appointment_time ?? ''));
   }
 
