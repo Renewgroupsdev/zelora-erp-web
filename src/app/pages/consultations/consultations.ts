@@ -20,7 +20,7 @@ import { ToastService } from '../../shared/common-services/toast.service';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { AuthService } from '../../core/auth/auth.service';
-import { FlowAppointmentRecord, inr } from '../../shared/models/appointment-flow.model';
+import { FlowAppointmentRecord, inr, treatmentNames } from '../../shared/models/appointment-flow.model';
 import { AppointmentWizard } from '../appointment-page/appointment-wizard/appointment-wizard';
 
 /** The only status this page lists: consultation started, payment not saved yet. */
@@ -200,7 +200,7 @@ export class Consultations implements OnInit {
       id: a.id,
       lead: { name: a.name, subtitle: a.customer?.customer_code ?? `AP-${String(a.id).padStart(5, '0')}` },
       contact: a.mobile_no,
-      service: a.customer_treatment?.treatment?.name ?? a.treatment?.name ?? (a.category ? `${a.category} consultation` : 'Consultation'),
+      service: treatmentNames(a) ?? (a.category ? `${a.category} consultation` : 'Consultation'),
       branch: a.branch_name ?? a.branch?.name ?? '',
       schedule: `${this.displayDate(a.appointment_date)}, ${this.displayTime(a.appointment_time)}`,
       scheduleSort: `${a.appointment_date} ${a.appointment_time ?? ''}`,

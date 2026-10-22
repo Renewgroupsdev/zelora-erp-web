@@ -7,7 +7,7 @@ import { ToastService } from '../../../../shared/common-services/toast.service';
 import { ApiDataService } from '../../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../../shared/common-services/api-route-constants';
 import { HrService, NewEmployeeInput } from '../../../../shared/common-services/hr.service';
-import { DEPARTMENTS, EMPLOYEE_TYPES, Employee, KYC_ACCEPT, KYC_DOC_TYPES, KYC_MAX_BYTES, KycDocType, KycDocument, REFERRAL_SOURCES, kycNumberLabel, salaryBreakup, structureFromGross } from '../../../../shared/models/hr.model';
+import { EMPLOYEE_TYPES, Employee, KYC_ACCEPT, KYC_DOC_TYPES, KYC_MAX_BYTES, KycDocType, KycDocument, REFERRAL_SOURCES, kycNumberLabel, salaryBreakup, structureFromGross } from '../../../../shared/models/hr.model';
 import { isoDate, uid } from '../../../../shared/utils/format.util';
 
 /** Add / edit an employee: personal, job, statutory + bank and salary structure. */
@@ -26,7 +26,18 @@ export class EmployeeForm implements OnInit {
   private readonly data = inject<{ employee: Employee | null; candidateId?: string; branch?: string }>(MAT_DIALOG_DATA);
   readonly hr = inject(HrService);
 
-  readonly departments = DEPARTMENTS;
+  /** Active departments (Settings -> Department Module); the employee's own stays selectable if it was deactivated since. */
+  get departments(): string[] {
+    const names = this.hr.departments;
+    const current = this.model.department;
+    return current && !names.includes(current) ? [...names, current] : names;
+  }
+
+  constructor() {
+    // A new employee defaults to the first department once GET /departments/options has answered.
+    this.hr.loadDepartments().subscribe(list => { if (!this.model.department && list.length) this.model.department = list[0]; });
+  }
+
   readonly isEdit = !!this.data.employee;
   /** Set when the form is opened from an accepted offer - saving completes the hire. */
   readonly candidateId = this.data.candidateId ?? null;
@@ -47,7 +58,7 @@ export class EmployeeForm implements OnInit {
     ? structuredClone((({ id, empCode, status, ...rest }) => rest)(this.data.employee))
     : this.hr.employeeDraftFor(this.candidateId ?? '') ?? {
       name: '', gender: 'Female', dob: null, phone: '', email: '', address: '', bloodGroup: '', photo: '', userType: 'Staff',
-      designation: '', department: DEPARTMENTS[0], branch: this.data.branch ?? '', reportingTo: '', joinDate: isoDate(),
+      designation: '', department: this.hr.departments[0] ?? '', branch: this.data.branch ?? '', reportingTo: '', joinDate: isoDate(),
       employmentType: 'Full Time', pan: '', aadhaarLast4: '', uan: '', bankName: '', accountNo: '', ifsc: '',
       emergencyContact: '', secondaryPhone: '', referralSource: '', referredBy: '', referralPhone: '', kycDocuments: [],
       salary: structureFromGross(20000),

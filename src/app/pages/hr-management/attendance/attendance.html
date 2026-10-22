@@ -13,7 +13,9 @@
       @if (view() === 'daily') {
         <input class="date-input" type="date" aria-label="Attendance date" [max]="today" [ngModel]="date()" (ngModelChange)="setDate($event)" />
       } @else {
-        <input class="date-input" type="month" aria-label="Attendance month" [ngModel]="month()" (ngModelChange)="setMonth($event)" />
+        <input class="date-input" type="date" aria-label="From date" title="From" [max]="rangeTo()" [ngModel]="rangeFrom()" (ngModelChange)="setRangeFrom($event)" />
+        <span class="range-sep">to</span>
+        <input class="date-input" type="date" aria-label="To date" title="To" [max]="today" [ngModel]="rangeTo()" (ngModelChange)="setRangeTo($event)" />
       }
       <button *appCan="'export-attendance'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
     </div>
@@ -41,10 +43,11 @@
 
   <div class="table-col">
     <app-common-table-card
-      [title]="view() === 'daily' ? displayDate(date()) : monthLabel(month())"
+      [title]="view() === 'daily' ? displayDate(date()) : rangeLabel()"
       [recordCountText]="recordCountText"
       [columns]="columns"
       [rows]="rows"
+      [loading]="loading()"
       [totalRecords]="totalRecords"
       [pageSize]="pageSize"
       [pageSizeOptions]="pageSizeOptions"

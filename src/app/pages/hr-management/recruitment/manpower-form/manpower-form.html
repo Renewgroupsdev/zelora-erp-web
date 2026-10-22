@@ -24,7 +24,7 @@
         <div class="form-field">
           <label for="mp-dept">Department</label>
           <div class="input-wrap"><i class="bi bi-diagram-3"></i>
-            <select id="mp-dept" name="department" [(ngModel)]="model.department">@for (d of departments; track d) { <option [value]="d">{{ d }}</option> }</select>
+            <select id="mp-dept" name="department" [(ngModel)]="model.department"><option value="" disabled>Select department</option>@for (d of departments; track d) { <option [value]="d">{{ d }}</option> }</select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
         </div>

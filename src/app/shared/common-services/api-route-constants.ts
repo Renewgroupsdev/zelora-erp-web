@@ -38,6 +38,11 @@ export class ApiRoutesConstants {
    public static SOURCE_ADD = "sources";
    public static SOURCE_DELETE = "sources";
 
+   //Settings -> Department Module
+   public static DEPARTMENT_LIST = "departments?per_page=200";
+   public static DEPARTMENTS = "departments";
+   public static DEPARTMENT_OPTIONS = "departments/options";
+
    //Lead Status (CURD)
    public static LEAD_STATUS_GET_List = "lead-statuses";
    public static LEAD_STATUS_ADD = "lead-statuses";
@@ -132,6 +137,7 @@ export class ApiRoutesConstants {
 
    //HR Management
    public static HR_EMPLOYEES = "hr/employees";
+   public static HR_ATTENDANCE = "hr/attendance";
 
    //Direct file uploads (POST/DELETE uploads/{folder})
    public static UPLOADS = "uploads";

@@ -21,7 +21,7 @@
       </div>
 
       <div class="login-mode" role="tablist" aria-label="Sign in as">
-        <button type="button" role="tab" [attr.aria-selected]="mode === 'user'" [class.active]="mode === 'user'" (click)="setMode('user')"><i class="bi bi-person-badge"></i> User</button>
+        <button type="button" role="tab" [attr.aria-selected]="mode === 'user'" [class.active]="mode === 'user'" (click)="setMode('user')"><i class="bi bi-person-badge"></i> Management</button>
         <button type="button" role="tab" [attr.aria-selected]="mode === 'employee'" [class.active]="mode === 'employee'" (click)="setMode('employee')"><i class="bi bi-person-vcard"></i> Employee</button>
         <button type="button" role="tab" [attr.aria-selected]="mode === 'customer'" [class.active]="mode === 'customer'" (click)="setMode('customer')"><i class="bi bi-phone"></i> Customer</button>
       </div>

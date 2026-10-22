@@ -8,7 +8,6 @@ import { CommonFilterCard } from '../../../shared/components/common-filter-card/
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
 import { ModuleTabs } from '../../../shared/components/module-tabs/module-tabs';
 import { DetailCardData, QuickAction, TableColumn, TableRow } from '../../../shared/models/common-components.model';
-import { DEPARTMENTS } from '../../../shared/models/hr.model';
 import { downloadExcel } from '../../../shared/utils/export.util';
 import { inr, monthKey, monthLabel } from '../../../shared/utils/format.util';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
@@ -30,7 +29,7 @@ export class Payroll extends HrListBase {
 
   override filters = [
     { key: 'status', label: 'Status', options: ['Processed', 'Paid'] },
-    { key: 'source', label: 'Department', options: DEPARTMENTS },
+    { key: 'source', label: 'Department', options: this.hr.departments },
     { key: 'branch', label: 'Branch', options: this.hr.branches, multiSelect: true },
   ];
 

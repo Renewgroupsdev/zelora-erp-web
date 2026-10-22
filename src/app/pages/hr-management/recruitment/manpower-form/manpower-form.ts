@@ -3,7 +3,6 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { HrService, NewManpowerInput } from '../../../../shared/common-services/hr.service';
-import { DEPARTMENTS } from '../../../../shared/models/hr.model';
 import { isoDate } from '../../../../shared/utils/format.util';
 
 /** Branch / department head raises a vacancy with its salary budget; HR approves it into an open vacancy. */
@@ -17,16 +16,21 @@ import { isoDate } from '../../../../shared/utils/format.util';
 export class ManpowerForm {
   private readonly dialogRef = inject(MatDialogRef<ManpowerForm>);
   readonly hr = inject(HrService);
-  readonly departments = DEPARTMENTS;
+  /** Active departments (Settings -> Department Module). */
+  get departments(): string[] {
+    return this.hr.departments;
+  }
   readonly today = isoDate();
   readonly submitted = signal(false);
 
   model: NewManpowerInput = {
-    branch: this.hr.branches[0] ?? '', department: DEPARTMENTS[0], designation: '', positions: 1, employmentType: 'Full Time',
+    branch: this.hr.branches[0] ?? '', department: this.hr.departments[0] ?? '', designation: '', positions: 1, employmentType: 'Full Time',
     experience: '1-3 years', budgetMin: 18000, budgetMax: 25000, skills: '', justification: '', replacementFor: '', requiredBy: null,
   };
 
   constructor() {
+    // Default to the first department once GET /departments/options has answered.
+    this.hr.loadDepartments().subscribe(list => { if (!this.model.department && list.length) this.model.department = list[0]; });
     // Default to the first branch once GET /branches/options has answered.
     this.hr.loadBranches().subscribe(list => { if (!this.model.branch && list.length) this.model.branch = list[0].name; });
   }

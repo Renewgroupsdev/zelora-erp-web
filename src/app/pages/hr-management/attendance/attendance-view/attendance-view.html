@@ -6,49 +6,101 @@
     <div class="modal-title-wrap">
       <div class="title-icon"><i class="bi bi-fingerprint"></i></div>
       <div class="title-content">
-        <h2>{{ e?.name ?? 'Employee' }} <span class="pill" [class.green]="r?.status === 'Present'" [class.orange]="r?.status === 'Late' || r?.status === 'Half Day'" [class.red]="!r || r?.status === 'Absent'">{{ r?.status ?? 'Not Marked' }}</span></h2>
-        <p>{{ e?.empCode }} · {{ e?.designation }} · {{ e?.branch }} · {{ displayDate(date) }}</p>
+        <h2>
+          {{ e?.name ?? 'Employee' }}
+          @if (!loading() && !error()) { <span class="pill" [ngClass]="statusClass(r?.status)">{{ r?.status ?? 'Not Marked' }}</span> }
+        </h2>
+        <p>{{ e?.empCode }} · {{ e?.designation }} · {{ e?.branch }} · {{ displayDate(date()) }}</p>
       </div>
     </div>
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 
-  <div class="modal-body-custom">
-    <div class="info-grid">
-      <div><small>Check In</small><strong>{{ displayTime(r?.checkIn) }}</strong></div>
-      <div><small>Check Out</small><strong>{{ r?.checkIn && !r?.checkOut && date === today ? 'Working…' : displayTime(r?.checkOut) }}</strong></div>
-      <div><small>Total Hours</small><strong>{{ hoursLabel(worked()) }}</strong></div>
-      <div><small>Total Break</small><strong>{{ minutesLabel(totalBreak()) }}</strong></div>
-      <div><small>Net Working</small><strong>{{ hoursLabel(netWorked()) }}</strong></div>
-      <div><small>Source</small><strong>{{ r?.source ?? '-' }}</strong></div>
-    </div>
+  <div class="modal-body-custom" [attr.aria-busy]="loading()">
 
-    <div class="section-title"><i class="bi bi-cup-hot"></i> Breaks</div>
-    <div class="items-table-wrap">
-      <table class="items-table">
-        <thead>
-          <tr><th>Break</th><th>Start</th><th>End</th><th class="num">Duration</th><th>Status</th></tr>
-        </thead>
-        <tbody>
-          @for (b of breaks(); track b.type) {
-            <tr>
-              <td><strong><i class="bi" [class.bi-cup-hot]="b.type !== 'Lunch'" [class.bi-egg-fried]="b.type === 'Lunch'"></i> {{ b.type }}</strong></td>
-              <td>{{ b.start ? displayTime(b.start) : '-' }}</td>
-              <td>{{ b.end ? displayTime(b.end) : b.running ? 'Running…' : '-' }}</td>
-              <td class="num">{{ minutesLabel(b.minutes) }}</td>
-              <td>
-                @if (b.running) { <span class="pill orange">On break</span> }
-                @else if (b.start) { <span class="pill green">Taken</span> }
-                @else { <span class="muted">Not taken</span> }
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+    @if (loading()) {
+      <div class="loader-wrap"><app-page-loader [inline]="true"></app-page-loader></div>
+    } @else if (error()) {
+      <div class="state-box" role="alert">
+        <i class="bi bi-exclamation-triangle"></i>
+        <span>{{ error() }}</span>
+        <button type="button" class="cancel-btn" (click)="retry()"><i class="bi bi-arrow-clockwise"></i> Try again</button>
+      </div>
+    } @else {
 
-    @if (r?.remarks) { <p class="muted">Remarks: {{ r?.remarks }}</p> }
-    @if (!r) { <p class="muted">No attendance was recorded for this employee on this date.</p> }
+      @if (summary(); as s) {
+        <div class="section-title"><i class="bi bi-bar-chart-line"></i> Month summary <span class="hint">· {{ monthName() }}</span></div>
+        <div class="summary-tiles">
+          <div class="tile"><small>Working days</small><strong>{{ s.workingDays }}</strong></div>
+          <div class="tile orange"><small>Late</small><strong>{{ s.late }}</strong></div>
+          <div class="tile orange"><small>Half day</small><strong>{{ s.halfDay }}</strong></div>
+          <div class="tile red"><small>Absent</small><strong>{{ s.absent }}</strong></div>
+          <div class="tile blue"><small>Leave / Perm.</small><strong>{{ s.onLeave }} / {{ s.permission }}</strong></div>
+          <div class="tile"><small>Total hours</small><strong>{{ hoursLabel(s.workedHours) }}</strong></div>
+        </div>
+      }
+
+      <div class="section-title"><i class="bi bi-clock-history"></i> {{ displayDate(date()) }}</div>
+      @if (r) {
+        <div class="day-card">
+          <div><small>Check in</small><strong>{{ displayTime(r.checkIn) }}</strong></div>
+          <div><small>Check out</small><strong>{{ r.checkIn && !r.checkOut && date() === today ? 'Working…' : displayTime(r.checkOut) }}</strong></div>
+          <div><small>Source</small><strong>{{ r.source }}</strong></div>
+          <div><small>Total hours</small><strong>{{ hoursLabel(worked()) }}</strong></div>
+          <div><small>Total break</small><strong>{{ minutesLabel(totalBreak()) }}</strong></div>
+          <div class="net"><small>Net working</small><strong>{{ hoursLabel(netWorked()) }}</strong></div>
+        </div>
+        @if (r.remarks) { <p class="muted">Remarks: {{ r.remarks }}</p> }
+
+        <div class="section-title"><i class="bi bi-cup-hot"></i> Breaks</div>
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead>
+              <tr><th>Break</th><th>Start</th><th>End</th><th class="num">Duration</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              @for (b of breaks(); track b.type) {
+                <tr>
+                  <td class="break-name"><strong><i class="bi" [class.bi-cup-hot]="b.type !== 'Lunch'" [class.bi-egg-fried]="b.type === 'Lunch'"></i> {{ b.type }}</strong></td>
+                  <td>{{ b.start ? displayTime(b.start) : '-' }}</td>
+                  <td>{{ b.end ? displayTime(b.end) : b.running ? 'Running…' : '-' }}</td>
+                  <td class="num">{{ minutesLabel(b.minutes) }}</td>
+                  <td>
+                    @if (b.running) { <span class="pill orange">On break</span> }
+                    @else if (b.start) { <span class="pill green">Taken</span> }
+                    @else { <span class="muted">Not taken</span> }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="empty-note">No attendance was recorded for this employee on this date.</p>
+      }
+
+      @if (monthRecords().length) {
+        <div class="section-title"><i class="bi bi-calendar3"></i> This month <span class="hint">· select a day to see its details</span></div>
+        <div class="items-table-wrap month-scroll">
+          <table class="items-table">
+            <thead>
+              <tr><th>Date</th><th>In</th><th>Out</th><th class="num">Net</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              @for (m of monthRecords(); track m.id) {
+                <tr class="pick" tabindex="0" [class.selected]="m.date === date()" (click)="select(m.date)" (keydown.enter)="select(m.date)">
+                  <td>{{ displayDate(m.date) }}</td>
+                  <td>{{ displayTime(m.checkIn) }}</td>
+                  <td>{{ displayTime(m.checkOut) }}</td>
+                  <td class="num">{{ hoursLabel(netOf(m)) }}</td>
+                  <td><span class="pill" [ngClass]="statusClass(m.status)">{{ m.status }}</span></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
   </div>
 
   <div class="modal-footer-custom">

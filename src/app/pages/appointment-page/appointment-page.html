@@ -59,7 +59,7 @@
                   <span class="timeline-avatar" [ngClass]="avatarColorForName(appt.name)">{{ initials(appt.name) }}</span>
                   <div class="timeline-info">
                     <span class="timeline-name">{{ appt.name }}</span>
-                    <span class="timeline-service"><i class="bi bi-magic"></i> {{ appt.customer_treatment?.treatment?.name || appt.treatment?.name || (appt.category ? appt.category + ' consultation' : 'Consultation') }}</span>
+                    <span class="timeline-service"><i class="bi bi-magic"></i> {{ treatmentNames(appt) || (appt.category ? appt.category + ' consultation' : 'Consultation') }}</span>
                     <span class="timeline-branch"><i class="bi bi-geo-alt-fill"></i> {{ appt.branch?.name || '-' }}</span>
                   </div>
                 </div>

@@ -124,11 +124,79 @@ export interface FlowAppointmentRecord {
   customer?: FlowCustomer | null;
   payments?: FlowPayment[];
   customer_treatment?: { id: number; sittings_count: number; completed_sittings: number; sittings: Sitting[]; treatment?: { id: number; name: string } | null } | null;
+  /** The treatments chosen in the consultation's Treatment step, each with its own sittings, gap and price. */
+  treatment_lines?: FlowTreatmentLine[];
+  /** Treatments' total before a discount; `total_amount` is what the customer pays (subtotal - approved discount). */
+  subtotal_amount?: string | null;
+  discount_amount?: string | null;
+  /** The latest discount request of this consultation (a cancelled one is not sent). */
+  discount_request?: FlowDiscountRequest | null;
+  /** Every treatment plan made from the consultation (one per treatment) with its sittings; empty before conversion. */
+  customer_treatments?: FlowCustomerTreatment[];
   /** Every treatment of the customer, newest first (earlier ones are view only). */
   treatment_history?: TreatmentHistory[];
   documents?: FlowDocument[];
   lead?: { source?: { source_name: string } | null; service_category?: { name: string } | null } | null;
   sms_sent?: boolean;
+}
+
+/** Treatment name(s) of an appointment: every treatment of the consultation joined with " + ", else its single treatment. */
+export function treatmentNames(a: Pick<FlowAppointmentRecord, 'treatment_lines' | 'customer_treatment' | 'treatment'>): string | null {
+  const names = (a.treatment_lines ?? []).map(l => l.treatment?.name).filter((n): n is string => !!n);
+  return names.length ? names.join(' + ') : (a.customer_treatment?.treatment?.name ?? a.treatment?.name ?? null);
+}
+
+export type DiscountType = 'percent' | 'amount';
+export type DiscountStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
+
+/** A request for a discount on a consultation and the branch manager's decision on it. */
+export interface FlowDiscountRequest {
+  id: number;
+  status: DiscountStatus;
+  appointment_id: number;
+  customer: { name: string | null; mobile_no: string | null };
+  branch_name: string | null;
+  appointment_date: string | null;
+  requested_by: string | null;
+  requested_at: string | null;
+  /** "PRP × 3, Peel × 2" */
+  treatments: string | null;
+  treatment_lines: { name: string; sittings_count: number; total_amount: number }[];
+  subtotal_amount: number;
+  discount_type: DiscountType;
+  requested_value: number;
+  requested_amount: number;
+  reason: string;
+  approved_type: DiscountType | null;
+  approved_value: number | null;
+  approved_amount: number | null;
+  decision_note: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  /** The most that can be taken off, as % of the subtotal. */
+  max_discount_percent: number;
+}
+
+/** One treatment of the consultation: its own number of sittings, gap between them and price. */
+export interface FlowTreatmentLine {
+  id: number;
+  treatment_id: number;
+  sittings_count: number;
+  sitting_interval_days: number;
+  price_per_sitting: string;
+  total_amount: string;
+  treatment?: { id: number; name: string } | null;
+}
+
+/** A treatment plan made from the consultation, with the sittings worked on the Sittings screen. */
+export interface FlowCustomerTreatment {
+  id: number;
+  treatment: { id: number; name: string } | null;
+  status: 'active' | 'completed';
+  sittings_count: number;
+  completed_sittings: number;
+  net_amount: number;
+  sittings: Sitting[];
 }
 
 /** One treatment plan of a customer with its sittings (summary, for history views). */

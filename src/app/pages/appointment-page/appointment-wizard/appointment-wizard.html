@@ -148,7 +148,7 @@
           <div class="form-field">
             <label for="wz-service-request">Service Request</label>
             <div class="input-wrap"><i class="bi bi-diagram-3"></i>
-              <select id="wz-service-request" name="serviceRequest" [(ngModel)]="plan.treatment_id" (ngModelChange)="onTreatmentChange()" [disabled]="!categoryId">
+              <select id="wz-service-request" name="serviceRequest" [(ngModel)]="serviceRequestId" (ngModelChange)="onLineTreatmentChange(0)" [disabled]="!categoryId">
                 <option [ngValue]="null">{{ !categoryId ? 'Select service category first' : filteredTreatments.length ? 'Select service request' : 'No service requests available' }}</option>
                 @for (t of filteredTreatments; track t.id) { <option [ngValue]="t.id">{{ t.name }}</option> }
               </select>
@@ -291,36 +291,43 @@
 
       <!-- ================= Step 3: Treatment ================= -->
       @if (step() === 2 && steps()[2].allowed) {
-        <div class="section-title"><i class="bi bi-capsule"></i> Treatment Details</div>
-        <div class="form-grid">
-          <div class="form-field full-width">
-            <label for="wz-treat">Treatment <span>*</span></label>
-            <div class="input-wrap"><i class="bi bi-magic"></i>
-              <select id="wz-treat" name="treat" [(ngModel)]="plan.treatment_id" (ngModelChange)="onTreatmentChange()">
-                <option [ngValue]="null">Select treatment</option>
-                @for (t of filteredTreatments; track t.id) { <option [ngValue]="t.id">{{ t.name }} - {{ inr(t.total_amount) }} / sitting ({{ t.category }})</option> }
-              </select>
-              <i class="bi bi-chevron-down select-arrow"></i>
-            </div>
-            @if (!filteredTreatments.length) { <small class="error-text">No treatments found. Add them in Treatment Management.</small> }
-          </div>
-          <div class="form-field">
-            <label for="wz-sit">Number of Sittings <span>*</span></label>
-            <div class="input-wrap"><i class="bi bi-list-ol"></i><input id="wz-sit" type="number" min="1" max="60" name="sit" [(ngModel)]="plan.sittings_count" /></div>
-          </div>
-          <div class="form-field">
-            <label for="wz-gap">Gap between sittings (days)</label>
-            <div class="input-wrap"><i class="bi bi-calendar2-range"></i><input id="wz-gap" type="number" min="1" max="180" name="gap" [(ngModel)]="plan.sitting_interval_days" /></div>
-          </div>
+        <div class="section-title">
+          <i class="bi bi-capsule"></i> Treatment Details
+          <span class="spacer"></span>
+          <button type="button" class="link-btn" (click)="addLine()" [disabled]="!canAddLine"><i class="bi bi-plus-lg"></i> Add treatment</button>
         </div>
 
-        <div class="wz-calc">
-          <div><small>Price / sitting</small><strong>{{ inr(selectedTreatment?.total_amount ?? 0) }}</strong></div>
-          <span class="op">×</span>
-          <div><small>Sittings</small><strong>{{ plan.sittings_count || 0 }}</strong></div>
-          <span class="op">=</span>
-          <div class="total"><small>Total treatment price</small><strong>{{ inr(treatmentTotal) }}</strong></div>
-        </div>
+        @for (line of plan.lines; track $index; let i = $index) {
+          <div class="wz-treat-row">
+            @if (plan.lines.length > 1) {
+              <div class="wz-treat-head">
+                <strong>Treatment {{ i + 1 }}</strong>
+                <button type="button" class="icon-btn" (click)="removeLine(i)" [attr.aria-label]="'Remove treatment ' + (i + 1)" title="Remove this treatment"><i class="bi bi-trash3"></i></button>
+              </div>
+            }
+            <div class="form-grid">
+              <div class="form-field full-width">
+                <label [attr.for]="'wz-treat-' + i">Treatment <span>*</span></label>
+                <div class="input-wrap"><i class="bi bi-magic"></i>
+                  <select [id]="'wz-treat-' + i" [name]="'treat-' + i" [(ngModel)]="line.treatment_id" (ngModelChange)="onLineTreatmentChange(i)">
+                    <option [ngValue]="null">Select treatment</option>
+                    @for (t of optionsFor(i); track t.id) { <option [ngValue]="t.id">{{ t.name }} ({{ t.category }})</option> }
+                  </select>
+                  <i class="bi bi-chevron-down select-arrow"></i>
+                </div>
+                @if (!filteredTreatments.length) { <small class="error-text">No treatments found. Add them in Treatment Management.</small> }
+              </div>
+              <div class="form-field">
+                <label [attr.for]="'wz-sit-' + i">Number of Sittings <span>*</span></label>
+                <div class="input-wrap"><i class="bi bi-list-ol"></i><input [id]="'wz-sit-' + i" type="number" min="1" max="60" [name]="'sit-' + i" [(ngModel)]="line.sittings_count" /></div>
+              </div>
+              <div class="form-field">
+                <label [attr.for]="'wz-gap-' + i">Gap between sittings (days)</label>
+                <div class="input-wrap"><i class="bi bi-calendar2-range"></i><input [id]="'wz-gap-' + i" type="number" min="1" max="180" [name]="'gap-' + i" [(ngModel)]="line.sitting_interval_days" /></div>
+              </div>
+            </div>
+          </div>
+        }
 
         <div class="section-title"><i class="bi bi-chat-square-text"></i> Doctor Suggestion</div>
         <div class="form-field full-width">
@@ -330,11 +337,116 @@
 
       <!-- ================= Step 4: Payment ================= -->
       @if (step() === 3 && steps()[3].allowed) {
-        <div class="wz-calc compact">
-          <div><small>Treatment</small><strong>{{ a.treatment?.name }}</strong></div>
-          <div><small>Sittings</small><strong>{{ a.sittings_count }} × {{ inr(a.price_per_sitting) }}</strong></div>
-          <div class="total"><small>Total</small><strong>{{ inr(total) }}</strong></div>
+        <div class="section-title"><i class="bi bi-receipt-cutoff"></i> Price Details</div>
+        <div class="items-table-wrap">
+          <table class="items-table wz-price-table">
+            <thead>
+              <tr><th>Treatment</th><th class="num">Price / sitting</th><th class="num">Sittings</th><th class="num">Gap</th><th class="num">Amount</th></tr>
+            </thead>
+            <tbody>
+              @for (line of priceLines; track $index) {
+                <tr>
+                  <td><strong>{{ line.name }}</strong></td>
+                  <td class="num">{{ inr(line.price) }}</td>
+                  <td class="num">{{ line.sittings }}</td>
+                  <td class="num">{{ line.sittings > 1 ? 'every ' + line.gap + ' days' : '-' }}</td>
+                  <td class="num"><strong>{{ inr(line.amount) }}</strong></td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              @if (discountApplied > 0) {
+                <tr><td colspan="4">Total treatment price</td><td class="num">{{ inr(subtotal) }}</td></tr>
+                <tr class="disc">
+                  <td colspan="4"><i class="bi bi-patch-check-fill"></i> Discount approved by {{ discountRequest?.decided_by || 'the branch manager' }}@if (discountRequest?.approved_type === 'percent') { ({{ discountRequest?.approved_value }}%) }</td>
+                  <td class="num">− {{ inr(discountApplied) }}</td>
+                </tr>
+                <tr><td colspan="4">Total payable</td><td class="num">{{ inr(total) }}</td></tr>
+              } @else {
+                <tr><td colspan="4">Total treatment price</td><td class="num">{{ inr(total) }}</td></tr>
+              }
+            </tfoot>
+          </table>
         </div>
+
+        <!-- Discount: asked here, decided by the branch manager (the answer shows up here by itself) -->
+        @if (showDiscountPanel) {
+          <div class="wz-discount" [class.on]="discountToggleOn">
+            <div class="wz-discount-head">
+              <label class="wz-switch">
+                <input type="checkbox" name="discountOn" [checked]="discountToggleOn" [disabled]="discountToggleLocked || !canRequestDiscount" (change)="toggleDiscount($any($event.target).checked)" />
+                <span class="track"><span class="thumb"></span></span>
+                <strong><i class="bi bi-percent"></i> Discount</strong>
+              </label>
+              <small>Needs the branch manager's approval</small>
+            </div>
+
+            @if (discountToggleOn) {
+              @if (discountRequest; as dr) {
+                @switch (dr.status) {
+                  @case ('Pending') {
+                    <div class="wz-disc-card pending" role="status">
+                      <i class="bi bi-hourglass-split spin"></i>
+                      <div>
+                        <strong>Waiting for the branch manager</strong>
+                        <small>Asked {{ dr.discount_type === 'percent' ? dr.requested_value + '%' : inr(dr.requested_value) }} ({{ inr(dr.requested_amount) }} off) · this updates by itself</small>
+                        <p>{{ dr.reason }}</p>
+                      </div>
+                      <button type="button" class="link-btn" [disabled]="discountBusy()" (click)="cancelDiscountRequest()"><i class="bi bi-x-lg"></i> Cancel request</button>
+                    </div>
+                  }
+                  @case ('Approved') {
+                    <div class="wz-disc-card approved" role="status">
+                      <i class="bi bi-check-circle-fill"></i>
+                      <div>
+                        <strong>Approved: {{ dr.approved_type === 'percent' ? dr.approved_value + '%' : inr(dr.approved_value) }} ({{ inr(dr.approved_amount) }} off)</strong>
+                        <small>by {{ dr.decided_by }} · the customer pays {{ inr(total) }}</small>
+                        @if (dr.decision_note) { <p>{{ dr.decision_note }}</p> }
+                      </div>
+                    </div>
+                  }
+                  @case ('Rejected') {
+                    <div class="wz-disc-card rejected" role="status">
+                      <i class="bi bi-x-circle-fill"></i>
+                      <div>
+                        <strong>Rejected by {{ dr.decided_by }}</strong>
+                        <small>Asked {{ dr.discount_type === 'percent' ? dr.requested_value + '%' : inr(dr.requested_value) }} · you can ask again below</small>
+                        @if (dr.decision_note) { <p>{{ dr.decision_note }}</p> }
+                      </div>
+                    </div>
+                  }
+                }
+              }
+
+              @if (canAskDiscount) {
+                <div class="wz-disc-form">
+                  <div class="wz-seg" role="group" aria-label="Discount type">
+                    <button type="button" [class.on]="disc.type === 'percent'" (click)="setDiscountType('percent')"><i class="bi bi-percent"></i> Percentage</button>
+                    <button type="button" [class.on]="disc.type === 'amount'" (click)="setDiscountType('amount')"><i class="bi bi-currency-rupee"></i> Amount</button>
+                  </div>
+                  <div class="form-grid">
+                    <div class="form-field">
+                      <label for="wz-disc-value">{{ disc.type === 'percent' ? 'Discount %' : 'Discount amount' }}</label>
+                      <div class="input-wrap"><i class="bi" [ngClass]="disc.type === 'percent' ? 'bi-percent' : 'bi-currency-rupee'"></i><input id="wz-disc-value" type="number" min="0" step="0.01" name="discValue" [(ngModel)]="disc.value" /></div>
+                    </div>
+                    <div class="form-field">
+                      <label>Customer would pay</label>
+                      <div class="wz-disc-preview" [class.bad]="askAmount > askCap + 0.001"><span>{{ inr(askAmount) }} off</span><strong>{{ inr(askPayable) }}</strong></div>
+                    </div>
+                    <div class="form-field full-width">
+                      <label for="wz-disc-reason">Reason (the branch manager reads this) <span>*</span></label>
+                      <textarea id="wz-disc-reason" class="wz-textarea" rows="2" name="discReason" maxlength="1000" [(ngModel)]="disc.reason" placeholder="Why does this customer need a discount?"></textarea>
+                    </div>
+                  </div>
+                  @if (discountError()) { <p class="wz-disc-error"><i class="bi bi-exclamation-circle"></i> {{ discountError() }}</p> }
+                  <button type="button" class="wz-disc-send" [disabled]="discountBusy()" (click)="sendDiscountRequest()">
+                    <i class="bi" [ngClass]="discountBusy() ? 'bi-arrow-repeat spin' : 'bi-send'"></i> {{ discountBusy() ? 'Sending…' : 'Send to branch manager' }}
+                  </button>
+                </div>
+              }
+            }
+          </div>
+        }
 
         <div class="section-title"><i class="bi bi-credit-card"></i> Payment Mode</div>
         <div class="wz-paymodes">
@@ -366,7 +478,7 @@
         </div>
 
         <div class="wz-summary">
-          <div><span>Total</span><strong>{{ inr(total) }}</strong></div>
+          <div><span>{{ discountApplied > 0 ? 'Total payable' : 'Total' }}</span><strong>{{ inr(total) }}</strong></div>
           <div><span>Paying now</span><strong>{{ inr(pay.paid_amount) }}</strong></div>
           @if (pay.payment_mode === 'EMI') { <div><span>EMI</span><strong>{{ pay.emi_months }} × {{ inr(emiInstalment) }}</strong></div> }
           <div class="grand"><span>Balance</span><strong>{{ inr(balance) }}</strong></div>

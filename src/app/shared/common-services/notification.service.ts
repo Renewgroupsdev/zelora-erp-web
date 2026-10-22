@@ -11,6 +11,8 @@ export interface AppNotification {
   read: boolean;
   /** Route to navigate to when the notification is clicked, if any. */
   link?: string;
+  /** Something other than a route to do when it is clicked (the navbar handles it), e.g. open a discount request to decide it. */
+  action?: { kind: 'discount-review'; id: number };
 }
 
 const ICONS: Record<NotificationType, string> = {
@@ -68,6 +70,32 @@ export class NotificationService {
     };
 
     this._notifications.update((list) => [entry, ...list]);
+  }
+
+  /**
+   * Pending discount requests (GET appointment-flow/discount-requests) as notifications for the branch manager. Each
+   * request has one notification (id DISC-<id>) that keeps its read state while it stays pending and disappears once it
+   * is decided. Returns how many requests are new since the last sync (the caller may alert on them).
+   */
+  syncDiscountRequests(requests: { id: number; customer: string; treatments: string; subtotal: number; asked: string; requestedBy: string; at: Date }[]): number {
+    const known = new Set(this._notifications().filter(n => n.id.startsWith('DISC-')).map(n => n.id));
+    const keep = new Map(requests.map(r => [`DISC-${r.id}`, r]));
+    const fresh = requests.filter(r => !known.has(`DISC-${r.id}`));
+
+    this._notifications.update(list => [
+      ...fresh.map((r): AppNotification => ({
+        id: `DISC-${r.id}`,
+        type: 'discount',
+        title: 'Discount approval needed',
+        message: `${r.requestedBy} asked ${r.asked} off ${r.customer}'s ${r.treatments} (total ₹${r.subtotal.toLocaleString('en-IN')}).`,
+        timestamp: r.at,
+        read: false,
+        action: { kind: 'discount-review', id: r.id },
+      })),
+      ...list.filter(n => !n.id.startsWith('DISC-') || keep.has(n.id)),
+    ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+
+    return fresh.length;
   }
 
   markRead(id: string): void {

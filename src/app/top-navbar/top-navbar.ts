@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, ElementRef, HostListener, afterNextRender, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
 import { NavLayoutService } from '../services/nav-layout.service';
 import { AppNotification, NotificationService } from '../shared/common-services/notification.service';
 import { AuthService } from '../core/auth/auth.service';
@@ -8,6 +9,8 @@ import { roleLabel } from '../core/auth/auth.model';
 import { BranchContextService, ScopeType } from '../shared/common-services/branch-context.service';
 import { BranchOptionsService } from '../shared/common-services/branch-options.service';
 import { BranchChat } from '../shared/components/branch-chat/branch-chat';
+import { DiscountRequestsService } from '../shared/common-services/discount-requests.service';
+import { DiscountReviewDialog } from '../shared/components/discount-review-dialog/discount-review-dialog';
 
 interface ScopeTypeInfo {
   value: ScopeType;
@@ -126,10 +129,24 @@ export class TopNavbar {
     public navLayout: NavLayoutService,
     public notifications: NotificationService,
     private router: Router,
-  ) { }
+    private dialog: MatDialog,
+    private discounts: DiscountRequestsService,
+  ) {
+    // Branch managers / approvers: discount requests of their branch show up here as notifications.
+    this.discounts.start();
+  }
 
   onNotificationClick(notification: AppNotification): void {
     this.notifications.markRead(notification.id);
+
+    if (notification.action?.kind === 'discount-review') {
+      this.navLayout.closeNotifications();
+      this.dialog
+        .open(DiscountReviewDialog, { width: '640px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, restoreFocus: true, data: { id: notification.action.id } })
+        .afterClosed()
+        .subscribe(() => this.discounts.refresh(true)); // a decided request leaves the bell at once
+      return;
+    }
 
     if (notification.link) {
       this.navLayout.closeNotifications();

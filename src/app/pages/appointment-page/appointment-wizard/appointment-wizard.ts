@@ -9,7 +9,7 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { HairGradeIcon } from '../../../shared/components/hair-grade-icon/hair-grade-icon';
 import {
-  ALLERGIES, EMI_MONTHS, FAMILY_HISTORY, FlowAppointmentRecord, FlowDocument, HAIR_LOSS_PATTERN, HEARD_FROM, LUDWIG_GRADES,
+  ALLERGIES, DiscountType, EMI_MONTHS, FAMILY_HISTORY, FlowAppointmentRecord, FlowDocument, HAIR_LOSS_PATTERN, HEARD_FROM, LUDWIG_GRADES,
   NORWOOD_GRADES, PAYMENT_MODES, PaymentMode, SKIN_CONCERNS, SKIN_TYPES, inr,
 } from '../../../shared/models/appointment-flow.model';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
@@ -22,6 +22,16 @@ interface TreatmentOption {
   category: string;
   category_id: number;
 }
+
+/** One treatment row of the Treatment step. */
+interface PlanLine {
+  treatment_id: number | null;
+  sittings_count: number;
+  sitting_interval_days: number;
+}
+
+const MAX_TREATMENTS = 10;
+const blankLine = (): PlanLine => ({ treatment_id: null, sittings_count: 1, sitting_interval_days: 30 });
 
 /** Which clinical examination sections a service category needs. */
 type ExamKind = 'Hair' | 'Skin' | 'Combo' | 'Other';
@@ -160,11 +170,18 @@ export class AppointmentWizard implements OnInit {
   vitals = { bp: '', weight: null as number | null, is_allergy: false };
   c: Consultation = emptyConsultation();
 
-  // Step 3
-  plan = { treatment_id: null as number | null, sittings_count: 1, sitting_interval_days: 30, doctor_suggestion: '' };
+  // Step 3: one row per treatment, each with its own number of sittings and gap between them.
+  plan: { lines: PlanLine[]; doctor_suggestion: string } = { lines: [blankLine()], doctor_suggestion: '' };
 
   // Step 4
   pay = { payment_mode: 'UPI' as PaymentMode, paid_amount: 0, transaction_no: '', emi_months: 6 };
+
+  // Step 4: discount (asked here, decided by the branch manager)
+  /** The "Discount" switch of the Payment step. */
+  discountOn = false;
+  disc: { type: DiscountType; value: number | null; reason: string } = { type: 'percent', value: null, reason: '' };
+  readonly discountBusy = signal(false);
+  readonly discountError = signal<string | null>(null);
 
   /** Once the terms are accepted the consultation is locked (the invoice is issued). */
   readonly locked = computed(() => !!this.appt()?.terms_accepted_at || this.appt()?.status === 'Converted');
@@ -219,10 +236,14 @@ export class AppointmentWizard implements OnInit {
     this.vitals = { bp: a.bp ?? '', weight: a.weight !== null ? Number(a.weight) : null, is_allergy: !!a.is_allergy };
     this.c = { ...emptyConsultation(), ...(a.consultation ?? {}) };
     this.c.hairPull = { frontal: null, occipital: null, lesional: null, ...(a.consultation?.['hairPull'] ?? {}) };
+    // Saved treatments; an older appointment only has its single treatment on the appointment itself.
+    const saved = a.treatment_lines?.length
+      ? a.treatment_lines
+      : a.treatment_id ? [{ treatment_id: a.treatment_id, sittings_count: a.sittings_count, sitting_interval_days: a.sitting_interval_days }] : [];
     this.plan = {
-      treatment_id: a.treatment_id,
-      sittings_count: a.sittings_count || a.treatment?.default_sittings || 1,
-      sitting_interval_days: a.sitting_interval_days || 30,
+      lines: saved.length
+        ? saved.map(l => ({ treatment_id: Number(l.treatment_id), sittings_count: Number(l.sittings_count) || 1, sitting_interval_days: Number(l.sitting_interval_days) || 30 }))
+        : [blankLine()],
       doctor_suggestion: a.doctor_suggestion ?? '',
     };
     this.syncCategoryId();
@@ -363,7 +384,7 @@ export class AppointmentWizard implements OnInit {
       return void this.error.set('Hair pull counts are out of 50.');
     }
     const categoryId = this.categoryId;
-    const plan = { ...this.plan };
+    const lines = this.plan.lines.map(l => ({ ...l }));
 
     this.send(this.api.PUT(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/clinical`, {
       gender: this.profile.gender,
@@ -372,13 +393,13 @@ export class AppointmentWizard implements OnInit {
       bp: this.vitals.bp || null,
       weight: this.vitals.weight,
       is_allergy: this.vitals.is_allergy || this.c.allergies.length > 0,
-    }), () => this.keepServiceRequest(categoryId, plan));
+    }), () => this.keepServiceRequest(categoryId, lines));
   }
 
   /** The service request picked here is saved with step 3, so keep it when the clinical save reloads the appointment. */
-  private keepServiceRequest(categoryId: number | null, plan: typeof this.plan): void {
-    if (!plan.treatment_id || plan.treatment_id === this.plan.treatment_id) return;
-    this.plan = { ...this.plan, treatment_id: plan.treatment_id, sittings_count: plan.sittings_count };
+  private keepServiceRequest(categoryId: number | null, lines: PlanLine[]): void {
+    if (!lines[0]?.treatment_id || lines[0].treatment_id === this.plan.lines[0]?.treatment_id) return;
+    this.plan = { ...this.plan, lines };
     this.categoryId = categoryId;
   }
 
@@ -394,7 +415,7 @@ export class AppointmentWizard implements OnInit {
     this.categoryId = null;
     this.category = '';
     this.c.grade = '';
-    this.plan.treatment_id = null;
+    this.plan.lines.forEach(l => (l.treatment_id = null));
   }
 
   /** Hair / Skin / Combo / Other of the picked category (older appointments only saved "Hair" / "Skin"). */
@@ -416,7 +437,11 @@ export class AppointmentWizard implements OnInit {
     if (!this.showHairExam || !(cat.kind === 'Hair' || cat.kind === 'Combo')) this.c.grade = '';
     this.category = cat.name;
     this.categoryId = cat.id;
-    if (this.selectedTreatment && this.selectedTreatment.category_id !== cat.id) this.plan.treatment_id = null;
+    // A treatment of another category no longer applies.
+    this.plan.lines.forEach(l => {
+      const t = this.treatmentOf(l);
+      if (t && t.category_id !== cat.id) l.treatment_id = null;
+    });
   }
 
   /** Picks the service category from the saved service request, else the saved / lead's category name, else Hair / Skin. */
@@ -444,29 +469,68 @@ export class AppointmentWizard implements OnInit {
     return cat && matching.length ? matching : this.treatments();
   }
 
+  /** The treatment picked on a row. */
+  treatmentOf(line: PlanLine | undefined): TreatmentOption | undefined {
+    return line ? this.treatments().find(t => t.id === Number(line.treatment_id)) : undefined;
+  }
+
+  /** The first treatment - the "Service Request" picked on the Clinical Examination step. */
   get selectedTreatment(): TreatmentOption | undefined {
-    return this.treatments().find(t => t.id === Number(this.plan.treatment_id));
+    return this.treatmentOf(this.plan.lines[0]);
   }
 
-  get treatmentTotal(): number {
-    return Math.round((this.selectedTreatment?.total_amount ?? 0) * (Number(this.plan.sittings_count) || 0) * 100) / 100;
+  /** Service Request (step 2) is the first treatment row. */
+  get serviceRequestId(): number | null {
+    return this.plan.lines[0]?.treatment_id ?? null;
   }
 
-  onTreatmentChange(): void {
-    const t = this.selectedTreatment;
-    if (t) this.plan.sittings_count = t.default_sittings || 1;
+  set serviceRequestId(id: number | null) {
+    if (!this.plan.lines.length) this.plan.lines.push(blankLine());
+    this.plan.lines[0].treatment_id = id;
+  }
+
+  /** Treatments a row can pick: the category's, minus the ones other rows already have (each treatment only once). */
+  optionsFor(index: number): TreatmentOption[] {
+    const taken = new Set(this.plan.lines.filter((_, i) => i !== index).map(l => Number(l.treatment_id)));
+    const own = this.treatmentOf(this.plan.lines[index]);
+    const base = this.filteredTreatments;
+    return (own && !base.includes(own) ? [own, ...base] : base).filter(t => !taken.has(t.id));
+  }
+
+  get canAddLine(): boolean {
+    return this.plan.lines.length < MAX_TREATMENTS && this.filteredTreatments.some(t => !this.plan.lines.some(l => Number(l.treatment_id) === t.id));
+  }
+
+  addLine(): void {
+    if (this.canAddLine) this.plan.lines.push(blankLine());
+  }
+
+  removeLine(index: number): void {
+    if (this.plan.lines.length > 1) this.plan.lines.splice(index, 1);
+  }
+
+  /** A row's treatment changed: start from that treatment's usual number of sittings. */
+  onLineTreatmentChange(index: number): void {
+    const t = this.treatmentOf(this.plan.lines[index]);
+    if (t) this.plan.lines[index].sittings_count = t.default_sittings || 1;
   }
 
   private saveTreatment(): void {
-    if (!this.plan.treatment_id) return void this.error.set('Choose the treatment.');
-    if (!(this.plan.sittings_count >= 1)) return void this.error.set('Sittings must be at least 1.');
+    const lines = this.plan.lines;
+    if (lines.some(l => !l.treatment_id)) return void this.error.set(lines.length > 1 ? 'Choose the treatment for every row.' : 'Choose the treatment.');
+    if (lines.some(l => !(Number(l.sittings_count) >= 1))) return void this.error.set('Sittings must be at least 1 for every treatment.');
+    if (new Set(lines.map(l => Number(l.treatment_id))).size !== lines.length) return void this.error.set('A treatment can only be added once - change its sittings instead.');
+
     this.send(this.api.PUT(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/treatment`, {
-      treatment_id: Number(this.plan.treatment_id),
-      sittings_count: Number(this.plan.sittings_count),
-      sitting_interval_days: Number(this.plan.sitting_interval_days) || 30,
+      treatments: lines.map(l => ({
+        treatment_id: Number(l.treatment_id),
+        sittings_count: Number(l.sittings_count),
+        sitting_interval_days: Number(l.sitting_interval_days) || 30,
+      })),
       doctor_suggestion: this.plan.doctor_suggestion || null,
     }), () => {
-      if (!this.pay.paid_amount) this.pay.paid_amount = this.treatmentTotal;
+      // The Payment step opens with the API's total (every treatment x its sittings).
+      if (!this.pay.paid_amount) this.pay.paid_amount = this.total;
     });
   }
 
@@ -474,6 +538,21 @@ export class AppointmentWizard implements OnInit {
 
   get total(): number {
     return Number(this.appt()?.total_amount ?? 0);
+  }
+
+  /** Price details of the Payment step: one row per treatment (price per sitting x sittings), as saved by the API. */
+  get priceLines(): { name: string; price: number; sittings: number; gap: number; amount: number }[] {
+    const a = this.appt();
+    if (!a) return [];
+    if (a.treatment_lines?.length) {
+      return a.treatment_lines.map(l => ({
+        name: l.treatment?.name ?? 'Treatment', price: Number(l.price_per_sitting), sittings: Number(l.sittings_count),
+        gap: Number(l.sitting_interval_days), amount: Number(l.total_amount),
+      }));
+    }
+    return a.treatment_id
+      ? [{ name: a.treatment?.name ?? 'Treatment', price: Number(a.price_per_sitting), sittings: Number(a.sittings_count), gap: Number(a.sitting_interval_days), amount: Number(a.total_amount) }]
+      : [];
   }
 
   get balance(): number {
@@ -499,6 +578,168 @@ export class AppointmentWizard implements OnInit {
       transaction_no: this.pay.transaction_no.trim() || null,
       emi_months: this.pay.payment_mode === 'EMI' ? this.pay.emi_months : null,
     }), undefined, res => (res?.data?.sms_sent ? this.toast.success(res.message) : this.toast.warning(res?.message)));
+  }
+
+  // ---------------------------------------------------------------- step 4: discount
+
+  /** Roles & Permissions -> Appointment module action that lets a role ask for a discount (the API checks the same). */
+  private static readonly REQUEST_DISCOUNT_ACTION = 'request-discount';
+  /** Used for the live preview only; the API enforces the real limit (and says so). */
+  private static readonly DEFAULT_MAX_DISCOUNT = 50;
+
+  get discountRequest() {
+    const r = this.appt()?.discount_request ?? null;
+    return r && r.status !== 'Cancelled' ? r : null;
+  }
+
+  /** The treatments' total before any discount. */
+  get subtotal(): number {
+    const s = Number(this.appt()?.subtotal_amount);
+    return s > 0 ? s : this.total + this.discountApplied;
+  }
+
+  /** The discount a branch manager approved (rupees). */
+  get discountApplied(): number {
+    return Number(this.appt()?.discount_amount) || 0;
+  }
+
+  /** Staff may ask while the payment is not saved yet and their role is ticked on "Request Discount". */
+  get canRequestDiscount(): boolean {
+    const a = this.appt();
+    return !!a && !this.locked() && !a.terms_sent_at && this.subtotal > 0 && this.auth.hasActionAccess(AppointmentWizard.REQUEST_DISCOUNT_ACTION);
+  }
+
+  /** The panel is shown to who may ask, and to anyone once a request exists (its outcome is part of the payment). */
+  get showDiscountPanel(): boolean {
+    return this.canRequestDiscount || !!this.discountRequest;
+  }
+
+  get discountToggleOn(): boolean {
+    return this.discountOn || !!this.discountRequest;
+  }
+
+  /** A waiting or approved discount cannot be switched off from here (cancel the request instead). */
+  get discountToggleLocked(): boolean {
+    const status = this.discountRequest?.status;
+    return status === 'Pending' || status === 'Approved';
+  }
+
+  /** The request form is shown until a request is waiting or approved. */
+  get canAskDiscount(): boolean {
+    return this.canRequestDiscount && this.discountToggleOn && !this.discountToggleLocked;
+  }
+
+  toggleDiscount(on: boolean): void {
+    this.discountOn = on;
+    this.discountError.set(null);
+  }
+
+  setDiscountType(type: DiscountType): void {
+    if (this.disc.type === type) return;
+    const amount = this.askAmount;
+    this.disc.type = type;
+    // Keep the same rupee value when switching, so only a little has to be adjusted.
+    this.disc.value = type === 'amount' ? amount || null : this.subtotal > 0 ? Math.round(amount / this.subtotal * 10000) / 100 || null : null;
+  }
+
+  /** Rupee value of what is typed. */
+  get askAmount(): number {
+    const v = Number(this.disc.value) || 0;
+    if (v <= 0) return 0;
+    return this.disc.type === 'percent' ? Math.round(this.subtotal * v / 100 * 100) / 100 : Math.round(v * 100) / 100;
+  }
+
+  get askCap(): number {
+    return Math.round(this.subtotal * (this.discountRequest?.max_discount_percent ?? AppointmentWizard.DEFAULT_MAX_DISCOUNT) / 100 * 100) / 100;
+  }
+
+  get askPayable(): number {
+    return Math.max(0, this.subtotal - this.askAmount);
+  }
+
+  sendDiscountRequest(): void {
+    this.discountError.set(null);
+    if (!(this.askAmount > 0)) return void this.discountError.set('Enter the discount you are asking for.');
+    if (this.askAmount > this.askCap + 0.001) return void this.discountError.set(`The discount can be at most ${inr(this.askCap)} (${AppointmentWizard.DEFAULT_MAX_DISCOUNT}% of the total).`);
+    if (this.disc.reason.trim().length < 3) return void this.discountError.set('Write the reason - the branch manager reads it before deciding.');
+
+    this.discountBusy.set(true);
+    this.api.POST(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/discount-request`, {
+      discount_type: this.disc.type,
+      value: Number(this.disc.value),
+      reason: this.disc.reason.trim(),
+    }).pipe(finalize(() => this.discountBusy.set(false))).subscribe({
+      next: (res: any) => {
+        this.changed = true;
+        this.appt.set(res.data); // not apply(): what is typed on the payment (amount, mode) stays
+        this.disc = { type: 'percent', value: null, reason: '' };
+        this.toast.success(res?.message || 'Discount request sent.');
+      },
+      error: (err: any) => this.discountError.set(this.messageOf(err)),
+    });
+  }
+
+  cancelDiscountRequest(): void {
+    const r = this.discountRequest;
+    if (!r || r.status !== 'Pending') return;
+    this.discountBusy.set(true);
+    this.api.Delete(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/discount-request/${r.id}`, {})
+      .pipe(finalize(() => this.discountBusy.set(false)))
+      .subscribe({
+        next: (res: any) => {
+          this.appt.set(res.data);
+          this.discountOn = false;
+          this.toast.success(res?.message || 'Discount request cancelled.');
+        },
+        error: (err: any) => this.discountError.set(this.messageOf(err)),
+      });
+  }
+
+  /**
+   * While a request is waiting, the Payment step looks for the branch manager's decision every few seconds (and as soon
+   * as the tab is looked at again) and shows it at once: an approval lowers the payable total, a rejection shows the note.
+   */
+  private readonly discountWatcher = (() => {
+    const destroyRef = inject(DestroyRef);
+    const check = () => {
+      const a = this.appt();
+      if (!a || this.step() !== 3 || a.discount_request?.status !== 'Pending' || this.saving() || document.visibilityState === 'hidden') return;
+      this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}`).subscribe({
+        next: (res: any) => this.onDiscountUpdate(res?.data),
+        error: () => undefined, // the next tick simply tries again
+      });
+    };
+    const timer = setInterval(check, 4000);
+    document.addEventListener('visibilitychange', check);
+    destroyRef.onDestroy(() => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', check);
+    });
+  })();
+
+  private onDiscountUpdate(a: FlowAppointmentRecord | undefined): void {
+    const before = this.appt()?.discount_request;
+    if (!a || before?.status !== 'Pending') return;
+    const after = a.discount_request;
+    if (after?.status === 'Pending') return;
+
+    const previousTotal = this.total;
+    this.appt.set(a); // keep what is typed on the payment
+    this.changed = true;
+
+    if (after?.status === 'Approved') {
+      // The payable total dropped: the amount paying now follows it unless the user set a smaller one.
+      if (!this.pay.paid_amount || this.pay.paid_amount >= previousTotal || this.pay.paid_amount > this.total) this.pay.paid_amount = this.total;
+      const asked = after.approved_type === 'percent' ? `${after.approved_value}% (${inr(after.approved_amount)})` : inr(after.approved_amount);
+      this.toast.success('Discount approved', `${asked} off - the customer now pays ${inr(this.total)}.`);
+    } else if (after?.status === 'Rejected') {
+      this.toast.warning('Discount rejected', after.decision_note ?? undefined);
+    }
+  }
+
+  private messageOf(err: any): string {
+    const first = err?.error?.errors ? (Object.values(err.error.errors)[0] as string[])?.[0] : null;
+    return first || err?.error?.message || 'Could not send. Please try again.';
   }
 
   // ---------------------------------------------------------------- step 5

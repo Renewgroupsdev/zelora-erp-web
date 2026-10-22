@@ -9,7 +9,7 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
-import { FlowAppointmentRecord, PAYMENT_MODES, PaymentMode, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
+import { FlowAppointmentRecord, FlowCustomerTreatment, PAYMENT_MODES, PaymentMode, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
 
 /** Module action whose roles may write the doctor's session notes - assigned in Roles & Permissions (the API checks the same). */
 const SITTING_NOTES_ACTION = 'sitting-notes';
@@ -48,7 +48,12 @@ export class SittingsDialog implements OnInit {
   readonly inr = inr;
   readonly paymentModes = PAYMENT_MODES;
   readonly appt = signal<FlowAppointmentRecord | null>(null);
+  /** The sittings shown: those of the treatment picked in the tabs (a consultation can have several treatments). */
   readonly sittings = signal<Sitting[]>([]);
+  /** Every treatment plan of the consultation, each with its own sittings. */
+  readonly plans = signal<FlowCustomerTreatment[]>([]);
+  readonly activePlanId = signal<number | null>(null);
+  readonly activePlan = computed(() => this.plans().find(p => p.id === this.activePlanId()) ?? null);
   readonly busy = signal<number | null>(null);
   readonly viewer = signal<{ photos: SittingPhoto[]; index: number } | null>(null);
   drafts: Record<number, SittingDraft> = {};
@@ -71,7 +76,22 @@ export class SittingsDialog implements OnInit {
       next: (res: any) => {
         const a: FlowAppointmentRecord = res.data;
         this.appt.set(a);
-        this.setSittings(a.customer_treatment?.sittings ?? []);
+        // One plan per treatment; an older appointment only has its single plan.
+        const plans: FlowCustomerTreatment[] = a.customer_treatments?.length
+          ? a.customer_treatments
+          : a.customer_treatment
+            ? [{
+              id: a.customer_treatment.id,
+              treatment: a.customer_treatment.treatment ?? (a.treatment ? { id: a.treatment.id, name: a.treatment.name } : null),
+              status: 'active', sittings_count: a.customer_treatment.sittings_count, completed_sittings: a.customer_treatment.completed_sittings,
+              net_amount: 0, sittings: a.customer_treatment.sittings,
+            }]
+            : [];
+        this.plans.set(plans);
+        // Stay on the treatment being worked on after a reload; otherwise open the first one that still has sittings to do.
+        const current = plans.find(p => p.id === this.activePlanId()) ?? plans.find(p => p.sittings.some(s => s.status !== 'completed')) ?? plans[0];
+        this.activePlanId.set(current?.id ?? null);
+        this.setSittings(current?.sittings ?? []);
       },
       error: (err: any) => {
         this.toast.error(err?.error?.message || 'Could not load the sittings.');
@@ -100,9 +120,22 @@ export class SittingsDialog implements OnInit {
     };
   }
 
+  selectPlan(id: number): void {
+    const plan = this.plans().find(p => p.id === id);
+    if (!plan || plan.id === this.activePlanId()) return;
+    this.activePlanId.set(plan.id);
+    this.setSittings(plan.sittings);
+  }
+
+  /** Sittings of a treatment that are completed (for its tab). */
+  planDone(plan: FlowCustomerTreatment): number {
+    return plan.sittings.filter(s => s.status === 'completed').length;
+  }
+
   /** Replaces one sitting with the API's fresh copy. */
   private patch(updated: Sitting): void {
     this.sittings.update(list => list.map(s => (s.id === updated.id ? updated : s)));
+    this.plans.update(plans => plans.map(p => ({ ...p, sittings: p.sittings.map(s => (s.id === updated.id ? updated : s)) })));
     this.drafts[updated.id] = this.freshDraft(updated);
   }
 

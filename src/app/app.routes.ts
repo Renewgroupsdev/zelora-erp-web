@@ -36,6 +36,7 @@ export const routes: Routes = [
       { path: 'consultations', loadComponent: () => import('./pages/consultations/consultations').then(m => m.Consultations) },
       { path: 'masters/service-category', loadComponent: () => import('./pages/look-up-master/service-category/service-category').then(m => m.ServiceCategory) },
       { path: 'masters/source', loadComponent: () => import('./pages/look-up-master/source/source').then(m => m.Source) },
+      { path: 'masters/department', loadComponent: () => import('./pages/look-up-master/department/department').then(m => m.Department) },
       { path: 'masters/lead-status', loadComponent: () => import('./pages/look-up-master/lead-status/lead-status').then(m => m.LeadStatus) },
       { path: 'masters/users', loadComponent: () => import('./pages/look-up-master/users/users').then(m => m.Users) },
       { path: 'masters/roles', loadComponent: () => import('./pages/look-up-master/roles/roles').then(m => m.Roles) },

@@ -1,0 +1,110 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-percent"></i></div>
+      <div class="title-content">
+        <h2>
+          Discount request
+          @if (req(); as r) { <span class="pill" [class.orange]="r.status === 'Pending'" [class.green]="r.status === 'Approved'" [class.red]="r.status === 'Rejected'">{{ r.status }}</span> }
+        </h2>
+        @if (req(); as r) { <p>{{ r.customer.name }} · {{ r.customer.mobile_no }} · {{ r.branch_name || '-' }}</p> }
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    @if (loading()) {
+      <div class="dr-loader"><app-page-loader [inline]="true"></app-page-loader></div>
+    } @else if (loadError()) {
+      <div class="dr-state" role="alert">
+        <i class="bi bi-exclamation-triangle"></i>
+        <span>{{ loadError() }}</span>
+        <button type="button" class="cancel-btn" (click)="load()"><i class="bi bi-arrow-clockwise"></i> Try again</button>
+      </div>
+    } @else if (req(); as r) {
+
+      <div class="info-grid">
+        <div><small>Requested by</small><strong>{{ r.requested_by || '-' }}</strong></div>
+        <div><small>Requested on</small><strong>{{ formatDateTime(r.requested_at) }}</strong></div>
+        <div><small>Appointment</small><strong>{{ r.appointment_date || '-' }}</strong></div>
+      </div>
+
+      <div class="section-title"><i class="bi bi-capsule"></i> Treatments</div>
+      <div class="items-table-wrap">
+        <table class="items-table dr-table">
+          <thead><tr><th>Treatment</th><th class="num">Sittings</th><th class="num">Amount</th></tr></thead>
+          <tbody>
+            @for (l of r.treatment_lines; track $index) {
+              <tr><td><strong>{{ l.name }}</strong></td><td class="num">{{ l.sittings_count }}</td><td class="num">{{ inr(l.total_amount) }}</td></tr>
+            }
+          </tbody>
+          <tfoot><tr><td colspan="2">Total treatment value</td><td class="num">{{ inr(r.subtotal_amount) }}</td></tr></tfoot>
+        </table>
+      </div>
+
+      <div class="section-title"><i class="bi bi-chat-square-text"></i> Request</div>
+      <div class="dr-ask">
+        <div class="dr-ask-amount">
+          <small>Asked</small>
+          <strong>{{ r.discount_type === 'percent' ? r.requested_value + '%' : inr(r.requested_value) }}</strong>
+          <span>= {{ inr(r.requested_amount) }} off</span>
+        </div>
+        <p class="dr-reason"><i class="bi bi-quote"></i> {{ r.reason }}</p>
+      </div>
+
+      @if (pending()) {
+        <div class="section-title"><i class="bi bi-patch-check"></i> Your decision</div>
+        <div class="dr-type" role="group" aria-label="Discount type">
+          <button type="button" [class.on]="type === 'percent'" (click)="setType('percent')"><i class="bi bi-percent"></i> Percentage</button>
+          <button type="button" [class.on]="type === 'amount'" (click)="setType('amount')"><i class="bi bi-currency-rupee"></i> Amount</button>
+        </div>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="dr-value">{{ type === 'percent' ? 'Discount %' : 'Discount amount' }}</label>
+            <div class="input-wrap">
+              <i class="bi" [ngClass]="type === 'percent' ? 'bi-percent' : 'bi-currency-rupee'"></i>
+              <input id="dr-value" type="number" min="0" step="0.01" name="value" [(ngModel)]="value" [class.is-invalid]="overCap" />
+            </div>
+          </div>
+          <div class="form-field">
+            <label>Customer will pay</label>
+            <div class="dr-preview" [class.bad]="overCap">
+              <span>{{ inr(approvedAmount) }} off</span>
+              <strong>{{ inr(payable) }}</strong>
+            </div>
+          </div>
+          <div class="form-field full-width">
+            <label for="dr-note">Note to the staff <span class="dr-opt">(required to reject)</span></label>
+            <div class="input-wrap"><i class="bi bi-chat-left-dots"></i><input id="dr-note" name="note" maxlength="1000" [(ngModel)]="note" placeholder="e.g. Approved for a regular customer" /></div>
+          </div>
+        </div>
+        <small class="dr-cap" [class.bad]="overCap"><i class="bi bi-info-circle"></i> Up to {{ r.max_discount_percent }}% of the total ({{ inr(cap) }}).</small>
+        @if (formError()) { <p class="error-text">{{ formError() }}</p> }
+      } @else {
+        <div class="dr-result" [class.ok]="r.status === 'Approved'" [class.no]="r.status === 'Rejected'">
+          <i class="bi" [ngClass]="r.status === 'Approved' ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+          <div>
+            @if (r.status === 'Approved') {
+              <strong>Approved {{ r.approved_type === 'percent' ? r.approved_value + '%' : inr(r.approved_value) }} ({{ inr(r.approved_amount) }} off)</strong>
+            } @else {
+              <strong>{{ r.status }}</strong>
+            }
+            <small>by {{ r.decided_by || '-' }} · {{ formatDateTime(r.decided_at) }}</small>
+            @if (r.decision_note) { <p>{{ r.decision_note }}</p> }
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  <div class="modal-footer-custom">
+    <span class="footer-note"><i class="bi bi-bell"></i> The consultation updates as soon as you decide</span>
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+    @if (pending()) {
+      <button type="button" class="danger-btn" [disabled]="busy() !== null" (click)="reject()"><i class="bi bi-x-lg"></i> {{ busy() === 'reject' ? 'Rejecting…' : 'Reject' }}</button>
+      <button type="button" class="save-btn" [disabled]="busy() !== null" (click)="approve()"><i class="bi bi-check2"></i> {{ busy() === 'approve' ? 'Approving…' : 'Approve' }}</button>
+    }
+  </div>
+</div>

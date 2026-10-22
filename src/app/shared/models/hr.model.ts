@@ -9,7 +9,6 @@ export type Gender = 'Male' | 'Female' | 'Other';
 export type EmployeeType = 'Management' | 'Staff';
 export const EMPLOYEE_TYPES: EmployeeType[] = ['Management', 'Staff'];
 
-export const DEPARTMENTS = ['Clinical', 'Front Office', 'Tele Calling', 'Sales', 'Accounts', 'HR', 'Operations', 'SEO'];
 
 export interface SalaryStructure {
   /** Monthly amounts. */
@@ -119,9 +118,11 @@ export interface AttendanceRecord {
   checkIn: string | null;
   checkOut: string | null;
   status: AttendanceStatus;
-  source: 'Biometric' | 'Web' | 'Manual';
+  source: 'Biometric' | 'Web' | 'Mobile' | 'Manual';
   remarks?: string;
   breaks?: AttendanceBreak[];
+  /** Server-reported metres from the branch at punch-in (null when no location was sent). */
+  distanceM?: number | null;
 }
 
 export type LeaveType = 'Casual Leave' | 'Sick Leave' | 'Earned Leave' | 'Comp Off' | 'Loss of Pay';

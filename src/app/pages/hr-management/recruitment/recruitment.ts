@@ -6,7 +6,7 @@ import { CommonFilterCard } from '../../../shared/components/common-filter-card/
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
 import { ModuleTabs } from '../../../shared/components/module-tabs/module-tabs';
 import { DetailCardData, FilterOption, QuickAction, TableColumn, TableRow } from '../../../shared/models/common-components.model';
-import { CANDIDATE_STAGES, DEPARTMENTS } from '../../../shared/models/hr.model';
+import { CANDIDATE_STAGES } from '../../../shared/models/hr.model';
 import { downloadExcel, fileStamp } from '../../../shared/utils/export.util';
 import { displayDate, inr } from '../../../shared/utils/format.util';
 import { reviewPrompt } from '../../../shared/utils/prompt.util';
@@ -94,7 +94,7 @@ export class Recruitment extends HrListBase {
     }
     return [
       { key: 'status', label: 'Status', options: view === 'requests' ? ['Pending', 'Approved', 'Rejected'] : ['Open', 'On Hold', 'Filled', 'Closed'] },
-      { key: 'source', label: 'Department', options: DEPARTMENTS },
+      { key: 'source', label: 'Department', options: this.hr.departments },
       { key: 'branch', label: 'Branch', options: this.hr.branches, multiSelect: true },
     ];
   }

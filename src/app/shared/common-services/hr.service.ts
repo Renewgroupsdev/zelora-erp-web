@@ -22,7 +22,6 @@ import {
   CandidateReview,
   CandidateVerification,
   CandidateStage,
-  DEPARTMENTS,
   Employee,
   KycDocument,
   EXIT_CHECKLIST,
@@ -46,6 +45,7 @@ import {
 import { addDays, daysInMonth, isoDate, loadState, monthKey, saveState, seqNo, uid } from '../utils/format.util';
 import { NotificationService } from './notification.service';
 import { BranchOption, BranchOptionsService } from './branch-options.service';
+import { DepartmentOptionsService } from './department-options.service';
 
 const STORAGE_KEY = 'zelora_hr_store_v1';
 
@@ -60,6 +60,26 @@ interface HrState {
   bonuses: BonusRecord[];
   onboarding: Onboarding[];
   exits: ExitCase[];
+}
+
+export interface AttendanceRegisterRow {
+  empId: string; empCode: string; name: string; department: string;
+  /** "branch:1" / "franchise:7" - matches BranchOption.key. */
+  unitKey: string;
+  status: string; source: string; remarks: string;
+}
+
+/** One employee's totals in GET /hr/attendance/summary. */
+export interface AttendanceMonthRow {
+  empId: string; empCode: string; name: string; department: string;
+  /** "branch:1" / "franchise:7" - matches BranchOption.key. */
+  unitKey: string;
+  present: number; late: number; halfDay: number; absent: number; onLeave: number; permission: number;
+  workedHours: number; avgHours: number;
+}
+
+export interface AttendanceMonthSummary {
+  workingDays: number; present: number; late: number; halfDay: number; absent: number; onLeave: number; permission: number; workedHours: number;
 }
 
 export type NewEmployeeInput = Omit<Employee, 'id' | 'empCode' | 'status'>;
@@ -80,6 +100,7 @@ export class HrService {
   private readonly api = inject(ApiDataService);
   private readonly uploads = inject(FileUploadService);
   private readonly branchList = inject(BranchOptionsService);
+  private readonly departmentList = inject(DepartmentOptionsService);
   private readonly state = signal<HrState>(loadState(STORAGE_KEY, seedState));
 
   readonly employees = computed(() => this.state().employees);
@@ -99,6 +120,8 @@ export class HrService {
   readonly branches = this.branchList.nameList;
   /** Same names as a signal, for computed()s. */
   readonly branchNames = this.branchList.names;
+  /** Active department names from Settings -> Department Module (one live array, refilled when the list loads). */
+  readonly departments = this.departmentList.nameList;
   readonly activeEmployees = computed(() => this.employees().filter(e => e.status !== 'Exited'));
   readonly vacancies = computed(() => this.manpower().filter(m => m.status === 'Approved'));
   readonly pendingLeaves = computed(() => this.leaves().filter(l => l.status === 'Pending').length);
@@ -109,6 +132,7 @@ export class HrService {
   constructor() {
     effect(() => saveState(STORAGE_KEY, this.state()));
     this.branchList.ensure();
+    this.departmentList.ensure();
   }
 
   get userName(): string {
@@ -148,6 +172,11 @@ export class HrService {
 
   /** Branch names <-> ids for the employee form (employees reference a branch by id). */
   readonly branchOptions = this.branchList.options;
+
+  /** GET /departments/options (shared with every other department dropdown and filter). */
+  loadDepartments(): Observable<string[]> {
+    return this.departmentList.load();
+  }
 
   /** GET /branches/options (shared with every other branch dropdown). */
   loadBranches(): Observable<BranchOption[]> {
@@ -321,7 +350,7 @@ export class HrService {
     const employee: Employee = {
       id: uid('EMP'), empCode: this.nextEmpCode(), status: 'Active',
       name: user.name.trim(), gender: 'Other', dob: null, phone: user.phone_no ?? '', email: user.email ?? '', address: '', bloodGroup: '',
-      designation: user.role?.name ?? 'Staff', department: DEPARTMENTS[0], branch: this.branches[0] ?? '', reportingTo: 'Branch Head',
+      designation: user.role?.name ?? 'Staff', department: this.departments[0] ?? '', branch: this.branches[0] ?? '', reportingTo: 'Branch Head',
       joinDate: isoDate(), employmentType: 'Full Time', pan: '', aadhaarLast4: '', uan: '', bankName: '', accountNo: '', ifsc: '',
       emergencyContact: '', salary: structureFromGross(0),
     };
@@ -345,58 +374,145 @@ export class HrService {
     return this.attendance().find(a => a.empId === empId && a.date === today);
   }
 
-  checkIn(empId: string): AttendanceRecord {
-    const existing = this.todayRecord(empId);
-    if (existing?.checkIn) return existing;
-    const now = new Date();
-    const late = now.getHours() > SHIFT_START.hour || (now.getHours() === SHIFT_START.hour && now.getMinutes() > SHIFT_START.minute);
-    const record: AttendanceRecord = {
-      id: existing?.id ?? uid('ATT'),
-      empId,
-      date: isoDate(now),
-      checkIn: now.toISOString(),
-      checkOut: null,
-      status: late ? 'Late' : 'Present',
-      source: 'Web',
+  // ---- Attendance API (hr/attendance) ----
+
+  /** Stat cards of the loaded day, from GET /hr/attendance `stats` (whole register, not just the page). */
+  readonly attendanceStats = signal<{ total: number; present: number; late: number; on_leave: number; absent_or_not_marked: number }>({ total: 0, present: 0, late: 0, on_leave: 0, absent_or_not_marked: 0 });
+  /** Every employee on the loaded day's register (GET /hr/attendance `data`), punched or "Not Marked". */
+  readonly attendanceRegister = signal<AttendanceRegisterRow[]>([]);
+  /** The signed-in user's employee (GET /hr/attendance/me; the API creates one from the login if missing). */
+  readonly myEmployeeId = signal<string | null>(null);
+
+  /** API attendance row -> store record. `employee_id` is the employee's id; a "Not Marked" row has no `id` and is skipped by callers. */
+  attendanceFromApi(r: any, fallbackDate = ''): AttendanceRecord {
+    return {
+      id: String(r.id), empId: String(r.employee_id), date: r.date ?? fallbackDate,
+      checkIn: r.check_in ?? null, checkOut: r.check_out ?? null, status: r.status, source: r.source ?? 'Web',
+      remarks: r.remarks ?? undefined, distanceM: r.login_distance_m ?? null,
+      breaks: (r.breaks ?? []).map((b: any): AttendanceBreak => ({ type: b.type, start: b.start, end: b.end ?? null })),
     };
-    this.patch({ attendance: [record, ...this.attendance().filter(a => a.id !== record.id)] });
-    return record;
   }
 
-  checkOut(empId: string): AttendanceRecord | null {
-    const existing = this.todayRecord(empId);
-    if (!existing?.checkIn || existing.checkOut) return null;
-    const now = new Date().toISOString();
-    // Checking out closes any break still running.
-    const updated: AttendanceRecord = { ...existing, checkOut: now, breaks: existing.breaks?.map(b => (b.end ? b : { ...b, end: now })) };
-    if (workedHours(updated) < FULL_DAY_HOURS / 2) updated.status = 'Half Day';
-    this.patch({ attendance: this.attendance().map(a => (a.id === existing.id ? updated : a)) });
-    return updated;
+  /** Puts records in the store (same employee + date is replaced). `replaceDate` first drops that day's stale rows. */
+  private mergeAttendance(records: AttendanceRecord[], replaceDate?: string): void {
+    const keep = this.attendance().filter(a => a.date !== replaceDate && !records.some(r => r.empId === a.empId && r.date === a.date));
+    this.patch({ attendance: [...records, ...keep] });
   }
 
-  /** Starts a break (morning / lunch / evening) on today's open attendance. Null if not checked in, already out or a break is running. */
-  startBreak(empId: string, type: BreakType): AttendanceRecord | null {
-    const existing = this.todayRecord(empId);
-    const breaks = existing?.breaks ?? [];
-    if (!existing?.checkIn || existing.checkOut || breaks.some(b => !b.end || b.type === type)) return null;
-    const updated: AttendanceRecord = { ...existing, breaks: [...breaks, { type, start: new Date().toISOString(), end: null }] };
-    this.patch({ attendance: this.attendance().map(a => (a.id === existing.id ? updated : a)) });
-    return updated;
+  /** Every employee's punch for `date` (all pages) -> store + stat cards. Not-marked employees simply have no record. */
+  loadAttendanceDay(date: string): Observable<AttendanceRecord[]> {
+    const page = (n: number) => this.api.GET(`${ApiRoutesConstants.HR_ATTENDANCE}?date=${date}&per_page=200&page=${n}`) as Observable<any>;
+    return page(1).pipe(
+      switchMap(first => {
+        if (first?.stats) this.attendanceStats.set(first.stats);
+        const last = Number(first?.pagination?.last_page ?? 1);
+        const rest = last > 1 ? forkJoin(Array.from({ length: last - 1 }, (_, i) => page(i + 2))) : of([] as any[]);
+        return rest.pipe(map(more => [first, ...more].flatMap(r => (r?.data ?? []) as any[])));
+      }),
+      tap(rows => this.attendanceRegister.set(rows.map((r): AttendanceRegisterRow => ({
+        empId: String(r.employee_id), empCode: r.employee?.emp_code ?? '', name: r.employee?.name ?? '', department: r.employee?.department ?? '',
+        unitKey: r.employee?.branch_or_franchise_id ? `${r.employee.branch_or_franchise_type}:${r.employee.branch_or_franchise_id}` : '',
+        status: r.status ?? 'Not Marked', source: r.source ?? '', remarks: r.remarks ?? '',
+      })))),
+      // "Not Marked" rows have no attendance record (id null); only real punches go in the store.
+      map(rows => rows.filter(r => r.id).map(r => this.attendanceFromApi(r, date))),
+      tap(list => this.mergeAttendance(list, date)),
+    );
   }
 
-  endBreak(empId: string): AttendanceRecord | null {
-    const existing = this.todayRecord(empId);
-    if (!existing?.breaks?.some(b => !b.end)) return null;
-    const updated: AttendanceRecord = { ...existing, breaks: existing.breaks.map(b => (b.end ? b : { ...b, end: new Date().toISOString() })) };
-    this.patch({ attendance: this.attendance().map(a => (a.id === existing.id ? updated : a)) });
-    return updated;
+  /** Every employee's totals for the Monthly Summary's date range (GET /hr/attendance/summary). */
+  readonly attendanceMonthly = signal<AttendanceMonthRow[]>([]);
+
+  /** All employees' totals for a date range (from / to, YYYY-MM-DD) in one request (all pages of the endpoint, normally just one). */
+  loadAttendanceRange(from: string, to: string): Observable<AttendanceMonthRow[]> {
+    const page = (n: number) => this.api.GET(`${ApiRoutesConstants.HR_ATTENDANCE}/summary?from=${from}&to=${to}&per_page=200&page=${n}`) as Observable<any>;
+    return page(1).pipe(
+      switchMap(first => {
+        const last = Number(first?.pagination?.last_page ?? 1);
+        const rest = last > 1 ? forkJoin(Array.from({ length: last - 1 }, (_, i) => page(i + 2))) : of([] as any[]);
+        return rest.pipe(map(more => [first, ...more].flatMap(r => (r?.data ?? []) as any[])));
+      }),
+      map(rows => rows.map((r): AttendanceMonthRow => ({
+        empId: String(r.employee_id), empCode: r.emp_code ?? '', name: r.name ?? '', department: r.department ?? '',
+        unitKey: r.branch_or_franchise_id ? `${r.branch_or_franchise_type}:${r.branch_or_franchise_id}` : '',
+        present: Number(r.present) || 0, late: Number(r.late) || 0, halfDay: Number(r.half_day) || 0, absent: Number(r.absent) || 0,
+        onLeave: Number(r.on_leave) || 0, permission: Number(r.permission) || 0,
+        workedHours: Number(r.worked_hours) || 0, avgHours: Number(r.avg_hours) || 0,
+      }))),
+      tap(list => this.attendanceMonthly.set(list)),
+    );
   }
 
-  /** HR correction of a day (missed punch, regularisation). */
-  markAttendance(empId: string, date: string, status: AttendanceStatus, checkIn: string | null, checkOut: string | null, remarks: string): void {
-    const existing = this.attendance().find(a => a.empId === empId && a.date === date);
-    const record: AttendanceRecord = { id: existing?.id ?? uid('ATT'), empId, date, status, checkIn, checkOut, source: 'Manual', remarks };
-    this.patch({ attendance: [record, ...this.attendance().filter(a => a.id !== record.id)] });
+  /** One employee's month: every record (with breaks) plus the payroll summary. Also refreshes the store. */
+  fetchEmployeeAttendance(empId: string, month: string): Observable<{ summary: AttendanceMonthSummary; records: AttendanceRecord[] }> {
+    return (this.api.GET(`${ApiRoutesConstants.HR_EMPLOYEES}/${empId}/attendance?month=${month}`) as Observable<any>).pipe(
+      map(res => {
+        const s = res.data?.summary ?? {};
+        const summary: AttendanceMonthSummary = {
+          workingDays: Number(s.working_days) || 0, present: Number(s.present) || 0, late: Number(s.late) || 0, halfDay: Number(s.half_day) || 0,
+          absent: Number(s.absent) || 0, onLeave: Number(s.on_leave) || 0, permission: Number(s.permission) || 0, workedHours: Number(s.worked_hours) || 0,
+        };
+        return { summary, records: ((res.data?.records ?? []) as any[]).map(r => this.attendanceFromApi({ ...r, employee_id: r.employee_id ?? empId })) };
+      }),
+      tap(({ records }) => this.mergeAttendance(records)),
+    );
+  }
+
+  /** GET /hr/attendance/me: the signed-in user's employee id + today's punch. */
+  loadMyAttendance(): Observable<AttendanceRecord | null> {
+    return (this.api.GET(`${ApiRoutesConstants.HR_ATTENDANCE}/me`) as Observable<any>).pipe(
+      map(res => {
+        this.myEmployeeId.set(String(res.data.employee.id));
+        return res.data.today ? this.attendanceFromApi(res.data.today, isoDate()) : null;
+      }),
+      tap(record => record && this.mergeAttendance([record])),
+    );
+  }
+
+  /** Runs a self-service punch call and stores the record the API returns (it carries the breaks). */
+  private punch(path: string, body: unknown = {}): Observable<AttendanceRecord> {
+    return (this.api.POST(`${ApiRoutesConstants.HR_ATTENDANCE}/${path}`, body) as Observable<any>).pipe(
+      map(res => this.attendanceFromApi(res.data, isoDate())),
+      tap(record => this.mergeAttendance([record])),
+    );
+  }
+
+  /** POST /hr/attendance/check-in. Optional device location is saved with the distance from the branch. */
+  checkIn(location?: { latitude: number; longitude: number }): Observable<AttendanceRecord> {
+    return this.punch('check-in', location ?? {});
+  }
+
+  /** POST /hr/attendance/check-out (closes a running break server-side). */
+  checkOut(): Observable<AttendanceRecord> {
+    return this.punch('check-out');
+  }
+
+  /** POST /hr/attendance/break/start { type }. The API refuses when not checked in, a break is running or the type was already taken. */
+  startBreak(type: BreakType): Observable<AttendanceRecord> {
+    return this.punch('break/start', { type });
+  }
+
+  /** POST /hr/attendance/break/end. */
+  endBreak(): Observable<AttendanceRecord> {
+    return this.punch('break/end');
+  }
+
+  /** POST /hr/attendance/mark: HR correction of a day. `checkIn` / `checkOut` are ISO strings or null. */
+  markAttendance(empId: string, date: string, status: AttendanceStatus, checkIn: string | null, checkOut: string | null, remarks: string): Observable<AttendanceRecord> {
+    // The API reads "HH:mm" as a time on `date` in the HR timezone; local HH:mm of the picked instant is that.
+    const hhmm = (iso: string | null) => (iso ? `${String(new Date(iso).getHours()).padStart(2, '0')}:${String(new Date(iso).getMinutes()).padStart(2, '0')}` : null);
+    const body = { employee_id: Number(empId), date, status, check_in: hhmm(checkIn), check_out: hhmm(checkOut), remarks };
+    return (this.api.POST(`${ApiRoutesConstants.HR_ATTENDANCE}/mark`, body) as Observable<any>).pipe(
+      map(res => this.attendanceFromApi(res.data, date)),
+      tap(record => this.mergeAttendance([record])),
+    );
+  }
+
+  /** GET /hr/attendance/export as a file (xlsx | csv | pdf). `params` = view, date | from + to, search, status, department, branch_or_franchise_id. */
+  exportAttendance(params: Record<string, string | string[]>, format: 'xlsx' | 'csv' | 'pdf' = 'xlsx'): Observable<Blob> {
+    const q = new URLSearchParams({ format });
+    for (const [k, v] of Object.entries(params)) (Array.isArray(v) ? v : [v]).filter(Boolean).forEach(x => q.append(Array.isArray(v) ? `${k}[]` : k, x));
+    return this.api.GET_BLOB(`${ApiRoutesConstants.HR_ATTENDANCE}/export?${q.toString()}`) as Observable<Blob>;
   }
 
   // ---- Leave & permission ----

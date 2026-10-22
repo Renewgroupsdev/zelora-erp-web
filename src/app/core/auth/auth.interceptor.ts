@@ -1,13 +1,8 @@
-import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import { HttpErrorResponse, HttpEvent, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { BehaviorSubject, EMPTY, Observable, catchError, filter, switchMap, take, throwError } from 'rxjs';
+import { EMPTY, Observable, catchError, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 import { ScopeHeaderStore } from '../../shared/common-services/scope-header.store';
-
-// Module-level so it's shared across every request this interceptor handles,
-// letting concurrent 401s wait on a single in-flight refresh instead of each firing their own.
-let isRefreshing = false;
-const refreshedToken$ = new BehaviorSubject<string | null>(null);
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
@@ -29,7 +24,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         return EMPTY;
       }
       if (error instanceof HttpErrorResponse && error.status === 401 && attachAuth) {
-        return handleUnauthorized(authorizedReq, next, authService);
+        return handleUnauthorized(authService);
       }
       return throwError(() => error);
     })
@@ -41,38 +36,12 @@ function withAuthHeader(req: HttpRequest<unknown>, authService: AuthService): Ht
   return authHeader ? req.clone({ setHeaders: { Authorization: authHeader } }) : req;
 }
 
-function handleUnauthorized(
-  req: HttpRequest<unknown>,
-  next: HttpHandlerFn,
-  authService: AuthService
-): Observable<HttpEvent<unknown>> {
-  if (!authService.getRefreshToken()) {
-    authService.logout();
-    return EMPTY; // the redirect to the login page is the message; no page-level error popup
-  }
-
-  if (!isRefreshing) {
-    isRefreshing = true;
-    refreshedToken$.next(null);
-
-    return authService.refreshAccessToken().pipe(
-      switchMap(() => {
-        isRefreshing = false;
-        const authHeader = authService.getAuthorizationHeader();
-        refreshedToken$.next(authHeader);
-        return next(withAuthHeader(req, authService));
-      }),
-      catchError(refreshError => {
-        isRefreshing = false;
-        authService.logout();
-        return EMPTY; // session is gone: sign out quietly instead of surfacing the refresh error
-      })
-    );
-  }
-
-  return refreshedToken$.pipe(
-    filter((token): token is string => token !== null),
-    take(1),
-    switchMap(() => next(withAuthHeader(req, authService)))
-  );
+/**
+ * 401 on an authenticated call = the session is over: clear it and go to the login page. The refresh-token
+ * API is deliberately not called. Requests still in flight then hit the `!isAuthenticated()` check above and
+ * fail quietly, so only the first 401 triggers the redirect.
+ */
+function handleUnauthorized(authService: AuthService): Observable<HttpEvent<unknown>> {
+  authService.logout();
+  return EMPTY; // the redirect to the login page is the message; no page-level error popup
 }

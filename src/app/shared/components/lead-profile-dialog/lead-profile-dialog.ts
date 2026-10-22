@@ -1,5 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Inject, computed, inject } from '@angular/core';
+import { Component, DestroyRef, HostListener, Inject, computed, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EMPTY, Observable, Subject, catchError, combineLatest, debounceTime, distinctUntilChanged, map, merge, of, startWith, switchMap } from 'rxjs';
 import { BranchOptionsService } from '../../common-services/branch-options.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -30,6 +32,12 @@ import {
 } from '../../data/treatment-catalog';
 
 export type LeadProfileStage = 'lead' | 'followup' | 'appointment';
+
+/** A doctor of the lead's branch / franchise who is free at the chosen appointment date and time. */
+export interface AvailableDoctor {
+  id: number;
+  name: string;
+}
 
 /** Follow-up stage toggle: schedule the next visit, or just log a call/note against the lead. */
 export type FollowUpMode = 'schedule' | 'notes';
@@ -145,6 +153,7 @@ export class LeadProfileDialog {
       // ISO date the <input type="date"> could parse - always start this picker blank instead.
       scheduleDate: [''],
       scheduleTime: [''],
+      scheduleDoctor: [''],
       entryDate: [isoToday],
       entryTime: [nowTime],
       nextFollowUpDate: [''],
@@ -165,6 +174,7 @@ export class LeadProfileDialog {
     if (data.stage === 'followup') {
       this.form.get('telecaller')?.disable();
       this.form.get('branch')?.disable();
+      this.watchDoctorAvailability();
     }
 
     this.beforeImages = [...(appointment?.beforeImages ?? [])];
@@ -190,6 +200,106 @@ export class LeadProfileDialog {
       const firstTreatment = firstKey ? (data.treatments ?? []).find(t => t.key === firstKey) : undefined;
       this.activeCategory = firstTreatment?.category ?? TREATMENT_CATEGORIES[0];
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // Schedule Appointment - doctors free at the picked date and time
+  // ---------------------------------------------------------------------
+
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly doctorLookup = new Subject<void>();
+
+  /** Doctors of the lead's branch / franchise who are free at the picked date + time (GET .../available-doctors). */
+  doctors: AvailableDoctor[] = [];
+  /** How many doctors the branch / franchise has at all (null until a lookup finishes) - "none free" vs "none set up". */
+  doctorsTotal: number | null = null;
+  doctorsLoading = false;
+  doctorsError = '';
+  showDoctorError = false;
+
+  /**
+   * Reloads the doctor list whenever the appointment date or time changes (a later pick cancels the lookup still
+   * running). Until both are chosen the dropdown stays disabled.
+   */
+  private watchDoctorAvailability(): void {
+    const date = this.form.get('scheduleDate')!;
+    const time = this.form.get('scheduleTime')!;
+    const doctor = this.form.get('scheduleDoctor')!;
+    doctor.disable({ emitEvent: false });
+
+    const slotChanged$ = combineLatest([date.valueChanges.pipe(startWith(date.value)), time.valueChanges.pipe(startWith(time.value))]).pipe(
+      map(([d, t]) => `${d ?? ''}|${t ?? ''}`),
+      distinctUntilChanged(),
+      debounceTime(250),
+    );
+
+    merge(slotChanged$, this.doctorLookup).pipe(
+      switchMap(() => {
+        const d = String(date.value ?? '');
+        const t = String(time.value ?? '');
+        this.showDoctorError = false;
+        if (!d || !t || this.isPast(d)) {
+          this.setDoctors([], null, '');
+          return EMPTY;
+        }
+        this.doctorsLoading = true;
+        this.doctorsError = '';
+        const url = `${ApiRoutesConstants.LEAD_VALIDATE}/${this.data.lead.id}/available-doctors?date=${d}&time=${encodeURIComponent(t)}`;
+        return (this.api.GET(url) as Observable<any>).pipe(
+          map(res => ({ res, error: '' })),
+          catchError(err => of({ res: null, error: err?.error?.message || 'Could not load the available doctors.' })),
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(({ res, error }) => this.setDoctors((res?.data ?? []) as AvailableDoctor[], error ? null : Number(res?.meta?.doctors ?? 0), error));
+  }
+
+  private setDoctors(doctors: AvailableDoctor[], total: number | null, error: string): void {
+    const control = this.form.get('scheduleDoctor')!;
+    this.doctors = doctors;
+    this.doctorsTotal = total;
+    this.doctorsError = error;
+    this.doctorsLoading = false;
+
+    // A doctor picked earlier who is no longer free at the new slot is cleared.
+    if (!doctors.some(d => String(d.id) === String(control.value))) control.setValue('', { emitEvent: false });
+    if (doctors.length) control.enable({ emitEvent: false });
+    else control.disable({ emitEvent: false });
+  }
+
+  retryDoctors(): void {
+    this.doctorLookup.next();
+  }
+
+  get hasSlot(): boolean {
+    return !!this.form.get('scheduleDate')?.value && !!this.form.get('scheduleTime')?.value;
+  }
+
+  get doctorPlaceholder(): string {
+    if (!this.hasSlot) return 'Pick date and time first';
+    if (this.doctorsLoading) return 'Checking availability…';
+    if (this.doctorsError) return 'Could not load doctors';
+    if (this.doctorsTotal === 0) return 'No doctor set up for this branch';
+    if (!this.doctors.length) return 'No doctor available at this time';
+    return 'Select available doctor';
+  }
+
+  get doctorHint(): string {
+    if (!this.hasSlot || this.doctorsLoading) return '';
+    if (this.doctorsError) return this.doctorsError;
+    if (this.doctorsTotal === 0) return 'This branch / franchise has no doctor yet, so the visit is booked without one.';
+    if (!this.doctors.length) return 'Every doctor here is booked or on leave at this time. Try another time.';
+    return `${this.doctors.length} of ${this.doctorsTotal} doctor${this.doctorsTotal === 1 ? '' : 's'} available at ${this.formatTime(String(this.form.get('scheduleTime')?.value ?? ''))}.`;
+  }
+
+  /** Why the appointment can't be saved yet because of the doctor, or null when it can. */
+  private doctorProblem(): string | null {
+    if (this.doctorsLoading) return 'Checking doctor availability. Please wait a moment.';
+    if (this.doctorsError) return this.doctorsError;
+    if (this.doctorsTotal === 0) return null; // a branch without doctors books without one
+    if (!this.doctors.length) return 'No doctor is available at this time. Pick another time.';
+    if (!this.form.getRawValue().scheduleDoctor) return 'Select an available doctor.';
+    return null;
   }
 
   get isLead(): boolean { return this.data.stage === 'lead'; }
@@ -352,7 +462,16 @@ export class LeadProfileDialog {
         this.toast.error('The appointment date must be today or later.');
         return;
       }
-      body = { kind, date: value.scheduleDate, time: to12Hour(value.scheduleTime), notes: String(value.notes ?? '').trim() || null };
+      const doctorProblem = this.doctorProblem();
+      if (doctorProblem) {
+        this.showDoctorError = true;
+        this.toast.error(doctorProblem);
+        return;
+      }
+      body = {
+        kind, date: value.scheduleDate, time: to12Hour(value.scheduleTime), notes: String(value.notes ?? '').trim() || null,
+        ...(value.scheduleDoctor ? { doctor_id: Number(value.scheduleDoctor) } : {}),
+      };
     } else {
       // A note typed in the form but not added yet is saved too.
       const entries = [...this.pendingEntries];

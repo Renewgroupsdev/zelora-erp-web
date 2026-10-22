@@ -76,6 +76,20 @@
           <div class="field-grid">
             <label>Appointment date<input type="text" appDatePicker [minDate]="today" formControlName="scheduleDate" placeholder="Select date" [class.is-invalid]="isInvalid('scheduleDate')"></label>
             <label>Appointment time<input type="text" appTimePicker formControlName="scheduleTime" placeholder="Select time" [class.is-invalid]="isInvalid('scheduleTime')"></label>
+            <label class="full">Doctor
+              <select formControlName="scheduleDoctor" [class.is-invalid]="showDoctorError" [attr.aria-busy]="doctorsLoading" (change)="showDoctorError = false">
+                <option value="">{{ doctorPlaceholder }}</option>
+                @for (doctor of doctors; track doctor.id) { <option [value]="doctor.id">{{ doctor.name }}</option> }
+              </select>
+            </label>
+            @if (doctorsLoading) {
+              <p class="doctor-hint full"><i class="bi bi-arrow-repeat spin"></i> Checking which doctors are free…</p>
+            } @else if (doctorHint) {
+              <p class="doctor-hint full" [class.warn]="!doctors.length && doctorsTotal !== 0 || !!doctorsError">
+                <i class="bi" [ngClass]="doctors.length ? 'bi-check-circle' : 'bi-info-circle'"></i> {{ doctorHint }}
+                @if (doctorsError) { <button type="button" class="doctor-retry" (click)="retryDoctors()">Retry</button> }
+              </p>
+            }
           </div>
         } @else {
           @if (history.length) {

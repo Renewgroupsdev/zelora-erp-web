@@ -18,7 +18,7 @@ import {
 import { ToastService } from '../../shared/common-services/toast.service';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
-import { FlowAppointmentRecord, FlowStatus, inr } from '../../shared/models/appointment-flow.model';
+import { FlowAppointmentRecord, FlowStatus, inr, treatmentNames } from '../../shared/models/appointment-flow.model';
 import { AppointmentWizard } from './appointment-wizard/appointment-wizard';
 import { SittingsDialog } from './sittings-dialog/sittings-dialog';
 import { CustomerDetailsDialog } from './customer-details-dialog/customer-details-dialog';
@@ -45,6 +45,7 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   constructor(private dialog: MatDialog, private toast: ToastService, private api: ApiDataService) { }
 
   readonly inr = inr;
+  readonly treatmentNames = treatmentNames;
   private readonly auth = inject(AuthService);
 
   /** Roles & Permissions -> Appointment module action ticked for the signed-in role. */
@@ -361,7 +362,7 @@ export class AppointmentPage implements OnInit, AfterViewInit {
       id: a.id,
       lead: { name: a.name, subtitle: a.customer?.customer_code ?? `AP-${String(a.id).padStart(5, '0')}` },
       contact: a.mobile_no,
-      service: a.customer_treatment?.treatment?.name ?? a.treatment?.name ?? (a.category ? `${a.category} consultation` : 'Consultation'),
+      service: treatmentNames(a) ?? (a.category ? `${a.category} consultation` : 'Consultation'),
       branch: a.branch_name ?? a.branch?.name ?? '',
       schedule: `${this.formatDisplayDate(a.appointment_date)}, ${this.formatTime(a.appointment_time)}`,
       scheduleSort: `${a.appointment_date} ${a.appointment_time ?? ''}`,

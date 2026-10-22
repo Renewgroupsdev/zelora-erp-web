@@ -7,7 +7,7 @@ import { CommonFilterCard } from '../../../shared/components/common-filter-card/
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
 import { ModuleTabs } from '../../../shared/components/module-tabs/module-tabs';
 import { DetailCardData, FilterOption, QuickAction, TableColumn, TableRow } from '../../../shared/models/common-components.model';
-import { Appraisal, BonusType, DEPARTMENTS } from '../../../shared/models/hr.model';
+import { Appraisal, BonusType } from '../../../shared/models/hr.model';
 import { downloadExcel, escapeHtml, fileStamp, printDocument } from '../../../shared/utils/export.util';
 import { displayDate, inr, monthKey, monthLabel } from '../../../shared/utils/format.util';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
@@ -70,7 +70,7 @@ export class Appraisals extends HrListBase {
   private filtersFor(view: View): FilterOption[] {
     return [
       { key: 'status', label: 'Status', options: view === 'appraisals' ? ['Draft', 'Approved', 'Released'] : ['Approved', 'Paid'] },
-      { key: 'source', label: 'Department', options: DEPARTMENTS },
+      { key: 'source', label: 'Department', options: this.hr.departments },
       { key: 'branch', label: 'Branch', options: this.hr.branches, multiSelect: true },
     ];
   }

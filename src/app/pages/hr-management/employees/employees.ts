@@ -8,7 +8,7 @@ import { CommonFilterCard } from '../../../shared/components/common-filter-card/
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
 import { ModuleTabs } from '../../../shared/components/module-tabs/module-tabs';
 import { DetailCardData, TableColumn, TableRow } from '../../../shared/models/common-components.model';
-import { DEPARTMENTS, salaryBreakup } from '../../../shared/models/hr.model';
+import { salaryBreakup } from '../../../shared/models/hr.model';
 import { downloadExcel, fileStamp } from '../../../shared/utils/export.util';
 import { displayDate, inr } from '../../../shared/utils/format.util';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
@@ -29,7 +29,7 @@ export class Employees extends HrListBase implements OnInit {
 
   override filters = [
     { key: 'status', label: 'Status', options: ['Active', 'Onboarding', 'On Notice', 'Exited'] },
-    { key: 'source', label: 'Department', options: DEPARTMENTS },
+    { key: 'source', label: 'Department', options: this.hr.departments },
     { key: 'branch', label: 'Branch', options: [] as string[], multiSelect: true },
   ];
 

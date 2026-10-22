@@ -537,6 +537,46 @@ textarea {
   font-size: 12.5px;
 }
 
+// Doctor dropdown (Schedule Appointment): availability message under the select.
+.doctor-hint {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -4px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+
+  &.warn { color: var(--status-orange-text, #b86e00); }
+
+  .spin { display: inline-block; animation: doctor-spin .8s linear infinite; }
+}
+
+.doctor-retry {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--primary-dark);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+select:disabled {
+  background: var(--app-surface-bg);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+@keyframes doctor-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doctor-hint .spin { animation: none; }
+}
+
 .error-text {
   display: block;
   margin: 0;
