@@ -369,8 +369,21 @@
           </table>
         </div>
 
+        <!-- Treatment taken, or only the consultation (treatment too costly -> Nill Card) -->
+        <div class="section-title"><i class="bi bi-signpost-split"></i> Customer's decision</div>
+        <div class="wz-paytype" role="radiogroup" aria-label="What is the customer paying for">
+          <button type="button" role="radio" [attr.aria-checked]="!isConsultationOnly" [class.on]="!isConsultationOnly" (click)="setPaymentType('treatment')">
+            <i class="bi bi-capsule"></i>
+            <span><strong>Go ahead with treatment</strong><small>Collect the treatment payment · {{ inr(total) }}</small></span>
+          </button>
+          <button type="button" role="radio" [attr.aria-checked]="isConsultationOnly" [class.on]="isConsultationOnly" (click)="setPaymentType('consultation')">
+            <i class="bi bi-person-check"></i>
+            <span><strong>Consultation fee only</strong><small>Treatment not taken now · moves to Nill Card</small></span>
+          </button>
+        </div>
+
         <!-- Discount: asked here, decided by the branch manager (the answer shows up here by itself) -->
-        @if (showDiscountPanel) {
+        @if (showDiscountPanel && !isConsultationOnly) {
           <div class="wz-discount" [class.on]="discountToggleOn">
             <div class="wz-discount-head">
               <label class="wz-switch">
@@ -450,23 +463,36 @@
 
         <div class="section-title"><i class="bi bi-credit-card"></i> Payment Mode</div>
         <div class="wz-paymodes">
-          @for (m of paymentModes; track m.value) {
-            <button type="button" [class.on]="pay.payment_mode === m.value" (click)="pay.payment_mode = m.value"><i class="bi" [ngClass]="m.icon"></i> {{ m.label }}</button>
+          @for (m of availableModes; track m.value) {
+            <button type="button" [class.on]="pay.payment_mode === m.value" (click)="setPaymentMode(m.value)"><i class="bi" [ngClass]="m.icon"></i> {{ m.label }}</button>
           }
         </div>
 
         <div class="form-grid">
-          <div class="form-field">
-            <label for="wz-paid">{{ pay.payment_mode === 'EMI' ? 'Down payment' : 'Amount paying now' }}</label>
-            <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input id="wz-paid" type="number" min="0" [max]="total" name="paid" [(ngModel)]="pay.paid_amount" /></div>
-          </div>
-          @if (needsReference) {
+          @if (isConsultationOnly) {
             <div class="form-field">
-              <label for="wz-ref">{{ pay.payment_mode === 'UPI' ? 'UPI transaction ID' : 'Bank reference no' }} <span>*</span></label>
-              <div class="input-wrap"><i class="bi bi-hash"></i><input id="wz-ref" name="ref" [(ngModel)]="pay.transaction_no" maxlength="100" /></div>
+              <label for="wz-fee">Consultation fee <span>*</span></label>
+              <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input id="wz-fee" type="number" min="1" name="fee" [(ngModel)]="pay.consultation_fee" placeholder="Enter the fee" /></div>
+            </div>
+          } @else {
+            <div class="form-field">
+              <label for="wz-paid">{{ pay.payment_mode === 'EMI' ? 'Down payment' : 'Amount paying now' }}</label>
+              <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input id="wz-paid" type="number" [min]="pay.payment_mode === 'Cash' ? cashMinimum : 0" [max]="total" name="paid" [(ngModel)]="pay.paid_amount" /></div>
+              @if (pay.payment_mode === 'Cash') { <small class="wz-hint" [class.bad]="(pay.paid_amount || 0) < cashMinimum">Cash: at least {{ inr(cashMinimum) }}</small> }
             </div>
           }
-          @if (pay.payment_mode === 'EMI') {
+
+          @if (pay.payment_mode === 'EMI' && !isConsultationOnly) {
+            <div class="form-field">
+              <label for="wz-partner">Finance partner <span>*</span></label>
+              <div class="input-wrap"><i class="bi bi-building"></i>
+                <select id="wz-partner" name="partner" [(ngModel)]="pay.finance_partner">
+                  <option value="">Choose a finance partner</option>
+                  @for (p of payOptions().emi_partners; track p.name) { <option [value]="p.name">{{ p.name }}</option> }
+                </select>
+                <i class="bi bi-chevron-down select-arrow"></i>
+              </div>
+            </div>
             <div class="form-field">
               <label for="wz-emi">EMI tenure</label>
               <div class="input-wrap"><i class="bi bi-calendar2-range"></i>
@@ -475,15 +501,61 @@
               </div>
             </div>
           }
+
+          @if (needsReference) {
+            <div class="form-field">
+              <label for="wz-ref">{{ referenceLabel }} <span>*</span></label>
+              <div class="input-wrap"><i class="bi bi-hash"></i><input id="wz-ref" name="ref" [(ngModel)]="pay.transaction_no" maxlength="100" /></div>
+            </div>
+          }
         </div>
 
+        @if (pay.payment_mode === 'EMI' && !isConsultationOnly && pay.finance_partner) {
+          <div class="wz-paynote">
+            <i class="bi bi-box-arrow-up-right"></i>
+            <div>
+              <strong>Apply on {{ pay.finance_partner }}</strong>
+              <small>Open the partner's page, complete the EMI application for {{ inr(balance) }} over {{ pay.emi_months }} months, then enter the loan / approval number above.</small>
+            </div>
+            <button type="button" class="link-btn" [disabled]="!emiPartnerUrl" (click)="openEmiPartner()">Open {{ pay.finance_partner }} <i class="bi bi-arrow-up-right"></i></button>
+          </div>
+        }
+        @if (pay.payment_mode === 'Online') {
+          @if (usesRazorpay) {
+            <div class="wz-paynote ok">
+              <i class="bi bi-shield-lock"></i>
+              <div>
+                <strong>Pay securely with Razorpay</strong>
+                <small>On "{{ isConsultationOnly ? 'Save consultation fee' : 'Save &amp; send terms' }}" the Razorpay window opens for {{ inr(amountNow) }} (net banking, cards, UPI). The payment is saved once Razorpay confirms it.</small>
+              </div>
+            </div>
+          } @else {
+            <div class="wz-paynote warn">
+              <i class="bi bi-exclamation-triangle"></i>
+              <div>
+                <strong>Razorpay is not set up yet</strong>
+                <small>Enter the bank reference number by hand, or ask the admin to add the Razorpay keys on the server.</small>
+              </div>
+            </div>
+          }
+        }
+
         <div class="wz-summary">
-          <div><span>{{ discountApplied > 0 ? 'Total payable' : 'Total' }}</span><strong>{{ inr(total) }}</strong></div>
-          <div><span>Paying now</span><strong>{{ inr(pay.paid_amount) }}</strong></div>
-          @if (pay.payment_mode === 'EMI') { <div><span>EMI</span><strong>{{ pay.emi_months }} × {{ inr(emiInstalment) }}</strong></div> }
-          <div class="grand"><span>Balance</span><strong>{{ inr(balance) }}</strong></div>
+          @if (isConsultationOnly) {
+            <div><span>Treatment suggested</span><strong>{{ inr(total) }}</strong></div>
+            <div class="grand"><span>Consultation fee</span><strong>{{ inr(amountNow) }}</strong></div>
+          } @else {
+            <div><span>{{ discountApplied > 0 ? 'Total payable' : 'Total' }}</span><strong>{{ inr(total) }}</strong></div>
+            <div><span>Paying now</span><strong>{{ inr(pay.paid_amount) }}</strong></div>
+            @if (pay.payment_mode === 'EMI') { <div><span>EMI{{ pay.finance_partner ? ' · ' + pay.finance_partner : '' }}</span><strong>{{ pay.emi_months }} × {{ inr(emiInstalment) }}</strong></div> }
+            <div class="grand"><span>Balance</span><strong>{{ inr(balance) }}</strong></div>
+          }
         </div>
-        <p class="muted wz-note"><i class="bi bi-chat-dots"></i> On "Next" the payment is saved and the terms &amp; conditions are sent to {{ a.mobile_no }} by SMS.</p>
+        @if (isConsultationOnly) {
+          <p class="muted wz-note"><i class="bi bi-info-circle"></i> On "Save consultation fee" the fee is saved and this record moves to <strong>Nill Card</strong> (view only). No terms SMS or invoice is sent.</p>
+        } @else {
+          <p class="muted wz-note"><i class="bi bi-chat-dots"></i> On "Next" the payment is saved and the terms &amp; conditions are sent to {{ a.mobile_no }} by SMS.</p>
+        }
       }
 
       </fieldset>
@@ -536,7 +608,7 @@
     @if (step() < 4) {
       <button type="button" class="save-btn" [disabled]="saving() || loading() || !steps()[step()].allowed" (click)="next()">
         <i class="bi" [class.bi-arrow-repeat]="saving()" [class.spin]="saving()"></i>
-        {{ saving() ? 'Saving…' : locked() ? 'Next' : step() === 3 ? 'Save & send terms' : 'Save & next' }}
+        {{ saving() ? 'Saving…' : locked() ? 'Next' : step() === 3 ? (isConsultationOnly ? 'Save consultation fee' : 'Save & send terms') : 'Save & next' }}
         @if (!saving()) { <i class="bi bi-arrow-right"></i> }
       </button>
     }

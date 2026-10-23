@@ -138,3 +138,17 @@ app-common-table-card {
 :host ::ng-deep app-common-table-card .mat-mdc-row:hover {
   background: var(--primary-soft) !important;
 }
+
+.header-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.share-link-btn {
+  background: #fff;
+  color: var(--primary-dark);
+  box-shadow: inset 0 0 0 1px var(--primary-border);
+
+  i { color: #25d366; }
+}

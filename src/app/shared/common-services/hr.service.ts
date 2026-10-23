@@ -389,6 +389,8 @@ export class HrService {
       id: String(r.id), empId: String(r.employee_id), date: r.date ?? fallbackDate,
       checkIn: r.check_in ?? null, checkOut: r.check_out ?? null, status: r.status, source: r.source ?? 'Web',
       remarks: r.remarks ?? undefined, distanceM: r.login_distance_m ?? null,
+      checkInPhotoUrl: r.check_in_photo_url ?? null, checkOutPhotoUrl: r.check_out_photo_url ?? null,
+      checkOutDistanceM: r.check_out_distance_m ?? null, checkOutReason: r.check_out_reason ?? null,
       breaks: (r.breaks ?? []).map((b: any): AttendanceBreak => ({ type: b.type, start: b.start, end: b.end ?? null })),
     };
   }

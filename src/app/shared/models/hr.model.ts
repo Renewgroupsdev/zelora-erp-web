@@ -123,6 +123,13 @@ export interface AttendanceRecord {
   breaks?: AttendanceBreak[];
   /** Server-reported metres from the branch at punch-in (null when no location was sent). */
   distanceM?: number | null;
+  /** Mobile app selfies taken at the check-in / check-out (null for web, biometric and manual punches). */
+  checkInPhotoUrl?: string | null;
+  checkOutPhotoUrl?: string | null;
+  /** Server-reported metres from the branch at the check-out. */
+  checkOutDistanceM?: number | null;
+  /** Why the employee checked out (early check-out, work from home, auto check-out, ...). */
+  checkOutReason?: string | null;
 }
 
 export type LeaveType = 'Casual Leave' | 'Sick Leave' | 'Earned Leave' | 'Comp Off' | 'Loss of Pay';

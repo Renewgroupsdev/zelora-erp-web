@@ -126,3 +126,348 @@
 @media (max-width: 560px) {
   .day-card { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+// Check-in / check-out selfies from the mobile app: two portrait cards joined by the time on duty.
+.punch-photos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0 4px;
+
+  @media (max-width: 560px) {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+.punch-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 64px;
+
+  .line {
+    flex: 1;
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(var(--status-green-text), var(--primary-border), var(--status-red-text));
+    opacity: 0.35;
+  }
+
+  .duration {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 8px;
+    border: 1px solid var(--primary-border);
+    border-radius: 12px;
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    box-shadow: var(--shadow-card);
+
+    i {
+      font-size: 14px;
+    }
+  }
+
+  @media (max-width: 560px) {
+    flex-direction: row;
+    width: auto;
+
+    .line {
+      flex: 1;
+      width: auto;
+      height: 2px;
+    }
+
+    .duration {
+      flex-direction: row;
+    }
+  }
+}
+
+.punch-card {
+  --accent: var(--status-green-text);
+  --accent-bg: var(--status-green-bg);
+
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--table-border);
+  border-radius: 14px;
+  background: var(--app-surface-solid);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s, transform 0.2s;
+
+  &.out {
+    --accent: var(--status-red-text);
+    --accent-bg: var(--status-red-bg);
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-elevated);
+  }
+}
+
+.punch-media {
+  position: relative;
+  height: 210px;
+  background: var(--primary-soft);
+  // Accent line along the top of each photo.
+  border-top: 3px solid var(--accent);
+
+  // Soft shade so the badge and time stay readable on any photo.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.35), transparent 30%),
+      linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent 38%);
+  }
+}
+
+.punch-open {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  cursor: zoom-in;
+  background: none;
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 30%;
+    transition: transform 0.35s ease;
+  }
+
+  .zoom {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  &:hover,
+  &:focus-visible {
+    img {
+      transform: scale(1.04);
+    }
+
+    .zoom {
+      opacity: 1;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+}
+
+.punch-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  padding: 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 10px, rgba(0, 0, 0, 0.025) 10px 20px),
+    var(--primary-soft);
+
+  .empty-icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    color: var(--accent);
+    background: var(--accent-bg);
+    font-size: 18px;
+  }
+}
+
+.punch-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+  &.static {
+    position: static;
+    box-shadow: none;
+  }
+
+  &.in {
+    --accent: var(--status-green-text);
+    --accent-bg: var(--status-green-bg);
+  }
+
+  &.out {
+    --accent: var(--status-red-text);
+    --accent-bg: var(--status-red-bg);
+  }
+}
+
+.punch-time {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  z-index: 1;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.punch-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px 12px;
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    padding: 3px 8px;
+    border: 1px solid var(--table-border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+
+    &.reason {
+      border-color: transparent;
+      color: var(--status-orange-text);
+      background: var(--status-orange-bg);
+    }
+  }
+}
+
+// Full-size photo viewer over the dialog.
+.photo-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: rgba(8, 20, 17, 0.82);
+  backdrop-filter: blur(4px);
+  animation: viewer-in 0.18s ease-out;
+  outline: none;
+
+  figure {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: min(560px, 100%);
+    margin: 0;
+  }
+
+  img {
+    display: block;
+    max-width: 100%;
+    max-height: calc(100vh - 140px);
+    border-radius: 14px;
+    object-fit: contain;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  }
+
+  figcaption {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 12px;
+  }
+
+  .viewer-link {
+    margin-left: auto;
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.viewer-close {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.24);
+  }
+}
+
+@keyframes viewer-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .punch-card,
+  .punch-open img,
+  .photo-viewer {
+    transition: none;
+    animation: none;
+  }
+}

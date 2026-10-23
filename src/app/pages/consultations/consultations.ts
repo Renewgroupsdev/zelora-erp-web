@@ -22,13 +22,18 @@ import { ApiRoutesConstants } from '../../shared/common-services/api-route-const
 import { AuthService } from '../../core/auth/auth.service';
 import { FlowAppointmentRecord, inr, treatmentNames } from '../../shared/models/appointment-flow.model';
 import { AppointmentWizard } from '../appointment-page/appointment-wizard/appointment-wizard';
+import { NillCardView } from './nill-card-view/nill-card-view';
 
-/** The only status this page lists: consultation started, payment not saved yet. */
+/** Consultation started, payment not saved yet: reopens the consultation form. */
 const CONSULTATION_STATUS = 'In Consultation';
+/** The treatment was too costly - only the consultation fee was collected: view only. */
+const CONSULTATION_ONLY = 'Consultation Only';
+const LISTED_STATUSES: string[] = [CONSULTATION_STATUS, CONSULTATION_ONLY];
 
 /**
- * Lead Management -> Consultation. Lists only the appointments still In Consultation (payment pending), loaded
- * from the appointment-flow API with the status filter, and reopens the consultation form to finish them.
+ * Lead Management -> Nill Card. Lists the appointments still In Consultation (payment pending - the consultation
+ * form reopens to finish them) and the Consultation Only ones (only the consultation fee was paid - view only, with
+ * the last visit, the fee and the treatment that was suggested).
  */
 @Component({
   selector: 'app-consultations',
@@ -53,7 +58,7 @@ export class Consultations implements OnInit {
     { key: 'contact', header: 'Contact', type: 'text' },
     { key: 'service', header: 'Treatment', type: 'text' },
     { key: 'branch', header: 'Branch', type: 'branch' },
-    { key: 'schedule', header: 'Date & Time', type: 'text' },
+    { key: 'schedule', header: 'Last visit', type: 'text' },
     { key: 'status', header: 'Status', type: 'badge' },
     { key: 'total', header: 'Amount', type: 'text', width: '100px' },
     { key: 'paymentStatus', header: 'Payment', type: 'badge', width: '90px' },
@@ -84,11 +89,11 @@ export class Consultations implements OnInit {
     return this.auth.hasActionAccess(action);
   }
 
-  /** Always asks the API for In Consultation only; date and search are filtered by the API, branch here. */
+  /** Asks the API for the listed statuses only; date and search are filtered by the API, branch and status here. */
   loadConsultations(): void {
     this.loading = true;
     const params = new URLSearchParams({ per_page: '500' });
-    params.append('status[]', CONSULTATION_STATUS);
+    LISTED_STATUSES.forEach(s => params.append('status[]', s));
     if (this.filterState.dateFrom) params.set('date_from', this.filterState.dateFrom);
     if (this.filterState.dateTo) params.set('date_to', this.filterState.dateTo);
     if (this.searchTerm) params.set('search', this.searchTerm);
@@ -96,7 +101,7 @@ export class Consultations implements OnInit {
     this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}?${params}`).subscribe({
       next: (res: any) => {
         const list: FlowAppointmentRecord[] = res?.data?.data ?? [];
-        this.appointments = list.filter(a => a.status === CONSULTATION_STATUS);
+        this.appointments = list.filter(a => LISTED_STATUSES.includes(a.status));
         this.loading = false;
         this.refreshRows();
       },
@@ -111,10 +116,15 @@ export class Consultations implements OnInit {
 
   get stats(): DetailCardData[] {
     const today = this.toIso(new Date());
-    const pending = this.appointments.reduce((sum, a) => sum + Math.max(0, Number(a.total_amount || 0) - Number(a.paid_amount || 0)), 0);
+    const open = this.appointments.filter(a => a.status === CONSULTATION_STATUS);
+    const feeOnly = this.appointments.filter(a => a.status === CONSULTATION_ONLY);
+    const pending = open.reduce((sum, a) => sum + Math.max(0, Number(a.total_amount || 0) - Number(a.paid_amount || 0)), 0);
+    const fees = feeOnly.reduce((sum, a) => sum + Number(a.consultation_fee || 0), 0);
     return [
-      { label: 'In Consultation', value: this.appointments.length, trendText: 'Payment pending', trendDirection: 'neutral', icon: 'bi-clipboard2-pulse', iconVariant: 'orange' },
-      { label: "Today's Visits", value: this.appointments.filter(a => a.appointment_date === today).length, trendText: 'Still in consultation', trendDirection: 'neutral', icon: 'bi-calendar-check', iconVariant: 'primary' },
+      { label: 'In Consultation', value: open.length, trendText: 'Payment pending', trendDirection: 'neutral', icon: 'bi-clipboard2-pulse', iconVariant: 'orange' },
+      { label: 'Consultation Only', value: feeOnly.length, trendText: 'Treatment not taken', trendDirection: 'neutral', icon: 'bi-person-check', iconVariant: 'primary' },
+      { label: 'Consultation Fees', value: inr(fees), trendText: 'Collected', trendDirection: 'neutral', icon: 'bi-cash-coin', iconVariant: 'green' },
+      { label: "Today's Visits", value: this.appointments.filter(a => a.appointment_date === today).length, trendText: 'On this list', trendDirection: 'neutral', icon: 'bi-calendar-check', iconVariant: 'primary' },
       { label: 'Pending Amount', value: inr(pending), trendText: 'To be collected', trendDirection: 'neutral', icon: 'bi-cash-stack', iconVariant: 'blue' },
     ];
   }
@@ -161,7 +171,17 @@ export class Consultations implements OnInit {
 
   onQuickAction({ row, action }: { row: TableRow; action: string }): void {
     const appt = this.appointments.find(a => a.id === Number(row['id']));
-    if (appt && action === 'wizard') this.openWizard(appt);
+    if (!appt) return;
+    if (action === 'wizard') this.openWizard(appt);
+    if (action === 'view') this.openView(appt);
+  }
+
+  /** Consultation Only: read-only view (last visit, fee paid, basic details, the treatment suggested). */
+  openView(appt: FlowAppointmentRecord): void {
+    this.dialog.open(NillCardView, {
+      width: '760px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false,
+      panelClass: 'appointment-wizard-dialog', data: { appointmentId: appt.id },
+    });
   }
 
   /** Reopens the consultation form where the user left off (payment step). */
@@ -193,9 +213,12 @@ export class Consultations implements OnInit {
   }
 
   private mapRow(a: FlowAppointmentRecord): TableRow {
-    const actions: QuickAction[] = this.can('continue-consultation-form')
-      ? [{ key: 'wizard', icon: 'bi-clipboard2-pulse', label: 'Consultation form', variant: 'primary' }]
-      : [];
+    const feeOnly = a.status === CONSULTATION_ONLY;
+    const actions: QuickAction[] = feeOnly
+      ? [{ key: 'view', icon: 'bi-eye', label: 'View', variant: 'primary' }]
+      : this.can('continue-consultation-form')
+        ? [{ key: 'wizard', icon: 'bi-clipboard2-pulse', label: 'Consultation form', variant: 'primary' }]
+        : [];
     return {
       id: a.id,
       lead: { name: a.name, subtitle: a.customer?.customer_code ?? `AP-${String(a.id).padStart(5, '0')}` },
@@ -205,9 +228,10 @@ export class Consultations implements OnInit {
       schedule: `${this.displayDate(a.appointment_date)}, ${this.displayTime(a.appointment_time)}`,
       scheduleSort: `${a.appointment_date} ${a.appointment_time ?? ''}`,
       status: a.status,
-      total: Number(a.total_amount) ? inr(a.total_amount) : '-',
-      totalSort: Number(a.total_amount),
-      paymentStatus: a.payment_status ?? 'Pending',
+      // Consultation Only: the fee collected (the treatment quoted is in the view).
+      total: feeOnly ? inr(a.consultation_fee) : Number(a.total_amount) ? inr(a.total_amount) : '-',
+      totalSort: feeOnly ? Number(a.consultation_fee) : Number(a.total_amount),
+      paymentStatus: feeOnly ? 'Consultation fee' : a.payment_status ?? 'Pending',
       actions,
     };
   }

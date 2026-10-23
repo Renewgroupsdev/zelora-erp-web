@@ -339,3 +339,88 @@
 @media (max-width: 560px) {
   .wz-disc-card { grid-template-columns: auto minmax(0, 1fr); .link-btn { grid-column: 1 / -1; justify-self: start; } }
 }
+
+// Payment step: treatment taken, or the consultation fee only (-> Nill Card).
+.wz-paytype {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+
+  @media (max-width: 560px) { grid-template-columns: 1fr; }
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--table-border);
+    border-radius: 12px;
+    background: var(--app-surface-solid);
+    color: var(--text-dark);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+
+    > i {
+      display: grid;
+      place-items: center;
+      flex: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--primary-soft);
+      color: var(--primary-dark);
+      font-size: 17px;
+    }
+
+    span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    strong { font-size: 13px; }
+    small { color: var(--text-muted); font-size: 11px; }
+
+    &:hover { border-color: var(--primary-border); }
+
+    &.on {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+      box-shadow: 0 0 0 1px var(--primary) inset;
+
+      > i { background: var(--primary); color: #fff; }
+    }
+  }
+}
+
+.wz-hint {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+
+  &.bad { color: var(--status-red-text); }
+}
+
+.wz-paynote {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--status-blue-bg);
+  border-radius: 12px;
+  background: var(--status-blue-bg);
+  color: var(--status-blue-text);
+
+  > i { font-size: 18px; }
+  div { display: flex; flex-direction: column; gap: 2px; }
+  strong { font-size: 13px; }
+  small { color: var(--text-muted); font-size: 11px; }
+
+  &.ok { background: var(--status-green-bg); border-color: var(--status-green-bg); color: var(--status-green-text); }
+  &.warn { background: var(--status-orange-bg); border-color: var(--status-orange-bg); color: var(--status-orange-text); }
+
+  @media (max-width: 560px) {
+    grid-template-columns: auto minmax(0, 1fr);
+    .link-btn { grid-column: 1 / -1; justify-self: start; }
+  }
+}

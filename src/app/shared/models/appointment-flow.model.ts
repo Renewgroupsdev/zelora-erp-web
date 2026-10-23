@@ -1,6 +1,9 @@
 /** Appointment wizard (consultation form) -> invoice -> customer, as returned by /appointment-flow. */
 
-export type FlowStatus = 'Scheduled' | 'In Consultation' | 'Awaiting Terms' | 'Invoiced' | 'Converted' | 'Cancelled';
+/** "Consultation Only": the treatment was not taken, only the consultation fee was collected (Nill Card, view only). */
+export type FlowStatus = 'Scheduled' | 'In Consultation' | 'Awaiting Terms' | 'Invoiced' | 'Converted' | 'Consultation Only' | 'Cancelled';
+/** treatment = the customer takes the treatment; consultation = only the consultation fee is paid. */
+export type PaymentType = 'treatment' | 'consultation';
 export type FlowCategory = 'Hair' | 'Skin';
 export type PaymentMode = 'UPI' | 'Cash' | 'EMI' | 'Online';
 
@@ -107,6 +110,14 @@ export interface FlowAppointmentRecord {
   payment_status: 'Paid' | 'Partial' | 'Pending';
   transaction_no: string | null;
   emi_months: number | null;
+  payment_type?: PaymentType;
+  /** Consultation fee collected when the treatment was not taken. */
+  consultation_fee?: string | null;
+  consultation_paid_at?: string | null;
+  /** EMI finance company (Bajaj Finserv, HDFC Bank, IDFC FIRST Bank). */
+  finance_partner?: string | null;
+  /** Latest visit on this mobile number (any appointment not cancelled). */
+  last_visit_date?: string | null;
   terms_sent_at: string | null;
   terms_accepted_at: string | null;
   terms_accepted_via: string | null;
@@ -222,6 +233,26 @@ export const PAYMENT_MODES: { value: PaymentMode; label: string; icon: string }[
 ];
 
 export const EMI_MONTHS = [3, 6, 9, 12];
+
+/** GET /appointment-flow/payment-options: what the Payment step offers. */
+export interface PaymentOptions {
+  razorpay: { enabled: boolean; key_id: string | null };
+  emi_partners: { name: string; url: string }[];
+  /** Least a cash treatment payment may be (or the whole total when it is smaller). */
+  cash_min_amount: number;
+}
+
+/** POST /appointment-flow/{id}/razorpay-order: what Razorpay Checkout is opened with. */
+export interface RazorpayOrder {
+  key_id: string;
+  order_id: string;
+  /** Paise. */
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  prefill: { name?: string | null; contact?: string | null; email?: string | null };
+}
 
 export const HEARD_FROM = ['Hoarding / Pamphlet', 'YouTube', 'Internet', 'Referred by Doctor', 'Our Client', 'Other'];
 

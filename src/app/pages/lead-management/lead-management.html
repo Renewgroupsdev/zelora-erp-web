@@ -5,10 +5,16 @@
       <h6 class="page-title">Lead Managements</h6>
     </div>
 
-    <button *appCan="'add-lead'" type="button" class="add-lead-btn" (click)="openAddPopup()">
-      <i class="bi bi-plus-lg"></i>
-      Add Lead
-    </button>
+    <div class="header-actions">
+      <button type="button" class="add-lead-btn share-link-btn" (click)="shareEnquiryLink()" title="Customers fill this form and become a New Lead here">
+        <i class="bi bi-whatsapp"></i>
+        Share enquiry link
+      </button>
+      <button *appCan="'add-lead'" type="button" class="add-lead-btn" (click)="openAddPopup()">
+        <i class="bi bi-plus-lg"></i>
+        Add Lead
+      </button>
+    </div>
   </div>
 
   <app-auto-module-tabs></app-auto-module-tabs>

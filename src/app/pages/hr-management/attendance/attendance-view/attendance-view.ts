@@ -1,11 +1,20 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { finalize } from 'rxjs';
 import { AttendanceMonthSummary, HrService } from '../../../../shared/common-services/hr.service';
 import { PageLoader } from '../../../../shared/components/page-loader/page-loader';
 import { AttendanceRecord, BREAK_TYPES, breakMinutes, hoursLabel, minutesLabel, workedHours } from '../../../../shared/models/hr.model';
 import { displayDate, displayTime, isoDate, monthLabel } from '../../../../shared/utils/format.util';
+
+interface PunchPhoto {
+  kind: 'in' | 'out';
+  label: string;
+  url: string | null;
+  time: string | null;
+  distanceM: number | null;
+  reason: string | null;
+}
 
 /**
  * Read-only view of one employee's attendance. Opens on the clicked date and loads the employee's month from
@@ -21,6 +30,7 @@ import { displayDate, displayTime, isoDate, monthLabel } from '../../../../share
 })
 export class AttendanceView implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<AttendanceView>);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly data = inject<{ empId: string; date: string }>(MAT_DIALOG_DATA);
   readonly hr = inject(HrService);
 
@@ -87,6 +97,43 @@ export class AttendanceView implements OnInit {
         },
         error: (err: any) => this.error.set(err?.error?.message || 'Could not load this employee\'s attendance.'),
       });
+  }
+
+  /** Check-in / check-out selfies of the selected day, with what to print on each card. */
+  readonly photos = computed<PunchPhoto[]>(() => {
+    const r = this.record();
+    if (!r) return [];
+    return [
+      { kind: 'in', label: 'Check-in', url: r.checkInPhotoUrl ?? null, time: r.checkIn, distanceM: r.distanceM ?? null, reason: null },
+      { kind: 'out', label: 'Check-out', url: r.checkOutPhotoUrl ?? null, time: r.checkOut, distanceM: r.checkOutDistanceM ?? null, reason: r.checkOutReason ?? null },
+    ];
+  });
+
+  /** Photo URLs that failed to load (missing file / storage offline): shown as a placeholder instead of a broken image. */
+  readonly failed = signal<ReadonlySet<string>>(new Set());
+  /** The photo open in the full-size viewer. */
+  readonly viewing = signal<PunchPhoto | null>(null);
+
+  markFailed(url: string): void {
+    this.failed.update(s => new Set(s).add(url));
+  }
+
+  /** Text for a card without a usable photo. */
+  emptyText(p: PunchPhoto): string {
+    if (p.url) return 'Photo could not be loaded';
+    if (p.time) return 'No selfie for this punch';
+    return p.kind === 'in' ? 'Not checked in' : this.date() === this.today ? 'Still working' : 'Not checked out';
+  }
+
+  openPhoto(p: PunchPhoto): void {
+    if (!p.url || this.failed().has(p.url)) return;
+    this.viewing.set(p);
+    setTimeout(() => this.host.nativeElement.querySelector<HTMLElement>('.photo-viewer')?.focus());
+  }
+
+  closePhoto(event?: Event): void {
+    event?.stopPropagation(); // Escape closes the viewer, not the whole dialog
+    this.viewing.set(null);
   }
 
   select(date: string): void {

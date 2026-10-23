@@ -36,6 +36,7 @@ import { CanActionDirective } from '../../shared/directives/can-action.directive
 import { COMBO_OFFERS, TREATMENTS } from '../../shared/data/treatment-catalog';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 import { BranchContextService } from '../../shared/common-services/branch-context.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-lead-management',
@@ -591,6 +592,40 @@ export class LeadManagement implements OnInit {
 
   openFollowUp(row: TableRow): void {
     this.openLeadProfile(row, 'lead');
+  }
+
+  /**
+   * Public enquiry form link (served by the API host, /enquiry?src=whatsapp). A customer who fills it becomes a
+   * "New Lead" here with source WhatsApp; send it from WhatsApp Business as a greeting / quick reply.
+   */
+  get enquiryLink(): string {
+    return environment.apiBaseUrl.replace(/\/api\/?$/, '') + '/enquiry?src=whatsapp';
+  }
+
+  shareEnquiryLink(): void {
+    const link = this.enquiryLink;
+    const message = `Thank you for contacting Renew+ Hair and Skin Care! Please share a few details here and our team will call you to book your consultation:\n${link}`;
+    Swal.fire({
+      title: 'Enquiry form link',
+      html: `<p style="margin:0 0 8px;font-size:13px;color:#667085">Customers who fill this form appear here as <b>New Lead</b> (source WhatsApp).
+               Save it as a WhatsApp Business quick reply or greeting message.</p>
+             <input class="swal2-input" style="width:100%;margin:0;font-size:13px" readonly value="${link}">`,
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: '<i class="bi bi-clipboard"></i> Copy link',
+      denyButtonText: '<i class="bi bi-whatsapp"></i> Share on WhatsApp',
+      cancelButtonText: 'Close',
+      confirmButtonColor: '#0f5245',
+      denyButtonColor: '#25d366',
+    }).then(result => {
+      if (result.isConfirmed) {
+        navigator.clipboard?.writeText(link)
+          .then(() => this.toast.success('Enquiry link copied.'))
+          .catch(() => this.toast.warning('Copy the link from the box.'));
+      } else if (result.isDenied) {
+        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
+      }
+    });
   }
 
   openAddPopup(data: any = null): void {

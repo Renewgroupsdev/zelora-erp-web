@@ -28,7 +28,7 @@ const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue'> =
   // Accounts
   unpaid: 'red', 'partially paid': 'orange', sent: 'blue',
   // Appointments
-  'in consultation': 'orange', 'awaiting terms': 'orange', invoiced: 'blue',
+  'in consultation': 'orange', 'awaiting terms': 'orange', invoiced: 'blue', 'consultation only': 'gray', 'consultation fee': 'blue',
   receipt: 'green', payment: 'red', sales: 'blue', purchase: 'orange', contra: 'gray', journal: 'gray',
 };
 

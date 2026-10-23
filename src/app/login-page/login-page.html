@@ -10,20 +10,14 @@
         <img src="assets/02_Renew%20Group%20-Logo%20png.png" alt="Renew Plus logo" class="auth-logo">
       </div>
 
-      <h2 class="welcome-text">Welcome back</h2>
-      <p class="welcome-subtext">Sign in to manage your hair and skin care clinic</p>
+      <h2 class="welcome-text">Welcome</h2>
+      <!-- <p class="welcome-subtext">Sign in to continue to <strong>Zelora ERP</strong></p> -->
 
       <!-- Inline error message -->
       <div class="alert-error" *ngIf="error" role="alert">
         <span class="alert-icon">!</span>
         <span class="alert-message">{{ error }}</span>
         <button type="button" class="alert-close" (click)="clearError()" aria-label="Dismiss">&times;</button>
-      </div>
-
-      <div class="login-mode" role="tablist" aria-label="Sign in as">
-        <button type="button" role="tab" [attr.aria-selected]="mode === 'user'" [class.active]="mode === 'user'" (click)="setMode('user')"><i class="bi bi-person-badge"></i> Management</button>
-        <button type="button" role="tab" [attr.aria-selected]="mode === 'employee'" [class.active]="mode === 'employee'" (click)="setMode('employee')"><i class="bi bi-person-vcard"></i> Employee</button>
-        <button type="button" role="tab" [attr.aria-selected]="mode === 'customer'" [class.active]="mode === 'customer'" (click)="setMode('customer')"><i class="bi bi-phone"></i> Customer</button>
       </div>
 
       @if (info) { <div class="alert-info-box" role="status">{{ info }}</div> }
@@ -36,28 +30,35 @@
 
         @if (!(mode === 'customer' && otpSent)) {
         <div class="form-group">
-          <label for="user_name" class="form-label">{{ identifierLabel }}</label>
+          <label for="user_name" class="form-label">User name / Employee ID / Mobile number</label>
           <div class="input-group">
-            <span class="input-icon"><i class="bi" [ngClass]="mode === 'customer' ? 'bi-phone' : mode === 'employee' ? 'bi-person-vcard' : 'bi-person'"></i></span>
+            <span class="input-icon"><i class="bi" [ngClass]="identifierIcon"></i></span>
             <input
               class="form-control"
               type="text"
               id="user_name"
-              autocomplete="off"
-              [placeholder]="identifierPlaceholder"
+              autocomplete="username"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="Email, employee ID or mobile number"
               formControlName="user_name"
-              [readonly]="mode === 'customer' && otpSent"
-              [attr.inputmode]="mode === 'customer' ? 'numeric' : null"
               [ngClass]="{ 'is-invalid': formSubmitted && formValues['user_name'].invalid }"
             >
           </div>
+          @if (kind === 'phone') {
+            <div class="identifier-hint">
+              <button type="button" class="hint-switch" (click)="togglePasswordLogin()">
+                {{ usePassword ? 'Send OTP instead' : 'Sign in with password instead' }}
+              </button>
+            </div>
+          }
           <div *ngIf="formSubmitted && formValues['user_name'].invalid" class="invalid-feedback">
-            <div *ngIf="formValues['user_name'].errors?.['required']">{{ identifierLabel }} is required.</div>
+            <div *ngIf="formValues['user_name'].errors?.['required']">Enter your email, employee ID or mobile number.</div>
           </div>
         </div>
         }
 
-        @if (mode !== 'customer') {
+        @if (needsPassword) {
         <div class="form-group">
           <label for="password" class="form-label">Password</label>
           <div class="input-group">
@@ -68,6 +69,7 @@
               class="form-control"
               placeholder="Enter your password"
               formControlName="password"
+              autocomplete="current-password"
               [ngClass]="{ 'is-invalid': formSubmitted && !formValues['password'].value }"
             >
             <button type="button" class="input-group-append" (click)="showPassword = !showPassword" aria-label="Toggle password visibility">
@@ -106,14 +108,16 @@
         </div>
         }
 
-        @if (mode === 'user') {
+        @if (needsPassword) {
         <div class="form-check-row">
           <div class="form-check">
             <input type="checkbox" class="form-check-input" id="checkbox-signin" formControlName="rememberMe">
             <label class="form-check-label" for="checkbox-signin">Remember Me</label>
           </div>
 
-          <a href="javascript:void(0)" class="forgot-password-link" (click)="goToForgotPassword()">Forgot password?</a>
+          @if (mode === 'user') {
+            <a href="javascript:void(0)" class="forgot-password-link" (click)="goToForgotPassword()">Forgot password?</a>
+          }
         </div>
         }
 

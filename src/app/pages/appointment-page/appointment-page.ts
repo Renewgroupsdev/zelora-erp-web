@@ -205,7 +205,7 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   statusClass(status: FlowStatus): string {
     const map: Record<FlowStatus, string> = {
       Scheduled: 'status-blue', 'In Consultation': 'status-orange', 'Awaiting Terms': 'status-orange',
-      Invoiced: 'status-blue', Converted: 'status-green', Cancelled: 'status-red',
+      Invoiced: 'status-blue', Converted: 'status-green', 'Consultation Only': 'status-gray', Cancelled: 'status-red',
     };
     return map[status] ?? 'status-gray';
   }

@@ -10,8 +10,9 @@ import { ToastService } from '../../../shared/common-services/toast.service';
 import { HairGradeIcon } from '../../../shared/components/hair-grade-icon/hair-grade-icon';
 import {
   ALLERGIES, DiscountType, EMI_MONTHS, FAMILY_HISTORY, FlowAppointmentRecord, FlowDocument, HAIR_LOSS_PATTERN, HEARD_FROM, LUDWIG_GRADES,
-  NORWOOD_GRADES, PAYMENT_MODES, PaymentMode, SKIN_CONCERNS, SKIN_TYPES, inr,
+  NORWOOD_GRADES, PAYMENT_MODES, PaymentMode, PaymentOptions, PaymentType, RazorpayOrder, SKIN_CONCERNS, SKIN_TYPES, inr,
 } from '../../../shared/models/appointment-flow.model';
+import { RazorpayCheckoutService, RazorpayResult } from '../../../shared/common-services/razorpay-checkout.service';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 interface TreatmentOption {
@@ -101,6 +102,7 @@ export class AppointmentWizard implements OnInit {
   private readonly data = inject<{ appointmentId: number }>(MAT_DIALOG_DATA);
 
   private readonly auth = inject(AuthService);
+  private readonly razorpay = inject(RazorpayCheckoutService);
 
   /** Each step is a Roles & Permissions action of the Appointment module (seeded from config/module_actions.php):
    *  a role only sees the steps ticked for it, under the name set there. */
@@ -174,7 +176,18 @@ export class AppointmentWizard implements OnInit {
   plan: { lines: PlanLine[]; doctor_suggestion: string } = { lines: [blankLine()], doctor_suggestion: '' };
 
   // Step 4
-  pay = { payment_mode: 'UPI' as PaymentMode, paid_amount: 0, transaction_no: '', emi_months: 6 };
+  pay = {
+    /** treatment = the customer takes the treatment; consultation = treatment too costly, only the consultation fee. */
+    payment_type: 'treatment' as PaymentType,
+    consultation_fee: null as number | null,
+    payment_mode: 'UPI' as PaymentMode,
+    paid_amount: 0,
+    transaction_no: '',
+    emi_months: 6,
+    finance_partner: '',
+  };
+  /** Razorpay, EMI partners and the cash minimum (GET /appointment-flow/payment-options). */
+  readonly payOptions = signal<PaymentOptions>({ razorpay: { enabled: false, key_id: null }, emi_partners: [], cash_min_amount: 1000 });
 
   // Step 4: discount (asked here, decided by the branch manager)
   /** The "Discount" switch of the Payment step. */
@@ -184,7 +197,7 @@ export class AppointmentWizard implements OnInit {
   readonly discountError = signal<string | null>(null);
 
   /** Once the terms are accepted the consultation is locked (the invoice is issued). */
-  readonly locked = computed(() => !!this.appt()?.terms_accepted_at || this.appt()?.status === 'Converted');
+  readonly locked = computed(() => !!this.appt()?.terms_accepted_at || this.appt()?.status === 'Converted' || this.appt()?.status === 'Consultation Only');
 
   ngOnInit(): void {
     // Categories with their treatments (real ids + price + default sittings).
@@ -205,6 +218,10 @@ export class AppointmentWizard implements OnInit {
         this.categories.set([]);
         this.treatments.set([]);
       },
+    });
+    this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/payment-options`).subscribe({
+      next: (res: any) => res?.data && this.payOptions.set(res.data),
+      error: () => { /* defaults: no Razorpay, no EMI partners - the step still works with manual references */ },
     });
     this.reload(true);
   }
@@ -248,10 +265,13 @@ export class AppointmentWizard implements OnInit {
     };
     this.syncCategoryId();
     this.pay = {
+      payment_type: a.payment_type ?? 'treatment',
+      consultation_fee: a.consultation_fee != null ? Number(a.consultation_fee) : null,
       payment_mode: a.payment_mode ?? 'UPI',
       paid_amount: Number(a.paid_amount) || 0,
       transaction_no: a.transaction_no ?? '',
       emi_months: a.emi_months ?? 6,
+      finance_partner: a.finance_partner ?? '',
     };
   }
 
@@ -563,21 +583,139 @@ export class AppointmentWizard implements OnInit {
     return this.pay.emi_months ? Math.round((this.balance / this.pay.emi_months) * 100) / 100 : 0;
   }
 
+  get isConsultationOnly(): boolean {
+    return this.pay.payment_type === 'consultation';
+  }
+
+  /** EMI is for the treatment only; the consultation fee is paid by UPI, cash or internet banking. */
+  get availableModes() {
+    return this.isConsultationOnly ? this.paymentModes.filter(m => m.value !== 'EMI') : this.paymentModes;
+  }
+
+  /** Internet Banking goes through Razorpay Checkout once the keys are set on the server. */
+  get usesRazorpay(): boolean {
+    return this.pay.payment_mode === 'Online' && this.payOptions().razorpay.enabled;
+  }
+
+  /** UPI transaction ID, EMI loan / approval no, or a manual bank reference while Razorpay is not set up. */
   get needsReference(): boolean {
-    return this.pay.payment_mode === 'UPI' || this.pay.payment_mode === 'Online';
+    const mode = this.pay.payment_mode;
+    return mode === 'UPI' || (mode === 'EMI' && !this.isConsultationOnly) || (mode === 'Online' && !this.usesRazorpay);
+  }
+
+  get referenceLabel(): string {
+    switch (this.pay.payment_mode) {
+      case 'UPI': return 'UPI transaction ID';
+      case 'EMI': return 'Loan / approval no';
+      default: return 'Bank reference no';
+    }
+  }
+
+  /** Least a cash treatment payment may be: the configured minimum, or the whole total when that is smaller. */
+  get cashMinimum(): number {
+    return Math.min(this.payOptions().cash_min_amount, this.total);
+  }
+
+  get emiPartnerUrl(): string | null {
+    return this.payOptions().emi_partners.find(p => p.name === this.pay.finance_partner)?.url ?? null;
+  }
+
+  /** What is collected now: the consultation fee, or the treatment amount paying now. */
+  get amountNow(): number {
+    return this.isConsultationOnly ? Number(this.pay.consultation_fee) || 0 : Number(this.pay.paid_amount) || 0;
+  }
+
+  setPaymentType(type: PaymentType): void {
+    if (this.pay.payment_type === type) return;
+    this.pay.payment_type = type;
+    this.error.set(null);
+    if (type === 'consultation' && this.pay.payment_mode === 'EMI') this.pay.payment_mode = 'UPI';
+  }
+
+  setPaymentMode(mode: PaymentMode): void {
+    this.pay.payment_mode = mode;
+    this.error.set(null);
+    // A partner chosen for one EMI is not carried to another mode by accident.
+    if (mode !== 'EMI') this.pay.finance_partner = '';
+  }
+
+  /** Opens the finance partner's page in a new tab to apply for the EMI. */
+  openEmiPartner(): void {
+    const url = this.emiPartnerUrl;
+    if (url) window.open(url, '_blank', 'noopener');
   }
 
   private savePayment(): void {
-    const paid = Number(this.pay.paid_amount);
-    if (!(paid >= 0) || paid > this.total) return void this.error.set(`Amount must be between 0 and ${inr(this.total)}.`);
-    if (this.needsReference && !this.pay.transaction_no.trim()) return void this.error.set('Enter the UPI / online transaction reference.');
+    const consultation = this.isConsultationOnly;
+    const mode = this.pay.payment_mode;
+    const amount = this.amountNow;
 
-    this.send(this.api.PUT(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/payment`, {
-      payment_mode: this.pay.payment_mode,
-      paid_amount: paid,
-      transaction_no: this.pay.transaction_no.trim() || null,
-      emi_months: this.pay.payment_mode === 'EMI' ? this.pay.emi_months : null,
-    }), undefined, res => (res?.data?.sms_sent ? this.toast.success(res.message) : this.toast.warning(res?.message)));
+    if (consultation) {
+      if (!(amount > 0)) return void this.error.set('Enter the consultation fee.');
+    } else {
+      if (!(amount >= 0) || amount > this.total) return void this.error.set(`Amount must be between 0 and ${inr(this.total)}.`);
+      if (mode === 'Cash' && amount < this.cashMinimum) return void this.error.set(`A cash payment must be at least ${inr(this.cashMinimum)}.`);
+      if (mode === 'EMI' && !this.pay.finance_partner) return void this.error.set('Choose the EMI finance partner.');
+    }
+    if (this.needsReference && !this.pay.transaction_no.trim()) {
+      return void this.error.set(mode === 'EMI' ? 'Enter the loan / approval number from the finance partner.' : 'Enter the UPI / online transaction reference.');
+    }
+
+    if (!this.usesRazorpay) return this.submitPayment(null);
+    if (!(amount >= 1)) return void this.error.set('Enter the amount to pay by internet banking.');
+
+    // Internet Banking: the API creates a Razorpay order for the amount, Checkout collects it, then the payment is
+    // saved with the ids + signature (the API verifies them with Razorpay before saving).
+    this.saving.set(true);
+    this.api.POST(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/razorpay-order`, {
+      payment_type: this.pay.payment_type,
+      amount,
+    }).subscribe({
+      next: (res: any) => {
+        this.saving.set(false);
+        this.razorpay.open(res.data as RazorpayOrder)
+          .then(result => this.submitPayment(result))
+          .catch((e: Error) => this.error.set(e.message));
+      },
+      error: (err: any) => {
+        this.saving.set(false);
+        this.showError(err);
+      },
+    });
+  }
+
+  private submitPayment(razorpay: RazorpayResult | null): void {
+    const consultation = this.isConsultationOnly;
+    const mode = this.pay.payment_mode;
+    const body = consultation
+      ? { payment_type: 'consultation', consultation_fee: this.amountNow, payment_mode: mode, transaction_no: this.pay.transaction_no.trim() || null, ...razorpay }
+      : {
+          payment_type: 'treatment',
+          payment_mode: mode,
+          paid_amount: this.amountNow,
+          transaction_no: this.pay.transaction_no.trim() || null,
+          emi_months: mode === 'EMI' ? this.pay.emi_months : null,
+          finance_partner: mode === 'EMI' ? this.pay.finance_partner : null,
+          ...razorpay,
+        };
+
+    if (!consultation) {
+      this.send(this.api.PUT(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/payment`, body), undefined,
+        res => (res?.data?.sms_sent ? this.toast.success(res.message) : this.toast.warning(res?.message)));
+      return;
+    }
+
+    // Consultation only: nothing more to do in this form - the record now lives on the Nill Card list.
+    this.saving.set(true);
+    this.api.PUT(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/payment`, body)
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: (res: any) => {
+          this.toast.success(res?.message || 'Consultation fee saved.');
+          this.dialogRef.close(true);
+        },
+        error: (err: any) => this.showError(err),
+      });
   }
 
   // ---------------------------------------------------------------- step 4: discount

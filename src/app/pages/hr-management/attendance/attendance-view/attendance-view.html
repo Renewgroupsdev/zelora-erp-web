@@ -52,6 +52,42 @@
         </div>
         @if (r.remarks) { <p class="muted">Remarks: {{ r.remarks }}</p> }
 
+        <div class="section-title"><i class="bi bi-camera"></i> Attendance photos <span class="hint">· selfies from the mobile app</span></div>
+        <div class="punch-photos">
+          @for (p of photos(); track p.kind; let first = $first) {
+            @if (!first) {
+              <div class="punch-link" aria-hidden="true">
+                <span class="line"></span>
+                <span class="duration"><i class="bi bi-stopwatch"></i> {{ hoursLabel(worked()) }}</span>
+                <span class="line"></span>
+              </div>
+            }
+            <figure class="punch-card" [ngClass]="p.kind">
+              <div class="punch-media">
+                @if (p.url && !failed().has(p.url)) {
+                  <button type="button" class="punch-open" (click)="openPhoto(p)" [attr.aria-label]="'View ' + p.label + ' photo full size'">
+                    <img [src]="p.url" [alt]="p.label + ' selfie of ' + (e?.name ?? 'the employee')" loading="lazy" (error)="markFailed(p.url)" />
+                    <span class="zoom"><i class="bi bi-arrows-angle-expand"></i></span>
+                  </button>
+                } @else {
+                  <div class="punch-empty">
+                    <span class="empty-icon"><i class="bi" [ngClass]="p.url ? 'bi-exclamation-triangle' : p.time ? 'bi-camera-video-off' : 'bi-hourglass-split'"></i></span>
+                    <span>{{ emptyText(p) }}</span>
+                  </div>
+                }
+                <span class="punch-badge"><i class="bi" [ngClass]="p.kind === 'in' ? 'bi-box-arrow-in-right' : 'bi-box-arrow-right'"></i> {{ p.label }}</span>
+                @if (p.time) { <span class="punch-time">{{ displayTime(p.time) }}</span> }
+              </div>
+              <figcaption class="punch-meta">
+                <span class="chip"><i class="bi bi-calendar3"></i> {{ displayDate(date()) }}</span>
+                @if (p.distanceM != null) { <span class="chip"><i class="bi bi-geo-alt"></i> {{ p.distanceM }} m from branch</span> }
+                @if (r.source) { <span class="chip"><i class="bi" [ngClass]="r.source === 'Mobile' ? 'bi-phone' : 'bi-pc-display'"></i> {{ r.source }}</span> }
+                @if (p.reason) { <span class="chip reason"><i class="bi bi-chat-left-text"></i> {{ p.reason }}</span> }
+              </figcaption>
+            </figure>
+          }
+        </div>
+
         <div class="section-title"><i class="bi bi-cup-hot"></i> Breaks</div>
         <div class="items-table-wrap">
           <table class="items-table">
@@ -102,6 +138,21 @@
       }
     }
   </div>
+
+  @if (viewing(); as v) {
+    <div class="photo-viewer" role="dialog" aria-modal="true" [attr.aria-label]="v.label + ' photo'" tabindex="-1"
+         (click)="closePhoto()" (keydown.escape)="closePhoto($event)">
+      <figure (click)="$event.stopPropagation()">
+        <img [src]="v.url" [alt]="v.label + ' selfie of ' + (e?.name ?? 'the employee')" />
+        <figcaption>
+          <span class="punch-badge static" [ngClass]="v.kind"><i class="bi" [ngClass]="v.kind === 'in' ? 'bi-box-arrow-in-right' : 'bi-box-arrow-right'"></i> {{ v.label }}</span>
+          <span>{{ e?.name }} · {{ displayDate(date()) }}@if (v.time) { · {{ displayTime(v.time) }} }</span>
+          @if (v.url) { <a [href]="v.url" target="_blank" rel="noopener" class="viewer-link"><i class="bi bi-box-arrow-up-right"></i> Open original</a> }
+        </figcaption>
+      </figure>
+      <button type="button" class="viewer-close" aria-label="Close photo" (click)="closePhoto($event)"><i class="bi bi-x-lg"></i></button>
+    </div>
+  }
 
   <div class="modal-footer-custom">
     <span class="footer-note"><i class="bi bi-eye"></i> View only</span>

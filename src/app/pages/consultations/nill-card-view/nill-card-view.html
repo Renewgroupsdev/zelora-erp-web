@@ -1,0 +1,108 @@
+@let a = appt();
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-person-vcard"></i></div>
+      <div class="title-content">
+        <h2>
+          {{ a?.name ?? 'Nill Card' }}
+          @if (a) { <span class="pill blue">Consultation only</span> }
+        </h2>
+        @if (a) { <p>{{ code() }} · {{ a.mobile_no }} · {{ a.branch_name || a.branch?.name || '-' }}</p> }
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom" [attr.aria-busy]="loading()">
+    @if (loading()) {
+      <div class="nc-loader"><app-page-loader [inline]="true"></app-page-loader></div>
+    } @else if (error()) {
+      <div class="nc-state" role="alert">
+        <i class="bi bi-exclamation-triangle"></i>
+        <span>{{ error() }}</span>
+        <button type="button" class="cancel-btn" (click)="load()"><i class="bi bi-arrow-clockwise"></i> Try again</button>
+      </div>
+    } @else if (a) {
+
+      <div class="nc-tiles">
+        <div class="nc-tile accent">
+          <i class="bi bi-calendar-check"></i>
+          <div><small>Last visit</small><strong>{{ date(a.last_visit_date ?? a.appointment_date) }}</strong><span>{{ sinceLastVisit(a.last_visit_date ?? a.appointment_date) }}</span></div>
+        </div>
+        <div class="nc-tile">
+          <i class="bi bi-clipboard2-pulse"></i>
+          <div><small>Consultation</small><strong>{{ date(a.appointment_date) }}</strong><span>{{ time(a.appointment_time) }}</span></div>
+        </div>
+        <div class="nc-tile">
+          <i class="bi bi-cash-coin"></i>
+          <div><small>Consultation fee</small><strong>{{ inr(a.consultation_fee) }}</strong><span>{{ modeLabel(a.payment_mode) }}@if (a.transaction_no) { · {{ a.transaction_no }} }</span></div>
+        </div>
+        <div class="nc-tile">
+          <i class="bi bi-receipt"></i>
+          <div><small>Fee paid on</small><strong>{{ dateTime(a.consultation_paid_at) }}</strong><span>Treatment not taken</span></div>
+        </div>
+      </div>
+
+      <div class="section-title"><i class="bi bi-person"></i> Basic details</div>
+      <div class="info-grid">
+        <div><small>Name</small><strong>{{ a.name }}</strong></div>
+        <div><small>Mobile</small><strong>{{ a.mobile_no }}</strong></div>
+        <div><small>Email</small><strong>{{ a.email || '-' }}</strong></div>
+        <div><small>Gender / Age</small><strong>{{ a.gender || '-' }}{{ a.age ? ' · ' + a.age + ' yrs' : '' }}</strong></div>
+        <div><small>Service category</small><strong>{{ a.category || '-' }}</strong></div>
+        <div><small>Heard from</small><strong>{{ a.heard_from || '-' }}</strong></div>
+        <div><small>Branch</small><strong>{{ a.branch_name || a.branch?.name || '-' }}</strong></div>
+        <div><small>Counselor</small><strong>{{ a.counselor?.name || '-' }}</strong></div>
+        <div><small>Location</small><strong>{{ a.location || '-' }}{{ a.pincode ? ' - ' + a.pincode : '' }}</strong></div>
+      </div>
+
+      <div class="section-title"><i class="bi bi-capsule"></i> Treatment suggested <span class="hint">· not taken</span></div>
+      @if (lines().length) {
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead>
+              <tr><th>Treatment</th><th class="num">Price / sitting</th><th class="num">Sittings</th><th class="num">Gap</th><th class="num">Amount</th></tr>
+            </thead>
+            <tbody>
+              @for (l of lines(); track $index) {
+                <tr>
+                  <td><strong>{{ l.name }}</strong></td>
+                  <td class="num">{{ inr(l.price) }}</td>
+                  <td class="num">{{ l.sittings }}</td>
+                  <td class="num">{{ l.sittings > 1 ? 'every ' + l.gap + ' days' : '-' }}</td>
+                  <td class="num">{{ inr(l.amount) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="totals">
+          @if (Number(a.discount_amount) > 0) {
+            <div><span>Treatment price</span><span>{{ inr(a.subtotal_amount) }}</span></div>
+            <div><span>Discount approved</span><span>− {{ inr(a.discount_amount) }}</span></div>
+          }
+          <div class="grand"><span>Treatment quoted</span><span>{{ inr(a.total_amount) }}</span></div>
+        </div>
+      } @else {
+        <p class="muted">No treatment was chosen in the consultation.</p>
+      }
+      @if (a.doctor_suggestion) {
+        <div class="nc-note"><i class="bi bi-chat-square-quote"></i><div><small>Doctor's suggestion</small><p>{{ a.doctor_suggestion }}</p></div></div>
+      }
+
+      <div class="section-title"><i class="bi bi-heart-pulse"></i> Vitals</div>
+      <div class="info-grid">
+        <div><small>Blood pressure</small><strong>{{ a.bp || '-' }}</strong></div>
+        <div><small>Weight</small><strong>{{ a.weight ? a.weight + ' kg' : '-' }}</strong></div>
+        <div><small>Allergy</small><strong>{{ a.is_allergy ? 'Yes' : 'No' }}</strong></div>
+      </div>
+    }
+  </div>
+
+  <div class="modal-footer-custom">
+    <span class="footer-note"><i class="bi bi-eye"></i> View only</span>
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+  </div>
+</div>

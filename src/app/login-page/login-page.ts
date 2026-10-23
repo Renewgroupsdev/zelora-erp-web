@@ -16,6 +16,27 @@ const OTP_LENGTH = 6;
 
 export type LoginMode = 'user' | 'employee' | 'customer';
 
+/** What the single sign-in field holds: an email, a mobile number, an employee ID, or nothing yet. */
+export type IdentifierKind = 'email' | 'phone' | 'employee' | 'none';
+
+/** Digits of a mobile number typed as "98765 43210", "+91-98765-43210", ...; null when it is not a mobile number. */
+export function mobileDigits(value: string): string | null {
+  const v = value.trim();
+  if (!/^\+?[0-9][0-9\s-]*$/.test(v)) return null;
+  let digits = v.replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2); // +91 country code
+  return /^[0-9]{10,15}$/.test(digits) ? digits : null;
+}
+
+/** Management accounts sign in with their email (or phone), employees with their employee ID, customers with a mobile number. */
+export function identifierKind(value: string): IdentifierKind {
+  const v = value.trim();
+  if (!v) return 'none';
+  if (v.includes('@')) return 'email';
+  if (mobileDigits(v)) return 'phone';
+  return /^\+?[0-9\s-]+$/.test(v) ? 'none' : 'employee'; // a half-typed number is not an employee ID
+}
+
 @Component({
   selector: 'app-login-page',
   standalone: true,
@@ -31,8 +52,14 @@ export class LoginPage implements OnInit, OnDestroy {
   error: string = '';
   loading: boolean = false;
 
-  /** user = email/phone + password (users), employee = employee ID + password (hr_employees), customer = mobile + OTP (customers). */
-  mode: LoginMode = 'user';
+  /**
+   * One field for everybody; what is typed picks the sign-in:
+   *   email                      -> management account (users) + password
+   *   mobile number              -> customer OTP, or the management account's password when usePassword is on
+   *                                 (staff can sign in with their phone number too)
+   *   anything else              -> employee ID (hr_employees) + password
+   */
+  usePassword = false;
   otpSent = false;
   otpDigits: string[] = Array(OTP_LENGTH).fill('');
   readonly otpIndexes = Array.from({ length: OTP_LENGTH }, (_, i) => i);
@@ -59,6 +86,13 @@ export class LoginPage implements OnInit, OnDestroy {
     });
 
     this.restoreRememberedUser();
+
+    // Typing something else than a mobile number goes back to the default for the new value.
+    this.loginForm.get('user_name')!.valueChanges.subscribe(() => {
+      if (this.kind !== 'phone') this.usePassword = false;
+      if (this.error) this.error = '';
+      this.info = '';
+    });
   }
 
   ngOnDestroy(): void {
@@ -92,23 +126,39 @@ export class LoginPage implements OnInit, OnDestroy {
     }
   }
 
-  setMode(mode: LoginMode): void {
-    if (this.mode === mode) return;
-    this.mode = mode;
+  private get identifier(): string {
+    return String(this.loginForm.get('user_name')?.value ?? '');
+  }
+
+  get kind(): IdentifierKind {
+    return identifierKind(this.identifier);
+  }
+
+  /** Which backend sign-in the typed value goes to. */
+  get mode(): LoginMode {
+    switch (this.kind) {
+      case 'employee': return 'employee';
+      case 'phone': return this.usePassword ? 'user' : 'customer';
+      default: return 'user';
+    }
+  }
+
+  /** Password field: everything except a mobile number on the OTP path. */
+  get needsPassword(): boolean {
+    return this.mode !== 'customer';
+  }
+
+  get identifierIcon(): string {
+    return this.kind === 'phone' ? 'bi-phone' : this.kind === 'employee' ? 'bi-person-vcard' : 'bi-person';
+  }
+
+  /** Mobile number: OTP (customer) <-> password (management account registered with that number). */
+  togglePasswordLogin(): void {
+    this.usePassword = !this.usePassword;
     this.error = '';
     this.info = '';
-    this.otpSent = false;
     this.formSubmitted = false;
-    this.loginForm.patchValue({ user_name: '', password: '', otp: '' });
-    if (mode === 'user') this.restoreRememberedUser();
-  }
-
-  get identifierLabel(): string {
-    return this.mode === 'employee' ? 'Employee ID' : this.mode === 'customer' ? 'Mobile Number' : 'User Name';
-  }
-
-  get identifierPlaceholder(): string {
-    return this.mode === 'employee' ? 'Enter your employee ID (e.g. RNG-EMP-1001)' : this.mode === 'customer' ? 'Enter your 10-digit mobile number' : 'Enter your user name';
+    this.loginForm.patchValue({ password: '' });
   }
 
   /** Customer step 1: send the OTP to the mobile number. */
@@ -116,8 +166,8 @@ export class LoginPage implements OnInit, OnDestroy {
     this.formSubmitted = true;
     this.error = '';
     this.info = '';
-    const phone = String(this.loginForm.get('user_name')?.value ?? '').trim();
-    if (!/^[0-9]{10,15}$/.test(phone)) {
+    const phone = mobileDigits(this.identifier);
+    if (!phone) {
       this.error = 'Enter a valid mobile number.';
       return;
     }
@@ -212,13 +262,17 @@ export class LoginPage implements OnInit, OnDestroy {
     this.formSubmitted = true;
     this.error = '';
 
-    const missing = !this.loginForm.get('user_name')?.value?.trim() || !this.loginForm.get('password')?.value;
-    if (missing) {
-      this.error = this.mode === 'employee' ? 'Please enter your employee ID and password.' : 'Please enter your user name and password.';
+    if (this.kind === 'none') {
+      this.error = 'Enter your email, employee ID or mobile number.';
+      return;
+    }
+    if (!this.loginForm.get('password')?.value) {
+      this.error = 'Please enter your password.';
       return;
     }
 
-    const username = this.loginForm.get('user_name')?.value;
+    // A mobile number typed with spaces / +91 is sent the way it is stored.
+    const username = this.kind === 'phone' ? mobileDigits(this.identifier)! : this.identifier.trim();
     const password = this.loginForm.get('password')?.value;
     const rememberMe = this.loginForm.get('rememberMe')?.value;
 
@@ -236,7 +290,7 @@ export class LoginPage implements OnInit, OnDestroy {
   private verifyOtp(): void {
     this.formSubmitted = true;
     this.error = '';
-    const phone = String(this.loginForm.get('user_name')?.value ?? '').trim();
+    const phone = mobileDigits(this.identifier) ?? '';
     const otp = String(this.loginForm.get('otp')?.value ?? '').trim();
     if (!/^[0-9]{6}$/.test(otp)) {
       this.error = 'Enter the 6-digit OTP.';
@@ -257,7 +311,7 @@ export class LoginPage implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.mode === 'user') this.processRememberMe(username, password, rememberMe);
+    if (this.mode !== 'customer') this.processRememberMe(username, password, rememberMe);
 
     const landingPath = firstModulePath(this.authService.menus()) ?? '/app/dashboard';
     this.router.navigateByUrl(landingPath);
