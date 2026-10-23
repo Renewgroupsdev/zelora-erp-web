@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragAxis, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { Component, EventEmitter, Input, Output, ViewChild, inject } from '@angular/core';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -56,23 +56,18 @@ export class CommonTableCard {
   @Input() columns: TableColumn[] = [];
 
   /**
-   * Width of a column. Action columns never get narrower than their buttons (26px each + gaps + padding),
-   * so edit / delete icons are not clipped when the configured percentage is too small.
+   * Columns are sized to their content (table-layout: auto), so no column carries dead whitespace and adding
+   * a column just widens the table - the scroll area then scrolls horizontally. This only supplies a floor:
+   * the explicit `minWidth`, or enough room for the buttons of an action column (26px each + gaps + padding).
    */
-  colWidth(col: TableColumn): string | undefined {
+  colMinWidth(col: TableColumn): number | null {
+    if (col.minWidth) return col.minWidth;
     const buttons =
       col.type === 'quickActions' ? Math.max(0, ...this.rows.map(row => this.asQuickActions(row[col.key]).length))
       : col.type === 'rowActions' ? 2
       : col.type === 'action' ? 3
       : 0;
-    if (!buttons) return col.width;
-    const minPx = buttons * 30 + 24;
-    return col.width ? `max(${col.width}, ${minPx}px)` : `${minPx}px`;
-  }
-
-  /** Each column keeps a readable width; narrower screens scroll the table sideways instead of squeezing the columns. */
-  get minTableWidth(): number {
-    return Math.max(this.columns.length, 1) * 120;
+    return buttons ? buttons * 30 + 24 : null;
   }
   @Input() rows: TableRow[] = [];
   /** Shows a heartbeat loader over the rows while a page of data is (re)loading - the

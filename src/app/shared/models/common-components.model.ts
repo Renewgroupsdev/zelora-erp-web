@@ -59,7 +59,10 @@ export interface TableColumn {
   key: string;
   header: string;
   type?: TableColumnType;
+  /** Preferred share of the table width, e.g. '10%'. Shares are normalised, so adding columns never overflows the card. */
   width?: string;
+  /** Smallest readable width in px (default 100, or the button width for action columns). The table scrolls sideways rather than squeezing a column below this. */
+  minWidth?: number;
   sortable?: boolean;
 }
 
