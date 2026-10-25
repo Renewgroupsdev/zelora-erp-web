@@ -30,7 +30,11 @@ export class DepartmentOptionsService {
     if (!this.request$ || force) {
       this.request$ = (this.api.GET(ApiRoutesConstants.DEPARTMENT_OPTIONS) as Observable<any>).pipe(
         map(res => ((res?.data ?? []) as { name: string }[]).map(d => d.name)),
-        tap(names => this.apply(names)),
+        tap(names => {
+          this.apply(names);
+          // Nothing configured yet (or not seeded when the app loaded): ask again next time instead of keeping [] for good.
+          if (!names.length) this.request$ = null;
+        }),
         catchError(err => {
           this.request$ = null;
           console.error('GET /departments/options failed', err);

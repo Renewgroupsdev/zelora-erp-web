@@ -34,8 +34,9 @@ export class EmployeeForm implements OnInit {
   }
 
   constructor() {
-    // A new employee defaults to the first department once GET /departments/options has answered.
-    this.hr.loadDepartments().subscribe(list => { if (!this.model.department && list.length) this.model.department = list[0]; });
+    // Fresh GET /departments/options every time the form opens (departments can be added in Settings meanwhile); a new
+    // employee defaults to the first one once it has answered.
+    this.hr.loadDepartments(true).subscribe(list => { if (!this.model.department && list.length) this.model.department = list[0]; });
   }
 
   readonly isEdit = !!this.data.employee;

@@ -29,8 +29,8 @@ export class ManpowerForm {
   };
 
   constructor() {
-    // Default to the first department once GET /departments/options has answered.
-    this.hr.loadDepartments().subscribe(list => { if (!this.model.department && list.length) this.model.department = list[0]; });
+    // Fresh GET /departments/options each time the form opens; default to the first department once it has answered.
+    this.hr.loadDepartments(true).subscribe(list => { if (!this.model.department && list.length) this.model.department = list[0]; });
     // Default to the first branch once GET /branches/options has answered.
     this.hr.loadBranches().subscribe(list => { if (!this.model.branch && list.length) this.model.branch = list[0].name; });
   }

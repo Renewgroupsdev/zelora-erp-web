@@ -173,9 +173,9 @@ export class HrService {
   /** Branch names <-> ids for the employee form (employees reference a branch by id). */
   readonly branchOptions = this.branchList.options;
 
-  /** GET /departments/options (shared with every other department dropdown and filter). */
-  loadDepartments(): Observable<string[]> {
-    return this.departmentList.load();
+  /** GET /departments/options (shared with every other department dropdown and filter); `force` re-reads it. */
+  loadDepartments(force = false): Observable<string[]> {
+    return this.departmentList.load(force);
   }
 
   /** GET /branches/options (shared with every other branch dropdown). */

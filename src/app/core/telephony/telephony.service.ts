@@ -1,7 +1,9 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { Observable, Subject, Subscription, catchError, exhaustMap, map, of, tap, timer } from 'rxjs';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { Observable, Subject, Subscription, auditTime, catchError, distinctUntilChanged, exhaustMap, map, merge, of, switchMap, tap, timer } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { ApiDataService } from '../http/api.service';
+import { TelephonySocketEvent, TelephonySocketService } from './telephony-socket.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import {
   AgentState,
@@ -18,11 +20,16 @@ import {
   TelephonyConnectionState,
 } from './telephony.models';
 
-/** How often the browser polls the agent state. Also acts as the presence heartbeat. */
+/** How often the browser polls the agent state while the WebSocket is down. Also acts as the presence heartbeat. */
 const POLL_MS = 3000;
 
-/** How often the browser polls the missed-call alert feed. */
+/** Agent state refresh while the WebSocket is live: events drive the UI, this only keeps presence alive
+ *  (the server drops a telecaller's presence after 90 s without a request) and catches anything missed. */
+const LIVE_HEARTBEAT_MS = 30000;
+
+/** How often the browser polls the missed-call alert feed (WebSocket down / live). */
 const ALERT_POLL_MS = 15000;
+const LIVE_ALERT_POLL_MS = 60000;
 
 /** Maps a raw `telephony/alerts` row (snake_case) to the camelCase shape the UI works with. */
 function toCallAlert(raw: any): CallAlert {
@@ -40,13 +47,22 @@ function toCallAlert(raw: any): CallAlert {
 
 /**
  * Telecaller call state shared by the dock (incoming popup / live call bar), Lead
- * Management's call buttons and the CRM page. Polls GET /telephony/agents/me while
- * logged in; swap the poll for a Laravel Echo subscription once Reverb is enabled.
+ * Management's call buttons and the CRM page. Live updates come over the Reverb WebSocket
+ * (TelephonySocketService): every call / agent event re-reads GET /telephony/agents/me at once.
+ * The API is still polled - every 30 s as a presence heartbeat while the socket is up, every
+ * 3 s (the old behaviour) whenever it is down, so the dock keeps working without Reverb.
  */
 @Injectable({ providedIn: 'root' })
 export class TelephonyService {
   private readonly api = inject(ApiDataService);
   private readonly auth = inject(AuthService);
+  private readonly socket = inject(TelephonySocketService);
+
+  /** true while live events flow over the WebSocket. */
+  private readonly socketLive$ = toObservable(computed(() => this.socket.state() === 'connected')).pipe(distinctUntilChanged());
+  /** Socket events ask for an immediate re-read (bursts are coalesced). */
+  private readonly stateKick$ = new Subject<void>();
+  private readonly alertKick$ = new Subject<void>();
 
   readonly state = signal<AgentState | null>(null);
   readonly ringingCall = computed(() => this.state()?.ringing_call ?? null);
@@ -84,6 +100,21 @@ export class TelephonyService {
     // Telephony is for staff sessions (users and employee logins); customers never poll it.
     effect(() => (this.auth.isAuthenticated() && this.auth.currentUser()?.login_type !== 'customer' ? this.startPolling() : this.stopPolling()));
     effect(() => this.syncRecording(this.activeCall()));
+
+    // Supervisors also follow their branch / franchise board (calls and agent status of every telecaller there).
+    effect(() => {
+      const user = this.auth.currentUser();
+      if (this.isSupervisor() && this.socket.state() !== 'off' && user?.branch_or_franchise_type && user.branch_or_franchise_id) {
+        this.socket.join(`branch.${user.branch_or_franchise_type}.${user.branch_or_franchise_id}`);
+      }
+    });
+
+    // "Live" in the UI = socket connected; otherwise the polling state set by the alert feed stands.
+    effect(() => {
+      const socket = this.socket.state();
+      if (socket === 'off') return;
+      this.connectionState.update(current => (current === 'offline' ? current : socket === 'connected' ? 'live' : 'polling'));
+    });
   }
 
   refresh(): void {
@@ -200,13 +231,41 @@ export class TelephonyService {
 
   private startPolling(): void {
     if (this.poll) return;
-    this.poll = timer(0, POLL_MS).pipe(exhaustMap(() => this.fetchState())).subscribe();
-
     this.connectionState.set('connecting');
-    this.alertPoll = timer(0, ALERT_POLL_MS).pipe(exhaustMap(() => this.fetchAlerts())).subscribe();
+
+    // WebSocket first: my own calls / status and my missed-call escalations (branch board joins in the constructor).
+    this.socket.connect(event => this.onSocketEvent(event));
+    const user = this.auth.currentUser();
+    if (user) {
+      this.socket.join(`telecaller.${user.id}`);
+      this.socket.join(`branch-head.${user.id}`);
+    }
+
+    // Poll interval follows the socket: 30 s heartbeat while live, 3 s while down. timer(0, ...) also re-reads at
+    // once whenever the socket (re)connects, so nothing missed during a drop stays stale.
+    this.poll = merge(
+      this.socketLive$.pipe(switchMap(live => timer(0, live ? LIVE_HEARTBEAT_MS : POLL_MS))),
+      this.stateKick$.pipe(auditTime(150)),
+    )
+      .pipe(exhaustMap(() => this.fetchState()))
+      .subscribe();
+
+    this.alertPoll = merge(
+      this.socketLive$.pipe(switchMap(live => timer(0, live ? LIVE_ALERT_POLL_MS : ALERT_POLL_MS))),
+      this.alertKick$.pipe(auditTime(150)),
+    )
+      .pipe(exhaustMap(() => this.fetchAlerts()))
+      .subscribe();
+  }
+
+  /** A call / agent event re-reads the agent state; a missed-call escalation re-reads the alert feed too. */
+  private onSocketEvent(event: TelephonySocketEvent): void {
+    this.stateKick$.next();
+    if (event.name === 'call.alert.created' || event.name === 'call.missed') this.alertKick$.next();
   }
 
   private stopPolling(): void {
+    this.socket.disconnect();
     this.poll?.unsubscribe();
     this.poll = undefined;
     this.state.set(null);
@@ -231,7 +290,7 @@ export class TelephonyService {
       map((res: any) => ((res?.data ?? []) as any[]).map(toCallAlert)),
       tap((alerts: CallAlert[]) => {
         this.alerts.set(alerts);
-        this.connectionState.set('polling');
+        this.connectionState.set(this.socket.state() === 'connected' ? 'live' : 'polling');
       }),
       catchError(() => {
         this.connectionState.set('offline');
