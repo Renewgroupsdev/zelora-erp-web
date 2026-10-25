@@ -11,7 +11,8 @@ import { AuthService } from '../core/auth/auth.service';
   standalone: true,
   imports: [Preloader, CommonModule, ReactiveFormsModule, FormsModule, AuthBackground],
   templateUrl: './forgot-password.html',
-  styleUrl: './forgot-password.scss',
+  // Same card, logo badge and fields as the login page; only page-specific extras live in forgot-password.scss.
+  styleUrls: ['../login-page/login-page.scss', './forgot-password.scss'],
 })
 export class ForgotPassword implements OnInit {
 

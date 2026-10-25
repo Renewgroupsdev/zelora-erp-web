@@ -1,17 +1,17 @@
 :host {
   /* Pre-login pages always use the Renew Group green brand color, regardless of the in-app theme choice. */
-  --primary: #0d5c4b;
-  --primary-dark: #073f35;
+  --primary: #0f5a45;
+  --primary-dark: #0a4436;
   --primary-soft: #e9f3f0;
   --primary-soft-strong: #dcece6;
-  --primary-border: rgba(13, 92, 75, .18);
-  --primary-border-strong: rgba(13, 92, 75, .38);
-  --primary-shadow: rgba(13, 92, 75, .24);
-  --brand-blue: #1a7a63;
-  --brand-blue-dark: #073f35;
-  --brand-green: #0d5c4b;
-  --brand-green-dark: #073f35;
-  --brand-teal-dark: #073f35;
+  --primary-border: rgba(15, 90, 69, .18);
+  --primary-border-strong: rgba(15, 90, 69, .38);
+  --primary-shadow: rgba(15, 90, 69, .24);
+  --brand-blue: #1f7a5f;
+  --brand-blue-dark: #0a4436;
+  --brand-green: #0f5a45;
+  --brand-green-dark: #0a4436;
+  --brand-teal-dark: #0a4436;
   --bg-light-green: #e9f3f0;
   display: block;
   width: 100%;
@@ -29,11 +29,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-  background:
-    radial-gradient(circle at 14% -2%, rgba(159, 208, 194, .34) 0 10%, transparent 22%),
-    radial-gradient(circle at 84% 34%, rgba(95, 176, 154, .30) 0 9%, transparent 24%),
-    linear-gradient(180deg, #ffffff 0%, #f5faf8 50%, #e9f3f0 100%);
+  padding: 84px 20px 20px;
+  background: #eef6f2;
 }
 
 .notfound-stack {
@@ -47,17 +44,21 @@
 
 .notfound-card {
   position: relative;
-  width: min(370px, calc(100vw - 34px));
+  width: min(392px, calc(100vw - 34px));
   box-sizing: border-box;
-  padding: 62px 20px 20px;
+  padding: 76px 28px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  background: rgba(255, 255, 255, .975);
-  border: 1px solid rgba(255, 255, 255, .96);
-  border-radius: 31px;
-  box-shadow: 0 22px 55px rgba(13, 92, 75, .12), 0 8px 24px rgba(7, 63, 53, .08);
+  background: rgba(255, 255, 255, .84);
+  border: 1px solid rgba(255, 255, 255, .95);
+  border-radius: 26px;
+  box-shadow:
+    0 24px 60px rgba(13, 74, 58, .14),
+    0 4px 14px rgba(13, 74, 58, .06);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   animation: notfound-in .62s cubic-bezier(.22, 1, .36, 1) both;
 }
 
@@ -69,91 +70,109 @@
 /* Round logo badge overlapping the card top, same as the login page */
 .logo-shell {
   position: absolute;
-  top: -52px;
+  top: -64px;
   left: 50%;
   transform: translateX(-50%);
-  width: 104px;
-  height: 104px;
-  padding: 7px;
-  box-sizing: border-box;
+  width: 128px;
+  height: 128px;
   display: grid;
   place-items: center;
+  box-sizing: border-box;
   background: #ffffff;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, .9);
-  box-shadow: 0 15px 35px rgba(60, 10, 30, .2), 0 0 0 6px rgba(255, 255, 255, .22);
+  box-shadow:
+    0 14px 34px rgba(13, 74, 58, .16),
+    0 0 0 6px rgba(255, 255, 255, .55);
 }
 
 .notfound-logo {
-  width: 90px;
-  height: 90px;
+  width: 104px;
+  height: 104px;
   display: block;
-  object-fit: cover;
-  border-radius: 50%;
+  object-fit: contain;
 }
 
 .notfound-code {
-  font-size: 56px;
-  font-weight: 800;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 68px;
+  font-weight: 700;
   line-height: 1;
-  letter-spacing: -1px;
-  background: linear-gradient(100deg, #1a7a63 0%, #0d5c4b 52%, #073f35 100%);
+  letter-spacing: 2px;
+  background: linear-gradient(100deg, #2f8a6b 0%, #0f5a45 50%, #0a4436 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .notfound-title {
-  margin: 6px 0 4px;
+  margin: 10px 0 6px;
   font-family: Georgia, "Times New Roman", serif;
-  color: #0a2a24;
-  font-size: 21px;
+  color: #0e4a3c;
+  font-size: 24px;
   line-height: 1.2;
   font-weight: 600;
 }
 
 .notfound-subtitle {
-  margin: 0 0 10px;
-  color: #7f9a92;
-  font-size: 14px;
-  line-height: 1.45;
-  font-weight: 400;
+  margin: 0 0 22px;
+  color: #5f726c;
+  font-size: 13.5px;
+  line-height: 1.5;
+  text-wrap: balance;
 }
 
 .notfound-cta-btn {
   width: 100%;
-  min-height: 35px;
+  height: 48px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   border: 0;
-  border-radius: 28px;
+  border-radius: 26px;
   cursor: pointer;
-  text-decoration: none;
   color: #fff;
-  background: linear-gradient(100deg, #1a7a63 0%, #0d5c4b 52%, #073f35 100%);
-  box-shadow: 0 9px 20px rgba(13, 92, 75, .22);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: .05px;
+  background: linear-gradient(90deg, #237f62 0%, #0f5a45 55%, #0a4436 100%);
+  box-shadow:
+    0 10px 24px rgba(15, 90, 69, .32),
+    inset 0 1px 0 rgba(255, 255, 255, .18);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: .2px;
   transition: transform .18s ease, box-shadow .18s ease;
+
+  i { font-size: 18px; transition: transform .18s ease; }
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 30px rgba(15, 90, 69, .38), inset 0 1px 0 rgba(255, 255, 255, .18);
+
+    i { transform: translateX(3px); }
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(15, 90, 69, .25);
+    outline-offset: 3px;
+  }
 }
 
-.notfound-cta-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 13px 25px rgba(13, 92, 75, .30);
-}
+@media (max-width: 480px) {
+  .notfound-wrapper { padding: 76px 12px 16px; }
 
-.notfound-cta-btn:focus-visible {
-  outline: 3px solid rgba(13, 92, 75, .25);
-  outline-offset: 3px;
-}
+  .notfound-card {
+    width: calc(100vw - 24px);
+    padding: 64px 20px 20px;
+    border-radius: 22px;
+  }
 
-.notfound-cta-btn i { font-size: 16px; }
+  .logo-shell { top: -56px; width: 112px; height: 112px; }
+  .notfound-logo { width: 92px; height: 92px; }
+  .notfound-code { font-size: 56px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .notfound-card { animation: none; }
-  .notfound-cta-btn { transition: none; }
+  .notfound-cta-btn,
+  .notfound-cta-btn i { transition: none; }
 }
