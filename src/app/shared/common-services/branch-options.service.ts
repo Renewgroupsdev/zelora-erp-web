@@ -65,7 +65,7 @@ export class BranchOptionsService {
       this.request$ = (this.api.GET(ApiRoutesConstants.SCOPE_OPTIONS) as Observable<any>).pipe(
         map(res => {
           const data = res?.data ?? {};
-          this.scopeInfo.set({ can_switch: !!data.can_switch, unit: data.unit ?? null });
+          this.scopeInfo.set({ can_switch: !!data.can_switch, all_access: !!data.all_access, unit: data.unit ?? null });
           return [...toOptions(data.branches, 'branch'), ...toOptions(data.franchises, 'franchise')];
         }),
         tap(rows => this.apply(rows)),

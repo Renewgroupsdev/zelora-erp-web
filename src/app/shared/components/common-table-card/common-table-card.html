@@ -180,7 +180,7 @@
             @else if (col.type === 'rowActions') {
               <div class="action-cell">
                 <!-- Edit -->
-                @if (allowed('edit')) {
+                @if (allowed('edit') && !row['readOnly']) {
                 <button
                   type="button"
                   class="row-action-btn action-edit"
@@ -192,7 +192,7 @@
                 }
 
                 <!-- Delete -->
-                @if (allowed('delete')) {
+                @if (allowed('delete') && !row['readOnly']) {
                 <button
                   type="button"
                   class="row-action-btn action-delete"

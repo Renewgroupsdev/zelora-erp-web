@@ -63,6 +63,18 @@ export class TopNavbar {
     { value: 'franchise', label: 'Franchise', plural: 'Franchises', icon: 'bi-shop', hint: 'Franchise partner outlets' },
   ];
 
+  /**
+   * Choices of the first header dropdown. A login with every-unit access gets all three; a login with several own
+   * branches / franchises only the types it has, and "All" means all of its own.
+   */
+  readonly availableScopeTypes = computed<ScopeTypeInfo[]>(() => {
+    if (this.branchContext.allAccess()) return this.scopeTypes;
+    const has = { branch: this.branchOptions.branches().length > 0, franchise: this.branchOptions.franchises().length > 0 };
+    return this.scopeTypes
+      .filter(t => t.value === 'all' || has[t.value as 'branch' | 'franchise'])
+      .map(t => (t.value === 'all' ? { ...t, hint: 'All your branches and franchises' } : t));
+  });
+
   /** Which header filter menu is open. */
   readonly scopeMenu = signal<'type' | 'unit' | null>(null);
   readonly scopeSearch = signal('');

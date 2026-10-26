@@ -39,6 +39,7 @@ export class Users implements OnInit {
 
   // The filter card is keyed by fixed names; `source` is reused here for the Role filter.
   filters: FilterOption[] = [
+    { key: 'type', label: 'Type', options: ['Management', 'Staff'] },
     { key: 'source', label: 'Role', options: [] },
     { key: 'branch', label: 'Branch / Franchise', multiSelect: true, options: [] },
     { key: 'status', label: 'Status', options: ['Active', 'Inactive'] },
@@ -47,6 +48,7 @@ export class Users implements OnInit {
   filterState: CommonFilterState = {
     status: null,
     source: null,
+    type: null,
     branch: [],
     telecaller: null,
     dateFrom: null,
@@ -107,8 +109,9 @@ export class Users implements OnInit {
   loadUsers(): void {
     this.isLoading = true;
 
-    // Only management-type users are managed on this screen; staff rows belong to HR employees.
-    this.apiDataService.GetAllPages(`${ApiRoutesConstants.USER_LIST}?user_type=management`).subscribe({
+    // Management users and HR employee logins (user_type "staff", created / updated from the employee form) both show
+    // here - the Type column tells them apart. Staff still sign in with Employee ID + password, not this login.
+    this.apiDataService.GetAllPages(ApiRoutesConstants.USER_LIST).subscribe({
       next: (users: any[]) => {
         this.isLoading = false;
 
@@ -139,6 +142,8 @@ export class Users implements OnInit {
       branch: user.branch?.name ? (user.branch_or_franchise_type === 'franchise' ? `${user.branch.name} (Franchise)` : user.branch.name) : '-',
       device: [user.device_name, user.device_type].filter(Boolean).join(' · ') || '-',
       status: this.formatStatus(user.status),
+      // Staff logins belong to an HR employee: view-only here, edited from HR > Employees.
+      readOnly: user.user_type === 'staff' ? 1 : 0,
       id: user.id,
     };
   }
@@ -269,6 +274,7 @@ export class Users implements OnInit {
       const haystack = [row['name'], row['email'], row['phone_no'], row['extension']].join(' ').toLowerCase();
 
       if (this.searchTerm && !haystack.includes(this.searchTerm)) return false;
+      if (this.filterState.type && row['user_type'] !== this.filterState.type) return false;
       if (this.filterState.source && row['role'] !== this.filterState.source) return false;
       if (this.filterState.branch.length > 0 && !this.filterState.branch.includes(String(row['branch']))) return false;
       if (this.filterState.status && row['status'] !== this.filterState.status) return false;

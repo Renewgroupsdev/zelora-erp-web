@@ -2,10 +2,18 @@ export const environment = {
   production: false,
   envName: 'local',
 
-  apiBaseUrl: `http://10.157.65.16:8000/api/`,
+  apiBaseUrl: `http://192.168.0.204:8000/api/`,
   disableDevTools: false,
   rememberMeKey: 'remember_me',
 
-  
+  /** Laravel Reverb (WebSockets) - live telephony events. Set key to REVERB_APP_KEY from the local backend .env;
+   *  left empty, the socket stays off and the app keeps polling the API. */
+  reverb: {
+    key: '',
+    host: '192.168.0.204',
+    port: 8080,
+    scheme: 'http' as 'http' | 'https',
+  },
 };
+
 

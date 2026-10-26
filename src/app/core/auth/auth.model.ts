@@ -48,9 +48,14 @@ export interface AuthUser {
 export type UnitType = 'branch' | 'franchise';
 
 export interface AuthScope {
-  /** Role has the "Header Branch / Franchise Filter" action; otherwise the API holds the login to `unit`. */
+  /**
+   * May use the header dropdown: the role has the "Header Branch / Franchise Filter" action, or the login belongs to
+   * several branches / franchises (then the dropdown offers only those). Otherwise the API holds the login to `unit`.
+   */
   can_switch: boolean;
-  /** users.branch_or_franchise_id resolved: the login's own branch / franchise (null = none assigned). */
+  /** Sees every branch / franchise (the "Header Branch / Franchise Filter" action). */
+  all_access?: boolean;
+  /** The login's main branch / franchise (null = none assigned). */
   unit: { id: number; name: string; code: string; type: UnitType | string } | null;
 }
 

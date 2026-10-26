@@ -39,6 +39,14 @@ export class BranchContextService {
     const user = this.auth.currentUser();
     return !!(user?.scope?.can_switch ?? this.options.scope()?.can_switch);
   });
+  /**
+   * Sees every branch / franchise (the permission). false while canSwitch() = a login with several units of its own:
+   * the dropdown then offers only those, and "All" means all of them.
+   */
+  readonly allAccess = computed(() => {
+    const user = this.auth.currentUser();
+    return !!(user?.scope?.all_access ?? this.options.scope()?.all_access);
+  });
   /** The login's own branch / franchise (what a login without the permission is held to). */
   readonly ownUnit = computed(() => this.auth.currentUser()?.scope?.unit ?? this.options.scope()?.unit ?? null);
 

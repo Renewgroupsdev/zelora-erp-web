@@ -46,7 +46,7 @@
 
             @if (scopeMenu() === 'type') {
               <div class="scope-menu scope-menu-type" role="listbox" aria-label="Branch or franchise">
-                @for (t of scopeTypes; track t.value) {
+                @for (t of availableScopeTypes(); track t.value) {
                   <button type="button" class="scope-option" role="option" [class.selected]="scope.type === t.value"
                     [attr.aria-selected]="scope.type === t.value" (click)="pickScopeType(t.value)">
                     <span class="scope-option-icon"><i class="bi" [ngClass]="t.icon"></i></span>
