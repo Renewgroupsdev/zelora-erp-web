@@ -71,6 +71,8 @@ export class BranchOptionsService {
         tap(rows => this.apply(rows)),
         catchError(err => {
           this.request$ = null;
+          // 403 = an account type without staff screens (customer portal): no branch list, nothing went wrong.
+          if (err?.status === 403) return of(this.list());
           console.error('GET /scope/options failed', err);
           this.toast.error('Could not load the branch / franchise list. Check the server connection and try again.');
           return of(this.list());

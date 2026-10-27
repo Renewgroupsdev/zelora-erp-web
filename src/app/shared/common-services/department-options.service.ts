@@ -37,6 +37,8 @@ export class DepartmentOptionsService {
         }),
         catchError(err => {
           this.request$ = null;
+          // 403 = an account type without staff screens (customer portal): no departments to show, nothing went wrong.
+          if (err?.status === 403) return of(this.list());
           console.error('GET /departments/options failed', err);
           this.toast.error('Could not load the department list. Check the server connection and try again.');
           return of(this.list());
