@@ -72,8 +72,8 @@ export class VendorManagement implements OnInit {
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
-  sortActive = 'code';
-  sortDirection: SortDirection = 'asc';
+  sortActive = '';
+  sortDirection: SortDirection = '';
   private searchTerm = '';
 
   ngOnInit(): void {
@@ -95,7 +95,7 @@ export class VendorManagement implements OnInit {
       page: this.currentPage,
       perPage: this.pageSize,
       search: this.searchTerm,
-      sortBy: SORT_FIELDS[this.sortActive] ?? 'code',
+      sortBy: SORT_FIELDS[this.sortActive],
       sortDirection: this.sortDirection || 'asc',
       status: this.filterState.status as 'Active' | 'Inactive' | null,
     }).subscribe({

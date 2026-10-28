@@ -29,12 +29,12 @@
   <div class="card-grid">
     @if (view() === 'in') {
       @for (o of joiners(); track o.id) {
-        @let e = hr.employee(o.empId);
+        @let e = o.employee;
         @if (e) {
           <div class="case-card" [class.done]="o.status === 'Completed'">
             <div class="case-head">
               <span class="avatar">{{ initials(e.name) }}</span>
-              <div class="who"><strong>{{ e.name }}</strong><small>{{ e.empCode }} · {{ e.designation }} · {{ e.branch }}</small></div>
+              <div class="who"><strong>{{ e.name }}</strong><small>{{ e.code }} · {{ e.designation }} · {{ e.branch }}</small></div>
               <span class="pill" [class.green]="o.status === 'Completed'" [class.blue]="o.status !== 'Completed'">{{ o.status }}</span>
             </div>
             <div class="case-meta">
@@ -50,7 +50,7 @@
             @if (expanded() === o.id) {
               <ul class="checklist">
                 @for (c of o.checklist; track c.label; let i = $index) {
-                  <li><label><input type="checkbox" [checked]="c.done" [disabled]="!can('update-onboarding-checklist')" (change)="hr.toggleOnboardingItem(o.id, i)" /> <span [class.ticked]="c.done">{{ c.label }}</span></label></li>
+                  <li><label><input type="checkbox" [checked]="c.done" [disabled]="!can('update-onboarding-checklist')" (change)="toggleOnboarding(o.id, i)" /> <span [class.ticked]="c.done">{{ c.label }}</span></label></li>
                 }
               </ul>
             }
@@ -61,12 +61,12 @@
       }
     } @else {
       @for (x of leavers(); track x.id) {
-        @let e = hr.employee(x.empId);
+        @let e = x.employee;
         @if (e) {
           <div class="case-card exit" [class.done]="x.status === 'Settled'">
             <div class="case-head">
               <span class="avatar">{{ initials(e.name) }}</span>
-              <div class="who"><strong>{{ e.name }}</strong><small>{{ e.empCode }} · {{ e.designation }} · {{ e.branch }}</small></div>
+              <div class="who"><strong>{{ e.name }}</strong><small>{{ e.code }} · {{ e.designation }} · {{ e.branch }}</small></div>
               <span class="pill" [class.orange]="x.status === 'Notice Period'" [class.blue]="x.status === 'Clearance'" [class.green]="x.status === 'Settled'">{{ x.status }}</span>
             </div>
             <div class="case-meta">
@@ -92,7 +92,7 @@
             @if (expanded() === x.id) {
               <ul class="checklist">
                 @for (c of x.checklist; track c.label; let i = $index) {
-                  <li><label><input type="checkbox" [checked]="c.done" [disabled]="x.status === 'Settled' || !can('update-exit-clearance')" (change)="hr.toggleExitItem(x.id, i)" /> <span [class.ticked]="c.done">{{ c.label }}</span></label></li>
+                  <li><label><input type="checkbox" [checked]="c.done" [disabled]="x.status === 'Settled' || !can('update-exit-clearance')" (change)="toggleExit(x.id, i)" /> <span [class.ticked]="c.done">{{ c.label }}</span></label></li>
                 }
               </ul>
             }

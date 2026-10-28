@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule } from '@angular/material/dialog';
 import Swal from 'sweetalert2';
+import { Observable, finalize } from 'rxjs';
+import { AuthService } from '../../../core/auth/auth.service';
 import { CommonDetailCard } from '../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
@@ -21,7 +23,9 @@ import { PayslipView } from './payslip-view/payslip-view';
   templateUrl: './payroll.html',
   styleUrl: '../../../shared/styles/erp-page.scss',
 })
-export class Payroll extends HrListBase {
+export class Payroll extends HrListBase implements OnInit {
+  private readonly authService = inject(AuthService);
+  readonly loading = signal(false);
   protected readonly noun = 'payslips';
   readonly month = signal(monthKey(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1)));
   readonly thisMonth = monthKey();
@@ -64,21 +68,53 @@ export class Payroll extends HrListBase {
     ];
   });
 
+  ngOnInit(): void {
+    // Row buttons follow Roles & Permissions, which are cached from login: re-read them so a newly ticked action shows without re-login.
+    this.authService.refreshMenus();
+    this.hr.loadBranches().subscribe(branches => {
+      this.filters = this.filters.map(f => (f.key === 'branch' ? { ...f, options: branches.map(b => b.name) } : f));
+    });
+    this.hr.loadEmployees().subscribe({ error: () => undefined }); // bank details for the transfer sheet
+    this.load();
+  }
+
   setMonth(value: string): void {
-    if (value) this.month.set(value);
+    if (!value || value === this.month()) return;
+    this.month.set(value);
+    this.load();
+  }
+
+  /** The month's payslips come with their employee (code, name, branch, department), so no employee list is needed. */
+  private load(): void {
+    this.loading.set(true);
+    this.hr.loadPayslips(this.month()).pipe(finalize(() => this.loading.set(false))).subscribe({
+      error: err => this.fail(err, 'Could not load payslips'),
+    });
+  }
+
+  private fail(err: any, title: string): void {
+    Swal.fire({ icon: 'error', title, text: err?.error?.message ?? 'Please try again.', confirmButtonColor: '#6C63FF' });
+  }
+
+  private act(source: Observable<number>, done: (n: number) => string): void {
+    this.loading.set(true);
+    source.pipe(finalize(() => this.loading.set(false))).subscribe({
+      next: n => Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: done(n), showConfirmButton: false, timer: 3000 }),
+      error: err => this.fail(err, 'Payroll action failed'),
+    });
   }
 
   protected allRows(): TableRow[] {
     return this.slips().map(p => {
-      const e = this.hr.employee(p.empId);
+      const e = p.employee;
       const actions: QuickAction[] = [{ key: 'view', icon: 'bi-file-earmark-pdf-fill', label: 'View payslip', variant: 'primary' }];
       if (p.status === 'Processed') actions.push({ key: 'paid', icon: 'bi-check2-circle', label: 'Mark paid' });
       return {
         id: p.id,
-        empCode: e?.empCode ?? '-', __empCode: Number(e?.empCode.replace(/\D/g, '') ?? 0),
-        employee: e?.name ?? '-',
-        branch: e?.branch ?? '-',
-        department: e?.department ?? '-',
+        empCode: e?.code || '-', __empCode: Number((e?.code ?? '').replace(/\D/g, '') || 0),
+        employee: e?.name || '-',
+        branch: e?.branch || '-',
+        department: e?.department || '-',
         days: `${p.paidDays} / ${p.workingDays}`, __days: p.paidDays,
         gross: inr(p.gross), __gross: p.gross,
         bonus: inr(p.earnings.bonus), __bonus: p.earnings.bonus,
@@ -102,20 +138,19 @@ export class Payroll extends HrListBase {
       confirmButtonColor: '#6C63FF',
     });
     if (!ok.isConfirmed) return;
-    const slips = this.hr.runPayroll(this.month());
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `${slips.length} payslips processed`, showConfirmButton: false, timer: 3000 });
+    this.act(this.hr.runPayroll(this.month()), n => `${n} payslips processed`);
   }
 
   async markAllPaid(): Promise<void> {
     const list = this.unpaid();
     const ok = await Swal.fire({ icon: 'question', title: `Mark ${list.length} payslips as paid?`, text: `Net ${inr(list.reduce((s, p) => s + p.net, 0))} transferred to employee bank accounts.`, showCancelButton: true, confirmButtonText: 'Mark paid', confirmButtonColor: '#0f9d58' });
-    if (ok.isConfirmed) this.hr.markPaid(list.map(p => p.id));
+    if (ok.isConfirmed) this.act(this.hr.markPaid(list.map(p => p.id), this.month()), n => `${n} payslip(s) marked as paid`);
   }
 
   onQuickAction(event: { row: TableRow; action: string }): void {
     const id = String(event.row['id']);
     if (event.action === 'view') this.openDialog(PayslipView, { payslipId: id }, '820px');
-    if (event.action === 'paid') this.hr.markPaid([id]);
+    if (event.action === 'paid') this.act(this.hr.markPaid([id], this.month()), () => 'Payslip marked as paid');
   }
 
   /** Payroll register + bank transfer advice, two sheets. */
@@ -123,7 +158,7 @@ export class Payroll extends HrListBase {
     const slips = this.slips();
     const emp = (id: string) => this.hr.employee(id);
     const register = slips.map(p => ({
-      code: emp(p.empId)?.empCode, name: emp(p.empId)?.name, branch: emp(p.empId)?.branch, department: emp(p.empId)?.department,
+      code: p.employee?.code, name: p.employee?.name, branch: p.employee?.branch, department: p.employee?.department,
       working: p.workingDays, paid: p.paidDays, lopDays: p.lopDays, basic: p.earnings.basic, hra: p.earnings.hra, conveyance: p.earnings.conveyance,
       special: p.earnings.special, bonus: p.earnings.bonus, gross: p.gross, pf: p.deductions.pf, esi: p.deductions.esi, pt: p.deductions.professionalTax,
       lop: p.deductions.lop, deductions: p.totalDeductions, net: p.net, status: p.status,

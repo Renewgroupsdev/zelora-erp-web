@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import Swal from 'sweetalert2';
 import { HrService, NewManpowerInput } from '../../../../shared/common-services/hr.service';
 import { isoDate } from '../../../../shared/utils/format.util';
 
@@ -22,6 +23,7 @@ export class ManpowerForm {
   }
   readonly today = isoDate();
   readonly submitted = signal(false);
+  readonly saving = signal(false);
 
   model: NewManpowerInput = {
     branch: this.hr.branches[0] ?? '', department: this.hr.departments[0] ?? '', designation: '', positions: 1, employmentType: 'Full Time',
@@ -46,8 +48,14 @@ export class ManpowerForm {
   save(form: NgForm): void {
     this.submitted.set(true);
     if (form.invalid || this.budgetError()) return;
-    this.hr.createManpower({ ...this.model, positions: Number(this.model.positions), budgetMin: Number(this.model.budgetMin), budgetMax: Number(this.model.budgetMax) });
-    this.dialogRef.close(true);
+    this.saving.set(true);
+    this.hr.createManpower({ ...this.model, positions: Number(this.model.positions), budgetMin: Number(this.model.budgetMin), budgetMax: Number(this.model.budgetMax) }).subscribe({
+      next: () => this.dialogRef.close(true),
+      error: err => {
+        this.saving.set(false);
+        Swal.fire({ icon: 'error', title: 'Could not submit the request', text: err?.error?.message ?? 'Please try again.', confirmButtonColor: '#6C63FF' });
+      },
+    });
   }
 
   close(): void {

@@ -96,8 +96,8 @@ export class CustomerPortalPage implements OnInit {
   currentPage = 1;
   pageSize = 12;
   totalRecords = 0;
-  sortActive = 'lead';
-  sortDirection: SortDirection = 'asc';
+  sortActive = '';
+  sortDirection: SortDirection = '';
   private searchTerm = '';
 
   private branchKeyByName = new Map<string, string>();
@@ -128,9 +128,12 @@ export class CustomerPortalPage implements OnInit {
     const params = new URLSearchParams({
       page: String(this.currentPage),
       per_page: String(this.pageSize),
-      sort_by: this.sortActive,
-      sort_dir: this.sortDirection || 'asc',
+
     });
+    if (this.sortActive && this.sortDirection) {
+      params.set('sort_by', this.sortActive);
+      params.set('sort_dir', this.sortDirection);
+    }
     if (this.searchTerm) params.set('search', this.searchTerm);
     if (this.filterState.status) params.set('status', this.filterState.status);
     if (this.filterState.source) params.set('segment', this.filterState.source);

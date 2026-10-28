@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Observable } from 'rxjs';
 import Swal from 'sweetalert2';
 import { HrService } from '../../../shared/common-services/hr.service';
 import { ModuleTabs } from '../../../shared/components/module-tabs/module-tabs';
 import { ExitCase } from '../../../shared/models/hr.model';
-import { escapeHtml, printDocument } from '../../../shared/utils/export.util';
-import { addDays, amountInWords, daysBetween, displayDate, inr, initials, isoDate } from '../../../shared/utils/format.util';
+import { escapeHtml } from '../../../shared/utils/export.util';
+import { addDays, daysBetween, displayDate, inr, initials, isoDate } from '../../../shared/utils/format.util';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { injectHrTabs } from '../hr-list-base';
@@ -18,7 +19,7 @@ import { injectHrTabs } from '../hr-list-base';
   templateUrl: './onboarding-exit.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './onboarding-exit.scss'],
 })
-export class OnboardingExit {
+export class OnboardingExit implements OnInit {
   readonly hr = inject(HrService);
   private readonly auth = inject(AuthService);
   readonly tabs = injectHrTabs();
@@ -27,6 +28,33 @@ export class OnboardingExit {
   readonly displayDate = displayDate;
   readonly initials = initials;
   readonly inr = inr;
+
+  ngOnInit(): void {
+    // Row buttons follow Roles & Permissions, which are cached from login: re-read them so a newly ticked action shows without re-login.
+    this.auth.refreshMenus();
+    this.hr.loadEmployees().subscribe({ error: () => undefined }); // the Initiate Exit employee list
+    this.hr.loadOnboardings().subscribe({ error: err => this.fail(err, 'Could not load joiners') });
+    this.hr.loadExits().subscribe({ error: err => this.fail(err, 'Could not load exits') });
+  }
+
+  private fail(err: any, title: string): void {
+    Swal.fire({ icon: 'error', title, text: err?.error?.message ?? 'Please try again.', confirmButtonColor: '#6C63FF' });
+  }
+
+  private run(source: Observable<unknown>, message: string): void {
+    source.subscribe({
+      next: () => Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: message, showConfirmButton: false, timer: 3000 }),
+      error: err => this.fail(err, 'Action failed'),
+    });
+  }
+
+  toggleOnboarding(id: string, index: number): void {
+    this.run(this.hr.toggleOnboardingItem(id, index), 'Checklist updated');
+  }
+
+  toggleExit(id: string, index: number): void {
+    this.run(this.hr.toggleExitItem(id, index), 'Clearance updated');
+  }
 
   /** Whether Roles & Permissions ticks the signed-in role on this HR action slug. */
   can(slug: string): boolean {
@@ -83,9 +111,10 @@ export class OnboardingExit {
       },
     });
     if (result.isConfirmed && result.value) {
-      const exit = this.hr.startExit(result.value);
-      this.view.set('out');
-      this.expanded.set(exit.id);
+      this.hr.startExit(result.value).subscribe({
+        next: exit => { this.view.set('out'); this.expanded.set(exit.id); },
+        error: err => this.fail(err, 'Could not start the exit'),
+      });
     }
   }
 
@@ -104,44 +133,19 @@ export class OnboardingExit {
         return { pendingSalary: n('f-sal'), leaveEncashment: n('f-leave'), bonus: n('f-bonus'), gratuity: n('f-grat'), recoveries: n('f-rec') };
       },
     });
-    if (result.isConfirmed && result.value) this.hr.updateFnf(x.id, result.value);
+    if (result.isConfirmed && result.value) this.run(this.hr.updateFnf(x.id, result.value), 'Settlement saved');
   }
 
   async settle(x: ExitCase): Promise<void> {
-    const ok = await Swal.fire({ icon: 'question', title: 'Settle full & final?', text: `${inr(this.hr.fnfTotal(x.fnf))} will be paid and ${this.hr.employeeName(x.empId)} marked as Exited.`, showCancelButton: true, confirmButtonText: 'Settle', confirmButtonColor: '#0f9d58' });
-    if (ok.isConfirmed) this.hr.settleExit(x.id);
+    const ok = await Swal.fire({ icon: 'question', title: 'Settle full & final?', text: `${inr(this.hr.fnfTotal(x.fnf))} will be paid and ${x.employee?.name ?? this.hr.employeeName(x.empId)} marked as Exited.`, showCancelButton: true, confirmButtonText: 'Settle', confirmButtonColor: '#0f9d58' });
+    if (ok.isConfirmed) this.run(this.hr.settleExit(x.id), 'Exit settled');
   }
 
   printFnf(x: ExitCase): void {
-    const e = this.hr.employee(x.empId)!;
-    const f = x.fnf;
-    const total = this.hr.fnfTotal(f);
-    const row = (label: string, value: number, minus = false) => `<tr><td>${label}</td><td class="num">${minus ? '- ' : ''}${inr(value)}</td></tr>`;
-    printDocument(`F&F ${e.empCode}`, `
-      <div class="doc-head"><div><h1>RENEW Plus</h1><p>Renew Plus Hair and Skin Care Pvt Ltd</p></div>
-      <div class="doc-meta"><h2>FULL &amp; FINAL SETTLEMENT</h2><p>${x.status === 'Settled' ? 'Settled ' + displayDate(x.settledAt) : 'Draft'}</p></div></div>
-      <div class="doc-parties">
-        <div><small>Employee</small><strong>${escapeHtml(e.name)}</strong><br/>${e.empCode} · ${escapeHtml(e.designation)}</div>
-        <div><small>Service</small>Joined ${displayDate(e.joinDate)}<br/>Last day ${displayDate(x.lastWorkingDay)}</div>
-        <div><small>Exit</small>${x.exitType}<br/>${escapeHtml(x.reason)}</div>
-      </div>
-      <table><thead><tr><th>Particulars</th><th class="num">Amount</th></tr></thead><tbody>
-        ${row('Pending salary', f.pendingSalary)}${row('Leave encashment', f.leaveEncashment)}${row('Bonus / incentives', f.bonus)}${row('Gratuity', f.gratuity)}${row('Recoveries', f.recoveries, true)}
-      </tbody></table>
-      <div class="doc-totals"><div class="grand"><span>Net Payable</span><span>${inr(total)}</span></div></div>
-      <p class="doc-words"><strong>In words:</strong> ${amountInWords(total)}</p>
-      <div class="doc-sign"><span>Employee</span><span>HR Department</span><span>Accounts</span></div>`);
+    this.hr.openPdf(`hr/exits/${x.id}/fnf`, 'Could not open the F&F statement');
   }
 
   printRelieving(x: ExitCase): void {
-    const e = this.hr.employee(x.empId)!;
-    printDocument(`Relieving letter ${e.empCode}`, `
-      <div class="doc-head"><div><h1>RENEW Plus</h1><p>Renew Plus Hair and Skin Care Pvt Ltd</p></div><div class="doc-meta"><h2>RELIEVING &amp; EXPERIENCE LETTER</h2><p>${displayDate(x.lastWorkingDay)}</p></div></div>
-      <p style="margin-top:20px">To whom it may concern,</p>
-      <p>This is to certify that <strong>${escapeHtml(e.name)}</strong> (${e.empCode}) was employed with Renew Plus Hair and Skin Care Pvt Ltd as
-      <strong>${escapeHtml(e.designation)}</strong> in the ${escapeHtml(e.department)} department at our ${escapeHtml(e.branch)} branch from
-      <strong>${displayDate(e.joinDate)}</strong> to <strong>${displayDate(x.lastWorkingDay)}</strong>.</p>
-      <p>${e.gender === 'Female' ? 'She' : e.gender === 'Male' ? 'He' : 'They'} has been relieved from duties after completing all formalities. We wish ${e.gender === 'Female' ? 'her' : e.gender === 'Male' ? 'him' : 'them'} the very best.</p>
-      <div class="doc-sign"><span></span><span>HR Manager</span></div>`);
+    this.hr.openPdf(`hr/exits/${x.id}/relieving-letter`, 'Could not open the relieving letter');
   }
 }

@@ -20,13 +20,18 @@ export class PayslipView {
   private readonly sheet = viewChild.required<ElementRef<HTMLElement>>('sheet');
 
   readonly slip = computed(() => this.hr.payslips().find(p => p.id === this.data.payslipId)!);
-  readonly employee = computed(() => this.hr.employee(this.slip().empId)!);
+  readonly employee = computed(() => this.hr.employee(this.slip().empId));
+
+  constructor() {
+    // Bank / PAN / join date are not in the payslip list: fetch the full employee when the store does not have them yet.
+    this.hr.fetchEmployee(this.slip().empId).subscribe({ error: () => undefined });
+  }
   readonly monthLabel = monthLabel;
   readonly displayDate = displayDate;
   readonly amountInWords = amountInWords;
 
   downloadPdf(): void {
-    printDocument(`Payslip ${this.employee().empCode} ${monthLabel(this.slip().month)}`, this.sheet().nativeElement.innerHTML);
+    printDocument(`Payslip ${this.employee()?.empCode ?? ''} ${monthLabel(this.slip().month)}`, this.sheet().nativeElement.innerHTML);
   }
 
   close(): void {

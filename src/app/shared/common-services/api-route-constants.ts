@@ -138,6 +138,16 @@ export class ApiRoutesConstants {
    //HR Management
    public static HR_EMPLOYEES = "hr/employees";
    public static HR_ATTENDANCE = "hr/attendance";
+   public static HR_PAYSLIPS = "hr/payslips";
+   public static HR_ONBOARDINGS = "hr/onboardings";
+   public static HR_EXITS = "hr/exits";
+   public static HR_APPRAISALS = "hr/appraisals";
+   public static HR_BONUSES = "hr/bonuses";
+   public static HR_MANPOWER = "hr/manpower-requests";
+   public static HR_CANDIDATES = "hr/candidates";
+   public static HR_LEAVE_REQUESTS = "hr/leave-requests";
+   public static HR_LEAVE_BALANCES = "hr/leave-balances";
+   public static HR_PAYROLL_RUN = "hr/payroll/run";
 
    //Direct file uploads (POST/DELETE uploads/{folder})
    public static UPLOADS = "uploads";

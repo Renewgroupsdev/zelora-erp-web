@@ -1,5 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
+import Swal from 'sweetalert2';
+import { Observable, finalize } from 'rxjs';
 import { MatDialogModule } from '@angular/material/dialog';
 import { CommonDetailCard } from '../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
@@ -65,8 +67,9 @@ const VIEW_COLUMNS: Record<View, TableColumn[]> = {
   templateUrl: './recruitment.html',
   styleUrl: '../../../shared/styles/erp-page.scss',
 })
-export class Recruitment extends HrListBase {
+export class Recruitment extends HrListBase implements OnInit {
   protected readonly noun = 'records';
+  readonly loading = signal(false);
   readonly view = signal<View>('requests');
 
   columns: TableColumn[] = VIEW_COLUMNS.requests;
@@ -84,6 +87,23 @@ export class Recruitment extends HrListBase {
       { label: 'Open Budget / month', value: inr(budget), icon: 'bi-currency-rupee', iconVariant: 'green' },
     ];
   });
+
+  ngOnInit(): void {
+    // Departments / branches feed the filters and the request form; employees are needed to open a hired candidate's record.
+    this.hr.loadBranches().subscribe({ next: () => (this.filters = this.filtersFor(this.view())), error: () => undefined });
+    this.hr.loadDepartments().subscribe({ next: () => (this.filters = this.filtersFor(this.view())), error: () => undefined });
+    this.hr.loadEmployees().subscribe({ error: () => undefined });
+    this.loading.set(true);
+    this.hr.loadRecruitment().pipe(finalize(() => this.loading.set(false))).subscribe({ error: err => this.fail(err, 'Could not load recruitment data') });
+  }
+
+  private fail(err: any, title: string): void {
+    Swal.fire({ icon: 'error', title, text: err?.error?.message ?? 'Please try again.', confirmButtonColor: '#6C63FF' });
+  }
+
+  private act(source: Observable<unknown>): void {
+    source.subscribe({ error: err => this.fail(err, 'Action failed') });
+  }
 
   private filtersFor(view: View): FilterOption[] {
     if (view === 'candidates') {
@@ -179,7 +199,7 @@ export class Recruitment extends HrListBase {
     switch (event.action) {
       case 'review': {
         const d = await reviewPrompt(`${event.row['requestNo']} · ${event.row['designation']}`, `${event.row['positions']} position(s) at ${event.row['branch']} · budget ${event.row['budget']} per month.`);
-        if (d) this.hr.reviewManpower(id, d.approve, d.remarks);
+        if (d) this.act(this.hr.reviewManpower(id, d.approve, d.remarks));
         break;
       }
       case 'open':
@@ -198,10 +218,10 @@ export class Recruitment extends HrListBase {
         break;
       }
       case 'hold':
-        this.hr.setVacancyStatus(id, 'On Hold');
+        this.act(this.hr.setVacancyStatus(id, 'On Hold'));
         break;
       case 'reopen':
-        this.hr.setVacancyStatus(id, 'Open');
+        this.act(this.hr.setVacancyStatus(id, 'Open'));
         break;
     }
   }

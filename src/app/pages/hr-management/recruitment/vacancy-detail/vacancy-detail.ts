@@ -45,18 +45,30 @@ export class VacancyDetail {
   }
 
   post(p: JobPortal): void {
-    this.hr.postToPortals(this.vacancy().id, [p]);
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Job posted on ${p}`, showConfirmButton: false, timer: 2500 });
+    this.hr.postToPortals(this.vacancy().id, [p]).subscribe({
+      next: results => {
+        const r = results.find(x => x.portal === p);
+        const ok = r?.status === 'Posted';
+        Swal.fire(ok
+          ? { toast: true, position: 'top-end', icon: 'success', title: `Job posted on ${p}`, showConfirmButton: false, timer: 2500 }
+          : { icon: 'info', title: ok ? '' : `${p}: ${r?.status ?? 'not posted'}`, text: r?.message ?? '', confirmButtonColor: '#6C63FF' });
+      },
+      error: err => Swal.fire({ icon: 'error', title: 'Could not post the job', text: err?.error?.message ?? 'Please try again.', confirmButtonColor: '#6C63FF' }),
+    });
   }
 
   sync(p: JobPortal): void {
     this.syncing.set(p);
-    // Simulated portal round-trip.
-    setTimeout(() => {
-      const fresh = this.hr.syncApplicants(this.vacancy().id, p);
-      this.syncing.set(null);
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `${fresh.length} new applicant${fresh.length === 1 ? '' : 's'} from ${p}`, showConfirmButton: false, timer: 3000 });
-    }, 700);
+    this.hr.syncApplicants(this.vacancy().id, p).subscribe({
+      next: r => {
+        this.syncing.set(null);
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `${r.created} new applicant${r.created === 1 ? '' : 's'} from ${p}${r.skipped ? ` (${r.skipped} already existed)` : ''}`, showConfirmButton: false, timer: 3000 });
+      },
+      error: err => {
+        this.syncing.set(null);
+        Swal.fire({ icon: 'info', title: `Could not sync from ${p}`, text: err?.error?.message ?? 'Please try again.', confirmButtonColor: '#6C63FF' });
+      },
+    });
   }
 
   overBudget(c: Candidate): boolean {

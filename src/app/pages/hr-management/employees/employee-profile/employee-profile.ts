@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { HrService } from '../../../../shared/common-services/hr.service';
+import { EmployeeHistory, HrService } from '../../../../shared/common-services/hr.service';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 import { WorkTaskService } from '../../../../shared/common-services/work-task.service';
 import { isSeoEmployee, isTaskOverdue } from '../../../../shared/models/work-task.model';
@@ -61,11 +61,13 @@ export class EmployeeProfile implements OnInit {
   readonly tasks = computed(() => this.work.forEmployee(this.data.empId).sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999')));
   readonly taskStats = computed(() => this.work.stats(this.tasks()));
   readonly isOverdue = (t: { status: string; dueDate: string }) => isTaskOverdue(t as never, new Date().toISOString().slice(0, 10));
-  readonly leaves = computed(() => this.hr.leaves().filter(l => l.empId === this.data.empId));
-  readonly balance = computed(() => this.hr.leaveBalance(this.data.empId));
-  readonly payslips = computed(() => this.hr.payslips().filter(p => p.empId === this.data.empId).sort((a, b) => b.month.localeCompare(a.month)));
-  readonly appraisals = computed(() => this.hr.appraisals().filter(a => a.empId === this.data.empId));
-  readonly bonuses = computed(() => this.hr.bonuses().filter(b => b.empId === this.data.empId));
+  /** This employee's own history, loaded with the profile (see ngOnInit) so it never depends on which HR page was opened last. */
+  private readonly history = signal<EmployeeHistory | null>(null);
+  readonly leaves = computed(() => this.history()?.leaves ?? []);
+  readonly balance = computed(() => this.history()?.balance ?? this.hr.leaveBalance(this.data.empId));
+  readonly payslips = computed(() => [...(this.history()?.payslips ?? [])].sort((a, b) => b.month.localeCompare(a.month)));
+  readonly appraisals = computed(() => this.history()?.appraisals ?? []);
+  readonly bonuses = computed(() => this.history()?.bonuses ?? []);
   readonly tenure = computed(() => {
     const months = Math.max(0, Math.floor((Date.now() - new Date(this.employee().joinDate).getTime()) / (30.44 * 86400000)));
     return months >= 12 ? `${Math.floor(months / 12)} yr ${months % 12} mo` : `${months} mo`;
@@ -82,6 +84,7 @@ export class EmployeeProfile implements OnInit {
   /** The list masks the bank account and omits KYC files; the profile loads the full record. */
   ngOnInit(): void {
     this.hr.fetchEmployee(this.data.empId).subscribe({ error: () => undefined });
+    this.hr.loadEmployeeHistory(this.data.empId).subscribe({ next: h => this.history.set(h), error: () => undefined });
   }
 
   edit(): void {

@@ -162,6 +162,20 @@ export interface LeaveRequest {
   reviewedBy?: string;
   reviewedAt?: string;
   reviewRemarks?: string;
+  /** Working days of a leave, as the API counts them (Sundays skipped, half day = 0.5). */
+  days?: number;
+  /** Who the request belongs to, as the leave API returns it. */
+  employee?: { code: string; name: string; department: string; branch: string };
+}
+
+/** One employee's leave quota / used / balance per leave type (GET /hr/leave-balances). */
+export interface LeaveBalanceRow {
+  empId: string;
+  empCode: string;
+  name: string;
+  department: string;
+  branch: string;
+  balances: { type: LeaveType; quota: number; used: number; balance: number }[];
 }
 
 export type JobPortal = 'Indeed' | 'LinkedIn' | 'Naukri';
@@ -222,6 +236,8 @@ export const VERIFICATION_DOCUMENTS: { type: string; required: boolean }[] = [
 export type DocumentStatus = 'Uploaded' | 'Verified' | 'Rejected';
 
 export interface CandidateDocument {
+  /** hr_candidate_documents id (needed to verify / download the file). */
+  id?: string;
   type: string;
   fileName: string;
   /** Server URL of the uploaded file (uploads/candidate_document); missing on documents recorded before uploads. */
@@ -324,6 +340,10 @@ export interface Candidate {
   verification?: CandidateVerification;
   offer?: CandidateOffer;
   history?: CandidateEvent[];
+  /** The employee created from this candidate (set once the hire has joined). */
+  employeeId?: string;
+  /** Hired, and no employee record has been created yet. */
+  awaitingJoining?: boolean;
 }
 
 export interface Payslip {
@@ -340,6 +360,8 @@ export interface Payslip {
   net: number;
   status: 'Processed' | 'Paid';
   paidAt?: string;
+  /** Who the slip belongs to, as the payslips API returns it (so the list needs no separate employee fetch). */
+  employee?: { code: string; name: string; branch: string; department: string; designation: string };
 }
 
 export type BonusType = 'Performance' | 'Festival' | 'Retention' | 'Referral' | 'Joining';
@@ -360,6 +382,8 @@ export interface Appraisal {
   effectiveFrom: string;
   status: 'Draft' | 'Approved' | 'Released';
   createdAt: string;
+  /** Who it is for, as the appraisals API returns it. */
+  employee?: { code: string; name: string; department: string; designation: string; branch: string };
 }
 
 export interface BonusRecord {
@@ -372,6 +396,7 @@ export interface BonusRecord {
   reason: string;
   status: 'Approved' | 'Paid';
   appraisalId?: string;
+  employee?: { code: string; name: string; department: string; branch: string };
 }
 
 export interface ChecklistItem {
@@ -387,6 +412,7 @@ export interface Onboarding {
   buddy: string;
   checklist: ChecklistItem[];
   status: 'In Progress' | 'Completed';
+  employee?: { code: string; name: string; designation: string; department: string; branch: string };
 }
 
 export interface ExitCase {
@@ -401,6 +427,7 @@ export interface ExitCase {
   fnf: { pendingSalary: number; leaveEncashment: number; bonus: number; gratuity: number; recoveries: number };
   status: 'Notice Period' | 'Clearance' | 'Settled';
   settledAt?: string;
+  employee?: { code: string; name: string; designation: string; department: string; branch: string };
 }
 
 export const ONBOARDING_CHECKLIST = [

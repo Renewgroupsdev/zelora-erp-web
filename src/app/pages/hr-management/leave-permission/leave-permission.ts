@@ -1,5 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import Swal from 'sweetalert2';
+import { AuthService } from '../../../core/auth/auth.service';
 import { MatDialogModule } from '@angular/material/dialog';
 import { CommonDetailCard } from '../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
@@ -43,7 +45,8 @@ const BALANCE_COLUMNS: TableColumn[] = [
   templateUrl: './leave-permission.html',
   styleUrl: '../../../shared/styles/erp-page.scss',
 })
-export class LeavePermission extends HrListBase {
+export class LeavePermission extends HrListBase implements OnInit {
+  private readonly authService = inject(AuthService);
   protected readonly noun = 'requests';
   readonly view = signal<View>('Leave');
 
@@ -67,6 +70,21 @@ export class LeavePermission extends HrListBase {
     ];
   });
 
+  ngOnInit(): void {
+    // Row buttons follow Roles & Permissions, which are cached from login: re-read them so a newly ticked action shows without re-login.
+    this.authService.refreshMenus();
+    this.hr.loadBranches().subscribe(branches => {
+      this.filters = this.filters.map(f => (f.key === 'branch' ? { ...f, options: branches.map(b => b.name) } : f));
+    });
+    this.hr.loadEmployees().subscribe({ error: () => undefined }); // the Apply form's employee list
+    this.hr.loadLeaves().subscribe({ error: err => this.fail(err, 'Could not load leave requests') });
+    this.hr.loadLeaveBalances().subscribe({ error: () => undefined });
+  }
+
+  private fail(err: any, title: string): void {
+    Swal.fire({ icon: 'error', title, text: err?.error?.message ?? 'Please try again.', confirmButtonColor: '#6C63FF' });
+  }
+
   setView(view: View): void {
     this.view.set(view);
     this.columns = view === 'Balance' ? BALANCE_COLUMNS : REQUEST_COLUMNS;
@@ -78,9 +96,9 @@ export class LeavePermission extends HrListBase {
 
   protected allRows(): TableRow[] {
     if (this.view() === 'Balance') {
-      return this.hr.activeEmployees().map(e => {
-        const row: TableRow = { id: e.id, empCode: e.empCode, employee: e.name, branch: e.branch, department: e.department, status: '' };
-        for (const b of this.hr.leaveBalance(e.id)) {
+      return this.hr.leaveBalanceRows().map(e => {
+        const row: TableRow = { id: e.empId, empCode: e.empCode, employee: e.name, branch: e.branch, department: e.department, status: '' };
+        for (const b of e.balances) {
           row[b.type] = b.quota ? `${b.balance} / ${b.quota}` : String(b.used);
           row[`__${b.type}`] = b.quota ? b.balance : b.used;
         }
@@ -90,15 +108,15 @@ export class LeavePermission extends HrListBase {
 
     const canApprove = this.hr.canApprove();
     return this.hr.leaves().filter(l => l.kind === this.view()).map(l => {
-      const e = this.hr.employee(l.empId);
+      const e = l.employee;
       const actions: QuickAction[] = l.status === 'Pending' && canApprove ? [{ key: 'review', icon: 'bi-check2-square', label: 'Approve / Reject', variant: 'primary' }] : [];
       const days = this.hr.leaveDays(l);
       return {
         id: l.id,
         requestNo: l.requestNo,
-        employee: e?.name ?? '-',
-        branch: e?.branch ?? '-',
-        department: e?.department ?? '-',
+        employee: e?.name || '-',
+        branch: e?.branch || '-',
+        department: e?.department || '-',
         type: l.kind === 'Leave' ? `${l.leaveType}${l.halfDay ? ' (½)' : ''}` : 'Permission',
         from: l.kind === 'Leave' ? displayDate(l.fromDate) : `${displayDate(l.fromDate)} ${l.fromTime}`,
         __from: l.fromDate,
@@ -127,7 +145,12 @@ export class LeavePermission extends HrListBase {
 
   async onQuickAction(event: { row: TableRow; action: string }): Promise<void> {
     const decision = await reviewPrompt(`${event.row['requestNo']} · ${event.row['employee']}`, `${event.row['type']}: ${event.row['from']} → ${event.row['to']} (${event.row['duration']}). ${event.row['reason']}`);
-    if (decision) this.hr.reviewLeave(String(event.row['id']), decision.approve, decision.remarks);
+    if (decision) {
+      this.hr.reviewLeave(String(event.row['id']), decision.approve, decision.remarks).subscribe({
+        next: () => Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: decision.approve ? 'Request approved' : 'Request rejected', showConfirmButton: false, timer: 3000 }),
+        error: err => this.fail(err, 'Could not review the request'),
+      });
+    }
   }
 
   exportExcel(): void {

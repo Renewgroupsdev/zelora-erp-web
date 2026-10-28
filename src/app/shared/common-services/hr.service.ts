@@ -25,11 +25,13 @@ import {
   Employee,
   KycDocument,
   EXIT_CHECKLIST,
+  ChecklistItem,
   ExitCase,
   FULL_DAY_HOURS,
   InterviewMode,
   JobPortal,
   LEAVE_QUOTA,
+  LeaveBalanceRow,
   LeaveRequest,
   LeaveType,
   ManpowerRequest,
@@ -83,6 +85,8 @@ export interface AttendanceMonthSummary {
 }
 
 export type NewEmployeeInput = Omit<Employee, 'id' | 'empCode' | 'status'>;
+export interface EmployeeHistory { leaves: LeaveRequest[]; payslips: Payslip[]; appraisals: Appraisal[]; bonuses: BonusRecord[]; balance: { type: LeaveType; quota: number; used: number; balance: number }[] }
+
 export type NewLeaveInput = Omit<LeaveRequest, 'id' | 'requestNo' | 'appliedAt' | 'status'>;
 export type NewManpowerInput = Omit<ManpowerRequest, 'id' | 'requestNo' | 'requestedBy' | 'requestedAt' | 'status' | 'postedTo' | 'hired'>;
 export type NewAppraisalInput = Omit<Appraisal, 'id' | 'status' | 'createdAt' | 'oldMonthlyGross' | 'newMonthlyGross'> & {
@@ -213,6 +217,7 @@ export class HrService {
    */
   saveEmployee(id: string | null, input: NewEmployeeInput, opts: { photo: File | null; removePhoto: boolean; removedKycIds: string[]; candidateId?: string | null; password?: string; passwordConfirmation?: string; telecaller?: boolean }): Observable<Employee> {
     const body = this.employeeFormData(input, opts.photo, opts.removePhoto);
+    if (!id && opts.candidateId) body.append('candidate_id', opts.candidateId);
     if (opts.telecaller) {
       body.append('extension', input.extension ?? '');
       body.append('device_type', input.deviceType || 'sip');
@@ -243,13 +248,8 @@ export class HrService {
       }),
       tap(emp => {
         if (id) return;
-        const candidate = opts.candidateId ? this.candidates().find(c => c.id === opts.candidateId) : null;
-        if (candidate && this.awaitingJoining(candidate)) {
-          this.updateCandidate(candidate.id, x => this.advance(x, 'Hired', 'Employee record created, onboarding started'));
-          this.registerEmployee(emp, candidate.id);
-        } else {
-          this.registerEmployee(emp);
-        }
+        if (opts.candidateId) this.loadCandidates().subscribe({ error: () => undefined }); // the server linked the hire to the candidate
+        this.registerEmployee(emp, opts.candidateId ?? undefined);
       }),
     );
   }
@@ -518,45 +518,67 @@ export class HrService {
   }
 
   // ---- Leave & permission ----
-  applyLeave(input: NewLeaveInput): LeaveRequest {
-    const request: LeaveRequest = { ...input, id: uid('LV'), requestNo: seqNo(input.kind === 'Leave' ? 'LV' : 'PM', this.leaves().length), appliedAt: new Date().toISOString(), status: 'Pending' };
-    this.patch({ leaves: [request, ...this.leaves()] });
-    this.alert(`${input.kind} request`, `${this.employeeName(input.empId)} applied for ${input.kind === 'Leave' ? input.leaveType : 'permission'} - waiting for HR approval.`, '/app/hr/leave-permission');
-    return request;
+  /** Every employee's leave balance from GET /hr/leave-balances (one row per employee on payroll). */
+  readonly leaveBalanceRows = signal<LeaveBalanceRow[]>([]);
+
+  leaveFromApi(r: any): LeaveRequest {
+    return {
+      id: String(r.id), requestNo: r.request_no, empId: String(r.employee_id),
+      kind: r.kind, leaveType: r.leave_type ?? null, fromDate: r.from_date, toDate: r.to_date, halfDay: !!r.half_day,
+      fromTime: r.from_time ?? null, toTime: r.to_time ?? null, reason: r.reason ?? '', appliedAt: r.applied_at,
+      status: r.status, reviewedBy: r.reviewed_by ?? undefined, reviewedAt: r.reviewed_at ?? undefined, reviewRemarks: r.review_remarks ?? undefined,
+      days: Number(r.days) || 0,
+      employee: r.employee ? { code: r.employee.emp_code ?? '', name: r.employee.name ?? '', department: r.employee.department ?? '', branch: r.employee.branch ?? '' } : undefined,
+    };
   }
 
-  reviewLeave(id: string, approve: boolean, remarks: string): void {
-    const request = this.leaves().find(l => l.id === id);
-    if (!request || request.status !== 'Pending') return;
-
-    let attendance = this.attendance();
-    if (approve) {
-      // Approved leave / permission shows up on the attendance register.
-      const status: AttendanceStatus = request.kind === 'Permission' ? 'Permission' : 'On Leave';
-      for (let d = request.fromDate; d <= request.toDate; d = addDays(d, 1)) {
-        if (new Date(`${d}T00:00:00`).getDay() === 0) continue;
-        const existing = attendance.find(a => a.empId === request.empId && a.date === d);
-        if (existing && request.kind === 'Permission') {
-          attendance = attendance.map(a => (a.id === existing.id ? { ...a, remarks: `Permission ${request.fromTime}-${request.toTime}` } : a));
-          continue;
-        }
-        attendance = [
-          { id: existing?.id ?? uid('ATT'), empId: request.empId, date: d, checkIn: existing?.checkIn ?? null, checkOut: existing?.checkOut ?? null, status: request.halfDay ? 'Half Day' : status, source: 'Manual', remarks: request.leaveType ?? 'Permission' },
-          ...attendance.filter(a => a.id !== existing?.id),
-        ];
-      }
-    }
-
-    this.patch({
-      attendance,
-      leaves: this.leaves().map(l => l.id === id
-        ? { ...l, status: approve ? 'Approved' : 'Rejected', reviewedBy: this.userName, reviewedAt: new Date().toISOString(), reviewRemarks: remarks }
-        : l),
-    });
+  /** Every leave / permission request from GET /hr/leave-requests (all pages). */
+  loadLeaves(): Observable<LeaveRequest[]> {
+    const page = (n: number) => this.api.GET(`${ApiRoutesConstants.HR_LEAVE_REQUESTS}?per_page=200&page=${n}`) as Observable<any>;
+    return page(1).pipe(
+      switchMap(first => {
+        const last = Number(first?.pagination?.last_page ?? 1);
+        const rest = last > 1 ? forkJoin(Array.from({ length: last - 1 }, (_, i) => page(i + 2))) : of([] as any[]);
+        return rest.pipe(map(more => [first, ...more].flatMap(r => (r?.data ?? []) as any[])));
+      }),
+      map(rows => rows.map(r => this.leaveFromApi(r))),
+      tap(list => this.patch({ leaves: list })),
+    );
   }
 
-  leaveDays(l: Pick<LeaveRequest, 'kind' | 'fromDate' | 'toDate' | 'halfDay'>): number {
+  loadLeaveBalances(): Observable<LeaveBalanceRow[]> {
+    return (this.api.GET(ApiRoutesConstants.HR_LEAVE_BALANCES) as Observable<any>).pipe(
+      map(res => ((res?.data ?? []) as any[]).map((r): LeaveBalanceRow => ({
+        empId: String(r.employee_id), empCode: r.emp_code ?? '', name: r.name ?? '', department: r.department ?? '', branch: r.branch ?? '',
+        balances: (r.balances ?? []).map((b: any) => ({ type: b.type as LeaveType, quota: Number(b.quota) || 0, used: Number(b.used) || 0, balance: Number(b.balance) || 0 })),
+      }))),
+      tap(rows => this.leaveBalanceRows.set(rows)),
+    );
+  }
+
+  /** Files a leave / permission (POST /hr/leave-requests), then reloads the requests and balances. */
+  applyLeave(input: NewLeaveInput): Observable<LeaveRequest> {
+    const body = {
+      employee_id: Number(input.empId), kind: input.kind, leave_type: input.leaveType, from_date: input.fromDate, to_date: input.toDate,
+      half_day: input.halfDay, from_time: input.fromTime, to_time: input.toTime, reason: input.reason,
+    };
+    return (this.api.POST(ApiRoutesConstants.HR_LEAVE_REQUESTS, body) as Observable<any>).pipe(
+      map(res => this.leaveFromApi(res.data)),
+      switchMap(request => forkJoin([this.loadLeaves(), this.loadLeaveBalances()]).pipe(map(() => request))),
+      tap(request => this.alert(`${input.kind} request`, `${request.employee?.name ?? this.employeeName(input.empId)} applied for ${input.kind === 'Leave' ? input.leaveType : 'permission'} - waiting for HR approval.`, '/app/hr/leave-permission')),
+    );
+  }
+
+  /** Approves / rejects (POST /hr/leave-requests/{id}/review); the server posts approved days onto the attendance register. */
+  reviewLeave(id: string, approve: boolean, remarks: string): Observable<unknown> {
+    return (this.api.POST(`${ApiRoutesConstants.HR_LEAVE_REQUESTS}/${id}/review`, { approve, remarks }) as Observable<unknown>).pipe(
+      switchMap(() => forkJoin([this.loadLeaves(), this.loadLeaveBalances()])),
+    );
+  }
+
+  leaveDays(l: Pick<LeaveRequest, 'kind' | 'fromDate' | 'toDate' | 'halfDay'> & { days?: number }): number {
     if (l.kind === 'Permission') return 0;
+    if (l.days !== undefined && l.days !== null && !Number.isNaN(l.days) && l.days > 0) return l.days;
     if (l.halfDay) return 0.5;
     let days = 0;
     for (let d = l.fromDate; d <= l.toDate; d = addDays(d, 1)) if (new Date(`${d}T00:00:00`).getDay() !== 0) days++;
@@ -564,143 +586,246 @@ export class HrService {
   }
 
   leaveBalance(empId: string): { type: LeaveType; quota: number; used: number; balance: number }[] {
-    const year = String(new Date().getFullYear());
-    const used = (type: LeaveType) => this.leaves()
-      .filter(l => l.empId === empId && l.kind === 'Leave' && l.leaveType === type && l.status === 'Approved' && l.fromDate.startsWith(year))
-      .reduce((s, l) => s + this.leaveDays(l), 0);
-    return (Object.keys(LEAVE_QUOTA) as LeaveType[]).map(type => {
-      const u = used(type);
-      return { type, quota: LEAVE_QUOTA[type], used: u, balance: Math.max(0, LEAVE_QUOTA[type] - u) };
-    });
+    const row = this.leaveBalanceRows().find(r => r.empId === empId);
+    if (row) return row.balances;
+    return (Object.keys(LEAVE_QUOTA) as LeaveType[]).map(type => ({ type, quota: LEAVE_QUOTA[type], used: 0, balance: LEAVE_QUOTA[type] }));
   }
 
-  // ---- Manpower requests / vacancies ----
-  createManpower(input: NewManpowerInput): ManpowerRequest {
-    const request: ManpowerRequest = { ...input, id: uid('MR'), requestNo: seqNo('MR', this.manpower().length), requestedBy: this.userName, requestedAt: new Date().toISOString(), status: 'Pending', postedTo: [], hired: 0 };
-    this.patch({ manpower: [request, ...this.manpower()] });
-    this.alert('Manpower request', `${request.branch} needs ${request.positions} × ${request.designation} (budget ₹${request.budgetMin.toLocaleString('en-IN')}-${request.budgetMax.toLocaleString('en-IN')}/month).`, '/app/hr/recruitment');
-    return request;
+  // ---- Manpower requests / vacancies (GET / POST /hr/manpower-requests) ----
+  manpowerFromApi(r: any): ManpowerRequest {
+    const n = (v: unknown) => Number(v) || 0;
+    const postings = (r.postings ?? []) as { portal: JobPortal; status: string }[];
+    return {
+      id: String(r.id), requestNo: r.request_no, branch: r.branch?.name ?? '', department: r.department ?? '', designation: r.designation ?? '',
+      positions: n(r.positions), employmentType: r.employment_type, experience: r.experience ?? '',
+      budgetMin: n(r.budget_min), budgetMax: n(r.budget_max), skills: r.skills ?? '', justification: r.justification ?? '',
+      replacementFor: r.replacement_for ?? '', requiredBy: r.required_by ?? null,
+      requestedBy: r.requested_by ?? '', requestedAt: r.requested_at ?? '', status: r.status,
+      reviewedBy: r.reviewed_by ?? undefined, reviewRemarks: r.review_remarks ?? undefined,
+      vacancyStatus: r.vacancy_status ?? undefined,
+      // Only portals the job really went to; "Pending" ones still need HR to post them by hand.
+      postedTo: postings.filter(p => p.status === 'Posted').map(p => p.portal),
+      hired: n(r.hired),
+    };
   }
 
-  reviewManpower(id: string, approve: boolean, remarks: string): void {
-    this.patch({
-      manpower: this.manpower().map(m => m.id === id
-        ? { ...m, status: approve ? 'Approved' : 'Rejected', reviewedBy: this.userName, reviewRemarks: remarks, vacancyStatus: approve ? 'Open' : undefined }
-        : m),
-    });
+  /** Every page of a list endpoint (per_page 200). */
+  private fetchAll(path: string): Observable<any[]> {
+    const page = (n: number) => this.api.GET(`${path}${path.includes('?') ? '&' : '?'}per_page=200&page=${n}`) as Observable<any>;
+    return page(1).pipe(
+      switchMap(first => {
+        const last = Number(first?.pagination?.last_page ?? 1);
+        const rest = last > 1 ? forkJoin(Array.from({ length: last - 1 }, (_, i) => page(i + 2))) : of([] as any[]);
+        return rest.pipe(map(more => [first, ...more].flatMap(r => (r?.data ?? []) as any[])));
+      }),
+    );
   }
 
-  setVacancyStatus(id: string, vacancyStatus: ManpowerRequest['vacancyStatus']): void {
-    this.patch({ manpower: this.manpower().map(m => (m.id === id ? { ...m, vacancyStatus } : m)) });
+  /** Replaces the store's manpower requests / vacancies with the server's. */
+  loadManpower(): Observable<ManpowerRequest[]> {
+    return this.fetchAll(ApiRoutesConstants.HR_MANPOWER).pipe(
+      map(rows => rows.map(r => this.manpowerFromApi(r))),
+      tap(list => this.patch({ manpower: list })),
+    );
   }
 
-  postToPortals(id: string, portals: JobPortal[]): void {
-    this.patch({ manpower: this.manpower().map(m => (m.id === id ? { ...m, postedTo: [...new Set([...m.postedTo, ...portals])] } : m)) });
+  /** Replaces the store's candidates with the server's (list rows carry no history / documents; the detail call fills those). */
+  loadCandidates(): Observable<Candidate[]> {
+    return this.fetchAll(ApiRoutesConstants.HR_CANDIDATES).pipe(
+      map(rows => rows.map(r => this.candidateFromApi(r, this.candidates().find(c => c.id === String(r.id))))),
+      tap(list => this.patch({ candidates: list })),
+    );
   }
 
-  /**
-   * Pulls new applicants for a vacancy from a job portal. Design stage: generates realistic sample
-   * profiles - replace with the portal's employer API (Indeed Job Sync, LinkedIn Talent, Naukri RMS) via the backend.
-   */
-  syncApplicants(vacancyId: string, portal: JobPortal): Candidate[] {
-    const vacancy = this.manpower().find(m => m.id === vacancyId);
-    if (!vacancy) return [];
-    const rand = mulberry32(Date.now() % 100000);
-    const count = 2 + Math.floor(rand() * 3);
-    const fresh = Array.from({ length: count }, () => makeCandidate(vacancy, portal, rand, 0));
-    this.patch({ candidates: [...fresh, ...this.candidates()], manpower: this.manpower().map(m => (m.id === vacancyId && !m.postedTo.includes(portal) ? { ...m, postedTo: [...m.postedTo, portal] } : m)) });
-    return fresh;
+  /** The Recruitment tab's data: manpower requests + candidates. */
+  loadRecruitment(): Observable<unknown> {
+    return forkJoin([this.loadManpower(), this.loadCandidates()]);
   }
 
-  addCandidate(candidate: Omit<Candidate, 'id' | 'appliedAt' | 'stage' | 'resumeFile'>): Candidate {
-    const c: Candidate = { ...candidate, id: uid('CND'), appliedAt: new Date().toISOString(), stage: 'Applied', resumeFile: `${candidate.name.replace(/\s+/g, '_')}_Resume.pdf` };
-    this.patch({ candidates: [c, ...this.candidates()] });
-    return c;
+  private putManpower(m: ManpowerRequest): ManpowerRequest {
+    this.patch({ manpower: this.manpower().some(x => x.id === m.id) ? this.manpower().map(x => (x.id === m.id ? m : x)) : [m, ...this.manpower()] });
+    return m;
   }
 
+  private manpowerAction(id: string, path: string, body: unknown): Observable<ManpowerRequest> {
+    return (this.api.POST(`${ApiRoutesConstants.HR_MANPOWER}/${id}/${path}`, body) as Observable<any>).pipe(
+      map(res => this.putManpower(this.manpowerFromApi(res.data?.vacancy ?? res.data))),
+    );
+  }
+
+  createManpower(input: NewManpowerInput): Observable<ManpowerRequest> {
+    const unit = this.branchOptions().find(b => b.name === input.branch);
+    const body = {
+      branch_or_franchise_type: unit?.type ?? null, branch_or_franchise_id: unit?.id ?? null,
+      department: input.department, designation: input.designation, positions: input.positions, employment_type: input.employmentType,
+      experience: input.experience, budget_min: input.budgetMin, budget_max: input.budgetMax, skills: input.skills,
+      justification: input.justification, replacement_for: input.replacementFor, required_by: input.requiredBy,
+    };
+    return (this.api.POST(ApiRoutesConstants.HR_MANPOWER, body) as Observable<any>).pipe(map(res => this.putManpower(this.manpowerFromApi(res.data))));
+  }
+
+  reviewManpower(id: string, approve: boolean, remarks: string): Observable<ManpowerRequest> {
+    return this.manpowerAction(id, 'review', { approve, remarks });
+  }
+
+  setVacancyStatus(id: string, vacancyStatus: NonNullable<ManpowerRequest['vacancyStatus']>): Observable<ManpowerRequest> {
+    return this.manpowerAction(id, 'vacancy-status', { vacancy_status: vacancyStatus });
+  }
+
+  /** POST post-to-portals. LinkedIn posts through its API; Indeed / Naukri come back "Pending" (post by hand, then link). */
+  postToPortals(id: string, portals: JobPortal[]): Observable<{ portal: string; status: string; message: string }[]> {
+    return (this.api.POST(`${ApiRoutesConstants.HR_MANPOWER}/${id}/post-to-portals`, { portals }) as Observable<any>).pipe(
+      tap(res => { if (res.data?.vacancy) this.putManpower(this.manpowerFromApi(res.data.vacancy)); }),
+      map(res => (res.data?.results ?? []) as { portal: string; status: string; message: string }[]),
+    );
+  }
+
+  /** Pulls the portal's new applicants into the vacancy (LinkedIn API); reloads the candidates. */
+  syncApplicants(vacancyId: string, portal: JobPortal): Observable<{ created: number; skipped: number }> {
+    return (this.api.POST(`${ApiRoutesConstants.HR_MANPOWER}/${vacancyId}/sync-applicants`, { portal }) as Observable<any>).pipe(
+      switchMap(res => this.loadCandidates().pipe(map(() => ({ created: Number(res.data?.created) || 0, skipped: Number(res.data?.skipped) || 0 })))),
+    );
+  }
+
+  /** Adds a walk-in / referral by hand (POST /hr/candidates). */
+  addCandidate(candidate: Omit<Candidate, 'id' | 'appliedAt' | 'stage' | 'resumeFile'>): Observable<Candidate> {
+    const body = {
+      vacancy_id: Number(candidate.vacancyId), name: candidate.name, email: candidate.email, phone: candidate.phone, source: candidate.source,
+      profile_url: candidate.profileUrl, location: candidate.location, experience_years: candidate.experienceYears, current_company: candidate.currentCompany,
+      current_ctc: candidate.currentCtc, expected_ctc: candidate.expectedCtc, notice_days: candidate.noticeDays, skills: candidate.skills, education: candidate.education, notes: candidate.notes,
+    };
+    return (this.api.POST(ApiRoutesConstants.HR_CANDIDATES, body) as Observable<any>).pipe(map(res => this.putCandidate(this.candidateFromApi(res.data))));
+  }
+
+  /** Local-only stage tweak (the "Reschedule" button reopens the scheduling form); the server moves a candidate only through the actions below. */
   moveCandidate(id: string, stage: CandidateStage, patch: Partial<Candidate> = {}): void {
     this.patch({ candidates: this.candidates().map(c => (c.id === id ? { ...c, ...patch, stage } : c)) });
   }
 
-  // ---- Candidate hiring workflow ----
-  private updateCandidate(id: string, change: (c: Candidate) => Candidate): void {
-    this.patch({ candidates: this.candidates().map(c => (c.id === id ? change(c) : c)) });
+  // ---- Candidate hiring workflow (GET /hr/candidates, POST /hr/candidates/{id}/...) ----
+  /** API candidate -> Candidate. "By whom" names come from the history; `prev` keeps history / documents a list row does not carry. */
+  candidateFromApi(r: any, prev?: Candidate): Candidate {
+    const n = (v: unknown) => Number(v) || 0;
+    const history: CandidateEvent[] | undefined = r.history
+      ? (r.history as any[]).map(e => ({ at: e.at, by: e.by ?? '', stage: e.stage, action: e.action, ...(e.note ? { note: e.note } : {}) }))
+      : prev?.history;
+    const by = (re: RegExp) => [...(history ?? [])].reverse().find(h => re.test(h.action))?.by ?? '';
+    const iv = r.interview;
+    const rv = r.review;
+    const rj = r.rejection;
+    const vf = r.verification;
+    const of_ = r.offer;
+    const docs: CandidateDocument[] = r.verification?.documents
+      ? (vf.documents as any[]).map(d => ({
+        id: String(d.id), type: d.type, fileName: d.file_name, url: d.url ?? undefined, uploadedAt: d.uploaded_at ?? '', uploadedBy: d.uploaded_by ?? '',
+        status: d.status, verifiedBy: d.verified_by ?? undefined, verifiedAt: d.verified_at ?? undefined, remarks: d.remarks ?? undefined,
+      }))
+      : prev?.verification?.documents ?? [];
+    return {
+      id: String(r.id), vacancyId: String(r.vacancy_id), name: r.name ?? '', email: r.email ?? '', phone: r.phone ?? '', source: r.source,
+      profileUrl: r.profile_url ?? '', location: r.location ?? '', experienceYears: n(r.experience_years), currentCompany: r.current_company ?? '',
+      currentCtc: n(r.current_ctc), expectedCtc: n(r.expected_ctc), noticeDays: n(r.notice_days), skills: r.skills ?? '', education: r.education ?? '',
+      appliedAt: r.applied_at ?? '', stage: r.stage, rating: n(r.rating), notes: r.notes ?? undefined, resumeFile: r.resume_file ?? '',
+      interviewAt: iv?.scheduled_at ?? null,
+      shortlistedAt: r.shortlisted_at ?? undefined, shortlistedBy: r.shortlisted_at ? by(/^Shortlisted/) : undefined,
+      interview: iv ? {
+        scheduledAt: iv.scheduled_at ?? iv.interviewed_at, interviewer: iv.interviewer ?? '', mode: iv.mode ?? 'In-person', scheduledBy: by(/^Interview (re)?scheduled/),
+        interviewedAt: iv.interviewed_at ?? undefined, performanceRating: iv.performance_rating ?? undefined, interviewNotes: iv.notes ?? undefined,
+      } : undefined,
+      review: rv ? { reviewedBy: by(/after interview/), reviewedAt: rv.reviewed_at, rating: n(rv.rating), comments: rv.comments ?? '', decision: rv.decision } : undefined,
+      rejectedBy: rj ? by(/^Rejected/) : undefined, rejectedAt: rj?.rejected_at ?? undefined, rejectionReason: rj?.reason ?? undefined, rejectedAtStage: rj?.at_stage ?? undefined,
+      verification: vf ? {
+        startedAt: vf.started_at, startedBy: by(/verification started/), documents: docs, backgroundCheck: vf.background_check ?? 'Pending',
+        backgroundRemarks: vf.background_remarks ?? undefined, completedAt: vf.completed_at ?? undefined, completedBy: vf.completed_at ? by(/Verification completed/) : undefined,
+      } : undefined,
+      offer: of_ ? {
+        offerNo: of_.offer_no, releasedAt: of_.released_at, releasedBy: by(/Offer letter released/), monthlyGross: n(of_.monthly_gross),
+        joiningDate: of_.joining_date, validUntil: of_.valid_until, response: of_.response ?? 'Pending', respondedAt: of_.responded_at ?? undefined, responseRemarks: of_.response_remarks ?? undefined,
+      } : undefined,
+      history,
+      employeeId: r.employee_id != null ? String(r.employee_id) : prev?.employeeId,
+      awaitingJoining: r.awaiting_joining ?? prev?.awaitingJoining,
+    };
   }
 
-  /** Moves a candidate to `stage`, applying `patch`, and records who did it on the candidate's history. */
-  private advance(c: Candidate, stage: CandidateStage, action: string, patch: Partial<Candidate> = {}, note?: string): Candidate {
-    const event: CandidateEvent = { at: new Date().toISOString(), by: this.userName, stage, action, ...(note ? { note } : {}) };
-    return { ...c, ...patch, stage, history: [...(c.history ?? []), event] };
+  private putCandidate(c: Candidate): Candidate {
+    this.patch({ candidates: this.candidates().some(x => x.id === c.id) ? this.candidates().map(x => (x.id === c.id ? c : x)) : [c, ...this.candidates()] });
+    return c;
   }
 
-  shortlistCandidate(id: string): void {
-    this.updateCandidate(id, c => this.advance(c, 'Shortlisted', 'Shortlisted', { shortlistedBy: this.userName, shortlistedAt: new Date().toISOString() }));
+  /** One candidate with history, documents and verification gaps (the Hiring process dialog). */
+  fetchCandidate(id: string): Observable<Candidate> {
+    return (this.api.GET(`${ApiRoutesConstants.HR_CANDIDATES}/${id}`) as Observable<any>).pipe(
+      map(res => this.putCandidate(this.candidateFromApi(res.data, this.candidates().find(c => c.id === id)))),
+    );
   }
 
-  scheduleInterview(id: string, input: { scheduledAt: string; interviewer: string; mode: InterviewMode }): void {
-    this.updateCandidate(id, c => this.advance(c, 'Interview', c.interview ? 'Interview rescheduled' : 'Interview scheduled',
-      { interviewAt: input.scheduledAt, interview: { ...input, scheduledBy: this.userName } },
-      `${input.interviewer} · ${input.mode}`));
+  /** POST /hr/candidates/{id}/{path}; the server answers with the refreshed candidate. */
+  private candidateAction(id: string, path: string, body: unknown = {}): Observable<Candidate> {
+    return (this.api.POST(`${ApiRoutesConstants.HR_CANDIDATES}/${id}/${path}`, body) as Observable<any>).pipe(
+      map(res => this.putCandidate(this.candidateFromApi(res.data, this.candidates().find(c => c.id === id)))),
+    );
+  }
+
+  shortlistCandidate(id: string): Observable<Candidate> {
+    return this.candidateAction(id, 'shortlist');
+  }
+
+  scheduleInterview(id: string, input: { scheduledAt: string; interviewer: string; mode: InterviewMode }): Observable<Candidate> {
+    return this.candidateAction(id, 'schedule-interview', { scheduled_at: input.scheduledAt, interviewer: input.interviewer, mode: input.mode });
   }
 
   /** The interview took place: store the interviewer's performance rating and notes. */
-  recordInterview(id: string, input: { interviewedAt: string; performanceRating: number; notes: string }): void {
-    this.updateCandidate(id, c => {
-      const interview = c.interview ?? { scheduledAt: c.interviewAt ?? input.interviewedAt, interviewer: this.userName, mode: 'In-person' as InterviewMode, scheduledBy: this.userName };
-      return this.advance(c, 'Interviewed', 'Interview completed',
-        { rating: input.performanceRating, interview: { ...interview, interviewedAt: input.interviewedAt, performanceRating: input.performanceRating, interviewNotes: input.notes } },
-        `Performance ${input.performanceRating}/5`);
-    });
+  recordInterview(id: string, input: { interviewedAt: string; performanceRating: number; notes: string }): Observable<Candidate> {
+    return this.candidateAction(id, 'record-interview', { interviewed_at: input.interviewedAt, performance_rating: input.performanceRating, notes: input.notes });
   }
 
   /** Final review after the interview: Selected moves on to verification, Rejected closes the candidate. */
-  reviewCandidate(id: string, input: { rating: number; comments: string; selected: boolean }): void {
-    const decision = input.selected ? 'Selected' : 'Rejected';
-    this.updateCandidate(id, c => {
-      const review: CandidateReview = { reviewedBy: this.userName, reviewedAt: new Date().toISOString(), rating: input.rating, comments: input.comments, decision };
-      return input.selected
-        ? this.advance(c, 'Selected', 'Selected after interview', { review, rating: input.rating }, input.comments)
-        : this.advance(c, 'Rejected', 'Rejected after interview', { review, rating: input.rating, rejectedBy: this.userName, rejectedAt: new Date().toISOString(), rejectionReason: input.comments, rejectedAtStage: c.stage }, input.comments);
+  reviewCandidate(id: string, input: { rating: number; comments: string; selected: boolean }): Observable<Candidate> {
+    return this.candidateAction(id, 'review', input);
+  }
+
+  rejectCandidate(id: string, reason: string): Observable<Candidate> {
+    return this.candidateAction(id, 'reject', { reason });
+  }
+
+  startVerification(id: string): Observable<Candidate> {
+    return this.candidateAction(id, 'start-verification');
+  }
+
+  /** Uploads a verification document (POST multipart); a replaced file is deleted by the server. */
+  uploadCandidateDocument(id: string, type: string, file: File): Observable<Candidate> {
+    const form = new FormData();
+    form.append('type', type);
+    form.append('file', file);
+    return this.candidateAction(id, 'documents', form);
+  }
+
+  verifyCandidateDocument(id: string, type: string, verified: boolean, remarks: string): Observable<Candidate> {
+    const doc = this.candidates().find(c => c.id === id)?.verification?.documents.find(d => d.type === type);
+    return this.candidateAction(id, `documents/${doc?.id}/verify`, { verified, remarks });
+  }
+
+  /** Opens an uploaded verification document in a new tab (the file is behind the API token). */
+  viewCandidateDocument(candidateId: string, doc: CandidateDocument): void {
+    const tab = window.open('', '_blank');
+    (this.api.GET_BLOB(`${ApiRoutesConstants.HR_CANDIDATES}/${candidateId}/documents/${doc.id}/download`) as Observable<Blob>).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+      },
+      error: () => {
+        tab?.close();
+        Swal.fire({ icon: 'error', title: 'Could not open the document', confirmButtonColor: '#6C63FF' });
+      },
     });
   }
 
-  rejectCandidate(id: string, reason: string): void {
-    this.updateCandidate(id, c => this.advance(c, 'Rejected', 'Rejected',
-      { rejectedBy: this.userName, rejectedAt: new Date().toISOString(), rejectionReason: reason, rejectedAtStage: c.stage }, reason));
-  }
-
-  startVerification(id: string): void {
-    this.updateCandidate(id, c => this.advance(c, 'Verification', 'Background verification started',
-      { verification: { startedAt: new Date().toISOString(), startedBy: this.userName, documents: [], backgroundCheck: 'Pending' } }));
-  }
-
-  private withVerification(id: string, change: (v: CandidateVerification) => CandidateVerification, action: string, note?: string): void {
-    this.updateCandidate(id, c => {
-      if (!c.verification) return c;
-      const event: CandidateEvent = { at: new Date().toISOString(), by: this.userName, stage: c.stage, action, ...(note ? { note } : {}) };
-      return { ...c, verification: change(c.verification), history: [...(c.history ?? []), event] };
-    });
-  }
-
-  /** Records a verification document; the file itself is already on the server (`url`, uploads/candidate_document). A replaced file is deleted. */
-  uploadCandidateDocument(id: string, type: string, fileName: string, url?: string): void {
-    const replaced = this.candidates().find(c => c.id === id)?.verification?.documents.find(d => d.type === type)?.url;
-    const doc: CandidateDocument = { type, fileName, url, uploadedAt: new Date().toISOString(), uploadedBy: this.userName, status: 'Uploaded' };
-    this.withVerification(id, v => ({ ...v, documents: [...v.documents.filter(d => d.type !== type), doc] }), `${type} uploaded`, fileName);
-    if (replaced && replaced !== url) this.uploads.remove('candidate_document', replaced);
-  }
-
-  verifyCandidateDocument(id: string, type: string, verified: boolean, remarks: string): void {
-    this.withVerification(id, v => ({
-      ...v,
-      documents: v.documents.map(d => (d.type === type
-        ? { ...d, status: verified ? 'Verified' as const : 'Rejected' as const, verifiedBy: this.userName, verifiedAt: new Date().toISOString(), remarks }
-        : d)),
-    }), `${type} ${verified ? 'verified' : 'rejected'}`, remarks || undefined);
-  }
-
-  setBackgroundCheck(id: string, status: BackgroundCheckStatus, remarks: string): void {
-    this.withVerification(id, v => ({ ...v, backgroundCheck: status, backgroundRemarks: remarks }), `Background check: ${status}`, remarks || undefined);
+  setBackgroundCheck(id: string, status: BackgroundCheckStatus, remarks: string): Observable<Candidate> {
+    return (this.api.PUT(`${ApiRoutesConstants.HR_CANDIDATES}/${id}/background-check`, { status, remarks }) as Observable<any>).pipe(
+      map(res => this.putCandidate(this.candidateFromApi(res.data, this.candidates().find(c => c.id === id)))),
+    );
   }
 
   /** What still blocks the offer: missing / unverified required documents and the background check. */
@@ -712,57 +837,31 @@ export class HrService {
     return gaps;
   }
 
-  completeVerification(id: string): boolean {
-    const c = this.candidates().find(x => x.id === id);
-    if (!c || this.verificationGaps(c).length) return false;
-    this.withVerification(id, v => ({ ...v, completedAt: new Date().toISOString(), completedBy: this.userName }), 'Verification completed by HR');
-    return true;
+  completeVerification(id: string): Observable<Candidate> {
+    return this.candidateAction(id, 'complete-verification');
   }
 
-  /** Releases the offer letter. Needs completed verification. */
-  releaseOffer(id: string, input: { monthlyGross: number; joiningDate: string; validUntil: string }): CandidateOffer | null {
-    const c = this.candidates().find(x => x.id === id);
-    if (!c || !c.verification?.completedAt) return null;
-    const offer: CandidateOffer = {
-      offerNo: seqNo('OFR', this.candidates().filter(x => x.offer).length),
-      releasedAt: new Date().toISOString(),
-      releasedBy: this.userName,
-      response: 'Pending',
-      ...input,
-    };
-    this.updateCandidate(id, x => this.advance(x, 'Offered', 'Offer letter released', { offer }, `${offer.offerNo} · ₹${input.monthlyGross.toLocaleString('en-IN')} / month`));
-    this.notifications.add({ type: 'hr', title: 'Offer letter released', message: `${offer.offerNo} sent to ${c.name}.`, link: '/app/hr/recruitment' });
-    return offer;
+  /** Releases the offer letter. Needs completed verification (the server checks). */
+  releaseOffer(id: string, input: { monthlyGross: number; joiningDate: string; validUntil: string }): Observable<Candidate> {
+    return this.candidateAction(id, 'release-offer', { monthly_gross: input.monthlyGross, joining_date: input.joiningDate, valid_until: input.validUntil });
   }
 
-  /** Candidate's answer to the offer: accepted -> hired and onboarding starts, declined -> Offer Declined. */
-  respondToOffer(id: string, accepted: boolean, remarks: string): void {
-    const c = this.candidates().find(x => x.id === id);
-    if (!c?.offer) return;
-    const offer: CandidateOffer = { ...c.offer, response: accepted ? 'Accepted' : 'Declined', respondedAt: new Date().toISOString(), responseRemarks: remarks };
-    if (accepted) {
-      // Accepting makes the candidate Hired and fills a position; the employee record is added next (createEmployeeFromCandidate).
-      this.updateCandidate(id, x => this.advance(x, 'Hired', 'Offer accepted - hired', { offer }, remarks));
-      const vacancy = this.manpower().find(m => m.id === c.vacancyId);
-      if (vacancy) {
-        const hired = vacancy.hired + 1;
-        this.patch({ manpower: this.manpower().map(m => (m.id === vacancy.id ? { ...m, hired, vacancyStatus: hired >= m.positions ? 'Filled' : m.vacancyStatus } : m)) });
-      }
-    } else {
-      this.updateCandidate(id, x => this.advance(x, 'Offer Declined', 'Offer declined', { offer }, remarks));
-    }
-    this.notifications.add({ type: 'hr', title: accepted ? 'Offer accepted' : 'Offer declined', message: `${c.name} ${accepted ? 'accepted' : 'declined'} ${offer.offerNo}.`, link: '/app/hr/recruitment' });
+  /** Candidate's answer to the offer: accepted -> hired (a position is filled), declined -> Offer Declined. */
+  respondToOffer(id: string, accepted: boolean, remarks: string): Observable<Candidate> {
+    return this.candidateAction(id, 'offer-response', { accepted, remarks }).pipe(
+      tap(() => this.loadManpower().subscribe({ error: () => undefined })), // hired count / vacancy status moved
+    );
   }
 
   /** The employee created from this candidate, if any. */
   employeeForCandidate(candidateId: string): Employee | undefined {
-    const link = this.onboarding().find(o => o.candidateId === candidateId);
-    return link && this.employee(link.empId);
+    const id = this.candidates().find(c => c.id === candidateId)?.employeeId;
+    return id ? this.employee(id) : undefined;
   }
 
   /** A hired candidate who has no employee record yet. */
   awaitingJoining(c: Candidate): boolean {
-    return c.stage === 'Hired' && !this.onboarding().some(o => o.candidateId === c.id) && !!this.manpower().find(m => m.id === c.vacancyId);
+    return c.awaitingJoining ?? (c.stage === 'Hired' && !c.employeeId);
   }
 
   /** Add Employee form defaults for an accepted candidate: profile from the application, job and pay from the vacancy and offer. */
@@ -778,14 +877,6 @@ export class HrService {
     };
   }
 
-  /** Saves the employee from the Add Employee form for a hired candidate and starts onboarding. */
-  createEmployeeFromCandidate(id: string, input: NewEmployeeInput): Employee | null {
-    const c = this.candidates().find(x => x.id === id);
-    if (!c || !this.awaitingJoining(c)) return null;
-    this.updateCandidate(id, x => this.advance(x, 'Hired', 'Employee record created, onboarding started'));
-    return this.addEmployee(input, c.id);
-  }
-
   // ---- Payroll ----
   workingDays(month: string): number {
     let days = 0;
@@ -793,132 +884,258 @@ export class HrService {
     return days;
   }
 
-  /** Builds payslips for every employee on payroll in the month. Already-paid slips are kept. */
-  runPayroll(month: string): Payslip[] {
-    const monthEnd = `${month}-${String(daysInMonth(month)).padStart(2, '0')}`;
-    const paid = this.payslips().filter(p => p.month === month && p.status === 'Paid');
-    const workingDays = this.workingDays(month);
-
-    const slips = this.employees()
-      .filter(e => e.joinDate <= monthEnd && e.status !== 'Exited' && !paid.some(p => p.empId === e.id))
-      .map(e => {
-        const absent = this.attendance().filter(a => a.empId === e.id && a.date.startsWith(month) && a.status === 'Absent').length;
-        const halfDays = this.attendance().filter(a => a.empId === e.id && a.date.startsWith(month) && a.status === 'Half Day' && !a.remarks).length;
-        const lopLeaves = this.leaves().filter(l => l.empId === e.id && l.status === 'Approved' && l.leaveType === 'Loss of Pay' && l.fromDate.startsWith(month)).reduce((s, l) => s + this.leaveDays(l), 0);
-        const lopDays = Math.min(workingDays, absent + halfDays * 0.5 + lopLeaves);
-        const bonus = this.bonuses().filter(b => b.empId === e.id && b.payMonth === month).reduce((s, b) => s + b.amount, 0);
-        return buildPayslip(e, month, workingDays, lopDays, bonus);
-      });
-
-    this.patch({ payslips: [...slips, ...this.payslips().filter(p => p.month !== month || p.status === 'Paid')] });
-    return slips;
+  payslipFromApi(r: any): Payslip {
+    const e = r.earnings ?? {};
+    const d = r.deductions ?? {};
+    const n = (v: unknown) => Number(v) || 0;
+    return {
+      id: String(r.id), month: r.month, empId: String(r.employee_id),
+      workingDays: n(r.working_days), paidDays: n(r.paid_days), lopDays: n(r.lop_days),
+      earnings: { basic: n(e.basic), hra: n(e.hra), conveyance: n(e.conveyance), special: n(e.special), bonus: n(e.bonus) },
+      deductions: { pf: n(d.pf), esi: n(d.esi), professionalTax: n(d.professional_tax), lop: n(d.lop), advance: n(d.advance) },
+      gross: n(r.gross), totalDeductions: n(r.total_deductions), net: n(r.net),
+      status: r.status === 'Paid' ? 'Paid' : 'Processed', paidAt: r.paid_at ?? undefined,
+      employee: r.employee ? {
+        code: r.employee.emp_code ?? '', name: r.employee.name ?? '', branch: r.employee.branch ?? '',
+        department: r.employee.department ?? '', designation: r.employee.designation ?? '',
+      } : undefined,
+    };
   }
 
-  markPaid(ids: string[]): void {
-    const slips = this.payslips().filter(p => ids.includes(p.id));
-    this.patch({
-      payslips: this.payslips().map(p => (ids.includes(p.id) ? { ...p, status: 'Paid', paidAt: new Date().toISOString() } : p)),
-      bonuses: this.bonuses().map(b => (slips.some(s => s.empId === b.empId && s.month === b.payMonth) ? { ...b, status: 'Paid' } : b)),
-    });
+  /** Every payslip of the month from GET /hr/payslips (all pages); replaces that month's slips in the store. */
+  loadPayslips(month: string): Observable<Payslip[]> {
+    const page = (n: number) => this.api.GET(`${ApiRoutesConstants.HR_PAYSLIPS}?month=${month}&per_page=200&page=${n}`) as Observable<any>;
+    return page(1).pipe(
+      switchMap(first => {
+        const last = Number(first?.pagination?.last_page ?? 1);
+        const rest = last > 1 ? forkJoin(Array.from({ length: last - 1 }, (_, i) => page(i + 2))) : of([] as any[]);
+        return rest.pipe(map(more => [first, ...more].flatMap(r => (r?.data ?? []) as any[])));
+      }),
+      map(rows => rows.map(r => this.payslipFromApi(r))),
+      tap(list => this.patch({ payslips: list })), // drops any stale payslips a previous (local mock) session left in the browser
+    );
+  }
+
+  /** Builds the month's payslips on the server (POST /hr/payroll/run; already-paid slips are kept), then reloads them. */
+  runPayroll(month: string): Observable<number> {
+    return (this.api.POST(ApiRoutesConstants.HR_PAYROLL_RUN, { month }) as Observable<any>).pipe(
+      switchMap(res => this.loadPayslips(month).pipe(map(() => Number(res?.data?.processed) || 0))),
+    );
+  }
+
+  /** Marks payslips paid (POST /hr/payslips/mark-paid) and reloads their month. */
+  markPaid(ids: string[], month: string): Observable<number> {
+    return (this.api.POST(`${ApiRoutesConstants.HR_PAYSLIPS}/mark-paid`, { ids: ids.map(Number) }) as Observable<any>).pipe(
+      switchMap(res => this.loadPayslips(month).pipe(map(() => Number(res?.data?.paid) || 0))),
+    );
   }
 
   // ---- Appraisals & bonus ----
-  createAppraisal(input: NewAppraisalInput): Appraisal {
-    const emp = this.employee(input.empId)!;
-    const oldGross = salaryBreakup(emp.salary).gross;
-    const { bonus, ...rest } = input;
-    const appraisal: Appraisal = {
-      ...rest,
-      id: uid('APR'),
-      oldMonthlyGross: oldGross,
-      newMonthlyGross: Math.round(oldGross * (1 + input.incrementPercent / 100)),
-      status: 'Draft',
-      createdAt: new Date().toISOString(),
+  /** Every row of a paginated HR list endpoint (all pages, 200 per page). */
+  private fetchAllPages(path: string): Observable<any[]> {
+    const sep = path.includes('?') ? '&' : '?';
+    const page = (n: number) => this.api.GET(`${path}${sep}per_page=200&page=${n}`) as Observable<any>;
+    return page(1).pipe(
+      switchMap(first => {
+        const last = Number(first?.pagination?.last_page ?? 1);
+        const rest = last > 1 ? forkJoin(Array.from({ length: last - 1 }, (_, i) => page(i + 2))) : of([] as any[]);
+        return rest.pipe(map(more => [first, ...more].flatMap(r => (r?.data ?? []) as any[])));
+      }),
+    );
+  }
+
+  appraisalFromApi(r: any): Appraisal {
+    const e = r.employee;
+    return {
+      id: String(r.id), empId: String(r.employee_id), cycle: r.cycle, rating: Number(r.rating) || 0, kpiScore: Number(r.kpi_score) || 0,
+      strengths: r.strengths ?? '', improvements: r.improvements ?? '', reviewer: r.reviewer ?? '',
+      incrementPercent: Number(r.increment_percent) || 0, oldMonthlyGross: Number(r.old_monthly_gross) || 0, newMonthlyGross: Number(r.new_monthly_gross) || 0,
+      effectiveFrom: r.effective_from, status: r.status, createdAt: r.created_at,
+      employee: e ? { code: e.emp_code ?? '', name: e.name ?? '', department: e.department ?? '', designation: e.designation ?? '', branch: e.branch ?? '' } : undefined,
     };
-    const bonuses = bonus?.amount
-      ? [{ id: uid('BON'), empId: input.empId, type: bonus.type, amount: bonus.amount, payMonth: bonus.payMonth, reason: `${input.cycle} appraisal`, status: 'Approved' as const, appraisalId: appraisal.id }, ...this.bonuses()]
-      : this.bonuses();
-    this.patch({ appraisals: [appraisal, ...this.appraisals()], bonuses });
-    return appraisal;
   }
 
-  approveAppraisal(id: string): void {
-    this.patch({ appraisals: this.appraisals().map(a => (a.id === id && a.status === 'Draft' ? { ...a, status: 'Approved' } : a)) });
+  bonusFromApi(r: any): BonusRecord {
+    const e = r.employee;
+    return {
+      id: String(r.id), empId: String(r.employee_id), type: r.type, amount: Number(r.amount) || 0, payMonth: r.pay_month,
+      reason: r.reason ?? '', status: r.status === 'Paid' ? 'Paid' : 'Approved', appraisalId: r.appraisal_id ? String(r.appraisal_id) : undefined,
+      employee: e ? { code: e.emp_code ?? '', name: e.name ?? '', department: e.department ?? '', branch: e.branch ?? '' } : undefined,
+    };
   }
 
-  /** Releases the letter and moves the employee to the revised salary. */
-  releaseAppraisal(id: string): void {
+  /** GET /hr/appraisals (all pages) into the store. */
+  loadAppraisals(): Observable<Appraisal[]> {
+    return this.fetchAllPages(ApiRoutesConstants.HR_APPRAISALS).pipe(
+      map(rows => rows.map(r => this.appraisalFromApi(r))),
+      tap(list => this.patch({ appraisals: list })),
+    );
+  }
+
+  /** GET /hr/bonuses (all pages) into the store. */
+  loadBonuses(): Observable<BonusRecord[]> {
+    return this.fetchAllPages(ApiRoutesConstants.HR_BONUSES).pipe(
+      map(rows => rows.map(r => this.bonusFromApi(r))),
+      tap(list => this.patch({ bonuses: list })),
+    );
+  }
+
+  /** Saves a draft appraisal (with its optional bonus) and reloads both lists. */
+  createAppraisal(input: NewAppraisalInput): Observable<Appraisal> {
+    const body = {
+      employee_id: Number(input.empId), cycle: input.cycle, rating: input.rating, kpi_score: input.kpiScore,
+      strengths: input.strengths || null, improvements: input.improvements || null, reviewer: input.reviewer,
+      increment_percent: input.incrementPercent, effective_from: input.effectiveFrom,
+      bonus: input.bonus?.amount ? { type: input.bonus.type, amount: input.bonus.amount, pay_month: input.bonus.payMonth } : null,
+    };
+    return (this.api.POST(ApiRoutesConstants.HR_APPRAISALS, body) as Observable<any>).pipe(
+      map(res => this.appraisalFromApi(res.data)),
+      switchMap(appraisal => forkJoin([this.loadAppraisals(), this.loadBonuses()]).pipe(map(() => appraisal))),
+    );
+  }
+
+  approveAppraisal(id: string): Observable<unknown> {
+    return (this.api.POST(`${ApiRoutesConstants.HR_APPRAISALS}/${id}/approve`, {}) as Observable<unknown>).pipe(switchMap(() => this.loadAppraisals()));
+  }
+
+  /** Releases the letter; the server moves the employee to the revised salary, so the employee is re-read too. */
+  releaseAppraisal(id: string): Observable<unknown> {
     const a = this.appraisals().find(x => x.id === id);
-    if (!a || a.status !== 'Approved') return;
-    const emp = this.employee(a.empId);
-    if (emp) this.updateEmployee(emp.id, { salary: structureFromGross(a.newMonthlyGross, emp.salary) });
-    this.patch({ appraisals: this.appraisals().map(x => (x.id === id ? { ...x, status: 'Released' } : x)) });
-    this.alert('Appraisal released', `${this.employeeName(a.empId)}: ${a.incrementPercent}% increment effective ${a.effectiveFrom}.`, '/app/hr/appraisals');
+    return (this.api.POST(`${ApiRoutesConstants.HR_APPRAISALS}/${id}/release`, {}) as Observable<unknown>).pipe(
+      switchMap(() => forkJoin([this.loadAppraisals(), a ? this.fetchEmployee(a.empId) : of(null)])),
+      tap(() => { if (a) this.alert('Appraisal released', `${a.employee?.name ?? this.employeeName(a.empId)}: ${a.incrementPercent}% increment effective ${a.effectiveFrom}.`, '/app/hr/appraisals'); }),
+    );
   }
 
-  addBonus(input: Omit<BonusRecord, 'id' | 'status'>): void {
-    this.patch({ bonuses: [{ ...input, id: uid('BON'), status: 'Approved' }, ...this.bonuses()] });
+  /** The appraisal & increment letter PDF from the server (opened in a new tab). */
+  openAppraisalLetter(id: string): void {
+    const tab = window.open('', '_blank');
+    (this.api.GET_BLOB(`${ApiRoutesConstants.HR_APPRAISALS}/${id}/letter`) as Observable<Blob>).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+      },
+      error: () => {
+        tab?.close();
+        Swal.fire({ icon: 'error', title: 'Could not open the letter', confirmButtonColor: '#6C63FF' });
+      },
+    });
+  }
+
+  addBonus(input: Omit<BonusRecord, 'id' | 'status'>): Observable<unknown> {
+    const body = { employee_id: Number(input.empId), type: input.type, amount: input.amount, pay_month: input.payMonth, reason: input.reason };
+    return (this.api.POST(ApiRoutesConstants.HR_BONUSES, body) as Observable<unknown>).pipe(switchMap(() => this.loadBonuses()));
   }
 
   // ---- Onboarding (in) / exit (out) ----
-  toggleOnboardingItem(id: string, index: number): void {
-    const list = this.onboarding().map(o => {
-      if (o.id !== id) return o;
-      const checklist = o.checklist.map((c, i) => (i === index ? { ...c, done: !c.done } : c));
-      return { ...o, checklist, status: checklist.every(c => c.done) ? 'Completed' as const : 'In Progress' as const };
-    });
-    const done = list.find(o => o.id === id);
-    this.patch({ onboarding: list });
-    if (done?.status === 'Completed') this.updateEmployee(done.empId, { status: 'Active' });
+  private checklistFromApi(list: any): ChecklistItem[] {
+    return ((list ?? []) as any[]).map(c => ({ label: String(c.label), done: !!c.done }));
   }
 
-  startExit(input: Pick<ExitCase, 'empId' | 'exitType' | 'resignationDate' | 'lastWorkingDay' | 'reason'>): ExitCase {
-    const emp = this.employee(input.empId)!;
-    const gross = salaryBreakup(emp.salary).gross;
-    const dayRate = gross / 26;
-    const balance = this.leaveBalance(emp.id).find(b => b.type === 'Earned Leave')?.balance ?? 0;
-    const years = (new Date(input.lastWorkingDay).getTime() - new Date(emp.joinDate).getTime()) / (365.25 * 86400000);
-    const lastDay = Number(input.lastWorkingDay.slice(8, 10));
+  private caseEmployee(e: any): { code: string; name: string; designation: string; department: string; branch: string } | undefined {
+    return e ? { code: e.emp_code ?? '', name: e.name ?? '', designation: e.designation ?? '', department: e.department ?? '', branch: e.branch ?? '' } : undefined;
+  }
 
-    const exit: ExitCase = {
-      ...input,
-      id: uid('EXT'),
-      checklist: EXIT_CHECKLIST.map(label => ({ label, done: label === 'Resignation accepted' })),
-      fnf: {
-        pendingSalary: Math.round(dayRate * Math.min(26, lastDay)),
-        leaveEncashment: Math.round((emp.salary.basic / 26) * balance),
-        bonus: 0,
-        // Gratuity after 5 years: 15 days' basic per completed year.
-        gratuity: years >= 5 ? Math.round((emp.salary.basic * 15 * Math.floor(years)) / 26) : 0,
-        recoveries: 0,
-      },
-      status: 'Notice Period',
+  onboardingFromApi(r: any): Onboarding {
+    return {
+      id: String(r.id), empId: String(r.employee_id), candidateId: r.candidate_id ? String(r.candidate_id) : undefined,
+      joinDate: r.join_date, buddy: r.buddy ?? '', checklist: this.checklistFromApi(r.checklist),
+      status: r.status === 'Completed' ? 'Completed' : 'In Progress', employee: this.caseEmployee(r.employee),
     };
-    this.patch({ exits: [exit, ...this.exits()] });
-    this.updateEmployee(emp.id, { status: 'On Notice' });
-    this.alert('Employee exit initiated', `${emp.name} - last working day ${input.lastWorkingDay}.`, '/app/hr/onboarding-exit');
-    return exit;
   }
 
-  toggleExitItem(id: string, index: number): void {
-    this.patch({
-      exits: this.exits().map(x => {
-        if (x.id !== id) return x;
-        const checklist = x.checklist.map((c, i) => (i === index ? { ...c, done: !c.done } : c));
-        return { ...x, checklist, status: x.status === 'Settled' ? x.status : checklist.every(c => c.done) ? 'Clearance' : 'Notice Period' };
-      }),
+  exitFromApi(r: any): ExitCase {
+    const f = r.fnf ?? {};
+    const n = (v: unknown) => Number(v) || 0;
+    return {
+      id: String(r.id), empId: String(r.employee_id), exitType: r.exit_type, resignationDate: r.resignation_date, lastWorkingDay: r.last_working_day,
+      reason: r.reason ?? '', checklist: this.checklistFromApi(r.checklist),
+      fnf: { pendingSalary: n(f.pending_salary), leaveEncashment: n(f.leave_encashment), bonus: n(f.bonus), gratuity: n(f.gratuity), recoveries: n(f.recoveries) },
+      status: r.status, settledAt: r.settled_at ?? undefined, employee: this.caseEmployee(r.employee),
+    };
+  }
+
+  /** GET /hr/onboardings (all pages) into the store. */
+  loadOnboardings(): Observable<Onboarding[]> {
+    return this.fetchAllPages(ApiRoutesConstants.HR_ONBOARDINGS).pipe(
+      map(rows => rows.map(r => this.onboardingFromApi(r))),
+      tap(list => this.patch({ onboarding: list })),
+    );
+  }
+
+  /** GET /hr/exits (all pages) into the store. */
+  loadExits(): Observable<ExitCase[]> {
+    return this.fetchAllPages(ApiRoutesConstants.HR_EXITS).pipe(
+      map(rows => rows.map(r => this.exitFromApi(r))),
+      tap(list => this.patch({ exits: list })),
+    );
+  }
+
+  /** Ticks / unticks one joining item (POST /hr/onboardings/{id}/toggle). Completing the last one makes the employee Active on the server. */
+  toggleOnboardingItem(id: string, index: number): Observable<unknown> {
+    return (this.api.POST(`${ApiRoutesConstants.HR_ONBOARDINGS}/${id}/toggle`, { index }) as Observable<unknown>).pipe(
+      switchMap(() => this.loadOnboardings()),
+    );
+  }
+
+  /** Starts an exit (POST /hr/exits): the server estimates the F&F and puts the employee on notice. */
+  startExit(input: Pick<ExitCase, 'empId' | 'exitType' | 'resignationDate' | 'lastWorkingDay' | 'reason'>): Observable<ExitCase> {
+    const body = { employee_id: Number(input.empId), exit_type: input.exitType, resignation_date: input.resignationDate, last_working_day: input.lastWorkingDay, reason: input.reason };
+    return (this.api.POST(ApiRoutesConstants.HR_EXITS, body) as Observable<any>).pipe(
+      map(res => this.exitFromApi(res.data)),
+      switchMap(exit => forkJoin([this.loadExits(), this.loadEmployees()]).pipe(map(() => exit))),
+      tap(exit => this.alert('Employee exit initiated', `${exit.employee?.name ?? this.employeeName(exit.empId)} - last working day ${exit.lastWorkingDay}.`, '/app/hr/onboarding-exit')),
+    );
+  }
+
+  toggleExitItem(id: string, index: number): Observable<unknown> {
+    return (this.api.POST(`${ApiRoutesConstants.HR_EXITS}/${id}/toggle`, { index }) as Observable<unknown>).pipe(switchMap(() => this.loadExits()));
+  }
+
+  updateFnf(id: string, fnf: ExitCase['fnf']): Observable<unknown> {
+    const body = { pending_salary: fnf.pendingSalary, leave_encashment: fnf.leaveEncashment, bonus: fnf.bonus, gratuity: fnf.gratuity, recoveries: fnf.recoveries };
+    return (this.api.PUT(`${ApiRoutesConstants.HR_EXITS}/${id}/fnf`, body) as Observable<unknown>).pipe(switchMap(() => this.loadExits()));
+  }
+
+  /** Settles the F&F (needs every clearance item done); the server marks the employee Exited and blocks their login. */
+  settleExit(id: string): Observable<unknown> {
+    return (this.api.POST(`${ApiRoutesConstants.HR_EXITS}/${id}/settle`, {}) as Observable<unknown>).pipe(
+      switchMap(() => forkJoin([this.loadExits(), this.loadEmployees()])),
+    );
+  }
+
+  /** One employee's own leave, payslips (every month), appraisals, bonuses and leave balance - for the profile, without touching the page lists in the store. */
+  loadEmployeeHistory(empId: string): Observable<EmployeeHistory> {
+    const q = `employee_id=${encodeURIComponent(empId)}`;
+    return forkJoin({
+      leaves: this.fetchAllPages(`${ApiRoutesConstants.HR_LEAVE_REQUESTS}?${q}`).pipe(map(rows => rows.map(r => this.leaveFromApi(r)))),
+      payslips: this.fetchAllPages(`${ApiRoutesConstants.HR_PAYSLIPS}?${q}`).pipe(map(rows => rows.map(r => this.payslipFromApi(r)))),
+      appraisals: this.fetchAllPages(`${ApiRoutesConstants.HR_APPRAISALS}?${q}`).pipe(map(rows => rows.map(r => this.appraisalFromApi(r)))),
+      bonuses: this.fetchAllPages(`${ApiRoutesConstants.HR_BONUSES}?${q}`).pipe(map(rows => rows.map(r => this.bonusFromApi(r)))),
+      balance: (this.api.GET(`${ApiRoutesConstants.HR_EMPLOYEES}/${empId}/leave-balance`) as Observable<any>).pipe(
+        map(res => ((res?.data ?? []) as any[]).map(b => ({ type: b.type as LeaveType, quota: Number(b.quota) || 0, used: Number(b.used) || 0, balance: Number(b.balance) || 0 }))),
+      ),
+    }).pipe(
+      // PayslipView reads the slip from the store: keep the profile's slips there so Open payslip works.
+      tap(h => this.patch({ payslips: h.payslips })),
+    );
+  }
+
+  /** Opens a server rendered PDF (F&F statement, relieving letter ...) in a new tab. */
+  openPdf(path: string, failure = 'Could not open the document'): void {
+    const tab = window.open('', '_blank');
+    (this.api.GET_BLOB(path) as Observable<Blob>).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+      },
+      error: () => {
+        tab?.close();
+        Swal.fire({ icon: 'error', title: failure, confirmButtonColor: '#6C63FF' });
+      },
     });
-  }
-
-  updateFnf(id: string, fnf: ExitCase['fnf']): void {
-    this.patch({ exits: this.exits().map(x => (x.id === id ? { ...x, fnf } : x)) });
-  }
-
-  settleExit(id: string): void {
-    const exit = this.exits().find(x => x.id === id);
-    if (!exit) return;
-    this.patch({ exits: this.exits().map(x => (x.id === id ? { ...x, status: 'Settled', settledAt: new Date().toISOString() } : x)) });
-    this.updateEmployee(exit.empId, { status: 'Exited' });
   }
 
   fnfTotal(fnf: ExitCase['fnf']): number {

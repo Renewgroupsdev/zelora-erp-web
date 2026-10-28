@@ -114,8 +114,8 @@ export class LeadManagement implements OnInit {
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
-  sortActive = 'lead';
-  sortDirection: SortDirection = 'asc';
+  sortActive = '';
+  sortDirection: SortDirection = '';
   private searchTerm = '';
   sourceOptions: any = [];
   typeOptions: any = [];
