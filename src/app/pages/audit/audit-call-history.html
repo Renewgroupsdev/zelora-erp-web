@@ -1,0 +1,88 @@
+<div class="au-page">
+  <div class="au-header">
+    <div><h1><i class="bi bi-telephone-forward" aria-hidden="true"></i> Call History</h1>
+      <p>Every call made or received, with the telecaller, lead, outcome, talk time, notes and recording.</p></div>
+  </div>
+
+  @if (!allowed) {
+    <div class="au-panel"><div class="au-state denied" role="alert"><i class="bi bi-lock-fill" aria-hidden="true"></i><strong>Access denied</strong>Your role does not have permission to view call history.</div></div>
+  } @else {
+    <div class="au-kpis" [attr.aria-busy]="loading()">
+      @let s = stats();
+      <div class="au-kpi"><span class="ico dot blue"><i class="bi bi-telephone" aria-hidden="true"></i></span><div><div class="val">{{ s?.total ?? '–' }}</div><div class="lbl">Calls</div><div class="hint">{{ s?.inbound ?? 0 }} incoming · {{ s?.outbound ?? 0 }} outgoing</div></div></div>
+      <div class="au-kpi"><span class="ico dot green"><i class="bi bi-telephone-inbound" aria-hidden="true"></i></span><div><div class="val">{{ s?.answered ?? '–' }}</div><div class="lbl">Answered</div><div class="hint">Answer rate {{ answerRate() }}</div></div></div>
+      <div class="au-kpi"><span class="ico dot red"><i class="bi bi-telephone-x" aria-hidden="true"></i></span><div><div class="val">{{ s?.missed ?? '–' }}</div><div class="lbl">Missed / not reached</div></div></div>
+      <div class="au-kpi"><span class="ico dot purple"><i class="bi bi-stopwatch" aria-hidden="true"></i></span><div><div class="val">{{ dur(s?.avg_talk_seconds) }}</div><div class="lbl">Average talk time</div><div class="hint">Total {{ dur(s?.total_talk_seconds) }}</div></div></div>
+    </div>
+
+    <form class="au-filters" role="search" aria-label="Filter calls" (submit)="$event.preventDefault()">
+      <div class="au-fgrid">
+        <div class="f wide">
+          <label for="au-c-search">Search</label>
+          <input id="au-c-search" class="au-input" type="search" placeholder="Lead, phone number, telecaller or call ID" [value]="searchText()" (input)="onSearch($any($event.target).value)" />
+        </div>
+        <div class="f">
+          <label for="au-c-from">From</label>
+          <input id="au-c-from" class="au-input" type="date" [value]="query().from ?? ''" (change)="apply({ from: $any($event.target).value || null, page: null })" />
+        </div>
+        <div class="f">
+          <label for="au-c-to">To</label>
+          <input id="au-c-to" class="au-input" type="date" [value]="query().to ?? ''" (change)="apply({ to: $any($event.target).value || null, page: null })" />
+        </div>
+        <div class="f">
+          <label for="au-c-dir">Direction</label>
+          <select id="au-c-dir" class="au-input" [value]="query().direction ?? ''" (change)="apply({ direction: $any($event.target).value || null, page: null })">
+            <option value="">All calls</option><option value="outbound">Outgoing</option><option value="inbound">Incoming</option>
+          </select>
+        </div>
+        <div class="f">
+          <label for="au-c-out">Result</label>
+          <select id="au-c-out" class="au-input" [value]="query().outcome ?? ''" (change)="apply({ outcome: $any($event.target).value || null, page: null })">
+            <option value="">Any result</option><option value="answered">Answered</option><option value="missed">Missed / not reached</option>
+          </select>
+        </div>
+      </div>
+      <div class="au-frow">
+        <div class="grp" role="group" aria-label="Quick date range">
+          <span class="au-flabel">Period</span>
+          @for (r of ranges; track r.key) { <button type="button" class="au-chip" (click)="setRange(r.key)">{{ r.label }}</button> }
+        </div>
+        <div class="grp">
+          @if (query().lead_id) { <span class="au-badge blue">Filtered to one lead <button type="button" class="au-link" (click)="apply({ lead: null })" aria-label="Clear lead filter">×</button></span> }
+          <button type="button" class="au-btn" (click)="reset()"><i class="bi bi-x-circle" aria-hidden="true"></i> Reset</button>
+        </div>
+      </div>
+    </form>
+
+    <div class="au-panel" [attr.aria-busy]="loading()">
+      @if (error(); as err) {
+        <div class="au-state" [class.denied]="err.kind === 'forbidden'" [class.error]="err.kind !== 'forbidden'" role="alert">
+          <i class="bi" [ngClass]="err.kind === 'forbidden' ? 'bi-lock-fill' : 'bi-exclamation-octagon'" aria-hidden="true"></i>
+          <strong>{{ err.kind === 'forbidden' ? 'Access denied' : 'Could not load calls' }}</strong>{{ err.message }}
+        </div>
+      } @else if (loading() && !calls().length) {
+        @for (i of [1, 2, 3, 4]; track i) { <div class="au-skel" style="height: 54px; margin: 8px 0"></div> }
+      } @else if (!calls().length) {
+        <div class="au-state"><i class="bi bi-telephone" aria-hidden="true"></i><strong>No calls found</strong>Try a wider period or clear the filters.</div>
+      } @else {
+        <app-audit-call-cards [calls]="calls()" (opened)="open($event)" />
+      }
+      @if (pagination(); as p) {
+        @if (p.total) {
+          <div class="au-pager" style="border-top: 0; padding-inline: 0">
+            <span aria-live="polite">{{ (p.current_page - 1) * p.per_page + 1 }}-{{ (p.current_page - 1) * p.per_page + calls().length }} of {{ p.total }}</span>
+            <span style="display: flex; gap: 6px; align-items: center">
+              <button type="button" class="au-btn sm" (click)="apply({ page: p.current_page - 1 })" [disabled]="p.current_page <= 1 || loading()">Previous</button>
+              Page {{ p.current_page }} of {{ p.last_page }}
+              <button type="button" class="au-btn sm" (click)="apply({ page: p.current_page + 1 })" [disabled]="p.current_page >= p.last_page || loading()">Next</button>
+            </span>
+          </div>
+        }
+      }
+    </div>
+  }
+</div>
+
+@if (openId(); as id) {
+  <app-audit-call-drawer [callId]="id" (closed)="closeDrawer()" />
+}

@@ -85,6 +85,16 @@ export const routes: Routes = [
       { path: 'accounts/vouchers', loadComponent: () => import('./pages/accounts/vouchers/vouchers').then(m => m.Vouchers) },
       { path: 'accounts/ledgers', loadComponent: () => import('./pages/accounts/ledgers/ledgers').then(m => m.Ledgers) },
       { path: 'accounts/targets', loadComponent: () => import('./pages/accounts/targets/targets').then(m => m.Targets) },
+
+      // Audit Trail (read-only). Each page also checks its own Roles & Permissions action and the API authorises every call.
+      { path: 'audit', pathMatch: 'full', redirectTo: 'audit/dashboard' },
+      { path: 'audit/dashboard', loadComponent: () => import('./pages/audit/audit-pages').then(m => m.AuditDashboard) },
+      { path: 'audit/logs', loadComponent: () => import('./pages/audit/audit-pages').then(m => m.AuditLogs) },
+      { path: 'audit/changes', loadComponent: () => import('./pages/audit/audit-pages').then(m => m.AuditChanges) },
+      { path: 'audit/users', loadComponent: () => import('./pages/audit/audit-pages').then(m => m.AuditUserActivity) },
+      { path: 'audit/security', loadComponent: () => import('./pages/audit/audit-pages').then(m => m.AuditSecurity) },
+      { path: 'audit/calls', loadComponent: () => import('./pages/audit/audit-calls').then(m => m.AuditCallHistory) },
+
       { path: 'reports', loadComponent: () => import('./pages/reports/reports').then(m => m.Reports) },
       { path: 'reports/:id', loadComponent: () => import('./pages/reports/report-detail/report-detail').then(m => m.ReportDetail) },
       { path: 'settings', loadComponent: () => import('./pages/settings-page/settings-page').then(m => m.SettingsPage) },

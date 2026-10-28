@@ -1,0 +1,131 @@
+<div class="au-page">
+  <div class="au-header">
+    <div>
+      <h1><i class="bi bi-speedometer2" aria-hidden="true"></i> Audit Dashboard</h1>
+      <p>Activity recorded between {{ range().from }} and {{ range().to }} ({{ summary()?.period?.timezone || 'Asia/Kolkata' }}).</p>
+    </div>
+    <div class="au-actions">
+      <div class="au-chips" role="group" aria-label="Date range">
+        @for (r of ranges; track r.key) { <button type="button" class="au-chip" (click)="setRange(r.key)">{{ r.label }}</button> }
+      </div>
+      <label class="sr-only" for="au-d-from">From</label>
+      <input id="au-d-from" class="au-input" style="width: auto" type="date" [value]="range().from" [max]="range().to" (change)="setDate('from', $any($event.target).value)" />
+      <label class="sr-only" for="au-d-to">To</label>
+      <input id="au-d-to" class="au-input" style="width: auto" type="date" [value]="range().to" [min]="range().from" (change)="setDate('to', $any($event.target).value)" />
+      <button type="button" class="au-btn" (click)="reload()" [disabled]="loading()" aria-label="Refresh"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
+    </div>
+  </div>
+
+  @if (!allowed) {
+    <app-audit-denied />
+  } @else if (error(); as err) {
+    <div class="au-panel">
+      <div class="au-state" [class.denied]="err.kind === 'forbidden'" [class.error]="err.kind !== 'forbidden'" role="alert">
+        <i class="bi" [ngClass]="err.kind === 'forbidden' ? 'bi-lock-fill' : 'bi-exclamation-octagon'" aria-hidden="true"></i>
+        <strong>{{ err.kind === 'forbidden' ? 'Access denied' : 'Could not load the dashboard' }}</strong>{{ err.message }}
+        @if (err.kind !== 'forbidden') { <div><button type="button" class="au-btn" (click)="reload()">Try again</button></div> }
+      </div>
+    </div>
+  } @else {
+    <div class="au-kpis" [attr.aria-busy]="loading()">
+      @let k = summary()?.kpis;
+      <div class="au-kpi"><span class="ico" style="background: var(--au-blue-bg); color: var(--au-blue)"><i class="bi bi-activity" aria-hidden="true"></i></span><div>
+        @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.total ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Total audit events</div></div></div>
+      <div class="au-kpi"><span class="ico" style="background: var(--au-green-bg); color: var(--au-green)"><i class="bi bi-check-circle" aria-hidden="true"></i></span><div>
+        @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.successful ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Successful actions</div></div></div>
+      <div class="au-kpi"><span class="ico" style="background: var(--au-orange-bg); color: var(--au-orange)"><i class="bi bi-x-octagon" aria-hidden="true"></i></span><div>
+        @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.failed_or_denied ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Failed or denied</div></div></div>
+      <div class="au-kpi"><span class="ico" style="background: var(--au-purple-bg); color: var(--au-purple)"><i class="bi bi-people" aria-hidden="true"></i></span><div>
+        @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.active_users ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Active users</div><div class="hint">Staff / employees with events</div></div></div>
+      <div class="au-kpi"><span class="ico" style="background: var(--au-red-bg); color: var(--au-red)"><i class="bi bi-shield-exclamation" aria-hidden="true"></i></span><div>
+        @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.high_severity ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Warning / high severity</div><div class="hint">Flagged by rules, not confirmed incidents</div></div></div>
+    </div>
+
+    @if (summary(); as s) {
+      @if (!s.kpis.total) {
+        <div class="au-panel"><div class="au-state"><i class="bi bi-inbox" aria-hidden="true"></i><strong>No activity in this period</strong>Try a wider date range.</div></div>
+      } @else {
+        <div class="au-grid">
+          <section class="au-panel au-col-8" aria-label="Activity over time">
+            <h2>Activity over time</h2><div class="sub">Events per day, successful vs failed or denied</div>
+            <app-audit-chart type="bar" [stacked]="true" [labels]="dayLabels()" [datasets]="activityDatasets()" label="Events per day, successful versus failed or denied" />
+          </section>
+          <section class="au-panel au-col-4" aria-label="Successful versus failed">
+            <h2>Successful vs failed / denied</h2><div class="sub">Share of all events in the period</div>
+            <app-audit-chart type="doughnut" [labels]="outcomeLabels()" [datasets]="outcomeDatasets()" label="Events by outcome" />
+          </section>
+          <section class="au-panel au-col-6" aria-label="Events by module">
+            <h2>Events by module</h2><div class="sub">Top modules by number of events</div>
+            <app-audit-chart type="bar" [horizontal]="true" [labels]="moduleLabels()" [datasets]="moduleDatasets()" label="Events by module" />
+          </section>
+          <section class="au-panel au-col-6" aria-label="Actions by type">
+            <h2>Actions by type</h2><div class="sub">What kind of events were recorded</div>
+            <app-audit-chart type="doughnut" [labels]="eventLabels()" [datasets]="eventDatasets()" label="Events by action type" />
+          </section>
+
+          @if (s.top_users) {
+            <section class="au-panel au-col-4" aria-label="Most active users">
+              <h2>Most active users</h2><div class="sub">By number of events in the period</div>
+              <ul class="au-list">
+                @for (u of s.top_users; track u.type + u.id) {
+                  <li>
+                    <span class="au-who"><span class="av" aria-hidden="true">{{ initials(u.name) }}</span></span>
+                    <div class="txt"><a class="au-link" [routerLink]="['/app/audit/users']" [queryParams]="{ u: u.type + ':' + u.id }">{{ u.name }}</a><div class="meta">{{ u.role || u.type }}</div></div>
+                    <strong>{{ u.total }}</strong>
+                  </li>
+                }
+                @if (!s.top_users.length) { <li class="au-empty-val">No signed-in users in this period.</li> }
+              </ul>
+            </section>
+          }
+          @if (s.high_priority) {
+            <section class="au-panel au-col-8" aria-label="High priority events">
+              <h2>High-priority events</h2><div class="sub">Warning or high severity, failed or denied. These are flags to review, not confirmed incidents.</div>
+              <ul class="au-list">
+                @for (e of s.high_priority; track e.id) {
+                  <li>
+                    <span class="au-badge" [ngClass]="meta(e.event).tone"><i class="bi" [ngClass]="meta(e.event).icon" aria-hidden="true"></i>{{ e.event_label }}</span>
+                    <div class="txt"><button type="button" class="au-link" (click)="openEvent(e)">{{ e.description }}</button>
+                      <div class="meta">{{ e.occurred_at_display }} · Severity {{ severityLabel[e.severity] }} · {{ outcomeLabel[e.outcome] }}</div></div>
+                  </li>
+                }
+                @if (!s.high_priority.length) { <li class="au-empty-val">Nothing flagged in this period.</li> }
+              </ul>
+              @if (canSecurity) { <a class="au-link" routerLink="/app/audit/security">Open Security Events →</a> }
+            </section>
+          }
+
+          @if (s.recent) {
+            <section class="au-panel au-col-12" aria-label="Recent activity">
+              <h2>Recent activity</h2><div class="sub">The 10 latest events in the period</div>
+              <div class="au-scroll">
+                <table class="au-table">
+                  <caption class="sr-only">Recent audit events</caption>
+                  <thead><tr><th scope="col">Time</th><th scope="col">User</th><th scope="col">Action</th><th scope="col">Module</th><th scope="col">Record</th><th scope="col">Outcome</th></tr></thead>
+                  <tbody>
+                    @for (e of s.recent; track e.id) {
+                      <tr class="au-row" tabindex="0" (click)="openEvent(e)" (keydown.enter)="openEvent(e)" [attr.aria-label]="'Open event: ' + e.description">
+                        <td class="when">{{ e.occurred_at_display }}<span class="rel">{{ e.relative }}</span></td>
+                        <td>{{ e.actor.name || 'Unknown' }}<div class="rl" style="font-size:.7rem;color:var(--au-muted)">{{ e.actor.role || e.actor.type }}</div></td>
+                        <td><span class="au-badge" [ngClass]="meta(e.event).tone">{{ e.event_label }}</span></td>
+                        <td>{{ moduleText(e) }}</td>
+                        <td>{{ recordText(e) }}</td>
+                        <td><span class="au-badge" [ngClass]="outcomeTone[e.outcome]">{{ outcomeLabel[e.outcome] }}</span></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              @if (canEvents) { <p style="margin: 8px 0 0"><a class="au-link" routerLink="/app/audit/logs">View all activity logs →</a></p> }
+            </section>
+          }
+        </div>
+      }
+    }
+  }
+</div>

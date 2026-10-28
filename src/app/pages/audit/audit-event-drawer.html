@@ -1,0 +1,157 @@
+<div class="au-backdrop" (click)="close()">
+  <div #panel class="au-drawer" role="dialog" aria-modal="true" aria-labelledby="au-drawer-title" (click)="$event.stopPropagation()">
+    <header>
+      <div>
+        <h2 id="au-drawer-title">Audit event details</h2>
+        @if (event(); as e) {
+          <div class="sub">{{ e.occurred_at_display }} ({{ e.timezone }}) · {{ e.relative }}</div>
+        }
+      </div>
+      <button #closeBtn type="button" class="au-btn sm" (click)="close()" aria-label="Close details"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+    </header>
+
+    @if (event(); as ev) {
+      <div class="au-tabs" role="tablist" aria-label="Event sections">
+        <button type="button" role="tab" [class.on]="tab() === 'details'" [attr.aria-selected]="tab() === 'details'" (click)="selectTab('details')"><i class="bi bi-info-circle" aria-hidden="true"></i> Details</button>
+        @if (canHistory && ev.record.type && ev.record.id) {
+          <button type="button" role="tab" [class.on]="tab() === 'history'" [attr.aria-selected]="tab() === 'history'" (click)="selectTab('history')"><i class="bi bi-clock-history" aria-hidden="true"></i> Record history @if (history()) { <span class="n">{{ historyTotal() }}</span> }</button>
+        }
+        @if (canCalls && ev.related.lead_id) {
+          <button type="button" role="tab" [class.on]="tab() === 'calls'" [attr.aria-selected]="tab() === 'calls'" (click)="selectTab('calls')"><i class="bi bi-telephone" aria-hidden="true"></i> Call history @if (calls()) { <span class="n">{{ callsTotal() }}</span> }</button>
+        }
+      </div>
+    }
+
+    <div class="body">
+      @if (loading()) {
+        <div aria-busy="true" aria-label="Loading event">
+          @for (i of [1, 2, 3, 4, 5, 6]; track i) { <div class="au-skel" style="margin: 14px 0"></div> }
+        </div>
+      } @else if (error(); as err) {
+        <div class="au-state" [class.denied]="err.kind === 'forbidden'" [class.error]="err.kind !== 'forbidden'" role="alert">
+          <i class="bi" [ngClass]="err.kind === 'forbidden' ? 'bi-lock-fill' : 'bi-exclamation-octagon'" aria-hidden="true"></i>
+          <strong>{{ err.kind === 'forbidden' ? 'Access denied' : 'Could not load this event' }}</strong>
+          {{ err.message }}
+        </div>
+      } @else if (event() && tab() === 'history') {
+        @if (history() === null) {
+          @for (i of [1, 2, 3]; track i) { <div class="au-skel" style="height: 40px; margin: 8px 0"></div> }
+        } @else if (historyError()) {
+          <div class="au-note" role="alert">{{ historyError() }}</div>
+        } @else {
+          <p class="sub" style="margin: 0; font-size: .76rem; color: var(--au-muted)">Every recorded change to {{ recordText(event()!) }}, newest first (child rows such as items or lines included).</p>
+          <div class="au-vline">
+            @for (h of history(); track h.id) {
+              <div class="it" [class.current]="h.id === event()!.id">
+                <div class="t">{{ h.occurred_at_display }} · {{ h.relative }}</div>
+                <div class="d"><span class="au-badge" [ngClass]="meta(h.event).tone">{{ h.event_label }}</span> <strong>{{ h.actor.name || 'Unknown' }}</strong>@if (h.actor.role) { <span class="au-empty-val"> ({{ h.actor.role }})</span> }</div>
+                <div class="d">{{ h.description }}</div>
+                @if (h.id !== event()!.id) { <button type="button" class="au-link" style="font-size: .74rem" (click)="openHistoryEvent(h)">Open this event</button> }
+              </div>
+            }
+          </div>
+        }
+      } @else if (event() && tab() === 'calls') {
+        @if (calls() === null) {
+          @for (i of [1, 2, 3]; track i) { <div class="au-skel" style="height: 50px; margin: 8px 0"></div> }
+        } @else if (callsError()) {
+          <div class="au-note" role="alert">{{ callsError() }}</div>
+        } @else if (!calls()!.length) {
+          <div class="au-state"><i class="bi bi-telephone" aria-hidden="true"></i><strong>No calls yet</strong>No call has been made to or received from this lead.</div>
+        } @else {
+          <p class="sub" style="margin: 0; font-size: .76rem; color: var(--au-muted)">All calls with this lead, newest first. Select a call for its line timeline and recording.</p>
+          <app-audit-call-cards [calls]="calls()!" (opened)="openCall($event)" />
+        }
+      } @else if (event(); as e) {
+        <section aria-label="Overview">
+          <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px">
+            <span class="au-badge" [ngClass]="meta(e.event).tone"><i class="bi" [ngClass]="meta(e.event).icon" aria-hidden="true"></i>{{ e.event_label }}</span>
+            <span class="au-badge" [ngClass]="outcomeTone[e.outcome]">{{ outcomeLabel[e.outcome] }}</span>
+            <span class="au-badge" [ngClass]="severityTone[e.severity]">Severity: {{ severityLabel[e.severity] }}</span>
+          </div>
+          <p style="margin:0; font-size:.88rem">{{ e.description }}</p>
+        </section>
+
+        <section aria-label="Who">
+          <h3>Who</h3>
+          <div class="au-who">
+            <span class="av" aria-hidden="true">{{ initials(e.actor.name) }}</span>
+            <div>
+              <div class="nm">{{ e.actor.name || 'Unknown' }}</div>
+              <div class="rl">{{ e.actor.role || e.actor.type }}@if (e.actor.code) { · {{ e.actor.code }} }@if (e.actor.branch) { · {{ e.actor.branch }} }</div>
+            </div>
+          </div>
+        </section>
+
+        <section aria-label="What">
+          <h3>What</h3>
+          <dl class="au-dl">
+            <dt>Event ID</dt>
+            <dd>{{ e.id }} <button type="button" class="au-link" (click)="copyId()" aria-label="Copy event ID"><i class="bi bi-clipboard" aria-hidden="true"></i> {{ copied() ? 'Copied' : 'Copy' }}</button></dd>
+            <dt>Module</dt><dd>{{ moduleText(e) }}</dd>
+            <dt>Record</dt><dd>{{ recordText(e) }}@if (e.record.id) { <span class="au-empty-val"> (ID {{ e.record.id }})</span> }</dd>
+            <dt>Source</dt><dd>{{ sourceLabel(e.source) }}</dd>
+            @if (e.request_id) {
+              <dt>Request / correlation ID</dt>
+              <dd>{{ e.request_id }} <button type="button" class="au-link" (click)="showRequest.emit(e.request_id!)">Show events of this request</button></dd>
+            }
+          </dl>
+        </section>
+
+        @if (e.network) {
+          <section aria-label="Network details">
+            <h3>Where</h3>
+            <dl class="au-dl">
+              <dt>IP address</dt><dd>{{ e.network.ip || '-' }}</dd>
+              <dt>Device</dt><dd>{{ e.network.device || '-' }}</dd>
+              @if (e.network.method || e.network.route) { <dt>Route</dt><dd>{{ e.network.method }} {{ e.network.route || '' }}</dd> }
+              @if (e.network.url) { <dt>URL</dt><dd>{{ e.network.url }}</dd> }
+              @if (e.network.user_agent) { <dt>User agent</dt><dd>{{ e.network.user_agent }}</dd> }
+            </dl>
+          </section>
+        }
+
+        <section aria-label="Field changes">
+          <h3>Field changes</h3>
+          @if (e.changes && e.changes.length) {
+            <table class="au-diff">
+              <caption class="sr-only">Previous and new value of each changed field</caption>
+              <thead><tr><th scope="col">Field</th><th scope="col">Previous value</th><th scope="col">New value</th></tr></thead>
+              <tbody>
+                @for (c of e.changes; track c.field) {
+                  <tr>
+                    <th scope="row" style="font-weight:600; text-transform:none; color:inherit">{{ c.label }}</th>
+                    @if (c.masked) {
+                      <td class="old" colspan="2"><i class="bi bi-eye-slash" aria-hidden="true"></i> Hidden: sensitive field (change recorded, value not stored)</td>
+                    } @else {
+                      <td class="old">@if (c.old === null || c.old === '') { <span class="au-empty-val">Empty</span> } @else { <span [class.long]="isLong(c.old)">{{ c.old }}</span> }</td>
+                      <td class="new">@if (c.new === null || c.new === '') { <span class="au-empty-val">Empty</span> } @else { <span [class.long]="isLong(c.new)">{{ c.new }}</span> }</td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          } @else if (e.has_changes && !canSeeChanges()) {
+            <div class="au-note">
+              Field values are hidden: your role does not include "View Field-level Changes".
+              @if (e.changed_field_labels.length) { Fields changed: {{ e.changed_field_labels.join(', ') }}. }
+            </div>
+          } @else {
+            <div class="au-empty-val" style="font-size:.8rem">
+              No field-level changes were recorded for this event, because it is an action such as {{ e.event_label.toLowerCase() }} that does not edit a record's fields.
+            </div>
+          }
+        </section>
+
+        @if (e.extra && extraEntries(e).length) {
+          <section aria-label="Additional context">
+            <h3>Additional context</h3>
+            <dl class="au-dl">
+              @for (x of extraEntries(e); track x.key) { <dt>{{ x.key }}</dt><dd>{{ x.value }}</dd> }
+            </dl>
+          </section>
+        }
+      }
+    </div>
+  </div>
+</div>

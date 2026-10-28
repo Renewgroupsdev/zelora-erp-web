@@ -1,0 +1,248 @@
+@let q = query();
+@let f = features();
+
+<form class="au-filters" (submit)="$event.preventDefault()" role="search" aria-label="Filter audit events">
+  <div class="au-fgrid">
+    <div class="f wide">
+      <label for="au-search">Search</label>
+      <input id="au-search" class="au-input" type="search" [placeholder]="canSeeNetwork() ? 'Person, record, summary or IP' : 'Person, record or summary'" [value]="searchText()" (input)="onSearch($any($event.target).value)" />
+    </div>
+    <div class="f">
+      <label for="au-from">From</label>
+      <input id="au-from" class="au-input" type="date" [value]="q.from ?? ''" [max]="q.to ?? ''" (change)="onDate('from', $any($event.target).value)" />
+    </div>
+    <div class="f">
+      <label for="au-to">To</label>
+      <input id="au-to" class="au-input" type="date" [value]="q.to ?? ''" [min]="q.from ?? ''" (change)="onDate('to', $any($event.target).value)" />
+    </div>
+    @if (f.user && options()?.users) {
+      <div class="f">
+        <label for="au-user">User</label>
+        <select id="au-user" class="au-input" [value]="q.actor_type && q.actor_id ? q.actor_type + ':' + q.actor_id : ''" (change)="onUser($any($event.target).value)">
+          <option value="">All users</option>
+          @for (u of options()!.users!; track u.type + u.id) { <option [value]="u.type + ':' + u.id">{{ u.name }}@if (u.role) { ({{ u.role }}) }</option> }
+        </select>
+      </div>
+    }
+    @if (f.module) {
+      <div class="f">
+        <label for="au-module">Module</label>
+        <select id="au-module" class="au-input" [value]="q.module ?? ''" (change)="onModule($any($event.target).value)">
+          <option value="">All modules</option>
+          @for (m of options()?.modules ?? []; track m.slug) { <option [value]="m.slug">{{ m.name }}</option> }
+        </select>
+      </div>
+      @if (subModules().length) {
+        <div class="f">
+          <label for="au-sub">Sub-module</label>
+          <select id="au-sub" class="au-input" [value]="q.sub_module ?? ''" (change)="apply({ sub_module: $any($event.target).value || undefined, page: 1 })">
+            <option value="">All</option>
+            @for (s of subModules(); track s.slug) { <option [value]="s.slug">{{ s.name }}</option> }
+          </select>
+        </div>
+      }
+    }
+    @if (f.outcome) {
+      <div class="f">
+        <label for="au-outcome">Outcome</label>
+        <select id="au-outcome" class="au-input" [value]="q.outcome?.[0] ?? ''" (change)="apply({ outcome: $any($event.target).value ? [$any($event.target).value] : undefined, page: 1 })">
+          <option value="">Any outcome</option>
+          @for (o of options()?.outcomes ?? []; track o) { <option [value]="o">{{ outcomeLabel[o] }}</option> }
+        </select>
+      </div>
+    }
+    @if (f.severity) {
+      <div class="f">
+        <label for="au-severity">Severity</label>
+        <select id="au-severity" class="au-input" [value]="q.severity?.[0] ?? ''" (change)="apply({ severity: $any($event.target).value ? [$any($event.target).value] : undefined, page: 1 })">
+          <option value="">Any severity</option>
+          @for (s of options()?.severities ?? []; track s) { <option [value]="s">{{ severityLabel[s] }}</option> }
+        </select>
+      </div>
+    }
+    @if (f.source) {
+      <div class="f">
+        <label for="au-source">Source</label>
+        <select id="au-source" class="au-input" [value]="q.source ?? ''" (change)="apply({ source: $any($event.target).value || undefined, page: 1 })">
+          <option value="">All sources</option>
+          @for (s of options()?.sources ?? []; track s) { <option [value]="s">{{ sourceLabel(s) }}</option> }
+        </select>
+      </div>
+    }
+  </div>
+
+  <div class="au-frow">
+    <div class="grp" role="group" aria-label="Quick date range">
+      <span class="au-flabel">Period</span>
+      @for (r of ranges; track r.key) { <button type="button" class="au-chip" (click)="setRange(r.key)">{{ r.label }}</button> }
+    </div>
+    <div class="grp">
+      <div class="au-seg" role="group" aria-label="Layout">
+        <button type="button" [class.on]="view() === 'timeline'" [attr.aria-pressed]="view() === 'timeline'" (click)="setView('timeline')"><i class="bi bi-list-columns-reverse" aria-hidden="true"></i> Timeline</button>
+        <button type="button" [class.on]="view() === 'table'" [attr.aria-pressed]="view() === 'table'" (click)="setView('table')"><i class="bi bi-table" aria-hidden="true"></i> Table</button>
+      </div>
+      <button type="button" class="au-btn" (click)="reset()" [disabled]="!hasFilters()"><i class="bi bi-x-circle" aria-hidden="true"></i> Reset</button>
+      <button type="button" class="au-btn" (click)="refresh()" [disabled]="loading()" aria-label="Refresh" title="Refresh"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
+      @if (canExport()) {
+        <button type="button" class="au-btn primary" (click)="doExport('xlsx')" [disabled]="exporting()"><i class="bi bi-file-earmark-excel" aria-hidden="true"></i> {{ exporting() ? 'Exporting…' : 'Excel' }}</button>
+        <button type="button" class="au-btn" (click)="doExport('csv')" [disabled]="exporting()"><i class="bi bi-filetype-csv" aria-hidden="true"></i> CSV</button>
+      }
+    </div>
+  </div>
+
+  @if (f.event && options()?.events?.length) {
+    <div class="au-frow" style="justify-content: flex-start">
+      <div class="grp" role="group" aria-label="Action">
+        <span class="au-flabel">Action</span>
+        @for (e of options()!.events; track e.value) {
+          <button type="button" class="au-chip" [class.on]="selectedMulti('event', e.value)" [attr.aria-pressed]="selectedMulti('event', e.value)" (click)="toggleMulti('event', e.value)">
+            <i class="bi" [ngClass]="meta(e.value).icon" aria-hidden="true"></i> {{ e.label }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+  @if (q.request_id) {
+    <div class="au-note" role="status">Showing only the events of one request ({{ q.request_id }}). <button type="button" class="au-link" (click)="apply({ request_id: undefined, page: 1 })">Show all</button></div>
+  }
+  @if (q.auditable_type && q.auditable_id) {
+    <div class="au-note" role="status" style="border-left-color: var(--au-blue); background: var(--au-blue-bg)">Showing the history of one record ({{ q.auditable_type }} #{{ q.auditable_id }}). <button type="button" class="au-link" (click)="apply({ auditable_type: undefined, auditable_id: undefined, page: 1 })">Show all</button></div>
+  }
+</form>
+
+@if (exportMessage(); as m) {
+  <div class="au-note" [style.borderLeftColor]="m.ok ? 'var(--au-green)' : 'var(--au-red)'" role="status">{{ m.text }}</div>
+}
+
+<div class="au-table-wrap" [attr.aria-busy]="loading()">
+  @if (error(); as err) {
+    <div class="au-state" [class.denied]="err.kind === 'forbidden'" [class.error]="err.kind !== 'forbidden'" role="alert">
+      <i class="bi" [ngClass]="err.kind === 'forbidden' ? 'bi-lock-fill' : 'bi-exclamation-octagon'" aria-hidden="true"></i>
+      <strong>{{ err.kind === 'forbidden' ? 'Access denied' : err.kind === 'validation' ? 'Check the filters' : 'Could not load audit events' }}</strong>
+      {{ err.message }}
+      @if (err.kind !== 'forbidden') { <div><button type="button" class="au-btn" (click)="refresh()">Try again</button></div> }
+    </div>
+  } @else {
+    @if (loading() && !rows().length) {
+      <div style="padding: 12px">@for (i of [1, 2, 3, 4, 5]; track i) { <div class="au-skel" style="height: 58px; margin: 8px 0; border-radius: 12px"></div> }</div>
+    } @else if (view() === 'timeline') {
+      <div class="au-tl">
+        @for (g of groups(); track g.key) {
+          <div class="au-tl-day">{{ g.label }} <span class="cnt">{{ g.rows.length }} event{{ g.rows.length === 1 ? '' : 's' }}</span></div>
+          @for (e of g.rows; track e.id) {
+            <button type="button" class="au-tl-card" (click)="open(e)" [attr.aria-label]="'Open event: ' + e.description">
+              <span class="dot" [ngClass]="meta(e.event).tone" aria-hidden="true"><i class="bi" [ngClass]="meta(e.event).icon"></i></span>
+              <span style="min-width: 0; display: block">
+                <span class="head">
+                  <span class="nm">{{ e.actor.name || 'Unknown' }}</span>
+                  <span>{{ e.actor.role || e.actor.type }}@if (e.actor.branch) { · {{ e.actor.branch }} }</span>
+                  <span class="au-badge" [ngClass]="meta(e.event).tone">{{ e.event_label }}</span>
+                </span>
+                <span class="desc" style="display: block">{{ e.description }}</span>
+                @if (e.changes_preview?.length) {
+                  <span class="au-changes">
+                    @for (c of e.changes_preview; track $index) {
+                      <span class="au-chg"><span class="lbl">{{ c.label }}</span>
+                        @if (c.masked) { <span class="au-empty-val">changed (hidden, sensitive)</span> }
+                        @else {
+                          @if (c.old) { <span class="au-old">{{ c.old }}</span> } @else { <span class="au-empty-val">Empty</span> }
+                          <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                          @if (c.new) { <span class="au-new">{{ c.new }}</span> } @else { <span class="au-empty-val">Empty</span> }
+                        }
+                      </span>
+                    }
+                    @if (e.changed_fields > (e.changes_preview?.length ?? 0)) { <span class="au-empty-val">+{{ e.changed_fields - (e.changes_preview?.length ?? 0) }} more field(s) in the details</span> }
+                  </span>
+                }
+                <span class="tags">
+                  @if (moduleText(e) !== '-') { <span class="tag"><i class="bi bi-grid" aria-hidden="true"></i> {{ moduleText(e) }}</span> }
+                  @if (e.record.type_label) { <span class="tag"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> {{ recordText(e) }}</span> }
+                  <span class="tag"><i class="bi bi-display" aria-hidden="true"></i> {{ sourceLabel(e.source) }}</span>
+                  @if (e.network?.ip) { <span class="tag"><i class="bi bi-hdd-network" aria-hidden="true"></i> {{ e.network?.ip }}</span> }
+                </span>
+              </span>
+              <span class="side">
+                <strong style="color: var(--au-text)">{{ clock(e.occurred_at_display) }}</strong>
+                <span>{{ e.relative }}</span>
+                <span class="au-badge" [ngClass]="outcomeTone[e.outcome]">{{ outcomeLabel[e.outcome] }}</span>
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+              </span>
+            </button>
+          }
+        }
+      </div>
+    } @else {
+      <div class="au-scroll">
+        <table class="au-table fixed">
+          <caption class="sr-only">Audit events, {{ rangeText() }}</caption>
+          <colgroup>
+            <col style="width: 150px" /><col style="width: 190px" /><col style="width: 130px" /><col style="width: 200px" /><col />
+            <col style="width: 96px" />@if (canSeeNetwork()) { <col style="width: 120px" /> }<col style="width: 44px" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col" [attr.aria-sort]="ariaSort('occurred_at')"><button type="button" (click)="sort('occurred_at')">Date &amp; time <i class="bi" [ngClass]="sortIcon('occurred_at')" aria-hidden="true"></i></button></th>
+              <th scope="col" [attr.aria-sort]="ariaSort('actor_name')"><button type="button" (click)="sort('actor_name')">User <i class="bi" [ngClass]="sortIcon('actor_name')" aria-hidden="true"></i></button></th>
+              <th scope="col" [attr.aria-sort]="ariaSort('event')"><button type="button" (click)="sort('event')">Action <i class="bi" [ngClass]="sortIcon('event')" aria-hidden="true"></i></button></th>
+              <th scope="col" [attr.aria-sort]="ariaSort('module_name')"><button type="button" (click)="sort('module_name')">Module / record <i class="bi" [ngClass]="sortIcon('module_name')" aria-hidden="true"></i></button></th>
+              <th scope="col">Event summary</th>
+              <th scope="col" [attr.aria-sort]="ariaSort('outcome')"><button type="button" (click)="sort('outcome')">Outcome <i class="bi" [ngClass]="sortIcon('outcome')" aria-hidden="true"></i></button></th>
+              @if (canSeeNetwork()) { <th scope="col">IP address</th> }
+              <th scope="col"><span class="sr-only">Details</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of rows(); track e.id) {
+              <tr class="au-row" tabindex="0" (click)="open(e)" (keydown.enter)="open(e)" [attr.aria-label]="'Open event: ' + e.description">
+                <td class="when">{{ e.occurred_at_display }}<span class="rel">{{ e.relative }}</span></td>
+                <td>
+                  <div class="au-who"><span class="av" aria-hidden="true">{{ initials(e.actor.name) }}</span>
+                    <div style="min-width: 0"><div class="nm nowrap" [title]="e.actor.name ?? ''">{{ e.actor.name || 'Unknown' }}</div><div class="rl nowrap">{{ e.actor.role || e.actor.type }}@if (e.actor.branch) { · {{ e.actor.branch }} }</div></div>
+                  </div>
+                </td>
+                <td><span class="au-badge" [ngClass]="meta(e.event).tone"><i class="bi" [ngClass]="meta(e.event).icon" aria-hidden="true"></i>{{ e.event_label }}</span></td>
+                <td><div class="nowrap" style="font-weight: 600">{{ moduleText(e) }}</div><div class="nowrap rl" style="font-size: .72rem; color: var(--au-muted)" [title]="recordText(e)">{{ recordText(e) }}</div></td>
+                <td><div class="au-clamp" [title]="e.description">{{ e.description }}</div></td>
+                <td><span class="au-badge" [ngClass]="outcomeTone[e.outcome]">{{ outcomeLabel[e.outcome] }}</span></td>
+                @if (canSeeNetwork()) { <td class="nowrap">{{ e.network?.ip || '-' }}</td> }
+                <td><i class="bi bi-chevron-right" aria-hidden="true"></i></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (!loading() && !rows().length) {
+      <div class="au-state">
+        <i class="bi bi-inbox" aria-hidden="true"></i>
+        <strong>No events found</strong>
+        {{ emptyText() }}
+        @if (hasFilters()) { <div><button type="button" class="au-btn" (click)="reset()">Reset filters</button></div> }
+      </div>
+    }
+
+    @if (pagination(); as p) {
+      @if (p.total) {
+        <div class="au-pager">
+          <span aria-live="polite">{{ rangeText() }}</span>
+          <span>
+            Rows
+            <select aria-label="Rows per page" [value]="p.per_page" (change)="apply({ per_page: +$any($event.target).value, page: 1 })">
+              @for (s of pageSizes; track s) { <option [value]="s" [selected]="s === p.per_page">{{ s }}</option> }
+            </select>
+          </span>
+          <span style="display: flex; gap: 6px; align-items: center">
+            <button type="button" class="au-btn sm" (click)="go(p.current_page - 1)" [disabled]="p.current_page <= 1 || loading()">Previous</button>
+            Page {{ p.current_page }} of {{ p.last_page }}
+            <button type="button" class="au-btn sm" (click)="go(p.current_page + 1)" [disabled]="p.current_page >= p.last_page || loading()">Next</button>
+          </span>
+        </div>
+      }
+    }
+  }
+</div>
+
+@if (openId(); as id) {
+  <app-audit-event-drawer [eventId]="id" (closed)="closeDrawer()" (showRequest)="showRequest($event)" />
+}

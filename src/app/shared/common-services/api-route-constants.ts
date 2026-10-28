@@ -175,4 +175,7 @@ export class ApiRoutesConstants {
    /** ?branch_type=&branch_id= -> encrypted code the branch / franchise QR carries. */
    public static QR_SCAN_TOKEN = "qr-scans/token";
 
+   /** Audit Trail (read-only): summary, events, changes, history, users, security, filters, export. */
+   public static AUDIT = "audit";
+
 }
