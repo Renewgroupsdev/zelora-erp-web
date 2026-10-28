@@ -151,6 +151,15 @@ export class ApiRoutesConstants {
    public static SETTINGS_GET = "settings";
    public static SETTINGS_UPDATE = "settings";
 
+   //Settings -> Meta Lead Ads (Facebook / Instagram Lead Ads import)
+   public static META_INTEGRATION = "meta/integration";
+   public static META_OAUTH_START = "meta/oauth/start";
+   public static META_OAUTH_PAGES = "meta/oauth/pages";
+   public static META_OAUTH_RESET = "meta/oauth/reset";
+   public static META_CONNECTIONS = "meta/connections";
+   public static META_EVENTS = "meta/events";
+   public static META_LOGS = "meta/logs";
+
    //Branch / franchise QR landing page (public, no auth): public/units/{type}/{id}
    public static PUBLIC_UNIT_SHOW = "public/units";
 

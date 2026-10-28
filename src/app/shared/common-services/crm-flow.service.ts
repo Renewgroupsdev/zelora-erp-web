@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import type { LeadAttribution } from './meta-integration.service';
 
 /** One logged follow-up interaction (a call, a note, a status check) against a lead. */
 export interface FollowUpEntry {
@@ -26,6 +27,10 @@ export interface FlowLead {
   status: 'Valid' | 'Invalid' | 'Follow-Up' | 'Appointment';
   /** Running history of every follow-up interaction logged against this lead. */
   history?: FollowUpEntry[];
+  /** E-mail, when the lead supplied one (Meta lead forms ask for it). */
+  email?: string;
+  /** Meta Lead Ads source (Page / Form / Ad / campaign) - only for leads that came through the Meta integration. */
+  attribution?: LeadAttribution;
 }
 
 export interface FlowAppointment extends FlowLead {

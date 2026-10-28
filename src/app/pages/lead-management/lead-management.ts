@@ -37,6 +37,7 @@ import { COMBO_OFFERS, TREATMENTS } from '../../shared/data/treatment-catalog';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 import { BranchContextService } from '../../shared/common-services/branch-context.service';
 import { environment } from '../../../environments/environment';
+import { toLeadAttribution } from '../../shared/common-services/meta-integration.service';
 
 @Component({
   selector: 'app-lead-management',
@@ -587,6 +588,8 @@ export class LeadManagement implements OnInit {
       notes: '',
       followUpDate: '',
       status: 'Valid',
+      email: this.leadsById.get(Number(row['id']))?.email ?? undefined,
+      attribution: toLeadAttribution(this.leadsById.get(Number(row['id']))),
     };
   }
 

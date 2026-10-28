@@ -1,0 +1,42 @@
+@use './meta-shared';
+
+.setup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+
+.kv { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.kv > span:first-child { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
+.kv .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.perm-list { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.page-list { display: flex; flex-direction: column; gap: 10px; }
+
+.page-card { display: flex; flex-direction: column; gap: 10px; }
+.page-card.is-off { opacity: .85; }
+
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.page-name { margin: 0; font-family: var(--font-family-display); font-size: 15px; font-weight: 700; color: var(--text-dark); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.page-name .fb { color: #1877f2; }
+
+.import-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text-dark); }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 14px; }
+
+.counts { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.mapping { padding-top: 10px; border-top: 1px dashed var(--border-soft); }
+.mapping-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+
+.checks { display: flex; flex-direction: column; gap: 6px; }
+.check { display: flex; gap: 8px; font-size: 12px; align-items: flex-start; }
+.check i.ok { color: #067647; }
+.check i.bad { color: #d92d20; }
+.check i.skip { color: var(--text-muted); }
+
+.pick-row { display: grid; grid-template-columns: minmax(180px, 1.2fr) repeat(2, minmax(150px, 1fr)) auto; gap: 8px; align-items: end; padding: 9px 0; border-top: 1px solid var(--border-soft); }
+.pick-row:first-of-type { border-top: 0; }
+.pick-name strong { display: block; font-size: 13px; color: var(--text-dark); }
+
+@media (max-width: 860px) {
+  .pick-row { grid-template-columns: 1fr 1fr; }
+  .pick-name { grid-column: 1 / -1; }
+}

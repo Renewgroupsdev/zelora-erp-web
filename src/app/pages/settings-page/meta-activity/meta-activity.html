@@ -1,0 +1,134 @@
+<div class="meta-page">
+  <div class="page-heading">
+    <h1><i class="bi bi-activity"></i> Meta Lead Ads activity</h1>
+    <div class="heading-actions">
+      <a class="btn-secondary" routerLink="/app/settings/meta-lead-ads"><i class="bi bi-arrow-left"></i> Pages &amp; settings</a>
+      <button type="button" class="btn-secondary" (click)="reload()" [disabled]="loading()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button type="button" [class.active]="tab() === 'events'" (click)="setTab('events')"><i class="bi bi-inbox"></i> Lead events</button>
+    <button type="button" [class.active]="tab() === 'logs'" (click)="setTab('logs')"><i class="bi bi-journal-text"></i> Activity log</button>
+  </div>
+
+  @if (error()) {
+    <div class="notice bad"><i class="bi bi-exclamation-octagon-fill"></i><span>{{ error() }}</span></div>
+  }
+
+  @if (tab() === 'events') {
+    <section class="tiles">
+      @for (s of statuses; track s) {
+        <button type="button" class="tile" [class.active]="status === s" (click)="filterStatus(s)">
+          <span class="tile-count" [ngClass]="statusTone(s)">{{ count(s) }}</span>
+          <span class="tile-label"><i class="bi" [ngClass]="statusIcon(s)"></i> {{ statusLabel(s) }}</span>
+        </button>
+      }
+    </section>
+
+    @if (events(); as ev) {
+      <p class="muted">
+        Last lead imported: <strong>{{ ev.summary.last_imported_at ? (ev.summary.last_imported_at | date: 'dd MMM y, h:mm a') : 'none yet' }}</strong>
+        · Last notification received: <strong>{{ ev.summary.last_received_at ? (ev.summary.last_received_at | date: 'dd MMM y, h:mm a') : 'none yet' }}</strong>
+      </p>
+    }
+
+    <section class="card">
+      <div class="filters">
+        <input class="input" [(ngModel)]="search" (keyup.enter)="page = 1; reload()" placeholder="Search Lead ID, Form ID or Ad ID" />
+        @if (pageId) { <span class="chip info">Page {{ pageId }} <button type="button" class="x" (click)="pageId = ''; page = 1; reload()" aria-label="Clear Page filter">×</button></span> }
+        @if (status) { <span class="chip info">{{ statusLabel(status) }} <button type="button" class="x" (click)="status = ''; page = 1; reload()" aria-label="Clear status filter">×</button></span> }
+        <button type="button" class="btn-primary" (click)="page = 1; reload()">Search</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="grid">
+          <thead>
+            <tr><th>Received</th><th>Status</th><th>Page / form</th><th>Meta lead &amp; ad</th><th>ERP lead</th><th>Tries</th><th>Details</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (e of events()?.data ?? []; track e.id) {
+              <tr>
+                <td>{{ e.received_at | date: 'dd MMM y' }}<br /><span class="muted">{{ e.received_at | date: 'h:mm:ss a' }}</span></td>
+                <td>
+                  <span class="chip" [ngClass]="statusTone(e.status)"><i class="bi" [ngClass]="statusIcon(e.status)"></i> {{ statusLabel(e.status) }}</span>
+                  @if (e.status === 'imported' && e.outcome) { <br /><span class="muted">{{ e.outcome === 'created' ? 'New lead created' : 'Added to existing lead' }}</span> }
+                  @if (e.status === 'retry_pending' && e.next_retry_at) { <br /><span class="muted">Next try {{ e.next_retry_at | date: 'h:mm a' }}</span> }
+                </td>
+                <td><strong>{{ e.page_name || 'Unknown Page' }}</strong><br /><span class="muted mono">{{ e.page_id }}</span>@if (e.form_id) { <br /><span class="muted">Form <span class="mono">{{ e.form_id }}</span></span> }</td>
+                <td><span class="mono">{{ e.lead_id }}</span>@if (e.ad_id) { <br /><span class="muted">Ad <span class="mono">{{ e.ad_id }}</span></span> }</td>
+                <td>@if (e.crm_lead) { <strong>{{ e.crm_lead.name }}</strong><br /><span class="muted">LD-{{ ('' + e.crm_lead.id).padStart(5, '0') }}</span> } @else { <span class="muted">—</span> }</td>
+                <td>{{ e.attempts }}@if (e.deliveries > 1) { <br /><span class="muted">{{ e.deliveries }} deliveries</span> }</td>
+                <td class="details">
+                  @if (e.review_reason) { <strong>{{ reason(e.review_reason) }}</strong><br /> }
+                  <span class="muted">{{ e.error }}</span>
+                </td>
+                <td class="row-actions">
+                  @if (e.can_resolve) {
+                    <button *appCan="'retry-meta-events'; keepLabel: true; keepIcon: true" type="button" class="btn-primary" [disabled]="busyId() === e.id" (click)="resolve(e)"><i class="bi bi-telephone-plus"></i> Add phone</button>
+                  }
+                  @if (e.can_retry) {
+                    <button *appCan="'retry-meta-events'; keepLabel: true; keepIcon: true" type="button" class="btn-secondary" [disabled]="busyId() === e.id" (click)="retry(e)"><i class="bi bi-arrow-clockwise"></i> Retry</button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="8" class="empty">{{ loading() ? 'Loading…' : 'No lead events yet. Leads appear here the moment Meta notifies the ERP.' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (events(); as ev) {
+        @if (ev.pagination.last_page > 1) {
+          <div class="pager">
+            <button type="button" class="btn-secondary" [disabled]="page <= 1" (click)="go(page - 1)">Previous</button>
+            <span class="muted">Page {{ ev.pagination.current_page }} of {{ ev.pagination.last_page }} · {{ ev.pagination.total }} events</span>
+            <button type="button" class="btn-secondary" [disabled]="page >= ev.pagination.last_page" (click)="go(page + 1)">Next</button>
+          </div>
+        }
+      }
+    </section>
+  } @else {
+    <section class="card">
+      <div class="filters">
+        <select class="input narrow" [(ngModel)]="level" (change)="page = 1; reload()">
+          <option value="">All levels</option>
+          <option value="error">Errors</option>
+          <option value="warning">Warnings</option>
+          <option value="info">Info</option>
+        </select>
+        <span class="muted">Connection changes, imports and failures. Access tokens and customer details are never logged.</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="grid">
+          <thead><tr><th>When</th><th>Level</th><th>Event</th><th>Message</th><th>By</th></tr></thead>
+          <tbody>
+            @for (l of logs()?.data ?? []; track l.id) {
+              <tr>
+                <td>{{ l.created_at | date: 'dd MMM y, h:mm:ss a' }}</td>
+                <td><span class="chip" [class.bad]="l.level === 'error'" [class.warn]="l.level === 'warning'" [class.info]="l.level === 'info'">{{ l.level }}</span></td>
+                <td class="mono">{{ l.event }}</td>
+                <td>{{ l.message }}@if (l.context) { <br /><span class="muted mono">{{ ctx(l) }}</span> }</td>
+                <td>{{ l.user || 'System' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="empty">{{ loading() ? 'Loading…' : 'Nothing logged yet.' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (logs(); as lg) {
+        @if (lg.pagination.last_page > 1) {
+          <div class="pager">
+            <button type="button" class="btn-secondary" [disabled]="page <= 1" (click)="go(page - 1)">Previous</button>
+            <span class="muted">Page {{ lg.pagination.current_page }} of {{ lg.pagination.last_page }}</span>
+            <button type="button" class="btn-secondary" [disabled]="page >= lg.pagination.last_page" (click)="go(page + 1)">Next</button>
+          </div>
+        }
+      }
+    </section>
+  }
+</div>
