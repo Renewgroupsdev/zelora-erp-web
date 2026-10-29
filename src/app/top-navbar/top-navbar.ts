@@ -1,6 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, ElementRef, HostListener, afterNextRender, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs';
+import { ModuleActivity } from '../shared/components/module-activity/module-activity';
+import { currentModule } from '../shared/utils/current-module.util';
 import { MatDialog } from '@angular/material/dialog';
 import { NavLayoutService } from '../services/nav-layout.service';
 import { AppNotification, NotificationService } from '../shared/common-services/notification.service';
@@ -23,7 +27,7 @@ interface ScopeTypeInfo {
 @Component({
   selector: 'app-top-navbar',
   standalone: true,
-  imports: [CommonModule, BranchChat],
+  imports: [CommonModule, BranchChat, ModuleActivity],
   templateUrl: './top-navbar.html',
   styleUrl: './top-navbar.scss',
 })
@@ -34,6 +38,14 @@ export class TopNavbar {
   readonly branchOptions = inject(BranchOptionsService);
 
   readonly currentUser = this.authService.currentUser;
+
+  private readonly navRouter = inject(Router);
+  private readonly routeUrl = toSignal(this.navRouter.events.pipe(filter(e => e instanceof NavigationEnd), map(() => this.navRouter.url)), { initialValue: this.navRouter.url });
+
+  /** The module of the page being viewed, for the "Activity" button (roles without view-module-activity never see it). */
+  readonly activityModule = computed(() =>
+    this.authService.hasActionAccess('view-module-activity') ? currentModule(this.authService.menus(), this.routeUrl()) : null);
+  readonly activityOpen = signal(false);
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 

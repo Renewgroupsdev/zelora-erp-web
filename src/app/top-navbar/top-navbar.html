@@ -141,6 +141,13 @@
     <!-- Branch group chat & posts - only the signed-in user's own branch -->
     <app-branch-chat></app-branch-chat>
 
+    @if (activityModule(); as mod) {
+      <button type="button" class="activity-btn" (click)="activityOpen.set(true)" [attr.aria-label]="'Show ' + mod.name + ' activity'" [title]="'Who handled ' + mod.name + ' data'">
+        <i class="bi bi-activity" aria-hidden="true"></i><span class="activity-label">Activity</span>
+      </button>
+      @if (activityOpen()) { <app-module-activity [slug]="mod.slug" (closed)="activityOpen.set(false)" /> }
+    }
+
     <div class="notification-menu-wrapper">
       <button
         type="button"

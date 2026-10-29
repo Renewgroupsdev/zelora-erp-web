@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { ApiDataService } from '../../core/http/api.service';
-import { AuditCall, AuditCallDetail, AuditCallQuery, AuditCallStats, AuditEvent, AuditFilterOptions, AuditPage, AuditQuery, AuditSummary, AuditUserProfile, AuditUserRow } from '../models/audit.model';
+import { ModuleActivityPage, AuditCall, AuditCallDetail, AuditCallQuery, AuditCallStats, AuditEvent, AuditFilterOptions, AuditPage, AuditQuery, AuditSummary, AuditUserProfile, AuditUserRow } from '../models/audit.model';
 import { ApiRoutesConstants } from './api-route-constants';
 
 type ListKind = 'events' | 'changes' | 'security';
@@ -43,6 +43,11 @@ export class AuditService {
   /** Server builds the file from the same filters (max 50,000 rows); resolves only after the server finished it. */
   export(query: AuditQuery, format: 'xlsx' | 'csv'): Observable<Blob> {
     return this.api.GET_BLOB(`${this.base}/export${this.qs({ ...query, page: undefined, per_page: undefined, format })}`);
+  }
+
+  /** Activity of one sidebar module (parent or sub-module slug), with the hand-offs of its data. */
+  moduleActivity(slug: string, query: AuditQuery): Observable<ModuleActivityPage> {
+    return this.api.GET(`${this.base}/module/${encodeURIComponent(slug)}${this.qs(query)}`).pipe(map((r: any) => ({ module: r.module, data: r.data ?? [], pagination: r.pagination, stats: r.stats }) as ModuleActivityPage));
   }
 
   calls(query: AuditCallQuery): Observable<AuditPage<AuditCall> & { stats: AuditCallStats }> {

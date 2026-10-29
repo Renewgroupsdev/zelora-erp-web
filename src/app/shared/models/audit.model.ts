@@ -186,3 +186,24 @@ export interface AuditCallQuery {
   page?: number;
   per_page?: number;
 }
+
+export interface AuditFlow {
+  origin: { handled_by: string | null; from_branch: string | null; record_branch: string | null; source: string; cross_branch: boolean };
+  handoffs: { label: string; from: string | null; to: string | null }[];
+}
+
+export interface ModuleActivityStats {
+  total: number;
+  today: number;
+  people: number;
+  created: number;
+  updated: number;
+  deleted: number;
+}
+
+export interface ModuleActivityPage {
+  module: { slug: string; name: string };
+  data: (AuditEvent & { flow?: AuditFlow })[];
+  pagination: AuditPagination;
+  stats: ModuleActivityStats;
+}

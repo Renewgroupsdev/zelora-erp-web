@@ -1,0 +1,101 @@
+<div class="au-backdrop" (click)="close()">
+  <div #panel class="au-drawer" role="dialog" aria-modal="true" aria-labelledby="ma-title" (click)="$event.stopPropagation()">
+    <header>
+      <div>
+        <h2 id="ma-title"><i class="bi bi-activity" aria-hidden="true"></i> {{ moduleName() || 'Module' }} activity</h2>
+        <div class="sub">Who handled this module's data, what changed and where it moved.</div>
+      </div>
+      <button #closeBtn type="button" class="au-btn sm" (click)="close()" aria-label="Close activity"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="ma-top">
+      @if (stats(); as s) {
+        <div class="au-stat-grid">
+          <div><b>{{ s.total }}</b><span>Total events</span></div>
+          <div><b>{{ s.today }}</b><span>Today</span></div>
+          <div><b>{{ s.people }}</b><span>People</span></div>
+          <div><b style="color: var(--au-green)">{{ s.created }}</b><span>Created</span></div>
+          <div><b style="color: var(--au-blue)">{{ s.updated }}</b><span>Updated</span></div>
+          <div><b style="color: var(--au-red)">{{ s.deleted }}</b><span>Deleted</span></div>
+        </div>
+      }
+      <label class="sr-only" for="ma-search">Search activity</label>
+      <input id="ma-search" class="au-input" type="search" placeholder="Search person, record or change" (input)="onSearch($any($event.target).value)" />
+      <div class="au-chips" role="group" aria-label="Filter by period and action">
+        <button type="button" class="au-chip" [class.on]="range() === null" (click)="setRange(null)">All time</button>
+        @for (r of ranges; track r.key) { <button type="button" class="au-chip" [class.on]="range() === r.key" (click)="setRange(r.key)">{{ r.label }}</button> }
+      </div>
+      <div class="au-chips" role="group" aria-label="Action">
+        @for (c of eventChips; track c.value) {
+          <button type="button" class="au-chip" [class.on]="events().includes(c.value)" [attr.aria-pressed]="events().includes(c.value)" (click)="toggleEvent(c.value)">
+            <i class="bi" [ngClass]="meta(c.value).icon" aria-hidden="true"></i> {{ c.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="body" [attr.aria-busy]="loading()">
+      @if (error(); as err) {
+        <div class="au-state" [class.denied]="err.kind === 'forbidden'" [class.error]="err.kind !== 'forbidden'" role="alert">
+          <i class="bi" [ngClass]="err.kind === 'forbidden' ? 'bi-lock-fill' : 'bi-exclamation-octagon'" aria-hidden="true"></i>
+          <strong>{{ err.kind === 'forbidden' ? 'Access denied' : 'Could not load activity' }}</strong>{{ err.message }}
+          @if (err.kind !== 'forbidden') { <div><button type="button" class="au-btn" (click)="setRange(range())">Try again</button></div> }
+        </div>
+      } @else if (loading() && !rows().length) {
+        @for (i of [1, 2, 3, 4]; track i) { <div class="au-skel" style="height: 70px; border-radius: 12px"></div> }
+      } @else if (!rows().length) {
+        <div class="au-state"><i class="bi bi-inbox" aria-hidden="true"></i><strong>No activity yet</strong>Nothing has been recorded for these filters.</div>
+      } @else {
+        @for (g of groups(); track g.key) {
+          <div class="au-tl-day">{{ g.label }} <span class="cnt">{{ g.rows.length }} event{{ g.rows.length === 1 ? '' : 's' }}</span></div>
+          @for (e of g.rows; track e.id) {
+            <article class="ma-item">
+              <span class="dot" [ngClass]="meta(e.event).tone" aria-hidden="true"><i class="bi" [ngClass]="meta(e.event).icon"></i></span>
+              <div style="min-width: 0">
+                <div class="head">
+                  <span class="nm">{{ e.actor.name || 'Unknown' }}</span>
+                  <span class="rl">{{ e.actor.role || e.actor.type }}@if (e.actor.branch) { · {{ e.actor.branch }} }</span>
+                  <span class="au-badge" [ngClass]="meta(e.event).tone">{{ e.event_label }}</span>
+                  <span class="time">{{ clock(e.occurred_at_display) }} · {{ e.relative }}</span>
+                </div>
+                <p class="desc">{{ e.description }}</p>
+
+                @if (e.flow; as f) {
+                  @if (f.handoffs.length) {
+                    <div class="ma-flow" aria-label="Where the data moved">
+                      @for (h of f.handoffs; track $index) {
+                        <span class="hop"><b>{{ h.label }}</b>
+                          @if (h.from) { <span class="au-old">{{ h.from }}</span> } @else { <span class="au-empty-val">Empty</span> }
+                          <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                          @if (h.to) { <span class="au-new">{{ h.to }}</span> } @else { <span class="au-empty-val">Empty</span> }
+                        </span>
+                      }
+                    </div>
+                  }
+                  <div class="tags">
+                    @if (e.record.type_label) { <span class="tag"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> {{ e.record.type_label }}: {{ e.record.label }}</span> }
+                    @if (f.origin.from_branch) { <span class="tag"><i class="bi bi-person-badge" aria-hidden="true"></i> Entered from {{ f.origin.from_branch }}</span> }
+                    @if (f.origin.record_branch) { <span class="tag"><i class="bi bi-geo-alt" aria-hidden="true"></i> Belongs to {{ f.origin.record_branch }}</span> }
+                    @if (f.origin.cross_branch) { <span class="tag warn"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> Across branches</span> }
+                    <span class="tag"><i class="bi bi-display" aria-hidden="true"></i> {{ sourceLabel(f.origin.source) }}</span>
+                    @if (e.network?.ip) { <span class="tag"><i class="bi bi-hdd-network" aria-hidden="true"></i> {{ e.network?.ip }}</span> }
+                  </div>
+                }
+                @if (canOpenAudit) { <button type="button" class="au-link" style="font-size: .74rem; margin-top: 4px" (click)="openInAudit(e)">Full details</button> }
+              </div>
+            </article>
+          }
+        }
+        @if (pagination(); as p) {
+          @if (p.current_page < p.last_page) {
+            <button type="button" class="au-btn" style="align-self: center" (click)="more()" [disabled]="loadingMore()">{{ loadingMore() ? 'Loading…' : 'Load more (' + (p.total - rows().length) + ' older)' }}</button>
+          }
+        }
+      }
+    </div>
+
+    @if (canOpenAudit) {
+      <footer class="ma-foot"><button type="button" class="au-link" (click)="openInAudit()"><i class="bi bi-clipboard2-data" aria-hidden="true"></i> Open this module in the full Audit Trail</button></footer>
+    }
+  </div>
+</div>
