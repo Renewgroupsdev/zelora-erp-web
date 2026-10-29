@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import * as QRCode from 'qrcode';
 import { NavLayoutService } from '../../services/nav-layout.service';
@@ -13,7 +14,7 @@ import { ToastService } from '../../shared/common-services/toast.service';
 @Component({
   selector: 'app-settings-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './settings-page.html',
   styleUrl: './settings-page.scss',
 })

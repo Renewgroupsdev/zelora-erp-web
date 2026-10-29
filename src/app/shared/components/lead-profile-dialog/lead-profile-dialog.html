@@ -29,8 +29,26 @@
         <div class="detail-row"><i class="bi bi-tags"></i> <span>{{ data.lead.category || 'Service not selected' }}</span></div>
         <div class="detail-row"><i class="bi bi-heart-pulse"></i> <span>{{ data.lead.request || 'Consultation' }}</span></div>
         <div class="detail-row"><i class="bi bi-telephone"></i> <span>{{ data.lead.phone }}</span></div>
+        @if (data.lead.email) {
+          <div class="detail-row"><i class="bi bi-envelope"></i> <span>{{ data.lead.email }}</span></div>
+        }
       </div>
     </div>
+
+    @if (data.lead.attribution; as a) {
+      <div class="profile-section meta-source">
+        <div class="section-title"><i class="bi bi-meta"></i> Meta Lead Ad source</div>
+        <div class="detail-grid">
+          <div class="detail-row"><i class="bi" [class.bi-instagram]="a.platform === 'instagram'" [class.bi-facebook]="a.platform !== 'instagram'"></i> <span>{{ a.platform === 'instagram' ? 'Instagram' : a.platform === 'facebook' ? 'Facebook' : 'Facebook / Instagram' }} lead form</span></div>
+          <div class="detail-row"><i class="bi bi-flag"></i> <span>{{ a.pageName || 'Page' }} <small>({{ a.pageId }})</small></span></div>
+          @if (a.formId) { <div class="detail-row"><i class="bi bi-ui-checks"></i> <span>{{ a.formName || 'Form' }} <small>({{ a.formId }})</small></span></div> }
+          @if (a.campaignName || a.campaignId) { <div class="detail-row"><i class="bi bi-bullseye"></i> <span>{{ a.campaignName || 'Campaign' }} <small>{{ a.campaignId ? '(' + a.campaignId + ')' : '' }}</small></span></div> }
+          @if (a.adId) { <div class="detail-row"><i class="bi bi-badge-ad"></i> <span>{{ a.adName || 'Ad' }} <small>({{ a.adId }})</small></span></div> }
+          <div class="detail-row"><i class="bi bi-hash"></i> <span>Lead ID <small>{{ a.leadId }}</small></span></div>
+          @if (a.receivedAt) { <div class="detail-row"><i class="bi bi-clock"></i> <span>{{ a.receivedAt | date: 'dd MMM y, h:mm a' }}</span></div> }
+        </div>
+      </div>
+    }
 
     @if (phoneWarning) {
       <div class="outstanding-banner"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ phoneWarning }}</span></div>

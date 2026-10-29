@@ -98,6 +98,9 @@ export const routes: Routes = [
       { path: 'reports', loadComponent: () => import('./pages/reports/reports').then(m => m.Reports) },
       { path: 'reports/:id', loadComponent: () => import('./pages/reports/report-detail/report-detail').then(m => m.ReportDetail) },
       { path: 'settings', loadComponent: () => import('./pages/settings-page/settings-page').then(m => m.SettingsPage) },
+      // Settings -> Integrations -> Meta Lead Ads (Facebook / Instagram Lead Ads import)
+      { path: 'settings/meta-lead-ads', loadComponent: () => import('./pages/settings-page/meta-lead-ads/meta-lead-ads').then(m => m.MetaLeadAds) },
+      { path: 'settings/meta-lead-ads/activity', loadComponent: () => import('./pages/settings-page/meta-activity/meta-activity').then(m => m.MetaActivity) },
       // A tab added on Roles & Permissions whose page isn't built yet opens a Work in progress page inside the
       // layout. Must stay last; any other unknown URL fails the canMatch and falls through to the 404 page.
       { path: '**', canMatch: [workInProgressMatch], loadComponent: () => import('./pages/work-in-progress/work-in-progress').then(m => m.WorkInProgress) },

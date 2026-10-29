@@ -1,0 +1,282 @@
+<div class="meta-page">
+  <div class="page-heading">
+    <h1><i class="bi bi-meta"></i> Meta Lead Ads</h1>
+    <div class="heading-actions">
+      <button type="button" class="btn-secondary" (click)="load()" [disabled]="loading()"><i class="bi bi-arrow-clockwise"></i> Refresh status</button>
+      <a class="btn-secondary" routerLink="/app/settings/meta-lead-ads/activity"><i class="bi bi-activity"></i> Activity &amp; logs</a>
+      <button type="button" class="btn-primary" (click)="connectAccount()" [disabled]="isBusy('auth') || !overview()?.configured">
+        <i class="bi bi-facebook"></i> {{ isBusy('auth') ? 'Opening Facebook…' : 'Connect Meta account' }}
+      </button>
+    </div>
+  </div>
+
+  @if (loadError()) {
+    <div class="notice bad"><i class="bi bi-exclamation-octagon-fill"></i><span>{{ loadError() }}</span></div>
+  }
+
+  @if (loading() && !overview()) {
+    <div class="card empty">Loading Meta integration…</div>
+  }
+
+  @if (overview(); as o) {
+    <!-- Setup / environment -->
+    <section class="card">
+      <h2 class="card-title">Connection status <small>Meta Graph API {{ o.graph_version }}</small></h2>
+
+      @if (!o.configured) {
+        <div class="notice warn">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <span>
+            Meta is not fully configured on the server. Set
+            @for (name of o.missing_config; track name; let last = $last) { <strong class="mono">{{ name }}</strong>{{ last ? '' : ', ' }} }
+            in the backend <span class="mono">.env</span> (see <span class="mono">META_LEAD_ADS_SETUP.md</span>), then refresh.
+          </span>
+        </div>
+      }
+
+      @if (o.queue.runs_inline) {
+        <div class="notice warn" style="margin-top: 8px">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <span>The queue is set to <strong>sync</strong>: leads are imported inside the webhook request and are not retried by a worker. Use the <strong>database</strong> or <strong>redis</strong> queue with a running <span class="mono">queue:work</span> in production.</span>
+        </div>
+      }
+      @if ((o.queue.failed_jobs ?? 0) > 0) {
+        <div class="notice bad" style="margin-top: 8px">
+          <i class="bi bi-x-octagon-fill"></i>
+          <span>{{ o.queue.failed_jobs }} job(s) are in the queue's failed-jobs table. Check the worker log.</span>
+        </div>
+      }
+
+      <div class="setup-grid" style="margin-top: 10px">
+        <div class="kv">
+          <span>Webhook callback URL</span>
+          <div class="row"><span class="mono">{{ o.webhook_url }}</span><button type="button" class="btn-secondary" (click)="copy(o.webhook_url)"><i class="bi bi-clipboard"></i> Copy</button></div>
+          <span class="muted">Paste in Meta App → Webhooks → Page → Callback URL. The verify token is the server's <span class="mono">META_WEBHOOK_VERIFY_TOKEN</span>.</span>
+        </div>
+        <div class="kv">
+          <span>OAuth redirect URI</span>
+          <div class="row"><span class="mono">{{ o.oauth_redirect_uri || 'Not set' }}</span>@if (o.oauth_redirect_uri) {<button type="button" class="btn-secondary" (click)="copy(o.oauth_redirect_uri)"><i class="bi bi-clipboard"></i> Copy</button>}</div>
+          <span class="muted">Must be listed under Facebook Login → Valid OAuth Redirect URIs.</span>
+        </div>
+        <div class="kv">
+          <span>Permissions requested</span>
+          <div class="perm-list">@for (p of o.scopes; track p) { <span class="chip info mono">{{ p }}</span> }</div>
+          <span class="muted">Advanced Access (App Review) is needed to connect Pages you do not own as an app role.</span>
+        </div>
+        <div class="kv">
+          <span>Queue</span>
+          <div class="row"><span class="chip" [class.ok]="!o.queue.runs_inline" [class.warn]="o.queue.runs_inline">{{ o.queue.connection }}</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Facebook already authorised (valid for a while) but no picker open, e.g. the redirect back was lost or the page was reloaded -->
+    @if (o.authorized && !pickerLoading() && !pickerPages()) {
+      <div class="notice">
+        <i class="bi bi-facebook"></i>
+        <span>Your Facebook account is already authorised. Choose the Page to connect, no need to sign in again.</span>
+        <button type="button" class="btn-primary" (click)="openPicker()"><i class="bi bi-card-list"></i> Choose a Page</button>
+      </div>
+    }
+
+    <!-- Page picker (after Facebook authorisation) -->
+    @if (pickerLoading() || pickerPages()) {
+      <section class="card">
+        <h2 class="card-title">
+          Pages available to {{ pickerAccount() || 'this Facebook account' }}
+          <button type="button" class="btn-secondary" (click)="closePicker()"><i class="bi bi-x-lg"></i> Close</button>
+        </h2>
+        @if (pickerLoading()) {
+          <div class="empty">Reading Pages from Meta…</div>
+        } @else if (!pickerPages()?.length) {
+          <div class="empty">
+            <p>Facebook returned no Pages for this sign-in.</p>
+            <p class="muted">
+              Meta only shares the Pages you tick in its dialog, and it reuses an earlier empty choice when you press <em>Continue</em>.
+              This button removes the earlier authorisation first, so the next Facebook dialog asks which Pages to share: tick your Page there.
+              The Facebook account also needs a role on the Page that lets it manage it.
+            </p>
+            <button type="button" class="btn-primary" (click)="resetAndSignIn()" [disabled]="isBusy('auth')">
+              <i class="bi bi-facebook"></i> {{ isBusy('auth') ? 'Opening Facebook…' : 'Sign in again and choose Pages' }}
+            </button>
+          </div>
+        } @else {
+          @for (p of pickerPages(); track p.page_id) {
+            <div class="pick-row">
+              <div class="pick-name">
+                <strong>{{ p.name }}</strong>
+                <span class="muted">ID {{ p.page_id }}{{ p.category ? ' · ' + p.category : '' }}</span>
+              </div>
+              <label class="field">ERP branch / franchise
+                <select class="input" [(ngModel)]="pickDrafts[p.page_id].branchKey" [disabled]="p.connected">
+                  <option value="">Default branch</option>
+                  @for (u of units(); track u.key) { <option [value]="u.key">{{ u.name }}</option> }
+                </select>
+              </label>
+              <label class="field">Lead source
+                <select class="input" [(ngModel)]="pickDrafts[p.page_id].sourceId" [disabled]="p.connected">
+                  <option [ngValue]="null">Facebook / Instagram (automatic)</option>
+                  @for (s of sources(); track s.id) { <option [ngValue]="s.id">{{ s.source_name }}</option> }
+                </select>
+              </label>
+              @if (p.connected) {
+                <span class="chip ok"><i class="bi bi-check-lg"></i> Connected</span>
+              } @else if (!p.can_connect) {
+                <span class="chip warn" title="Meta gave no Page token: the Facebook user needs a role on the Page that allows managing it.">No access</span>
+              } @else {
+                <button type="button" class="btn-primary" [disabled]="isBusy('connect:' + p.page_id)" (click)="connectPage(p)">
+                  {{ isBusy('connect:' + p.page_id) ? 'Connecting…' : 'Connect' }}
+                </button>
+              }
+            </div>
+          }
+        }
+      </section>
+    }
+
+    <!-- Connected Pages -->
+    <section class="page-list">
+      @if (!o.connections.length && !loading()) {
+        <div class="card empty">
+          No Facebook Page is connected yet. Choose <strong>Connect Meta account</strong>, sign in with the Facebook account that manages your Page, then pick the Page.
+        </div>
+      }
+
+      @for (c of o.connections; track c.id) {
+        <article class="card page-card" [class.is-off]="c.status === 'disconnected'">
+          <div class="page-head">
+            <div>
+              <h3 class="page-name">
+                <i class="bi bi-facebook fb"></i> {{ c.page_name }}
+                <span class="chip" [ngClass]="healthClass(c.health)">{{ healthLabel(c.health) }}</span>
+                @if (c.status === 'connected') {
+                  <span class="chip" [class.ok]="c.import_enabled" [class.warn]="!c.import_enabled">Import {{ c.import_enabled ? 'enabled' : 'disabled' }}</span>
+                }
+              </h3>
+              <span class="muted">Page ID <span class="mono">{{ c.page_id }}</span>@if (c.page_category) { · {{ c.page_category }} }@if (c.ad_account_id) { · Ad account <span class="mono">{{ c.ad_account_id }}</span> }</span>
+            </div>
+            @if (c.status === 'connected') {
+              <label class="import-toggle">
+                Import leads
+                <button type="button" class="switch" [class.on]="c.import_enabled" [disabled]="isBusy('import:' + c.id)" (click)="toggleImport(c)" [attr.aria-label]="'Toggle lead import for ' + c.page_name"><span></span></button>
+              </label>
+            }
+          </div>
+
+          @if (c.status === 'connected') {
+            <div class="facts">
+              <div class="kv"><span>Token</span><span><span class="chip" [ngClass]="tokenClass(c)">{{ tokenLabel(c) }}</span></span>
+                <span class="muted">@if (c.token_checked_at) { Checked {{ c.token_checked_at | date: 'dd MMM, h:mm a' }} } @else { Never checked }</span></div>
+              <div class="kv"><span>Lead notifications</span><span><span class="chip" [class.ok]="c.webhook_subscribed" [class.warn]="!c.webhook_subscribed">{{ c.webhook_subscribed ? 'Subscribed (leadgen)' : 'Not confirmed' }}</span></span></div>
+              <div class="kv"><span>Last webhook received</span><span>{{ c.last_webhook_at ? (c.last_webhook_at | date: 'dd MMM y, h:mm a') : 'None yet' }}</span></div>
+              <div class="kv"><span>Last lead imported</span><span>{{ c.last_lead_synced_at ? (c.last_lead_synced_at | date: 'dd MMM y, h:mm a') : 'None yet' }}</span></div>
+              <div class="kv"><span>Branch</span><span>{{ c.branch?.name || 'Default branch' }}</span></div>
+              <div class="kv"><span>Lead source</span><span>{{ c.source_name || 'Facebook / Instagram (automatic)' }}</span></div>
+            </div>
+
+            @if (c.missing_permissions.length) {
+              <div class="notice bad"><i class="bi bi-shield-exclamation"></i><span>Missing permissions: @for (p of c.missing_permissions; track p) { <strong class="mono">{{ p }}</strong>&nbsp; } — connect the Page again and approve them.</span></div>
+            }
+            @if (c.last_error && c.health !== 'healthy') {
+              <div class="notice warn"><i class="bi bi-exclamation-triangle-fill"></i><span>{{ c.last_error }}</span></div>
+            }
+            @if (needsAttention(c) > 0) {
+              <div class="notice warn"><i class="bi bi-inbox-fill"></i><span>{{ needsAttention(c) }} lead event(s) need attention. <a routerLink="/app/settings/meta-lead-ads/activity" [queryParams]="{ page_id: c.page_id }">Open activity</a></span></div>
+            }
+
+            <div class="counts">
+              <span class="chip ok">{{ eventCount(c, 'imported') }} imported</span>
+              <span class="chip">{{ eventCount(c, 'duplicate') }} duplicates skipped</span>
+              <span class="chip" [class.warn]="eventCount(c, 'needs_review') > 0">{{ eventCount(c, 'needs_review') }} need review</span>
+              <span class="chip" [class.bad]="eventCount(c, 'failed', 'permission_issue') > 0">{{ eventCount(c, 'failed', 'permission_issue') }} failed / permission</span>
+            </div>
+
+            <div class="mapping-actions">
+              <button type="button" class="btn-secondary" (click)="testConnection(c)" [disabled]="isBusy('test:' + c.id)"><i class="bi bi-shield-check"></i> {{ isBusy('test:' + c.id) ? 'Testing…' : 'Test connection' }}</button>
+              <button type="button" class="btn-secondary" (click)="toggleExpanded(c)"><i class="bi bi-sliders"></i> {{ expanded()[c.id] ? 'Hide mapping' : 'Mapping and forms' }}</button>
+              <a class="btn-secondary" routerLink="/app/settings/meta-lead-ads/activity" [queryParams]="{ page_id: c.page_id }"><i class="bi bi-activity"></i> Activity</a>
+              <button type="button" class="btn-secondary danger" (click)="disconnect(c)" [disabled]="isBusy('disc:' + c.id)"><i class="bi bi-plug"></i> Disconnect</button>
+            </div>
+
+            @if (testResults()[c.id]; as t) {
+              <div class="notice" [class.ok]="t.ok" [class.bad]="!t.ok">
+                <i class="bi" [class.bi-patch-check-fill]="t.ok" [class.bi-x-octagon-fill]="!t.ok"></i>
+                <div class="checks">
+                  <strong>{{ t.ok ? 'Meta confirmed the connection.' : 'The connection has problems.' }}</strong>
+                  @for (k of t.checks; track k.key) {
+                    <div class="check">
+                      <i class="bi" [ngClass]="k.ok ? 'bi-check-circle-fill ok' : (k.key === 'delivery' ? 'bi-dash-circle skip' : 'bi-x-circle-fill bad')"></i>
+                      <span><strong>{{ k.label }}:</strong> {{ k.detail }}</span>
+                    </div>
+                  }
+                  <span class="muted">To test the full path, send a lead from Meta's <a href="https://developers.facebook.com/tools/lead-ads-testing" target="_blank" rel="noopener">Lead Ads Testing Tool</a>. Test leads carry dummy answers (no real phone), so they land in <em>Needs review</em> by design.</span>
+                </div>
+              </div>
+            }
+
+            @if (expanded()[c.id]) {
+              <div class="mapping">
+                <div class="field-grid">
+                  <label class="field">ERP branch / franchise
+                    <select class="input" [(ngModel)]="drafts[c.id].branchKey">
+                      <option value="">Default branch</option>
+                      @for (u of units(); track u.key) { <option [value]="u.key">{{ u.name }}</option> }
+                    </select>
+                  </label>
+                  <label class="field">Lead source
+                    <select class="input" [(ngModel)]="drafts[c.id].sourceId">
+                      <option [ngValue]="null">Facebook / Instagram (automatic)</option>
+                      @for (s of sources(); track s.id) { <option [ngValue]="s.id">{{ s.source_name }}</option> }
+                    </select>
+                  </label>
+                  <label class="field">Ad account ID (optional)
+                    <input class="input" [(ngModel)]="drafts[c.id].adAccountId" placeholder="act_1234567890" />
+                  </label>
+                </div>
+                <div class="mapping-actions">
+                  <button type="button" class="btn-primary" (click)="saveMapping(c)" [disabled]="isBusy('save:' + c.id)">{{ isBusy('save:' + c.id) ? 'Saving…' : 'Save mapping' }}</button>
+                </div>
+
+                <h4 class="card-title" style="margin-top: 14px">
+                  Lead forms <small>A form's own mapping overrides the Page mapping above.</small>
+                  <button type="button" class="btn-secondary" (click)="refreshForms(c)" [disabled]="isBusy('forms:' + c.id)"><i class="bi bi-arrow-repeat"></i> Refresh forms</button>
+                </h4>
+                @if (!c.forms.length) {
+                  <div class="empty">No forms yet. Forms are listed here as soon as Meta returns them, or when their first lead arrives.</div>
+                } @else {
+                  <div class="table-wrap">
+                    <table class="grid">
+                      <thead><tr><th>Form</th><th>Branch / franchise</th><th>Lead source</th><th></th></tr></thead>
+                      <tbody>
+                        @for (f of c.forms; track f.id) {
+                          <tr>
+                            <td><strong>{{ f.name || 'Unnamed form' }}</strong><br /><span class="muted mono">{{ f.form_id }}</span></td>
+                            <td>
+                              <select class="input" [(ngModel)]="formDrafts[f.id].branchKey">
+                                <option value="">Same as Page</option>
+                                @for (u of units(); track u.key) { <option [value]="u.key">{{ u.name }}</option> }
+                              </select>
+                            </td>
+                            <td>
+                              <select class="input" [(ngModel)]="formDrafts[f.id].sourceId">
+                                <option [ngValue]="null">Same as Page</option>
+                                @for (s of sources(); track s.id) { <option [ngValue]="s.id">{{ s.source_name }}</option> }
+                              </select>
+                            </td>
+                            <td><button type="button" class="btn-secondary" (click)="saveFormMapping(c, f.id)" [disabled]="isBusy('form:' + f.id)">Save</button></td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+            }
+          } @else {
+            <div class="notice"><i class="bi bi-plug"></i><span>Disconnected{{ c.disconnected_at ? ' on ' + (c.disconnected_at | date: 'dd MMM y, h:mm a') : '' }}. Its token was removed and no leads are imported. Use <strong>Connect Meta account</strong> to reconnect it.</span></div>
+          }
+        </article>
+      }
+    </section>
+  }
+</div>
