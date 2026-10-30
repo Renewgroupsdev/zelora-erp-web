@@ -1,0 +1,37 @@
+@if (loading()) {
+  <div class="dash-stats" aria-label="Loading key figures">
+    @for (i of [1, 2, 3, 4, 5, 6]; track i) { <div class="dash-stat is-skeleton"><span class="sk sk-md"></span><span class="sk sk-lg"></span><span class="sk"></span></div> }
+  </div>
+} @else if (error()) {
+  <div class="dash-inline-error" role="alert"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i> {{ error() }} <button type="button" class="dash-btn" (click)="retry()">Try again</button></div>
+} @else if (data()) {
+  <div class="dash-stats" [class.is-refreshing]="refreshing()">
+    @for (c of cards(); track c.label) {
+      <article class="dash-stat" [class]="'tone-' + c.tone">
+        <div class="dash-stat-head">
+          <span class="dash-stat-icon"><i class="bi" [class]="c.icon" aria-hidden="true"></i></span>
+          <span class="dash-stat-label">{{ c.label }}</span>
+        </div>
+        <strong class="dash-stat-value">{{ c.value }}</strong>
+        @if (c.kpi.change !== null) {
+          <span class="dash-stat-change" [class.is-down]="c.kpi.change < 0" [attr.aria-label]="'Change against the previous period ' + c.kpi.change + '%'">
+            <i class="bi" [class]="c.kpi.change >= 0 ? 'bi-arrow-up' : 'bi-arrow-down'" aria-hidden="true"></i>{{ abs(c.kpi.change) }}%
+            <small>vs last period</small>
+          </span>
+        } @else {
+          <span class="dash-stat-change is-flat">{{ c.hint }}</span>
+        }
+        @if (c.previous !== null) {
+          <!-- This period against the previous one, as two bars scaled to the larger. -->
+          <div class="dash-stat-compare" role="img" [attr.aria-label]="'This period ' + c.value + ', previous period ' + c.previous">
+            <span class="is-now" [style.width.%]="share(c.kpi.value, c.kpi)"></span>
+            <span class="is-prev" [style.width.%]="share(c.kpi.previous ?? 0, c.kpi)"></span>
+          </div>
+          <small class="dash-stat-hint">Previous {{ c.previous }}</small>
+        } @else {
+          <small class="dash-stat-hint">{{ c.kpi.change !== null ? c.hint : '' }}</small>
+        }
+      </article>
+    }
+  </div>
+}

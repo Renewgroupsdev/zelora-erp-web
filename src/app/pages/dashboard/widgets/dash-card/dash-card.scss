@@ -1,0 +1,14 @@
+/* DashCard: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+
+.dash-page {
+  .dash-card-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+  .dash-card-body { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+  .dash-link {
+    display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: var(--radius-pill, 999px);
+    border: 1px solid var(--dash-line); color: var(--primary); font-size: 12px; font-weight: 600; text-decoration: none;
+    white-space: nowrap; transition: background .15s ease, border-color .15s ease;
+    i { transition: transform .15s ease; }
+    &:hover { background: color-mix(in srgb, var(--primary) 7%, transparent); border-color: var(--primary-border, var(--primary)); i { transform: translateX(2px); } }
+  }
+}

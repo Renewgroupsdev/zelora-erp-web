@@ -1,0 +1,5 @@
+/* LeadSourceWidget: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+
+.dash-page {
+  .dash-source app-bf-donut { .ring { width: 190px; height: 190px; } li { font-size: 12.5px; padding: 4px 6px; } .disc strong { font-size: 16px; } .disc small { font-size: 9px; } }
+}

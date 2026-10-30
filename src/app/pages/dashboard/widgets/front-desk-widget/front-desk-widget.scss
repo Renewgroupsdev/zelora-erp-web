@@ -1,0 +1,5 @@
+/* FrontDeskWidget: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+
+.dash-page {
+  .dash-amount { font-weight: 600; font-size: 13px; color: var(--status-red-text); white-space: nowrap; }
+}

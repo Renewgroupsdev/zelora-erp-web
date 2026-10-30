@@ -1,0 +1,8 @@
+/* VisitList: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+
+.dash-page {
+  .dash-avatar {
+    flex: 0 0 auto; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%;
+    background: var(--avatar-color-1-bg); color: var(--avatar-color-1-text); font-size: 10.5px; font-weight: 600;
+  }
+}

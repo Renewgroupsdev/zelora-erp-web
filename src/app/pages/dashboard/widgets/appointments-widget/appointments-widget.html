@@ -1,0 +1,35 @@
+<app-dash-card title="Appointments and treatment" [subtitle]="'Today\'s visits by hour · ' + (data()?.today?.length ?? 0) + ' booked'" icon="bi-calendar2-check" tone="green"
+               [link]="canOpen('appoinment') ? '/app/appointments' : null" linkLabel="View all"
+               [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()"
+               [empty]="!hours().length" emptyText="No visits booked for today. New bookings will show here." emptyIcon="bi-calendar2-x">
+  @if (hours().length) {
+    <ul class="dash-wave-legend" aria-label="Show or hide a status">
+      @for (s of series(); track s.key) {
+        <li>
+          <button type="button" [class.is-off]="hidden().has(s.key)" [class.is-zero]="!s.total" [disabled]="!s.total" [style.--c]="s.color" [attr.aria-pressed]="!hidden().has(s.key)" (click)="toggle(s.key)">
+            <span class="dash-wave-swatch" aria-hidden="true"></span>{{ s.label }} <b>{{ s.total }}</b>
+          </button>
+        </li>
+      }
+    </ul>
+
+    <div class="dash-wave-chart is-multi" role="img" [attr.aria-label]="summary()">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        @for (s of visible(); track s.key) { <path class="dash-wave-area" [attr.d]="s.area" [style.fill]="s.color" /> }
+        @for (s of visible(); track s.key) { <path class="dash-wave-line" [attr.d]="s.line" [style.stroke]="s.color" /> }
+      </svg>
+      @for (s of visible(); track s.key) {
+        @for (v of s.values; track $index) {
+          @if (v) { <span class="dash-wave-pt" [style.left.%]="x($index)" [style.top.%]="y(v)" [style.--c]="s.color" [title]="s.label + ' at ' + hours()[$index].label + ': ' + v"></span> }
+        }
+      }
+      <!-- hover columns: what each hour holds -->
+      <div class="dash-wave-cols">
+        @for (h of hours(); track h.hour) { <span [title]="h.title"></span> }
+      </div>
+    </div>
+    <div class="dash-wave-axis" aria-hidden="true">
+      @for (h of hours(); track h.hour) { <small>{{ h.label }}</small> }
+    </div>
+  }
+</app-dash-card>

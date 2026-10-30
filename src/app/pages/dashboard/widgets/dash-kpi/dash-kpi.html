@@ -1,0 +1,15 @@
+<article class="dash-kpi" [class]="'tone-' + tone()">
+  <div class="dash-kpi-top">
+    <span class="dash-kpi-icon"><i class="bi" [class]="icon()" aria-hidden="true"></i></span>
+    @if (change() !== null) {
+      <span class="dash-trend" [class.is-good]="good()" [class.is-bad]="!good() && change() !== 0"
+            [attr.aria-label]="'Change vs previous period ' + change() + '%'">
+        <i class="bi" [class]="(change() ?? 0) >= 0 ? 'bi-arrow-up-right' : 'bi-arrow-down-right'" aria-hidden="true"></i>
+        {{ abs() }}%
+      </span>
+    }
+  </div>
+  <strong class="dash-kpi-value">{{ value() }}</strong>
+  <span class="dash-kpi-label">{{ label() }}</span>
+  @if (hint()) { <small class="dash-kpi-hint">{{ hint() }}</small> }
+</article>

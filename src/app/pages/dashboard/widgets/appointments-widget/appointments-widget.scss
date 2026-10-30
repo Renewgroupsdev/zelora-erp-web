@@ -1,0 +1,34 @@
+/* AppointmentsWidget: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+
+.dash-page {
+  // appointments: one smooth wave per visit status across today's hours
+  .dash-wave-legend {
+    list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px;
+    button {
+      display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; cursor: pointer;
+      border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); background: color-mix(in srgb, var(--c) 9%, var(--dash-surface));
+      color: var(--text-dark); font-size: 12px; font-weight: 500; transition: opacity .15s ease, background .15s ease;
+      b { font-weight: 700; color: var(--c); }
+      &:hover:not(:disabled) { background: color-mix(in srgb, var(--c) 16%, var(--dash-surface)); }
+      &.is-off { opacity: .45; background: transparent; .dash-wave-swatch { background: transparent; } }
+      &.is-zero { opacity: .4; cursor: default; }
+    }
+  }
+  .dash-wave-swatch { width: 10px; height: 10px; border-radius: 50%; background: var(--c); border: 2px solid var(--c); }
+
+  .dash-wave-chart {
+    position: relative; height: 200px; margin-top: 4px; border-bottom: 1px solid var(--dash-line);
+    background: repeating-linear-gradient(to top, transparent 0 39px, color-mix(in srgb, var(--dash-line) 70%, transparent) 39px 40px);
+    svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  }
+  .dash-wave-area { stroke: none; fill-opacity: .1; }
+  .dash-wave-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .dash-wave-pt {
+    position: absolute; z-index: 1; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%;
+    background: var(--dash-surface); border: 2.5px solid var(--c); box-shadow: 0 1px 4px color-mix(in srgb, var(--c) 45%, transparent);
+  }
+  .dash-wave-cols { position: absolute; inset: 0; z-index: 2; display: flex;
+    span { flex: 1 1 0; border-radius: 6px; &:hover { background: color-mix(in srgb, var(--primary) 6%, transparent); } } }
+  .dash-wave-axis { display: flex; justify-content: space-between; margin-top: 4px;
+    small { flex: 0 0 0; display: flex; justify-content: center; font-size: 10.5px; color: var(--text-muted); white-space: nowrap; } }
+}

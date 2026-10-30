@@ -217,11 +217,18 @@
 .ev-time { font-weight: 700; opacity: .85; margin-right: 5px; }
 
 /* ---------- Week / Day time grid ---------- */
+// No height cap: the grid grows to its full day and the page's own scrollbar is the only vertical one. With no
+// scrolling box here the sticky day header sticks to the page while scrolling. Narrow screens, where the week can't
+// fit, scroll the grid sideways only.
 .tg-scroll {
-  max-height: 640px;
-  overflow: auto;
+  overflow: visible;
   border: 1px solid var(--border-soft);
   border-radius: 12px;
+
+  @media (max-width: 1100px) {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
 }
 
 .tg {
@@ -357,31 +364,6 @@
 }
 
 .day-view .tg-ev { padding: 6px 10px; font-size: 12.5px; }
-
-/* A crowded slot: one block with the count and the status mix */
-.tg-group {
-  left: 2px;
-  right: 2px;
-  --ev-fg: var(--primary-dark);
-  --ev-bg: var(--primary-soft);
-  border: 1px solid var(--primary-border);
-  border-left: 3px solid var(--primary);
-
-  .ev-line { display: flex; align-items: center; gap: 4px; width: 100%; }
-  .grp-dots { display: inline-flex; gap: 3px; margin-left: auto; flex-shrink: 0; }
-  .grp-dot {
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
-    display: grid;
-    place-items: center;
-    border-radius: 999px;
-    background: var(--ev-bg);
-    color: var(--ev-fg);
-    font-size: 9.5px;
-    font-weight: 700;
-  }
-}
 
 .tg-now {
   position: absolute;

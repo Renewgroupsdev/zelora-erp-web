@@ -1,0 +1,59 @@
+/* KpiStrip: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+
+.dash-page {
+  /* ------------------------------------------------------------ figure cards */
+  .dash-stats {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--dash-gap);
+    &.is-refreshing { opacity: .75; transition: opacity .2s ease; }
+  }
+  .dash-stat {
+    position: relative; overflow: hidden; min-width: 0;
+    display: flex; flex-direction: column; gap: 6px; padding: 16px;
+    border-radius: var(--dash-radius); border: 1px solid var(--dash-line);
+    background:
+      radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--tone-b, var(--primary)) 12%, transparent), transparent 60%),
+      var(--dash-surface);
+    box-shadow: var(--dash-shadow);
+    transition: transform .2s ease, box-shadow .2s ease;
+    &:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -18px color-mix(in srgb, var(--tone-b, var(--primary)) 55%, transparent); }
+    &.is-skeleton { gap: 10px; min-height: 140px; }
+  }
+  .dash-stat-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .dash-stat-icon {
+    flex: 0 0 auto; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; font-size: 18px; color: #fff;
+    background: linear-gradient(140deg, var(--tone-a), var(--tone-b));
+    box-shadow: 0 6px 14px -6px var(--tone-b);
+  }
+  .dash-stat-label { font-size: 13px; font-weight: 600; color: var(--text-dark); line-height: 1.25; }
+  .dash-stat-value { margin-top: 4px; font-size: clamp(22px, 1.8vw, 28px); font-weight: 700; letter-spacing: -.6px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dash-stat-change {
+    display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; font-weight: 600; color: var(--status-green-text);
+    small { margin-left: 4px; font-weight: 400; color: var(--text-muted); font-size: 11.5px; }
+    &.is-down { color: var(--status-red-text); }
+    &.is-flat { font-weight: 400; color: var(--text-muted); }
+  }
+  .dash-stat-compare {
+    display: flex; flex-direction: column; gap: 3px; margin-top: 6px;
+    span { display: block; height: 6px; border-radius: 6px; transition: width .6s ease; }
+    .is-now { background: linear-gradient(90deg, var(--tone-a), var(--tone-b)); }
+    .is-prev { background: color-mix(in srgb, var(--tone-b) 18%, transparent); }
+  }
+  .dash-stat-hint { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1em; }
+
+  @container dash-main (max-width: 1100px) {
+    .dash-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @container dash-main (max-width: 760px) {
+    .dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 720px) {
+    .dash-stat { padding: 14px; }
+    .dash-stat-icon { width: 36px; height: 36px; font-size: 15px; }
+  }
+  @media (max-width: 420px) {
+    .dash-stats { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media print {
+    .dash-stat { box-shadow: none; background: #fff; break-inside: avoid; }
+  }
+}

@@ -1,0 +1,33 @@
+<app-dash-card title="Revenue and growth overview" subtitle="Last 6 months · collections against purchases and payroll" icon="bi-graph-up-arrow" tone="green"
+               [link]="canOpen('accounts-management') ? '/app/accounts/day-book' : null" linkLabel="View all"
+               [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()">
+  @if (data(); as f) {
+    <div class="dash-overview">
+      <div class="dash-chart">
+        <app-bf-columns [data]="trend()" aName="Income" bName="Expense" [money]="true" emptyText="No income or expense recorded yet" />
+      </div>
+      <ul class="dash-metrics">
+        <li class="tone-green">
+          <span class="dash-metric-icon"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
+          <div><span>Total income</span><strong>{{ inrShort(f.income.value) }}</strong>
+            @if (f.income.change !== null) { <small [class]="f.income.change >= 0 ? 'txt-green' : 'txt-red'"><i class="bi" [class]="f.income.change >= 0 ? 'bi-arrow-up' : 'bi-arrow-down'" aria-hidden="true"></i> {{ abs(f.income.change) }}%</small> }
+          </div>
+        </li>
+        <li class="tone-red">
+          <span class="dash-metric-icon"><i class="bi bi-cart3" aria-hidden="true"></i></span>
+          <div><span>Total expense</span><strong>{{ inrShort(f.expense.value) }}</strong>
+            @if (f.expense.change !== null) { <small [class]="f.expense.change <= 0 ? 'txt-green' : 'txt-red'"><i class="bi" [class]="f.expense.change >= 0 ? 'bi-arrow-up' : 'bi-arrow-down'" aria-hidden="true"></i> {{ abs(f.expense.change) }}%</small> }
+          </div>
+        </li>
+        <li class="tone-blue">
+          <span class="dash-metric-icon"><i class="bi bi-percent" aria-hidden="true"></i></span>
+          <div><span>Profit margin</span><strong [class]="f.net.value >= 0 ? '' : 'txt-red'">{{ f.margin }}%</strong><small>Net {{ inrShort(f.net.value) }}</small></div>
+        </li>
+        <li class="tone-orange">
+          <span class="dash-metric-icon"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span>
+          <div><span>To collect</span><strong>{{ inrShort(f.outstanding) }}</strong><small>Open plan balances</small></div>
+        </li>
+      </ul>
+    </div>
+  }
+</app-dash-card>

@@ -1,0 +1,10 @@
+/* MyWorkWidget: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+
+.dash-page {
+  .dash-facts { list-style: none; margin: 0 0 4px; padding: 0;
+    li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 5px 0; font-size: 12.5px; border-bottom: 1px solid var(--dash-line); }
+    li:last-child { border-bottom: 0; }
+    span:first-child { color: var(--text-muted); }
+  }
+  .dash-stars { color: #e0a526; letter-spacing: 1px; }
+}

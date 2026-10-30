@@ -1,0 +1,23 @@
+/* ApprovalsWidget: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+
+.dash-page {
+  /* approvals: queues with work are full rows, empty queues collapse to a single line */
+  .dash-queues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px;
+    > li { padding: 8px 12px; border-radius: 12px; border: 1px solid var(--dash-line); background: color-mix(in srgb, var(--primary) 3%, var(--dash-surface)); }
+    > li.is-empty { padding: 5px 12px; opacity: .65; background: transparent; }
+  }
+  .dash-queue-head { display: flex; align-items: center; gap: 8px; }
+  .dash-queue-icon { color: var(--primary); font-size: 14px; }
+  .dash-queue-label { flex: 1 1 auto; font-size: 13px; font-weight: 500; }
+  .dash-count {
+    min-width: 24px; padding: 1px 8px; border-radius: var(--radius-pill, 999px); text-align: center; font-size: 12px; font-weight: 600;
+    background: var(--status-red-bg); color: var(--status-red-text);
+    &.is-zero { background: var(--status-gray-bg); color: var(--status-gray-text); }
+  }
+  .dash-queue-items { list-style: none; margin: 5px 0 0; padding: 0 0 0 22px; display: flex; flex-direction: column; gap: 4px;
+    li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; font-size: 12px; }
+    strong { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    small { grid-column: 1; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    time { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--text-muted); font-size: 11.5px; }
+  }
+}

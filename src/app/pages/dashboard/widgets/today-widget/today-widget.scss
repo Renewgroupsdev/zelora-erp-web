@@ -1,0 +1,22 @@
+/* TodayWidget: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+
+.dash-page {
+  // today's overview (rail)
+  .dash-today-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px;
+    h2 { font-size: 15.5px; font-weight: 600; } }
+  .dash-date-pill { padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 500; background: var(--status-green-bg); color: var(--status-green-text); }
+  .dash-today-ring { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--dash-line);
+    svg { flex: 0 0 auto; width: 92px; height: 92px; }
+    text { font-size: 20px; font-weight: 700; fill: var(--text-dark); }
+    div { display: flex; flex-direction: column; gap: 2px; }
+    strong { font-size: 14px; font-weight: 600; }
+    span { font-size: 12px; color: var(--text-muted); }
+  }
+  .dash-today-rows { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column;
+    li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 9px 0; font-size: 13px; border-bottom: 1px solid var(--dash-line); }
+    li:last-child { border-bottom: 0; padding-bottom: 0; }
+    b { margin-left: auto; font-weight: 700; }
+  }
+  .dash-row-bar { flex-basis: 100%; height: 5px; border-radius: 5px; background: var(--tone-bg); overflow: hidden;
+    span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--tone-a), var(--tone-b)); transition: width .6s ease; } }
+}

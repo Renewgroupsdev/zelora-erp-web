@@ -1,0 +1,38 @@
+<section class="dash-card dash-today" [class.is-refreshing]="refreshing()" aria-labelledby="dash-today-title">
+  <header class="dash-today-head">
+    <h2 id="dash-today-title">Today's overview</h2>
+    <span class="dash-date-pill">{{ todayShort }}</span>
+  </header>
+
+  @if (loading()) {
+    <div class="dash-skeleton"><span class="sk sk-lg"></span><span class="sk"></span><span class="sk sk-md"></span></div>
+  } @else if (error()) {
+    <div class="dash-state is-error" role="alert">
+      <i class="bi bi-exclamation-octagon" aria-hidden="true"></i><p>{{ error() }}</p>
+      <button type="button" class="dash-btn" (click)="retry()">Try again</button>
+    </div>
+  } @else if (data(); as k) {
+    <div class="dash-today-ring">
+      <svg viewBox="0 0 100 100" role="img" [attr.aria-label]="'Team attendance today ' + attendance() + '%'">
+        <defs><linearGradient id="dash-ring-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3fd07f" /><stop offset="1" stop-color="#128a52" /></linearGradient></defs>
+        <circle cx="50" cy="50" r="42" class="dash-ring-track" />
+        <circle cx="50" cy="50" r="42" class="dash-ring-arc" pathLength="100" [attr.stroke-dasharray]="attendance() + ' 100'" transform="rotate(-90 50 50)" />
+        <text x="50" y="50" text-anchor="middle" dominant-baseline="central">{{ attendance() }}%</text>
+      </svg>
+      <div><strong>Team attendance</strong><span>{{ k.present_today.value }} of {{ k.headcount.value }} present today</span></div>
+    </div>
+
+    <ul class="dash-today-rows">
+      <li class="tone-green">
+        <span class="dash-row-dot" aria-hidden="true"></span><span>Appointments today</span><b>{{ k.appointments_today.value }}</b>
+      </li>
+      <li class="tone-blue">
+        <span class="dash-row-dot" aria-hidden="true"></span><span>Lead conversion</span><b>{{ k.conversion_rate.value }}%</b>
+        <span class="dash-row-bar"><span [style.width.%]="clamp(k.conversion_rate.value)"></span></span>
+      </li>
+      <li class="tone-purple">
+        <span class="dash-row-dot" aria-hidden="true"></span><span>Active customers</span><b>{{ k.active_customers.value.toLocaleString('en-IN') }}</b>
+      </li>
+    </ul>
+  }
+</section>

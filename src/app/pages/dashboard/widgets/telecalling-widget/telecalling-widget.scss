@@ -1,0 +1,14 @@
+/* TelecallingWidget: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+
+.dash-page {
+  .dash-table-wrap { min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+  .dash-table {
+    width: 100%; border-collapse: collapse; font-size: 12.5px;
+    th { text-align: left; padding: 7px 10px; font-size: 12px; font-weight: 500; color: var(--table-header-text);
+      background: var(--table-header-bg); white-space: nowrap; }
+    th:first-child { border-top-left-radius: 8px; } th:last-child { border-top-right-radius: 8px; }
+    td { padding: 7px 10px; border-bottom: 1px solid var(--table-border); white-space: nowrap; }
+    tbody tr:hover td { background: var(--table-row-hover-bg); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+  }
+}

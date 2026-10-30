@@ -11,14 +11,15 @@ const SLOT_HEIGHT = { week: 30, day: 54 };
 const DEFAULT_START_HOUR = 9;
 const DEFAULT_END_HOUR = 20;
 
-/** Most bookings shown side by side in one slot; more than this collapse into one "N bookings" block. */
-const MAX_SIDE_BY_SIDE = { week: 2, day: 4 };
+/** Height (px) of one booking chip; a slot holding several bookings grows to stack them all, one under another. */
+const CHIP_HEIGHT = { week: 24, day: 50 };
 
-/** A block on the slot grid: one booking, or (`group`) every booking of a crowded slot. */
+interface SlotRow { minutes: number; label: string; hourStart: boolean; top: number; height: number }
+
+/** One booking's chip on the slot grid. */
 interface PlacedBlock {
   key: string;
   appts: FlowAppointmentRecord[];
-  group: boolean;
   /** Slot start (minutes from midnight). */
   minutes: number;
   top: number;
@@ -74,7 +75,7 @@ function minutesOf(time: string | null | undefined): number | null {
 
 /**
  * Appointment slot calendar. Month shows each day's bookings; Week / Day lay them out on a 30-minute slot grid
- * (overlapping bookings side by side). A free slot in the future books a new appointment at that date and time.
+ * (every booking on its own chip, a busy slot growing to stack them). A free slot in the future books a new appointment at that date and time.
  */
 @Component({
   selector: 'app-appointment-calendar',
@@ -191,7 +192,7 @@ export class AppointmentCalendar implements OnInit, OnDestroy {
   }
 
   /** Columns + slot rows for the week / day grid (computed once per change detection from one pass). */
-  get grid(): { days: DayColumn[]; slots: { minutes: number; label: string; hourStart: boolean }[]; startMin: number; nowTop: number | null } {
+  get grid(): { days: DayColumn[]; slots: SlotRow[]; startMin: number; nowTop: number | null } {
     const { from, to } = calendarRange(this.view === 'day' ? 'day' : 'week', this.date);
     const isos: string[] = [];
     const dates: Date[] = [];
@@ -205,10 +206,18 @@ export class AppointmentCalendar implements OnInit, OnDestroy {
     const startMin = start * 60;
     const today = toIsoDate(this.now);
 
-    const slots = [];
+    // Each day's bookings per slot; a slot row is as tall as the busiest day needs to stack its bookings.
+    const daySlots = isos.map(iso => this.bySlot(byDate.get(iso) ?? [], startMin));
+    const chip = this.view === 'day' ? CHIP_HEIGHT.day : CHIP_HEIGHT.week;
+    const slots: SlotRow[] = [];
+    let top = 0;
     for (let m = startMin; m < end * 60; m += SLOT_MINUTES) {
-      slots.push({ minutes: m, label: m % 60 === 0 ? this.formatMinutes(m) : '', hourStart: m % 60 === 0 });
+      const most = Math.max(0, ...daySlots.map(s => s.get(m)?.length ?? 0));
+      const height = Math.max(this.slotHeight, most * chip + 4);
+      slots.push({ minutes: m, label: m % 60 === 0 ? this.formatMinutes(m) : '', hourStart: m % 60 === 0, top, height });
+      top += height;
     }
+    const slotAt = new Map(slots.map(s => [s.minutes, s]));
 
     const days = dates.map((date, i) => ({
       date,
@@ -216,58 +225,40 @@ export class AppointmentCalendar implements OnInit, OnDestroy {
       isToday: isos[i] === today,
       isPast: isos[i] < today,
       count: byDate.get(isos[i])?.length ?? 0,
-      placed: this.layout(isos[i], byDate.get(isos[i]) ?? [], startMin),
+      placed: this.layout(daySlots[i], slotAt, chip),
     }));
 
     const nowMin = this.now.getHours() * 60 + this.now.getMinutes();
-    const nowTop = isos.includes(today) && nowMin >= startMin && nowMin <= end * 60
-      ? ((nowMin - startMin) / SLOT_MINUTES) * this.slotHeight : null;
+    const nowSlot = slotAt.get(Math.floor(nowMin / SLOT_MINUTES) * SLOT_MINUTES);
+    const nowTop = isos.includes(today) && nowSlot
+      ? nowSlot.top + ((nowMin - nowSlot.minutes) / SLOT_MINUTES) * nowSlot.height : null;
 
     return { days, slots, startMin, nowTop };
   }
 
-  /**
-   * Places one day's bookings slot by slot. A slot with a few bookings shows them side by side; a crowded one
-   * (more than fit legibly) becomes a single "N bookings" block that opens them all in the side panel.
-   */
-  private layout(iso: string, list: FlowAppointmentRecord[], startMin: number): PlacedBlock[] {
-    const rowHeight = this.slotHeight;
-    const maxCols = this.view === 'day' ? MAX_SIDE_BY_SIDE.day : MAX_SIDE_BY_SIDE.week;
-
-    const bySlot = new Map<number, FlowAppointmentRecord[]>();
+  /** One day's bookings keyed by their slot start (bookings without a time go in the first slot). */
+  private bySlot(list: FlowAppointmentRecord[], startMin: number): Map<number, FlowAppointmentRecord[]> {
+    const out = new Map<number, FlowAppointmentRecord[]>();
     for (const appt of list) {
       const m = minutesOf(appt.appointment_time) ?? startMin;
       const slot = Math.floor(m / SLOT_MINUTES) * SLOT_MINUTES;
-      bySlot.set(slot, [...(bySlot.get(slot) ?? []), appt]);
+      out.set(slot, [...(out.get(slot) ?? []), appt]);
     }
+    return out;
+  }
 
+  /** Every booking gets its own chip, stacked under the others of its slot (as the month view lists them). */
+  private layout(bySlot: Map<number, FlowAppointmentRecord[]>, slotAt: Map<number, SlotRow>, chip: number): PlacedBlock[] {
     const placed: PlacedBlock[] = [];
     for (const [minutes, appts] of bySlot) {
-      const top = ((minutes - startMin) / SLOT_MINUTES) * rowHeight;
-      const base = { minutes, top, height: rowHeight - 2 };
-      if (appts.length > maxCols) {
-        placed.push({ ...base, key: `${iso}-${minutes}-group`, appts, group: true, left: 0, width: 100 });
-        continue;
-      }
+      const row = slotAt.get(minutes);
+      if (!row) continue;
       appts.forEach((appt, i) => placed.push({
-        ...base, key: `${appt.id}`, appts: [appt], group: false, left: (i / appts.length) * 100, width: 100 / appts.length,
+        key: `${appt.id}`, appts: [appt], minutes,
+        top: row.top + 2 + i * chip, height: chip - 2, left: 0, width: 100,
       }));
     }
     return placed;
-  }
-
-  /** Short status mix for a group block, e.g. "6 scheduled · 4 in progress". */
-  groupSummary(appts: FlowAppointmentRecord[]): { cls: string; n: number }[] {
-    const counts = new Map<string, number>();
-    for (const a of appts) {
-      const cls = this.statusClass(a.status);
-      counts.set(cls, (counts.get(cls) ?? 0) + 1);
-    }
-    return [...counts].map(([cls, n]) => ({ cls, n }));
-  }
-
-  firstNames(appts: FlowAppointmentRecord[]): string {
-    return appts.map(a => a.name.split(/\s+/)[0]).join(', ');
   }
 
   // ---------------------------------------------------------------- actions

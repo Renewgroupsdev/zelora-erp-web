@@ -1,0 +1,22 @@
+<app-dash-card title="Franchise and branch overview" subtitle="Who is driving the business this period" icon="bi-shop" tone="green"
+               [link]="canOpen('branch-management') ? '/app/branches' : null" linkLabel="View all"
+               [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()"
+               [empty]="!data()?.units?.length" emptyText="No active branches or franchises." emptyIcon="bi-shop-window">
+  @if (data()) {
+    <ul class="dash-units">
+      @for (r of units(); track r.key) {
+        <li>
+          <div class="dash-unit-art" [class]="r.type === 'branch' ? 'tone-green' : 'tone-teal'" aria-hidden="true">
+            <i class="bi bi-buildings"></i>
+            <span class="dash-unit-type">{{ r.type === 'branch' ? 'Branch' : 'Franchise' }}</span>
+          </div>
+          <div class="dash-unit-body">
+            <strong><i class="bi bi-geo-alt-fill" aria-hidden="true"></i> {{ r.name }}</strong>
+            <span class="dash-unit-rev">{{ inrShort(r.revenue) }} <small>{{ r.share }}% of total</small></span>
+            <small class="dash-unit-stats">{{ r.leads }} leads · {{ r.appointments }} appt · {{ r.new_customers }} new</small>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</app-dash-card>

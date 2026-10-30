@@ -1,0 +1,33 @@
+<app-dash-card title="Stock Alerts" subtitle="Low stock and expiring batches" icon="bi-box-seam" tone="orange"
+               [link]="canOpen('purchase-management') ? '/app/inventory/stock' : null" linkLabel="Stock"
+               [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()">
+  @if (data(); as s) {
+    <div class="dash-figures">
+      <div><span>Stock value</span><strong>{{ inrShort(s.value) }}</strong><small>{{ s.units.toLocaleString('en-IN') }} units &middot; {{ s.products }} products</small></div>
+      <div><span>Low stock</span><strong [class.txt-orange]="s.low_stock_count > 0">{{ s.low_stock_count }}</strong><small>below {{ s.threshold }} units</small></div>
+      <div><span>Expiring</span><strong [class.txt-red]="s.expiring_count > 0">{{ s.expiring_count }}</strong><small>within 30 days</small></div>
+    </div>
+    @if (!s.low_stock.length && !s.expiring.length) {
+      <div class="dash-ok"><i class="bi bi-check2-circle" aria-hidden="true"></i> Stock levels are healthy - nothing low or expiring.</div>
+    }
+    @if (s.low_stock.length) {
+      <h3 class="dash-sub">Running low</h3>
+      <ul class="dash-list is-compact">
+        @for (r of s.low_stock; track $index) {
+          <li><div class="dash-list-main"><strong>{{ r.product }}</strong><small>{{ r.store }}</small></div><span class="dash-pill tone-orange">{{ r.qty }} left</span></li>
+        }
+      </ul>
+    }
+    @if (s.expiring.length) {
+      <h3 class="dash-sub">Expiring soon</h3>
+      <ul class="dash-list is-compact">
+        @for (r of s.expiring; track $index) {
+          <li>
+            <div class="dash-list-main"><strong>{{ r.product }}</strong><small>{{ r.store }} &middot; batch {{ r.batch }} &middot; {{ r.qty }} units</small></div>
+            <span class="dash-pill" [class]="r.expired ? 'tone-red' : 'tone-orange'">{{ r.expired ? 'Expired' : displayDate(r.expiry) }}</span>
+          </li>
+        }
+      </ul>
+    }
+  }
+</app-dash-card>

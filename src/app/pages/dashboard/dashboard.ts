@@ -1,24 +1,40 @@
 import { Component, DestroyRef, ViewEncapsulation, computed, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { BranchContextService } from '../../shared/common-services/branch-context.service';
 import { DASH_RANGES, DASH_WIDGETS, DashRange, DashWidgetKey } from '../../shared/models/dashboard.model';
-import { AppointmentsWidget } from './widgets/appointments-widget';
-import { ApprovalsWidget } from './widgets/approvals-widget';
-import { CustomerWidget } from './widgets/customer-widget';
-import { DoctorDayWidget } from './widgets/doctor-day-widget';
-import { FinanceWidget } from './widgets/finance-widget';
-import { FrontDeskWidget } from './widgets/front-desk-widget';
-import { KpiStrip } from './widgets/kpi-strip';
-import { LeadsWidget } from './widgets/leads-widget';
-import { MyDayWidget } from './widgets/my-day-widget';
-import { MyWorkWidget } from './widgets/my-work-widget';
-import { StockWidget } from './widgets/stock-widget';
-import { TeamWidget } from './widgets/team-widget';
-import { TelecallingWidget } from './widgets/telecalling-widget';
-import { UnitsWidget } from './widgets/units-widget';
+import { AppointmentsWidget } from './widgets/appointments-widget/appointments-widget';
+import { ApprovalsWidget } from './widgets/approvals-widget/approvals-widget';
+import { CustomerWidget } from './widgets/customer-widget/customer-widget';
+import { DoctorDayWidget } from './widgets/doctor-day-widget/doctor-day-widget';
+import { FinanceWidget } from './widgets/finance-widget/finance-widget';
+import { FrontDeskWidget } from './widgets/front-desk-widget/front-desk-widget';
+import { KpiStrip } from './widgets/kpi-strip/kpi-strip';
+import { LeadSourceWidget } from './widgets/lead-source-widget/lead-source-widget';
+import { LeadsWidget } from './widgets/leads-widget/leads-widget';
+import { TodayWidget } from './widgets/today-widget/today-widget';
+import { MyDayWidget } from './widgets/my-day-widget/my-day-widget';
+import { MyWorkWidget } from './widgets/my-work-widget/my-work-widget';
+import { StockWidget } from './widgets/stock-widget/stock-widget';
+import { TeamWidget } from './widgets/team-widget/team-widget';
+import { TelecallingWidget } from './widgets/telecalling-widget/telecalling-widget';
+import { UnitsWidget } from './widgets/units-widget/units-widget';
 
 const RANGE_KEY = 'zelora_dashboard_range';
 const AUTO_REFRESH_MS = 60_000; // the API caches each widget for a minute
+
+/** Quick links: a link shows only when the role can open its module (the slugs the widgets' drill-downs use). */
+const QUICK_LINKS: { label: string; icon: string; link: string; module: string; tone: string }[] = [
+  { label: 'Leads', icon: 'bi-person-lines-fill', link: '/app/lead-management', module: 'lead-management', tone: 'green' },
+  { label: 'Follow-ups', icon: 'bi-telephone-forward', link: '/app/follow-ups', module: 'follow-up', tone: 'blue' },
+  { label: 'Appointments', icon: 'bi-calendar2-check', link: '/app/appointments', module: 'appoinment', tone: 'orange' },
+  { label: 'Call center', icon: 'bi-headset', link: '/app/call-center', module: 'tele-caller', tone: 'purple' },
+  { label: 'Day book', icon: 'bi-journal-text', link: '/app/accounts/day-book', module: 'accounts-management', tone: 'green' },
+  { label: 'Stock', icon: 'bi-box-seam', link: '/app/inventory/stock', module: 'purchase-management', tone: 'red' },
+  { label: 'Attendance', icon: 'bi-person-check', link: '/app/hr/attendance', module: 'hr-management', tone: 'blue' },
+  { label: 'Branches', icon: 'bi-diagram-3', link: '/app/branches', module: 'branch-management', tone: 'purple' },
+];
 
 /**
  * Role based dashboard - the landing page after sign-in. Which sections show is decided by the Dashboard module's
@@ -37,12 +53,12 @@ const AUTO_REFRESH_MS = 60_000; // the API caches each widget for a minute
   selector: 'app-dashboard',
   standalone: true,
   imports: [
-    KpiStrip, FinanceWidget, LeadsWidget, AppointmentsWidget, UnitsWidget, TeamWidget, StockWidget, ApprovalsWidget,
+    NgTemplateOutlet, RouterLink, KpiStrip, TodayWidget, LeadSourceWidget, FinanceWidget, LeadsWidget, AppointmentsWidget, UnitsWidget, TeamWidget, StockWidget, ApprovalsWidget,
     TelecallingWidget, MyDayWidget, DoctorDayWidget, FrontDeskWidget, MyWorkWidget, CustomerWidget,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
-  // The widget components carry no styles of their own; this sheet styles them all (every rule under .dash-page).
+  // Shared dashboard styles (every rule under .dash-page); each widget adds its own sheet, scoped the same way.
   encapsulation: ViewEncapsulation.None,
 })
 export class Dashboard {
@@ -60,6 +76,14 @@ export class Dashboard {
   readonly greeting = computed(() => {
     const h = this.updatedAt().getHours();
     return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  });
+  readonly rangeLabel = computed(() => DASH_RANGES.find(r => r.key === this.range())?.label ?? '');
+  readonly subtitle = computed(() => {
+    if (this.isCustomer()) return 'Your treatments and coming visits.';
+    if (!this.isManager()) return 'Your day, starting with what needs you first.';
+    const r = this.range();
+    const when = r === 'today' ? 'today' : r === 'month' ? 'this month' : r === 'year' ? 'this year' : r === 'quarter' ? 'this quarter' : 'over the last ' + this.rangeLabel().toLowerCase();
+    return `Here's what's happening across the clinics ${when}.`;
   });
   readonly today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -101,6 +125,10 @@ export class Dashboard {
     const s = this.show();
     return s.customer || s.myDay || s.doctorDay || (s.frontDesk && !this.isManager());
   });
+  readonly quickLinks = computed(() => {
+    this.auth.permissions();
+    return this.isCustomer() ? [] : QUICK_LINKS.filter(q => this.auth.hasModuleAccess(q.module));
+  });
   readonly nothing = computed(() => !this.isManager() && !this.hasPersonal() && !this.show().myWork);
 
   constructor() {
@@ -119,6 +147,11 @@ export class Dashboard {
     this.range.set(range);
     this.updatedAt.set(new Date());
     try { localStorage.setItem(RANGE_KEY, range); } catch { /* private mode: not remembered */ }
+  }
+
+  /** The print stylesheet turns the page into a light report (dark panels go white, the ECG trace is hidden). */
+  exportReport(): void {
+    window.print();
   }
 
   refresh(): void {

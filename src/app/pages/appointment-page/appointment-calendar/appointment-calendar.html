@@ -72,7 +72,7 @@
         <div class="tg-body">
           <div class="tg-gutter">
             @for (s of g.slots; track s.minutes) {
-              <div class="tg-time" [style.height.px]="slotHeight">{{ s.label }}</div>
+              <div class="tg-time" [style.height.px]="s.height">{{ s.label }}</div>
             }
           </div>
 
@@ -80,7 +80,7 @@
             <div class="tg-col" [class.today]="day.isToday" [class.past]="day.isPast">
               @for (s of g.slots; track s.minutes) {
                 <button type="button" class="tg-slot" [class.hour]="s.hourStart" [class.bookable]="isBookable(day, s.minutes)"
-                        [style.height.px]="slotHeight" [disabled]="!isBookable(day, s.minutes)"
+                        [style.height.px]="s.height" [disabled]="!isBookable(day, s.minutes)"
                         (click)="bookSlot(day, s.minutes)"
                         [attr.aria-label]="'Book ' + day.iso + ' ' + formatMinutes(s.minutes)">
                   <span class="tg-plus"><i class="bi bi-plus-lg"></i> {{ formatMinutes(s.minutes) }}</span>
@@ -88,41 +88,22 @@
               }
 
               @for (p of day.placed; track p.key) {
-                @if (p.group) {
-                  <!-- Crowded slot: one block, all of its bookings open in the side panel -->
-                  <button type="button" class="tg-ev tg-group" [title]="p.appts.length + ' bookings: ' + firstNames(p.appts)"
-                          [style.top.px]="p.top" [style.height.px]="p.height"
-                          (click)="open(p.appts, $event)">
-                    <span class="ev-line">
-                      <span class="ev-time">{{ formatMinutes(p.minutes) }}</span>
-                      <strong>{{ p.appts.length }} bookings</strong>
-                      <span class="grp-dots">
-                        @for (s of groupSummary(p.appts); track s.cls) {
-                          <span class="grp-dot" [ngClass]="s.cls">{{ s.n }}</span>
-                        }
-                      </span>
+                <!-- Every booking on its own chip, stacked under the others of its slot. -->
+                @let a = p.appts[0];
+                <button type="button" class="tg-ev" [ngClass]="statusClass(a.status)" [title]="tooltip(a)"
+                        [style.top.px]="p.top" [style.height.px]="p.height"
+                        [style.left]="'calc(' + p.left + '% + 2px)'" [style.width]="'calc(' + p.width + '% - 4px)'"
+                        (click)="open([a], $event)">
+                  <span class="ev-line"><span class="ev-time">{{ formatTime(a.appointment_time) }}</span><strong>{{ a.name }}</strong></span>
+                  @if (view === 'day') {
+                    <span class="ev-meta">
+                      <i class="bi bi-magic"></i> {{ treatmentNames(a) || (a.category ? a.category + ' consultation' : 'Consultation') }}
+                      · <i class="bi bi-geo-alt-fill"></i> {{ a.branch_name || a.branch?.name || '-' }}
+                      · <i class="bi bi-telephone"></i> {{ a.mobile_no }}
                     </span>
-                    @if (view === 'day') {
-                      <span class="ev-meta">{{ firstNames(p.appts) }}</span>
-                    }
-                  </button>
-                } @else {
-                  @let a = p.appts[0];
-                  <button type="button" class="tg-ev" [ngClass]="statusClass(a.status)" [title]="tooltip(a)"
-                          [style.top.px]="p.top" [style.height.px]="p.height"
-                          [style.left]="'calc(' + p.left + '% + 2px)'" [style.width]="'calc(' + p.width + '% - 4px)'"
-                          (click)="open([a], $event)">
-                    <span class="ev-line"><span class="ev-time">{{ formatTime(a.appointment_time) }}</span><strong>{{ a.name }}</strong></span>
-                    @if (view === 'day') {
-                      <span class="ev-meta">
-                        <i class="bi bi-magic"></i> {{ treatmentNames(a) || (a.category ? a.category + ' consultation' : 'Consultation') }}
-                        · <i class="bi bi-geo-alt-fill"></i> {{ a.branch_name || a.branch?.name || '-' }}
-                        · <i class="bi bi-telephone"></i> {{ a.mobile_no }}
-                      </span>
-                      <span class="ev-status">{{ a.status }}</span>
-                    }
-                  </button>
-                }
+                    <span class="ev-status">{{ a.status }}</span>
+                  }
+                </button>
               }
 
               @if (day.isToday && g.nowTop !== null) {

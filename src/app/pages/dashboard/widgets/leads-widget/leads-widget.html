@@ -1,0 +1,52 @@
+<app-dash-card title="Lead funnel" subtitle="From new lead to paying customer" icon="bi-funnel" tone="green"
+               [link]="canOpen('lead-management') ? '/app/lead-management' : null" linkLabel="View details"
+               [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()"
+               [empty]="data()?.total === 0" emptyText="No leads came in during this period. New enquiries will show here." emptyIcon="bi-person-plus">
+  @if (data(); as l) {
+    <div class="dash-tiles">
+      @for (s of stages().slice(0, 4); track s.label) {
+        <div [class]="'tone-' + s.tone">
+          <strong>{{ s.value.toLocaleString('en-IN') }}</strong>
+          <span>{{ s.label }}</span>
+          <small>{{ s.ofPrior === null ? 'All leads' : s.ofPrior + '% of prior' }}</small>
+        </div>
+      }
+    </div>
+
+    <div class="dash-funnel-row">
+      @if (stages().length) {
+        <ol class="dash-taper" aria-label="Lead funnel">
+          @for (s of stages(); track s.label) {
+            <li [class]="'tone-' + s.tone" [style.--taper]="s.taper">
+              <i class="bi" [class]="s.icon" aria-hidden="true"></i>
+              <span class="dash-taper-label">{{ s.label }}</span>
+              <b>{{ s.value.toLocaleString('en-IN') }}</b>
+            </li>
+          }
+        </ol>
+      }
+
+      <div class="dash-sources">
+        <h3>By source</h3>
+        <div class="dash-sources-body">
+          <ul>
+            @for (s of sources(); track s.label) {
+              <li [class]="'tone-' + s.tone">
+                <span class="dash-row-dot" aria-hidden="true"></span>
+                <span class="dash-source-label">{{ s.label }}</span>
+                <b>{{ s.value }}</b>
+                <span class="dash-source-pct">{{ s.pct }}%</span>
+              </li>
+            } @empty { <li class="dash-muted">No sources yet</li> }
+          </ul>
+          <svg class="dash-mini-ring" viewBox="0 0 100 100" role="img" [attr.aria-label]="l.conversion_rate + '% of ' + l.total + ' leads converted'">
+            <circle cx="50" cy="50" r="40" class="dash-ring-track" />
+            <circle cx="50" cy="50" r="40" class="dash-ring-arc" pathLength="100" [attr.stroke-dasharray]="clamp(l.conversion_rate) + ' 100'" transform="rotate(-90 50 50)" />
+            <text x="50" y="45" text-anchor="middle" class="dash-ring-num">{{ l.total }}</text>
+            <text x="50" y="62" text-anchor="middle" class="dash-ring-cap">{{ l.conversion_rate }}% won</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  }
+</app-dash-card>

@@ -1,74 +1,210 @@
-<div class="dash-page">
-  <header class="dash-hero">
-    <div class="dash-hero-text">
-      <p class="dash-eyebrow">{{ today }}</p>
-      <h1>{{ greeting() }}@if (firstName()) {, {{ firstName() }}}</h1>
-      <div class="dash-hero-meta">
-        @if (roleName()) { <span class="dash-badge"><i class="bi bi-person-badge" aria-hidden="true"></i> {{ roleName() }}</span> }
-        @if (scopeLabel()) { <span class="dash-badge"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ scopeLabel() }}</span> }
+<div class="dash-page" [class.has-rail]="isManager()">
+  <div class="dash-main">
+    <header class="dash-hero">
+      <div class="dash-hero-text">
+        <h1>{{ greeting() }}@if (firstName()) {, {{ firstName() }}} <span class="dash-wave" aria-hidden="true">👋</span></h1>
+        <p class="dash-hero-sub">{{ subtitle() }}</p>
+        <div class="dash-hero-meta">
+          @if (scopeLabel()) { <span class="dash-badge"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i> {{ scopeLabel() }}</span> }
+          @if (!nothing() && !isCustomer()) {
+            <label class="dash-range">
+              <i class="bi bi-calendar2-week" aria-hidden="true"></i>
+              <span class="visually-hidden">Period</span>
+              <select [value]="range()" (change)="setRange($any($event.target).value)">
+                @for (r of ranges; track r.key) { <option [value]="r.key">{{ r.label }}</option> }
+              </select>
+              <i class="bi bi-chevron-down" aria-hidden="true"></i>
+            </label>
+          }
+          @if (!nothing()) {
+            <button type="button" class="dash-icon-btn" (click)="refresh()" aria-label="Refresh dashboard" title="Refresh">
+              <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+            </button>
+          }
+          @if (!nothing() && !isCustomer()) {
+            <button type="button" class="dash-export" (click)="exportReport()"><i class="bi bi-download" aria-hidden="true"></i> Export</button>
+          }
+        </div>
+        <span class="dash-updated"><span class="dash-live" aria-hidden="true"></span>{{ roleName() ? roleName() + ' · ' : '' }}Updated {{ updatedAt().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) }}</span>
       </div>
-    </div>
 
-    @if (!nothing()) {
-      <div class="dash-toolbar">
-        <!-- A customer's treatments are not period based: only the refresh button. -->
-        @if (!isCustomer()) {
-          <div class="dash-range" role="radiogroup" aria-label="Period">
-            @for (r of ranges; track r.key) {
-              <button type="button" role="radio" [attr.aria-checked]="range() === r.key" [class.is-active]="range() === r.key" (click)="setRange(r.key)">{{ r.label }}</button>
-            }
-          </div>
-        }
-        <button type="button" class="dash-icon-btn" (click)="refresh()" aria-label="Refresh dashboard" title="Refresh">
-          <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
-        </button>
-        <span class="dash-updated">Updated {{ updatedAt().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) }}</span>
+      <!-- Decoration: a product shot - pump bottle, amber serum and cream jar on a two-tier podium before an arch. -->
+      <div class="dash-hero-art" aria-hidden="true">
+        <svg class="dash-care" viewBox="0 0 440 170" preserveAspectRatio="xMaxYMax meet" focusable="false">
+          <defs>
+            <radialGradient id="dash-bokeh" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".9" /><stop offset="1" stop-color="#fff" stop-opacity="0" /></radialGradient>
+            <radialGradient id="dash-blush" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#f6d2bf" stop-opacity=".7" /><stop offset="1" stop-color="#f6d2bf" stop-opacity="0" /></radialGradient>
+            <linearGradient id="dash-arch" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f5ddcf" /><stop offset="1" stop-color="#efe5d8" /></linearGradient>
+            <linearGradient id="dash-amber" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#5c2e0b" /><stop offset=".18" stop-color="#9c5418" /><stop offset=".45" stop-color="#d98d34" />
+              <stop offset=".62" stop-color="#b8661f" /><stop offset=".9" stop-color="#6e3810" /><stop offset="1" stop-color="#4a2408" />
+            </linearGradient>
+            <linearGradient id="dash-shade-top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".3" /><stop offset=".25" stop-color="#000" stop-opacity="0" /></linearGradient>
+            <linearGradient id="dash-gold" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#8a6420" /><stop offset=".3" stop-color="#e9cf8a" /><stop offset=".5" stop-color="#fff3cf" />
+              <stop offset=".7" stop-color="#c99b45" /><stop offset="1" stop-color="#7a5418" />
+            </linearGradient>
+            <linearGradient id="dash-rubber" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#121a17" /><stop offset=".4" stop-color="#3a4a44" /><stop offset=".55" stop-color="#5d6f68" /><stop offset="1" stop-color="#0e1412" /></linearGradient>
+            <linearGradient id="dash-frost" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#d9dfdc" /><stop offset=".35" stop-color="#ffffff" /><stop offset=".7" stop-color="#eef2f0" /><stop offset="1" stop-color="#c7cfcb" />
+            </linearGradient>
+            <linearGradient id="dash-pump" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#b9d3c3" /><stop offset=".3" stop-color="#eef6f1" /><stop offset=".65" stop-color="#d6e8dd" /><stop offset="1" stop-color="#9fbcaa" />
+            </linearGradient>
+            <linearGradient id="dash-marble" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" /><stop offset="1" stop-color="#dfe3e0" /></linearGradient>
+            <linearGradient id="dash-marble-side" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c3c9c5" /><stop offset=".45" stop-color="#f4f6f5" /><stop offset="1" stop-color="#b9c0bc" /></linearGradient>
+            <linearGradient id="dash-sage-side" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8fb89c" /><stop offset=".45" stop-color="#d3e8da" /><stop offset="1" stop-color="#86ae93" /></linearGradient>
+            <linearGradient id="dash-sage-top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eaf5ee" /><stop offset="1" stop-color="#c4dfcd" /></linearGradient>
+            <linearGradient id="dash-drop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe2a3" /><stop offset=".6" stop-color="#e3a043" /><stop offset="1" stop-color="#a8621a" /></linearGradient>
+            <filter id="dash-shadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" /></filter>
+            <filter id="dash-blur" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="2.2" /></filter>
+          </defs>
+
+          <!-- light -->
+          <ellipse cx="342" cy="80" rx="150" ry="95" fill="url(#dash-blush)" />
+          <circle cx="232" cy="34" r="16" fill="url(#dash-bokeh)" opacity=".7" />
+          <circle cx="428" cy="22" r="20" fill="url(#dash-bokeh)" opacity=".6" />
+          <circle cx="215" cy="96" r="9" fill="url(#dash-bokeh)" opacity=".7" />
+
+          <!-- arched backdrop -->
+          <path d="M272 152 V82 A70 70 0 0 1 412 82 V152Z" fill="url(#dash-arch)" />
+          <path d="M280 152 V84 A62 62 0 0 1 404 84 V152" fill="none" stroke="#fff" stroke-width="1.2" opacity=".7" />
+          <ellipse cx="342" cy="30" rx="34" ry="10" fill="#fff" opacity=".35" filter="url(#dash-blur)" />
+
+          <!-- lower podium (marble) -->
+          <ellipse cx="342" cy="166" rx="104" ry="6" fill="#1f3a30" opacity=".18" filter="url(#dash-shadow)" />
+          <path d="M242 150 v12 a100 8 0 0 0 200 0 v-12Z" fill="url(#dash-marble-side)" />
+          <ellipse cx="342" cy="150" rx="100" ry="8" fill="url(#dash-marble)" />
+
+          <!-- upper podium (sage) -->
+          <ellipse cx="342" cy="150" rx="46" ry="4" fill="#1f3a30" opacity=".2" filter="url(#dash-blur)" />
+          <path d="M300 126 v22 a42 5 0 0 0 84 0 v-22Z" fill="url(#dash-sage-side)" />
+          <ellipse cx="342" cy="126" rx="42" ry="5" fill="url(#dash-sage-top)" />
+
+          <!-- pump bottle (lower tier, left) -->
+          <ellipse cx="277" cy="150" rx="19" ry="3" fill="#1f3a30" opacity=".25" filter="url(#dash-blur)" />
+          <rect x="262" y="80" width="30" height="70" rx="8" fill="url(#dash-pump)" />
+          <rect x="266" y="84" width="3.5" height="60" rx="1.75" fill="#fff" opacity=".75" />
+          <rect x="262" y="104" width="30" height="24" fill="#fff" opacity=".75" />
+          <text x="277" y="115" text-anchor="middle" class="dash-label-big is-pump">HAIR</text>
+          <text x="277" y="122" text-anchor="middle" class="dash-label-small is-pump">shampoo</text>
+          <rect x="269" y="72" width="16" height="9" rx="2" fill="url(#dash-gold)" />
+          <rect x="275" y="60" width="4" height="13" fill="url(#dash-gold)" />
+          <path d="M266 54 h24 q2 0 2 2 v4 q0 2 -2 2 h-24 q-2 0 -2 -2 v-1 h-8 v-3 h8 v-0 q0 -2 2 -2Z" fill="url(#dash-gold)" />
+
+          <!-- amber serum dropper (upper tier) -->
+          <ellipse cx="342" cy="126" rx="20" ry="3" fill="#3a1d06" opacity=".35" filter="url(#dash-blur)" />
+          <path d="M325 86 q0 -10 11 -11 h12 q11 1 11 11 v34 q0 6 -6 6 h-22 q-6 0 -6 -6Z" fill="url(#dash-amber)" />
+          <path d="M325 86 q0 -10 11 -11 h12 q11 1 11 11 v34 q0 6 -6 6 h-22 q-6 0 -6 -6Z" fill="url(#dash-shade-top)" />
+          <line x1="342" y1="62" x2="342" y2="120" stroke="#f3d9a8" stroke-width="1.8" opacity=".35" />
+          <rect x="329" y="84" width="3" height="38" rx="1.5" fill="#fff" opacity=".55" />
+          <rect x="330" y="96" width="24" height="17" rx="1.5" fill="#fbf6ec" />
+          <text x="342" y="105" text-anchor="middle" class="dash-label-big is-serum">SERUM</text>
+          <text x="342" y="110.5" text-anchor="middle" class="dash-label-small">skin · glow</text>
+          <rect x="331" y="65" width="22" height="10" rx="1.5" fill="url(#dash-gold)" />
+          <path d="M334 65 v-8 q0 -12 8 -12 q8 0 8 12 v8Z" fill="url(#dash-rubber)" />
+          <ellipse cx="339" cy="52" rx="1.6" ry="4.5" fill="#fff" opacity=".35" />
+
+          <!-- serum drop -->
+          <path d="M314 58 c0 0 -6 8 -6 12 a6 6 0 0 0 12 0 c0 -4 -6 -12 -6 -12Z" fill="url(#dash-drop)" />
+          <ellipse cx="312" cy="68.5" rx="1.5" ry="2.6" fill="#fff" opacity=".8" />
+
+          <!-- frosted cream jar (lower tier, right) -->
+          <ellipse cx="408" cy="150" rx="26" ry="3" fill="#1f3a30" opacity=".22" filter="url(#dash-blur)" />
+          <path d="M386 128 h46 v18 q0 4 -4 4 h-38 q-4 0 -4 -4Z" fill="url(#dash-frost)" />
+          <rect x="386" y="135" width="46" height="8" fill="#a9d8bd" opacity=".55" />
+          <text x="409" y="141" text-anchor="middle" class="dash-label-small is-jar">HYDRA CREAM</text>
+          <rect x="389" y="130" width="3.5" height="18" rx="1.75" fill="#fff" opacity=".8" />
+          <path d="M383 119 h52 v8 q0 2 -2 2 h-48 q-2 0 -2 -2Z" fill="url(#dash-gold)" />
+          <path d="M387 120 v8 M392 120 v8 M397 120 v8 M402 120 v8 M407 120 v8 M412 120 v8 M417 120 v8 M422 120 v8 M427 120 v8 M432 120 v8" stroke="#8a6420" stroke-width=".45" opacity=".35" />
+          <ellipse cx="409" cy="119" rx="26" ry="2.2" fill="#fff3cf" opacity=".85" />
+
+          <!-- glints -->
+          <g fill="#fff">
+            <path d="M372 70 l1.6 4.4 l4.4 1.6 l-4.4 1.6 l-1.6 4.4 l-1.6 -4.4 l-4.4 -1.6 l4.4 -1.6Z" opacity=".95" />
+            <path d="M250 64 l1.2 3.3 l3.3 1.2 l-3.3 1.2 l-1.2 3.3 l-1.2 -3.3 l-3.3 -1.2 l3.3 -1.2Z" opacity=".85" />
+            <path d="M424 100 l1 2.8 l2.8 1 l-2.8 1 l-1 2.8 l-1 -2.8 l-2.8 -1 l2.8 -1Z" opacity=".8" />
+          </g>
+        </svg>
+        <p class="dash-tagline">
+          <span class="dash-tagline-mark" aria-hidden="true"></span>
+          <strong>Flawless Looks,</strong>
+          <em>Endless Confidence</em>
+        </p>
+      </div>
+    </header>
+
+    @if (nothing()) {
+      <section class="dash-card dash-empty-page">
+        <i class="bi bi-shield-lock" aria-hidden="true"></i>
+        <h2>No dashboard sections for your role yet</h2>
+        <p>An administrator can turn them on in Settings &rarr; Roles &amp; Permissions &rarr; Assign Permissions &rarr; Dashboard.</p>
+      </section>
+    }
+
+    <!-- The login's own day comes first for operational roles and customers. -->
+    @if (hasPersonal()) {
+      <div class="dash-grid">
+        @if (show().customer) { <app-customer-widget class="w-12" [range]="range()" [tick]="tick()" /> }
+        @if (show().myDay) { <app-my-day-widget class="w-12" [range]="range()" [tick]="tick()" /> }
+        @if (show().doctorDay) { <app-doctor-day-widget class="w-12" [range]="range()" [tick]="tick()" /> }
+        @if (show().frontDesk && !isManager()) { <app-front-desk-widget class="w-12" [range]="range()" [tick]="tick()" /> }
       </div>
     }
-  </header>
 
-  @if (nothing()) {
-    <section class="dash-card dash-empty-page">
-      <i class="bi bi-shield-lock" aria-hidden="true"></i>
-      <h2>No dashboard sections for your role yet</h2>
-      <p>An administrator can turn them on in Settings &rarr; Roles &amp; Permissions &rarr; Assign Permissions &rarr; Dashboard.</p>
-    </section>
-  }
+    @if (!isManager()) {
+      <div class="dash-grid">
+        @if (show().myWork) { <app-my-work-widget class="w-12" [range]="range()" [tick]="tick()" /> }
+        @if (quickLinks().length && !nothing()) { <ng-container *ngTemplateOutlet="quick; context: { $implicit: 'w-12' }"></ng-container> }
+      </div>
+    }
 
-  <!-- The login's own day comes first for operational roles and customers. -->
-  @if (hasPersonal()) {
-    <div class="dash-grid">
-      @if (show().customer) { <app-customer-widget class="w-12" [range]="range()" [tick]="tick()" /> }
-      @if (show().myDay) { <app-my-day-widget class="w-12" [range]="range()" [tick]="tick()" /> }
-      @if (show().doctorDay) { <app-doctor-day-widget class="w-12" [range]="range()" [tick]="tick()" /> }
-      @if (show().frontDesk && !isManager()) { <app-front-desk-widget class="w-12" [range]="range()" [tick]="tick()" /> }
-    </div>
-  }
+    @if (isManager()) {
+      <app-kpi-strip [range]="range()" [tick]="tick()" />
 
-  @if (!isManager() && show().myWork) {
-    <div class="dash-grid"><app-my-work-widget class="w-12" [range]="range()" [tick]="tick()" /></div>
-  }
+      <div class="dash-grid">
+        @if (can('finance')) { <app-finance-widget [class]="can('leads') ? 'w-7' : 'w-12'" [range]="range()" [tick]="tick()" /> }
+        @if (can('leads')) { <app-lead-source-widget [class]="can('finance') ? 'w-5' : 'w-12'" [range]="range()" [tick]="tick()" /> }
+
+        @if (can('leads')) { <app-leads-widget [class]="can('appointments') ? 'w-7' : 'w-12'" [range]="range()" [tick]="tick()" /> }
+        @if (can('appointments')) { <app-appointments-widget [class]="can('leads') ? 'w-5' : 'w-12'" [range]="range()" [tick]="tick()" /> }
+
+        @if (can('units')) { <app-units-widget class="w-12" [range]="range()" [tick]="tick()" /> }
+
+        @if (show().frontDesk) { <app-front-desk-widget class="w-12" [range]="range()" [tick]="tick()" /> }
+
+        @if (can('telecalling')) { <app-telecalling-widget [class]="can('stock') ? 'w-7' : 'w-12'" [range]="range()" [tick]="tick()" /> }
+        @if (can('stock')) { <app-stock-widget [class]="can('telecalling') ? 'w-5' : 'w-12'" [range]="range()" [tick]="tick()" /> }
+
+        @if (can('hr')) { <app-team-widget class="w-12" [range]="range()" [tick]="tick()" /> }
+        @if (show().myWork) { <app-my-work-widget class="w-12" [range]="range()" [tick]="tick()" /> }
+      </div>
+    }
+  </div>
 
   @if (isManager()) {
-    <app-kpi-strip [range]="range()" [tick]="tick()" />
-
-    <div class="dash-grid">
-      @if (can('finance')) { <app-finance-widget [class]="can('approvals') ? 'w-8' : 'w-12'" [range]="range()" [tick]="tick()" /> }
-      @if (can('approvals')) { <app-approvals-widget [class]="can('finance') ? 'w-4' : 'w-12'" [range]="range()" [tick]="tick()" /> }
-
-      @if (can('leads')) { <app-leads-widget [class]="can('appointments') ? 'w-6' : 'w-12'" [range]="range()" [tick]="tick()" /> }
-      @if (can('appointments')) { <app-appointments-widget [class]="can('leads') ? 'w-6' : 'w-12'" [range]="range()" [tick]="tick()" /> }
-
-      @if (show().frontDesk) { <app-front-desk-widget class="w-12" [range]="range()" [tick]="tick()" /> }
-
-      @if (can('units')) { <app-units-widget class="w-12" [range]="range()" [tick]="tick()" /> }
-
-      @if (can('telecalling')) { <app-telecalling-widget [class]="can('stock') ? 'w-7' : 'w-12'" [range]="range()" [tick]="tick()" /> }
-      @if (can('stock')) { <app-stock-widget [class]="can('telecalling') ? 'w-5' : 'w-12'" [range]="range()" [tick]="tick()" /> }
-
-      @if (can('hr')) { <app-team-widget class="w-12" [range]="range()" [tick]="tick()" /> }
-
-      @if (show().myWork) { <app-my-work-widget class="w-12" [range]="range()" [tick]="tick()" /> }
-    </div>
+    <aside class="dash-rail" aria-label="Today and shortcuts">
+      <app-today-widget [range]="range()" [tick]="tick()" />
+      @if (can('approvals')) { <app-approvals-widget [range]="range()" [tick]="tick()" /> }
+      @if (quickLinks().length) { <ng-container *ngTemplateOutlet="quick; context: { $implicit: '' }"></ng-container> }    </aside>
   }
+
+  <ng-template #quick let-width>
+    <section class="dash-card dash-quick" [class]="width" aria-labelledby="dash-quick-title">
+      <header class="dash-card-head">
+        <span class="dash-card-icon tone-green"><i class="bi bi-grid-1x2" aria-hidden="true"></i></span>
+        <div class="dash-card-title"><h2 id="dash-quick-title">Quick links</h2></div>
+      </header>
+      <ul>
+        @for (q of quickLinks(); track q.link) {
+          <li>
+            <a [routerLink]="q.link">
+              <span class="dash-quick-icon" [class]="'tone-' + q.tone"><i class="bi" [class]="q.icon" aria-hidden="true"></i></span>
+              <span>{{ q.label }}</span>
+            </a>
+          </li>
+        }
+      </ul>
+    </section>
+  </ng-template>
 </div>

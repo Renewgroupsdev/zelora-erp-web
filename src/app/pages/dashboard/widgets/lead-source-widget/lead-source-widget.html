@@ -1,0 +1,8 @@
+<app-dash-card title="Lead source" subtitle="Where this period's leads came from" icon="bi-pie-chart" tone="green"
+               [link]="canOpen('lead-management') ? '/app/lead-management' : null" linkLabel="View details"
+               [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()"
+               [empty]="!data()?.by_source?.length" emptyText="No leads came in during this period." emptyIcon="bi-pie-chart">
+  @if (data(); as l) {
+    <div class="dash-source"><app-bf-donut [data]="l.by_source" centerLabel="Leads" emptyText="No sources yet" /></div>
+  }
+</app-dash-card>

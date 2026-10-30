@@ -1,0 +1,52 @@
+/* LeadsWidget: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+
+.dash-page {
+  // leads: one tile per stage + tapered funnel + sources
+  .dash-tiles {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px;
+    > div {
+      display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 10px 14px; border-radius: 14px;
+      background: var(--tone-bg); border: 1px solid color-mix(in srgb, var(--tone-fg) 18%, transparent);
+    }
+    strong { font-size: 22px; font-weight: 700; letter-spacing: -.4px; line-height: 1.15; color: var(--tone-fg); }
+    span { font-size: 12.5px; font-weight: 500; color: var(--tone-fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    small { font-size: 11.5px; color: var(--text-muted); }
+  }
+  .dash-funnel-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 16px; align-items: start; }
+  .dash-sources {
+    min-width: 0; padding-left: 16px; border-left: 1px solid var(--dash-line);
+    h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+  }
+  .dash-sources-body { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 12px; align-items: center;
+    ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+    li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; min-width: 0; }
+    b { margin-left: auto; font-weight: 600; }
+  }
+  .dash-source-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dash-source-pct { min-width: 40px; padding: 1px 6px; border-radius: 6px; text-align: center; font-size: 11.5px; font-weight: 600; background: var(--tone-bg); color: var(--tone-fg); }
+  .dash-taper {
+    list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+    li {
+      display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 38px;
+      margin: 0 var(--taper, 0%); padding: 6px 14px; border-radius: 10px;
+      clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 8px 100%);
+      background: linear-gradient(90deg, var(--tone-a), var(--tone-b));
+      color: #fff; font-size: 12.5px; font-weight: 600;
+      box-shadow: 0 6px 14px -10px var(--tone-b);
+    }
+    .dash-taper-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    b { font-size: 14px; }
+    small { font-size: 11px; font-weight: 500; opacity: .9; white-space: nowrap; }
+  }
+
+  @container dash-main (max-width: 760px) {
+    .dash-funnel-row { grid-template-columns: minmax(0, 1fr); }
+    .dash-sources { padding-left: 0; border-left: 0; }
+  }
+  @media (max-width: 720px) {
+    .dash-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; > div { padding: 8px 10px; } strong { font-size: 18px; } span { font-size: 11.5px; } }
+  }
+  @media (max-width: 420px) {
+    .dash-tiles { grid-template-columns: minmax(0, 1fr); }
+  }
+}
