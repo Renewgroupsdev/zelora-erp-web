@@ -5,6 +5,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSortModule, Sort, SortDirection } from '@angular/material/sort';
 import { MatTable, MatTableModule } from '@angular/material/table';
 import { PageLoader } from '../page-loader/page-loader';
+import { RecordHistory } from '../record-history/record-history';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CallerAvatar, CallerLogEntry, LeadCell, QuickAction, TableColumn, TablePageChangeEvent, TableReorderEvent, TableRow, TableTransferEvent } from '../../models/common-components.model';
 
@@ -37,7 +38,7 @@ const AVATAR_PALETTE_SIZE = 5;
 @Component({
   selector: 'app-common-table-card',
   standalone: true,
-  imports: [CommonModule, MatTableModule, MatPaginatorModule, MatSortModule, DragDropModule, PageLoader],
+  imports: [CommonModule, MatTableModule, MatPaginatorModule, MatSortModule, DragDropModule, PageLoader, RecordHistory],
   templateUrl: './common-table-card.html',
   styleUrl: './common-table-card.scss',
 })
@@ -50,6 +51,24 @@ export class CommonTableCard {
    * or a quick action key. A button without a slug here (or on the quick action) is always shown.
    */
   @Input() actionPermissions: Record<string, string> = {};
+
+  /**
+   * Audited model name (e.g. "Product", "Branch"): adds a History button to every row's action cell that opens the record's
+   * full audit trail. Needs the row's database id under `historyKey`; hidden for roles without view-audit-data-changes.
+   */
+  @Input() historyType = '';
+  @Input() historyKey = 'id';
+  @Input() historyTitleKey = 'name';
+
+  historyId(row: TableRow): string | number | null {
+    const v = row[this.historyKey];
+    return typeof v === 'string' || typeof v === 'number' ? v : null;
+  }
+
+  historyTitle(row: TableRow): string {
+    const v = row[this.historyTitleKey];
+    return typeof v === 'string' ? v : '';
+  }
 
   @Input() title = '';
   @Input() recordCountText = '';

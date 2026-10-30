@@ -46,8 +46,7 @@ export class Employees extends HrListBase implements OnInit {
     { key: 'actions', header: 'Action', type: 'quickActions', width: '6%', sortable: false },
   ];
 
-  override sortActive = 'empCode';
-  override sortDirection: 'asc' | 'desc' = 'asc';
+  override sortActive = ''; // API order = updated_at desc: new / edited rows lead
 
   readonly stats = computed<DetailCardData[]>(() => {
     const s = this.hr.employeeSummary();

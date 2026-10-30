@@ -3,6 +3,7 @@ import { CanActionDirective } from '../../../../shared/directives/can-action.dir
 import { Component, ElementRef, computed, inject, viewChild } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { AccountsService } from '../../../../shared/common-services/accounts.service';
+import { RecordHistory } from '../../../../shared/components/record-history/record-history';
 import { CASH_GROUPS, voucherAmount } from '../../../../shared/models/accounts.model';
 import { printDocument } from '../../../../shared/utils/export.util';
 import { amountInWords, displayDate } from '../../../../shared/utils/format.util';
@@ -11,7 +12,7 @@ import { amountInWords, displayDate } from '../../../../shared/utils/format.util
 @Component({
   selector: 'app-voucher-view',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CanActionDirective],
+  imports: [CommonModule, MatDialogModule, CanActionDirective, RecordHistory],
   templateUrl: './voucher-view.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', '../../../../shared/styles/erp-document.scss'],
 })

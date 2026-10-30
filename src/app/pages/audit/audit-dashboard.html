@@ -29,19 +29,19 @@
   } @else {
     <div class="au-kpis" [attr.aria-busy]="loading()">
       @let k = summary()?.kpis;
-      <div class="au-kpi"><span class="ico" style="background: var(--au-blue-bg); color: var(--au-blue)"><i class="bi bi-activity" aria-hidden="true"></i></span><div>
+      <div class="au-kpi blue"><span class="ico" style="background: var(--au-blue-bg); color: var(--au-blue)"><i class="bi bi-activity" aria-hidden="true"></i></span><div>
         @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.total ?? 0).toLocaleString() }}</div> }
         <div class="lbl">Total audit events</div></div></div>
-      <div class="au-kpi"><span class="ico" style="background: var(--au-green-bg); color: var(--au-green)"><i class="bi bi-check-circle" aria-hidden="true"></i></span><div>
+      <div class="au-kpi green"><span class="ico" style="background: var(--au-green-bg); color: var(--au-green)"><i class="bi bi-check-circle" aria-hidden="true"></i></span><div>
         @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.successful ?? 0).toLocaleString() }}</div> }
         <div class="lbl">Successful actions</div></div></div>
-      <div class="au-kpi"><span class="ico" style="background: var(--au-orange-bg); color: var(--au-orange)"><i class="bi bi-x-octagon" aria-hidden="true"></i></span><div>
+      <div class="au-kpi orange"><span class="ico" style="background: var(--au-orange-bg); color: var(--au-orange)"><i class="bi bi-x-octagon" aria-hidden="true"></i></span><div>
         @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.failed_or_denied ?? 0).toLocaleString() }}</div> }
         <div class="lbl">Failed or denied</div></div></div>
-      <div class="au-kpi"><span class="ico" style="background: var(--au-purple-bg); color: var(--au-purple)"><i class="bi bi-people" aria-hidden="true"></i></span><div>
+      <div class="au-kpi purple"><span class="ico" style="background: var(--au-purple-bg); color: var(--au-purple)"><i class="bi bi-people" aria-hidden="true"></i></span><div>
         @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.active_users ?? 0).toLocaleString() }}</div> }
         <div class="lbl">Active users</div><div class="hint">Staff / employees with events</div></div></div>
-      <div class="au-kpi"><span class="ico" style="background: var(--au-red-bg); color: var(--au-red)"><i class="bi bi-shield-exclamation" aria-hidden="true"></i></span><div>
+      <div class="au-kpi red"><span class="ico" style="background: var(--au-red-bg); color: var(--au-red)"><i class="bi bi-shield-exclamation" aria-hidden="true"></i></span><div>
         @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.high_severity ?? 0).toLocaleString() }}</div> }
         <div class="lbl">Warning / high severity</div><div class="hint">Flagged by rules, not confirmed incidents</div></div></div>
     </div>

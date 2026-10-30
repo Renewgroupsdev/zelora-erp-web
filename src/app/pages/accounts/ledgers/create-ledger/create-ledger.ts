@@ -27,19 +27,24 @@ export class CreateLedger {
   phone = '';
   gstin = '';
 
-  save(): void {
+  readonly saving = signal(false);
+
+  async save(): Promise<void> {
+    if (this.saving()) return;
     this.submitted.set(true);
     this.error.set(null);
     if (!this.name.trim() || this.phoneInvalid() || this.gstinInvalid()) return;
 
     const amount = Math.abs(Number(this.opening) || 0);
-    const result = this.acc.addLedger({
+    this.saving.set(true);
+    const result = await this.acc.addLedger({
       name: this.name,
       group: this.group,
       openingBalance: this.side === 'Cr' ? -amount : amount,
       phone: this.phone.trim(),
       gstin: this.gstin.trim().toUpperCase(),
     });
+    this.saving.set(false);
     if (typeof result === 'string') this.error.set(result);
     else this.dialogRef.close(result);
   }

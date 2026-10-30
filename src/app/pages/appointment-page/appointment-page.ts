@@ -83,7 +83,7 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
-  sortActive = 'schedule';
+  sortActive = '';
   sortDirection: SortDirection = 'asc';
   private searchTerm = '';
 
@@ -387,6 +387,7 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   }
 
   private sortRows(rows: TableRow[]): TableRow[] {
+    if (!this.sortActive) return rows;
     const dir = this.sortDirection === 'desc' ? -1 : 1;
     const key = this.sortActive === 'schedule' ? 'scheduleSort' : this.sortActive === 'total' ? 'totalSort' : this.sortActive;
     const value = (row: TableRow) => {

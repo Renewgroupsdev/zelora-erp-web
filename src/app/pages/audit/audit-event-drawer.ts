@@ -21,6 +21,8 @@ export class AuditEventDrawer {
   private readonly auth = inject(AuthService);
 
   readonly eventId = input.required<string>();
+  /** Open the caller's own event (/audit/me/events/{id}) instead of the admin endpoint. */
+  readonly own = input(false);
   readonly closed = output<void>();
   readonly showRequest = output<string>();
 
@@ -71,7 +73,7 @@ export class AuditEventDrawer {
     this.tab.set('details');
     this.history.set(null);
     this.calls.set(null);
-    this.audit.event(id).pipe(finalize(() => this.loading.set(false))).subscribe({
+    this.audit.event(id, this.own()).pipe(finalize(() => this.loading.set(false))).subscribe({
       next: e => {
         if (id === this.requested) {
           this.event.set(e);

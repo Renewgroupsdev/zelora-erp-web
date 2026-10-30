@@ -1,0 +1,269 @@
+<div class="au-backdrop" (click)="close()">
+  <div #panel class="au-drawer rh-drawer" role="dialog" aria-modal="true" aria-labelledby="rh-title" (click)="$event.stopPropagation()">
+    <header>
+      <div style="min-width: 0">
+        <h2 id="rh-title"><i class="bi bi-clock-history" aria-hidden="true"></i> Full history: {{ life()?.record?.label || title() || 'record' }}</h2>
+        <div class="sub">
+          @if (life(); as l) { {{ l.record.type_label || l.record.type }}@if (l.record.module) { · {{ l.record.module }}@if (l.record.sub_module) { / {{ l.record.sub_module }} } } · ID {{ l.record.id }} }
+          @else { Everything recorded about this record }
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center">
+        @if (life()) { <span class="au-badge" [ngClass]="stateTone()">{{ stateLabel() }}</span> }
+        <button #closeBtn type="button" class="au-btn sm" (click)="close()" aria-label="Close history"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+      </div>
+    </header>
+
+    <div class="body" [attr.aria-busy]="loading()">
+      @if (loading()) {
+        <div class="rh-tiles">@for (i of [1, 2, 3, 4]; track i) { <div class="au-skel" style="height: 62px; border-radius: 12px"></div> }</div>
+        @for (i of [1, 2, 3]; track i) { <div class="au-skel" style="height: 70px; border-radius: 12px"></div> }
+      } @else if (error(); as err) {
+        <div class="au-state" [class.denied]="err.kind === 'forbidden'" [class.error]="err.kind !== 'forbidden'" role="alert">
+          <i class="bi" [ngClass]="err.kind === 'forbidden' ? 'bi-lock-fill' : err.message.startsWith('No audit') ? 'bi-inbox' : 'bi-exclamation-octagon'" aria-hidden="true"></i>
+          <strong>{{ err.kind === 'forbidden' ? 'Access denied' : err.message.startsWith('No audit') ? 'Nothing recorded yet' : 'Could not load the history' }}</strong>{{ err.message }}
+          @if (err.kind !== 'forbidden' && !err.message.startsWith('No audit')) { <div><button type="button" class="au-btn" (click)="load()">Try again</button></div> }
+        </div>
+      } @else if (life(); as l) {
+        <div class="rh-tiles" role="list">
+          <div class="rh-tile" role="listitem"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i><div><b>{{ l.origin.stored ? 'Stored' : 'Tracked since' }}</b><span>{{ l.origin.display }}</span><em>by {{ l.origin.who.name || 'Unknown' }}</em></div></div>
+          <div class="rh-tile" role="listitem"><i class="bi bi-pencil-square" aria-hidden="true"></i><div><b>{{ l.summary.updates }} update{{ l.summary.updates === 1 ? '' : 's' }}</b><span>{{ l.summary.moves }} move{{ l.summary.moves === 1 ? '' : 's' }} / hand-off{{ l.summary.moves === 1 ? '' : 's' }}</span><em>{{ l.summary.events }} events in all</em></div></div>
+          <div class="rh-tile" role="listitem"><i class="bi bi-clock" aria-hidden="true"></i><div><b>Last: {{ l.summary.last_event }}</b><span>{{ l.summary.last_at | date: 'dd MMM yyyy, hh:mm a' }}</span><em>by {{ l.summary.last_by || 'Unknown' }}</em></div></div>
+          <div class="rh-tile" role="listitem"><i class="bi bi-people" aria-hidden="true"></i><div><b>{{ l.summary.people }} {{ l.summary.people === 1 ? 'person' : 'people' }}</b><span>touched this record</span>@if (l.summary.child_events) { <em>+{{ l.summary.child_events }} on its items</em> }</div></div>
+        </div>
+
+        @if (!l.summary.values_visible) {
+          <div class="au-note" role="note">Field values are hidden: your role does not include "View Field-level Changes". Who, when and which fields changed are still shown.</div>
+        }
+
+        <div class="au-tabs" role="tablist" aria-label="History sections" style="padding: 0">
+          @for (t of tabs(); track t.key) {
+            <button type="button" role="tab" [class.on]="tab() === t.key" [attr.aria-selected]="tab() === t.key" (click)="select(t.key)">
+              <i class="bi" [ngClass]="t.icon" aria-hidden="true"></i> {{ t.label }} @if (t.count !== undefined) { <span class="n">{{ t.count }}</span> }
+            </button>
+          }
+        </div>
+
+        <ng-template #stepTpl let-s let-withRecord="withRecord">
+          <li [ngClass]="stepTone(s.kind)">
+            <span class="pin" aria-hidden="true"><i class="bi" [ngClass]="stepIcon(s.kind)"></i></span>
+            <div class="card">
+              <div class="head">
+                <strong>@if (withRecord && s.record) { <span class="au-badge" [ngClass]="s.record.relation === 'self' ? 'green' : s.record.relation === 'upstream' ? 'purple' : 'teal'">{{ s.record.type_label || s.record.type }}@if (s.record.label) { : {{ s.record.label }} }</span> }
+                  {{ s.title }}</strong>
+                <span class="when">{{ s.display }} · {{ s.relative }}</span>
+              </div>
+              <div class="by"><span class="au-who"><span class="av" aria-hidden="true">{{ initials(s.who.name) }}</span></span> {{ s.who.name || 'Unknown' }}@if (s.who.role) { <span class="au-empty-val"> ({{ s.who.role }})</span> }@if (s.who.branch) { · {{ s.who.branch }} }</div>
+
+              @if (s.kind === 'stored' && (!withRecord || s.record?.relation === 'self')) {
+                <div class="where">
+                  <span class="tag"><i class="bi bi-display" aria-hidden="true"></i> Entered from {{ sourceLabel(life()!.origin.source) }}</span>
+                  @if (life()!.origin.record_branch) { <span class="tag"><i class="bi bi-diagram-3" aria-hidden="true"></i> Stored under {{ life()!.origin.record_branch }}</span> }
+                </div>
+                @if (life()!.origin.initial?.length) {
+                  <dl class="rh-initial">
+                    @for (i of life()!.origin.initial!; track i.label) { <dt>{{ i.label }}</dt><dd>{{ i.value }}</dd> }
+                  </dl>
+                }
+              }
+              @if (s.kind === 'moved') {
+                @for (m of s.items; track m.field) {
+                  <div class="move">
+                    <span class="lbl">{{ m.label }}</span>
+                    @if (m.masked) { <span class="au-empty-val">changed (hidden, sensitive)</span> }
+                    @else if (m.from !== null || m.to !== null) {
+                      @if (m.from) { <span class="au-old">{{ m.from }}</span> } @else { <span class="au-empty-val">Empty</span> }
+                      <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                      @if (m.to) { <span class="au-new">{{ m.to }}</span> } @else { <span class="au-empty-val">Empty</span> }
+                    } @else { <span class="au-empty-val">changed</span> }
+                  </div>
+                }
+              }
+              <button type="button" class="au-link" style="font-size: .74rem" (click)="openId.set(s.id)">Event details</button>
+            </div>
+          </li>
+        </ng-template>
+
+        <ng-template #linkTpl let-r let-tone="tone">
+          <div class="rh-link">
+            <div class="top">
+              <span class="au-badge" [ngClass]="tone">{{ r.type_label || r.type }}</span>
+              <strong>{{ r.label || '#' + r.id }}</strong>
+              @if (r.tracked) { <span class="au-badge" [ngClass]="r.state === 'deleted' ? 'red' : 'green'">{{ r.state === 'deleted' ? 'Deleted' : 'Active' }}</span> }
+            </div>
+            @if (r.tracked) {
+              <div class="meta">Stored {{ r.stored.display }} by {{ r.stored_by || 'Unknown' }} · {{ r.events }} event{{ r.events === 1 ? '' : 's' }} · last: {{ r.last_event }}, {{ r.last.relative }}</div>
+              <app-record-history [type]="r.type" [recordId]="r.id" [title]="r.label || ''" />
+            } @else {
+              <div class="meta">No visible audit rows: stored before tracking began, or outside your branch scope.</div>
+            }
+          </div>
+        </ng-template>
+        @switch (tab()) {
+          <!-- ===================================================================== START TO END -->
+          @case ('path') {
+            <p class="rh-help">The whole life of this data from its first entry to now, including the records it came from and the records created from it.</p>
+            @if (hasLineage()) {
+              <div class="rh-links">
+                @if (l.lineage.upstream.length) {
+                  <section aria-label="Came from">
+                    <h3><i class="bi bi-box-arrow-in-down-right" aria-hidden="true"></i> Came from</h3>
+                    @for (r of l.lineage.upstream; track r.type + r.id) { <ng-container *ngTemplateOutlet="linkTpl; context: { $implicit: r, tone: 'purple' }" /> }
+                  </section>
+                }
+                @if (l.lineage.downstream.length) {
+                  <section aria-label="Went on to">
+                    <h3><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Went on to</h3>
+                    @for (r of l.lineage.downstream; track r.type + r.id) { <ng-container *ngTemplateOutlet="linkTpl; context: { $implicit: r, tone: 'teal' }" /> }
+                  </section>
+                }
+              </div>
+            } @else {
+              <div class="au-note" role="note" style="border-left-color: var(--au-blue); background: var(--au-blue-bg)">No other record is linked to this one. The path below is the record's own life.</div>
+            }
+            @if (l.origin.note) { <div class="au-note" role="note">{{ l.origin.note }}</div> }
+            <ol class="rh-journey">
+              @for (s of l.path; track s.id) { <ng-container *ngTemplateOutlet="stepTpl; context: { $implicit: s, withRecord: true }" /> }
+              <li class="now" [ngClass]="stateTone()">
+                <span class="pin" aria-hidden="true"><i class="bi bi-flag"></i></span>
+                <div class="card"><strong>Now: {{ stateLabel() }}</strong><div class="when">Last change {{ l.summary.last_at | date: 'dd MMM yyyy, hh:mm a' }} by {{ l.summary.last_by || 'Unknown' }}</div></div>
+              </li>
+            </ol>
+          }
+
+          <!-- ===================================================================== THIS RECORD -->
+          @case ('journey') {
+            <p class="rh-help">Only this record: where it was stored and every place it moved, oldest first.</p>
+            @if (l.origin.note) { <div class="au-note" role="note">{{ l.origin.note }}</div> }
+            <ol class="rh-journey">
+              @for (s of l.journey; track s.id) { <ng-container *ngTemplateOutlet="stepTpl; context: { $implicit: s, withRecord: false }" /> }
+              <li class="now" [ngClass]="stateTone()">
+                <span class="pin" aria-hidden="true"><i class="bi bi-flag"></i></span>
+                <div class="card"><strong>Now: {{ stateLabel() }}</strong><div class="when">Last change {{ l.summary.last_at | date: 'dd MMM yyyy, hh:mm a' }} by {{ l.summary.last_by || 'Unknown' }}</div></div>
+              </li>
+            </ol>
+          }
+          <!-- ===================================================================== ALL CHANGES -->
+          @case ('changes') {
+            <p class="rh-help">Every recorded event with the value before and after, newest first (events on its items included).</p>
+            @if (events() === null) {
+              @for (i of [1, 2, 3]; track i) { <div class="au-skel" style="height: 80px; border-radius: 12px"></div> }
+            } @else if (eventsError()) {
+              <div class="au-state error" role="alert"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i>{{ eventsError() }}<div><button type="button" class="au-btn" (click)="loadEvents(1)">Try again</button></div></div>
+            } @else {
+              <div class="au-tl" style="padding: 0">
+                @for (g of groups(); track g.key) {
+                  <div class="au-tl-day">{{ g.label }} <span class="cnt">{{ g.rows.length }} event{{ g.rows.length === 1 ? '' : 's' }}</span></div>
+                  @for (e of g.rows; track e.id) {
+                    <div class="rh-ev">
+                      <button type="button" class="au-tl-card" (click)="openId.set(e.id)" [attr.aria-label]="'Open event: ' + e.description">
+                        <span class="dot" [ngClass]="meta(e.event).tone" aria-hidden="true"><i class="bi" [ngClass]="meta(e.event).icon"></i></span>
+                        <span style="min-width: 0; display: block">
+                          <span class="head">
+                            <span class="nm">{{ e.actor.name || 'Unknown' }}</span>
+                            <span>{{ e.actor.role || e.actor.type }}@if (e.actor.branch) { · {{ e.actor.branch }} }</span>
+                            <span class="au-badge" [ngClass]="meta(e.event).tone">{{ e.event_label }}</span>
+                            @if (e.record.type !== type() || e.record.id !== recordId().toString()) { <span class="au-badge gray">{{ e.record.type_label }}@if (e.record.label) { : {{ e.record.label }} }</span> }
+                          </span>
+                          <span class="desc" style="display: block">{{ e.description }}</span>
+                          @if (e.changes?.length) {
+                            <table class="au-diff" style="margin-top: 6px">
+                              <caption class="sr-only">Changes made by this event</caption>
+                              <thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+                              <tbody>
+                                @for (c of e.changes!; track c.field) {
+                                  <tr>
+                                    <th scope="row">{{ c.label }}</th>
+                                    @if (c.masked) { <td class="old" colspan="2"><i class="bi bi-eye-slash" aria-hidden="true"></i> Hidden: sensitive field (change recorded, value not stored)</td> }
+                                    @else {
+                                      <td class="old">@if (c.old === null || c.old === '') { <span class="au-empty-val">Empty</span> } @else { {{ c.old }} }</td>
+                                      <td class="new">@if (c.new === null || c.new === '') { <span class="au-empty-val">Empty</span> } @else { {{ c.new }} }</td>
+                                    }
+                                  </tr>
+                                }
+                              </tbody>
+                            </table>
+                          } @else if (e.changed_field_labels.length) {
+                            <span class="au-changes"><span class="au-empty-val">Changed: {{ e.changed_field_labels.join(', ') }}</span></span>
+                          }
+                        </span>
+                        <span class="side">
+                          <strong style="color: var(--au-text)">{{ clock(e.occurred_at_display) }}</strong>
+                          <span>{{ e.relative }}</span>
+                          <span class="au-badge" [ngClass]="outcomeTone[e.outcome]">{{ outcomeLabel[e.outcome] }}</span>
+                        </span>
+                      </button>
+                    </div>
+                  }
+                }
+              </div>
+              @if (!(events() ?? []).length) { <div class="au-state"><i class="bi bi-inbox" aria-hidden="true"></i><strong>No events</strong>Nothing is recorded for this record.</div> }
+              @if (pagination(); as p) {
+                @if (p.current_page < p.last_page) {
+                  <div style="text-align: center"><button type="button" class="au-btn" (click)="more()" [disabled]="loadingMore()">{{ loadingMore() ? 'Loading…' : 'Load more (' + (p.total - (events()?.length ?? 0)) + ' left)' }}</button></div>
+                }
+              }
+            }
+          }
+
+          <!-- ===================================================================== BY FIELD -->
+          @case ('fields') {
+            <p class="rh-help">Each field that was edited after the record was stored, with its values over time.</p>
+            @if (!l.fields.length) {
+              <div class="au-state"><i class="bi bi-input-cursor-text" aria-hidden="true"></i><strong>No field was edited</strong>The record still has the values it was stored with.</div>
+            }
+            @for (f of l.fields; track f.field) {
+              <section class="rh-field">
+                <button type="button" class="head" (click)="toggleField(f)" [attr.aria-expanded]="openField() === f.field">
+                  <i class="bi" [ngClass]="openField() === f.field ? 'bi-chevron-down' : 'bi-chevron-right'" aria-hidden="true"></i>
+                  <strong>{{ f.label }}</strong>
+                  <span class="au-badge blue">{{ f.count }} change{{ f.count === 1 ? '' : 's' }}</span>
+                  @if (f.masked) { <span class="au-badge gray"><i class="bi bi-eye-slash" aria-hidden="true"></i> sensitive</span> }
+                  @if (f.last_at) { <span class="au-empty-val" style="margin-left: auto">last {{ f.last_at | date: 'dd MMM yyyy' }}</span> }
+                </button>
+                @if (openField() === f.field) {
+                  @if (f.masked) {
+                    <div class="au-note">This field is sensitive: only the fact that it changed is recorded, never its value.</div>
+                  } @else if (!f.history.length) {
+                    <div class="au-note">Values are hidden for your role.</div>
+                  } @else {
+                    <ol class="rh-values">
+                      @for (h of f.history; track h.id) {
+                        <li>
+                          <span class="t">{{ h.display }} · {{ h.by || 'Unknown' }}</span>
+                          <span class="v">
+                            @if (h.from) { <span class="au-old">{{ h.from }}</span> } @else { <span class="au-empty-val">Empty</span> }
+                            <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                            @if (h.to) { <span class="au-new">{{ h.to }}</span> } @else { <span class="au-empty-val">Empty</span> }
+                          </span>
+                        </li>
+                      }
+                    </ol>
+                  }
+                }
+              </section>
+            }
+          }
+
+          <!-- ===================================================================== PEOPLE -->
+          @case ('people') {
+            <p class="rh-help">Who created or changed this record (and its items), most active first.</p>
+            <ul class="au-list">
+              @for (u of l.people; track u.type + u.id) {
+                <li>
+                  <span class="au-who"><span class="av" aria-hidden="true">{{ initials(u.name) }}</span></span>
+                  <div class="txt"><strong>{{ u.name || 'Unknown' }}</strong><div class="meta">{{ u.role || u.type }} · last {{ u.last_at | date: 'dd MMM yyyy, hh:mm a' }}</div></div>
+                  <strong>{{ u.total }} event{{ u.total === 1 ? '' : 's' }}</strong>
+                </li>
+              } @empty { <li class="au-empty-val">No signed-in person is recorded for this record.</li> }
+            </ul>
+          }
+        }
+      }
+    </div>
+  </div>
+</div>
+
+@if (openId(); as id) {
+  <app-audit-event-drawer [eventId]="id" (closed)="openId.set(null)" (showRequest)="openId.set(null)" />
+}

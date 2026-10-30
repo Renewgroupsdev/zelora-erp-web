@@ -63,13 +63,16 @@
           <app-audit-call-cards [calls]="calls()!" (opened)="openCall($event)" />
         }
       } @else if (event(); as e) {
-        <section aria-label="Overview">
-          <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px">
-            <span class="au-badge" [ngClass]="meta(e.event).tone"><i class="bi" [ngClass]="meta(e.event).icon" aria-hidden="true"></i>{{ e.event_label }}</span>
-            <span class="au-badge" [ngClass]="outcomeTone[e.outcome]">{{ outcomeLabel[e.outcome] }}</span>
-            <span class="au-badge" [ngClass]="severityTone[e.severity]">Severity: {{ severityLabel[e.severity] }}</span>
+        <section class="au-hero" aria-label="Overview">
+          <span class="dot" [ngClass]="meta(e.event).tone" aria-hidden="true"><i class="bi" [ngClass]="meta(e.event).icon"></i></span>
+          <div style="min-width: 0">
+            <div class="badges">
+              <span class="au-badge" [ngClass]="meta(e.event).tone">{{ e.event_label }}</span>
+              <span class="au-badge" [ngClass]="outcomeTone[e.outcome]">{{ outcomeLabel[e.outcome] }}</span>
+              <span class="au-badge" [ngClass]="severityTone[e.severity]">Severity: {{ severityLabel[e.severity] }}</span>
+            </div>
+            <p>{{ e.description }}</p>
           </div>
-          <p style="margin:0; font-size:.88rem">{{ e.description }}</p>
         </section>
 
         <section aria-label="Who">

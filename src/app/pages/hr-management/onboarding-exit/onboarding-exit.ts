@@ -61,8 +61,8 @@ export class OnboardingExit implements OnInit {
     return this.auth.hasActionAccess(slug);
   }
 
-  readonly joiners = computed(() => [...this.hr.onboarding()].sort((a, b) => (a.status === b.status ? a.joinDate.localeCompare(b.joinDate) : a.status === 'In Progress' ? -1 : 1)));
-  readonly leavers = computed(() => [...this.hr.exits()].sort((a, b) => (a.status === 'Settled' ? 1 : 0) - (b.status === 'Settled' ? 1 : 0) || a.lastWorkingDay.localeCompare(b.lastWorkingDay)));
+  readonly joiners = computed(() => this.hr.onboarding()); // API order = updated_at desc
+  readonly leavers = computed(() => this.hr.exits());
 
   readonly summary = computed(() => ({
     joining: this.hr.onboarding().filter(o => o.status === 'In Progress').length,

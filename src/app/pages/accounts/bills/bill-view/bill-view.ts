@@ -4,6 +4,7 @@ import { Component, ElementRef, computed, inject, signal, viewChild } from '@ang
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import Swal from 'sweetalert2';
 import { AccountsService } from '../../../../shared/common-services/accounts.service';
+import { RecordHistory } from '../../../../shared/components/record-history/record-history';
 import { PAYMENT_MODES, billTotals, lineAmount } from '../../../../shared/models/accounts.model';
 import { printDocument } from '../../../../shared/utils/export.util';
 import { amountInWords, displayDate, isoDate } from '../../../../shared/utils/format.util';
@@ -11,7 +12,7 @@ import { amountInWords, displayDate, isoDate } from '../../../../shared/utils/fo
 @Component({
   selector: 'app-bill-view',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CanActionDirective],
+  imports: [CommonModule, MatDialogModule, CanActionDirective, RecordHistory],
   templateUrl: './bill-view.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', '../../../../shared/styles/erp-document.scss'],
 })
@@ -55,14 +56,14 @@ export class BillView {
     printDocument(`${this.bill().kind === 'Proforma' ? 'Proforma' : 'Invoice'} ${this.bill().billNo}`, this.sheet().nativeElement.innerHTML);
   }
 
-  markSent(): void {
-    this.acc.markProformaSent(this.billId());
+  async markSent(): Promise<void> {
+    await this.acc.markProformaSent(this.billId());
   }
 
   async convert(): Promise<void> {
     const ok = await Swal.fire({ icon: 'question', title: 'Convert to Service Bill?', text: `Creates a tax invoice dated today for ₹${this.totals().grandTotal.toLocaleString('en-IN')} and posts it to accounts.`, showCancelButton: true, confirmButtonText: 'Convert', confirmButtonColor: '#6C63FF' });
     if (!ok.isConfirmed) return;
-    const result = this.acc.convertProforma(this.billId());
+    const result = await this.acc.convertProforma(this.billId());
     if (typeof result === 'string') {
       Swal.fire({ icon: 'error', title: 'Cannot convert', text: result, confirmButtonColor: '#6C63FF' });
       return;
@@ -82,9 +83,9 @@ export class BillView {
       showCancelButton: true,
       confirmButtonText: 'Post receipt',
       confirmButtonColor: '#0f9d58',
-      preConfirm: () => {
+      preConfirm: async () => {
         const v = (id: string) => (document.getElementById(id) as HTMLInputElement).value;
-        const r = this.acc.collectPayment(this.billId(), Number(v('c-amt')), v('c-mode') as (typeof PAYMENT_MODES)[number], v('c-date'));
+        const r = await this.acc.collectPayment(this.billId(), Number(v('c-amt')), v('c-mode') as (typeof PAYMENT_MODES)[number], v('c-date'));
         if (typeof r === 'string') { Swal.showValidationMessage(r); return false; }
         return r;
       },
@@ -106,7 +107,7 @@ export class BillView {
       confirmButtonColor: '#dc4c4c',
     });
     if (!isConfirmed) return;
-    const result = this.acc.cancelBill(this.billId(), reason.trim());
+    const result = await this.acc.cancelBill(this.billId(), reason.trim());
     if (typeof result === 'string') Swal.fire({ icon: 'error', title: 'Cannot cancel', text: result, confirmButtonColor: '#6C63FF' });
   }
 

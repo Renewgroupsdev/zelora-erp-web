@@ -50,6 +50,11 @@
                 <div>
                   <div class="nm" style="font-size: 1rem">{{ p.name }}</div>
                   <div class="rl">{{ p.role || typeLabel(p.type) }}@if (p.code) { · {{ p.code }} }@if (p.branch) { · {{ p.branch }} }@if (p.account_status) { · Account: {{ p.account_status }} }</div>
+                  @if ((p.linked_identities?.length ?? 0) > 1) {
+                    <div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px">
+                      <span class="au-badge teal" title="One person, two accounts: both are included in the figures and the timeline"><i class="bi bi-link-45deg" aria-hidden="true"></i> Linked: {{ identityLabel(p.linked_identities!) }}</span>
+                    </div>
+                  }
                 </div>
               </div>
               <div class="au-kpis" style="margin-top: 10px">
@@ -63,7 +68,58 @@
           } @else {
             <div class="au-panel"><div class="au-skel" style="height: 60px"></div></div>
           }
-          <app-audit-event-list kind="events" [fixed]="fixed()" emptyText="No activity recorded for this person with these filters." />
+          @if (profile(); as p) {
+            <div class="au-tabs" role="tablist" aria-label="Person sections" style="padding: 0">
+              @for (t of tabs; track t.key) {
+                @if (t.key !== 'modules' || canSeeModules) {
+                  <button type="button" role="tab" [class.on]="tab() === t.key" [attr.aria-selected]="tab() === t.key" (click)="setTab(t.key)"><i class="bi" [ngClass]="t.icon" aria-hidden="true"></i> {{ t.label }}</button>
+                }
+              }
+            </div>
+
+            @switch (tab()) {
+              @case ('overview') {
+                <p class="sub" style="margin: 0; font-size: .76rem; color: var(--au-muted)">Charts cover {{ p.period?.from }} to {{ p.period?.to }} ({{ (p.period_total ?? 0).toLocaleString() }} events). Pick another period under Timeline.</p>
+                <app-audit-activity-charts [report]="p" />
+              }
+              @case ('modules') {
+                <section class="au-panel" aria-label="Modules this person worked in">
+                  <h2>Modules worked in</h2><div class="sub">Events per module in the period, most active first</div>
+                  @if (!(p.by_module ?? []).length) {
+                    <div class="au-state"><i class="bi bi-grid-1x2" aria-hidden="true"></i><strong>No module activity</strong>Nothing recorded for this person in the period.</div>
+                  } @else {
+                    <div class="au-scroll">
+                      <table class="au-table">
+                        <caption class="sr-only">Modules this person worked in</caption>
+                        <thead><tr><th scope="col">Module</th><th scope="col">Events</th><th scope="col">Last activity</th><th scope="col"><span class="sr-only">Open</span></th></tr></thead>
+                        <tbody>
+                          @for (m of p.by_module; track m.slug) {
+                            <tr>
+                              <td style="font-weight: 600">{{ m.name }}</td>
+                              <td>{{ m.total.toLocaleString() }}</td>
+                              <td class="when">{{ m.last_at | date: 'dd MMM yyyy, hh:mm a' }}</td>
+                              <td>@if (canSeeModules) { <a class="au-link" [routerLink]="['/app/audit/modules', m.slug]" [queryParams]="{ tab: 'activity', actor: p.type + ':' + p.id }">Open module log →</a> }</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  }
+                </section>
+              }
+              @case ('signins') {
+                <section class="au-panel" aria-label="Recent sign-ins">
+                  <h2>Recent sign-ins</h2><div class="sub">Latest sign-in events of this person</div>
+                  <app-audit-sign-ins [rows]="p.recent_sign_ins ?? []" />
+                </section>
+              }
+              @default {
+                <app-audit-event-list kind="events" [fixed]="fixed()" emptyText="No activity recorded for this person with these filters." />
+              }
+            }
+          } @else if (!profileError()) {
+            <div class="au-panel"><div class="au-skel" style="height: 120px"></div></div>
+          }
         }
       </div>
     </div>

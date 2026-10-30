@@ -32,15 +32,15 @@
           @for (m of options()?.modules ?? []; track m.slug) { <option [value]="m.slug">{{ m.name }}</option> }
         </select>
       </div>
-      @if (subModules().length) {
-        <div class="f">
-          <label for="au-sub">Sub-module</label>
-          <select id="au-sub" class="au-input" [value]="q.sub_module ?? ''" (change)="apply({ sub_module: $any($event.target).value || undefined, page: 1 })">
-            <option value="">All</option>
-            @for (s of subModules(); track s.slug) { <option [value]="s.slug">{{ s.name }}</option> }
-          </select>
-        </div>
-      }
+    }
+    @if ((f.module || kind() === 'module') && subModules().length) {
+      <div class="f">
+        <label for="au-sub">Sub-module</label>
+        <select id="au-sub" class="au-input" [value]="q.sub_module ?? ''" (change)="apply({ sub_module: $any($event.target).value || undefined, page: 1 })">
+          <option value="">All</option>
+          @for (s of subModules(); track s.slug) { <option [value]="s.slug">{{ s.name }}</option> }
+        </select>
+      </div>
     }
     @if (f.outcome) {
       <div class="f">
@@ -244,5 +244,5 @@
 </div>
 
 @if (openId(); as id) {
-  <app-audit-event-drawer [eventId]="id" (closed)="closeDrawer()" (showRequest)="showRequest($event)" />
+  <app-audit-event-drawer [eventId]="id" [own]="own()" (closed)="closeDrawer()" (showRequest)="showRequest($event)" />
 }

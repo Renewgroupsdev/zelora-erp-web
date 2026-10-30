@@ -67,7 +67,7 @@
           <tbody>
             @for (r of rows(); track r.branch) {
               <tr>
-                <td><strong>{{ r.branch }}</strong></td>
+                <td><strong>{{ r.branch }}</strong>@if (r.targetId) { <app-record-history type="BranchTarget" [recordId]="r.targetId" [title]="r.branch + ' ' + month()" variant="icon" /> }</td>
                 <td><input class="num" type="number" min="0" step="1000" [disabled]="!canEdit" [attr.aria-label]="r.branch + ' revenue target'" [ngModel]="r.revenueTarget" (change)="setField(r, 'revenueTarget', $any($event.target).value)" /></td>
                 <td class="amt">{{ inr(r.achieved) }}</td>
                 <td class="progress-col">
@@ -107,7 +107,7 @@
     @if (canEdit) {
       <div class="rules-row">
         <div class="card-block">
-          <h4><i class="bi bi-graph-up-arrow"></i> Incentive slabs (branches and employees)</h4>
+          <h4><i class="bi bi-graph-up-arrow"></i> Incentive slabs (branches and employees) @if (rules().id) { <app-record-history type="IncentiveRule" [recordId]="rules().id" title="Incentive rules" variant="icon" /> }</h4>
           @for (s of slabDraft(); track $index) {
             <div class="slab">
               <span>Achievement ≥</span>
@@ -168,7 +168,7 @@
           <tbody>
             @for (e of employees(); track e.employeeId) {
               <tr>
-                <td><strong>{{ e.name }}</strong><small class="sub">{{ e.designation }} · {{ e.branch }}</small></td>
+                <td><strong>{{ e.name }}</strong><small class="sub">{{ e.designation }} · {{ e.branch }}</small>@if (e.targetId) { <app-record-history type="EmployeeTarget" [recordId]="e.targetId" [title]="e.name + ' ' + month()" variant="icon" /> }</td>
                 @for (c of categories; track c) {
                   <td>
                     <input class="num sm" type="number" min="0" step="1000" [disabled]="!canEdit" [attr.aria-label]="e.name + ' ' + c + ' target'" [ngModel]="e.categories[c].target" (change)="setEmployeeTarget(e.employeeId, c, $any($event.target).value)" />

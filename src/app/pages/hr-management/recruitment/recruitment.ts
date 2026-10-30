@@ -73,7 +73,7 @@ export class Recruitment extends HrListBase implements OnInit {
   readonly view = signal<View>('requests');
 
   columns: TableColumn[] = VIEW_COLUMNS.requests;
-  override sortActive = 'requestedAt';
+  override sortActive = ''; // API order = updated_at desc: new / edited rows lead
   override filters = this.filtersFor('requests');
 
   readonly stats = computed<DetailCardData[]>(() => {
@@ -125,7 +125,7 @@ export class Recruitment extends HrListBase implements OnInit {
     this.filters = this.filtersFor(view);
     this.filterFields = { status: 'status', source: view === 'candidates' ? 'source' : 'department', branch: ['branch'] };
     this.filterState = { ...this.filterState, status: null, source: null, branch: [] };
-    this.sortActive = view === 'candidates' ? 'appliedAt' : 'requestedAt';
+    this.sortActive = '';
     this.sortDirection = 'desc';
     this.currentPage = 1;
     this.refresh();

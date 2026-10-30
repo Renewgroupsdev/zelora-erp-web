@@ -9,6 +9,7 @@
         <p>{{ canReview() ? 'Check the request and confirm the purchase order' : 'Purchase request details' }}</p>
       </div>
     </div>
+    <app-record-history type="PurchaseRequest" [recordId]="r.id" [title]="r.requestNo" />
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 

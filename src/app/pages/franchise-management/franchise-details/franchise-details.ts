@@ -21,6 +21,7 @@ import { FranchiseInvoiceForm } from '../franchise-invoice-form/franchise-invoic
 import { AuthService } from '../../../core/auth/auth.service';
 import { PageTab, allowedPageTabs, isPageTabKey } from '../../../shared/utils/module-tabs.util';
 import { WipPanel } from '../../../shared/components/wip-panel/wip-panel';
+import { RecordHistory } from '../../../shared/components/record-history/record-history';
 
 /** Sections this page can render - which of them show, and their names / icons / order, come from the API. */
 const TAB_KEYS = ['overview', 'agreement', 'customers', 'sales', 'inventory', 'reports'] as const;
@@ -43,7 +44,7 @@ function topGroups(rows: BfDatum[], n = 6): BfDatum[] {
 @Component({
   selector: 'app-franchise-details',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatDialogModule, PageLoader, HScroll, BfDonut, BfBars, BfColumns, GeoLocationCard, CanActionDirective, WipPanel],
+  imports: [CommonModule, RouterLink, MatDialogModule, PageLoader, HScroll, BfDonut, BfBars, BfColumns, GeoLocationCard, CanActionDirective, WipPanel, RecordHistory],
   templateUrl: './franchise-details.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise.scss'],
 })

@@ -10,6 +10,7 @@ import { displayDate, displayTime, initials, monthKey, monthLabel } from '../../
 import { PayslipView } from '../../payroll/payslip-view/payslip-view';
 import { TaskForm } from '../../tasks/task-form/task-form';
 import { EmployeeForm } from '../employee-form/employee-form';
+import { RecordHistory } from '../../../../shared/components/record-history/record-history';
 
 type ProfileTab = 'overview' | 'salary' | 'attendance' | 'leave' | 'payslips' | 'appraisals' | 'tasks';
 
@@ -17,7 +18,7 @@ type ProfileTab = 'overview' | 'salary' | 'attendance' | 'leave' | 'payslips' | 
 @Component({
   selector: 'app-employee-profile',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CanActionDirective],
+  imports: [CommonModule, MatDialogModule, CanActionDirective, RecordHistory],
   templateUrl: './employee-profile.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', './employee-profile.scss'],
 })
@@ -58,7 +59,7 @@ export class EmployeeProfile implements OnInit {
     const hours = list.reduce((s, a) => s + workedHours(a), 0);
     return { present: count('Present'), late: count('Late'), half: count('Half Day'), absent: count('Absent'), leave: count('On Leave'), avg: list.length ? hours / Math.max(1, list.filter(a => a.checkOut).length) : 0 };
   });
-  readonly tasks = computed(() => this.work.forEmployee(this.data.empId).sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999')));
+  readonly tasks = computed(() => this.work.forEmployee(this.data.empId));
   readonly taskStats = computed(() => this.work.stats(this.tasks()));
   readonly isOverdue = (t: { status: string; dueDate: string }) => isTaskOverdue(t as never, new Date().toISOString().slice(0, 10));
   /** This employee's own history, loaded with the profile (see ngOnInit) so it never depends on which HR page was opened last. */

@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import Swal from 'sweetalert2';
+import { RecordHistory } from '../../../../shared/components/record-history/record-history';
 import { HrService } from '../../../../shared/common-services/hr.service';
 import { WorkTaskInput, WorkTaskService } from '../../../../shared/common-services/work-task.service';
 import { WORK_TASK_RESULTS, WORK_TASK_STATUSES, WORK_TASK_TYPES, WorkTask } from '../../../../shared/models/work-task.model';
@@ -12,7 +13,7 @@ import { addDays, isoDate } from '../../../../shared/utils/format.util';
 @Component({
   selector: 'app-task-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatDialogModule, RecordHistory],
   templateUrl: './task-form.html',
   styleUrl: '../../../../shared/styles/erp-dialog.scss',
 })
@@ -26,6 +27,7 @@ export class TaskForm {
   readonly results = WORK_TASK_RESULTS;
   readonly typeGroups = Object.entries(WORK_TASK_TYPES);
   readonly submitted = signal(false);
+  readonly saving = signal(false);
 
   readonly existing: WorkTask | null = this.data.taskId ? this.store.tasks().find(t => t.id === this.data.taskId) ?? null : null;
   readonly isEdit = !!this.existing;
@@ -53,20 +55,25 @@ export class TaskForm {
     if (this.readOnly || form.invalid) return;
     const payload = { ...this.model, title: this.model.title.trim(), metric: this.model.metric.trim(), notes: this.model.notes.trim() };
     if (payload.status === 'Completed' && !payload.completedDate) payload.completedDate = isoDate();
-    const error = this.existing ? this.store.update(this.existing.id, payload) : (typeof this.store.add(payload) === 'string' ? 'Only an SEO employee can log tasks.' : null);
-    if (error) {
-      Swal.fire({ icon: 'error', title: 'Could not save', text: error });
-      return;
-    }
-    this.dialogRef.close(true);
+    if (this.saving()) return;
+    this.saving.set(true);
+    (this.existing ? this.store.update(this.existing.id, payload) : this.store.add(payload)).subscribe({
+      next: () => { this.saving.set(false); this.dialogRef.close(true); },
+      error: (err: Error) => {
+        this.saving.set(false);
+        Swal.fire({ icon: 'error', title: 'Could not save', text: err.message });
+      },
+    });
   }
 
   async remove(): Promise<void> {
     if (!this.existing) return;
     const ok = await Swal.fire({ icon: 'warning', title: 'Delete this task?', text: this.existing.title, showCancelButton: true, confirmButtonText: 'Delete', confirmButtonColor: '#dc4c4c' });
     if (!ok.isConfirmed) return;
-    this.store.remove(this.existing.id);
-    this.dialogRef.close(true);
+    this.store.remove(this.existing.id).subscribe({
+      next: () => this.dialogRef.close(true),
+      error: (err: Error) => Swal.fire({ icon: 'error', title: 'Could not delete', text: err.message }),
+    });
   }
 
   close(): void {

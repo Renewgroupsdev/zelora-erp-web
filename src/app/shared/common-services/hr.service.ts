@@ -247,7 +247,7 @@ export class HrService {
         return sync$.pipe(switchMap(() => this.fetchEmployee(empId)));
       }),
       tap(emp => {
-        if (id) return;
+        if (id) { this.patch({ employees: [emp, ...this.employees().filter(e => e.id !== emp.id)] }); return; } // edited -> top of the list
         if (opts.candidateId) this.loadCandidates().subscribe({ error: () => undefined }); // the server linked the hire to the candidate
         this.registerEmployee(emp, opts.candidateId ?? undefined);
       }),
@@ -360,7 +360,7 @@ export class HrService {
   }
 
   updateEmployee(id: string, patch: Partial<Employee>): void {
-    this.patch({ employees: this.employees().map(e => (e.id === id ? { ...e, ...patch } : e)) });
+    this.patch({ employees: this.front(this.employees().map(e => (e.id === id ? { ...e, ...patch } : e)), id) });
   }
 
   private nextEmpCode(): string {
@@ -643,7 +643,7 @@ export class HrService {
   }
 
   private putManpower(m: ManpowerRequest): ManpowerRequest {
-    this.patch({ manpower: this.manpower().some(x => x.id === m.id) ? this.manpower().map(x => (x.id === m.id ? m : x)) : [m, ...this.manpower()] });
+    this.patch({ manpower: [m, ...this.manpower().filter(x => x.id !== m.id)] });
     return m;
   }
 
@@ -699,7 +699,7 @@ export class HrService {
 
   /** Local-only stage tweak (the "Reschedule" button reopens the scheduling form); the server moves a candidate only through the actions below. */
   moveCandidate(id: string, stage: CandidateStage, patch: Partial<Candidate> = {}): void {
-    this.patch({ candidates: this.candidates().map(c => (c.id === id ? { ...c, ...patch, stage } : c)) });
+    this.patch({ candidates: this.front(this.candidates().map(c => (c.id === id ? { ...c, ...patch, stage } : c)), id) });
   }
 
   // ---- Candidate hiring workflow (GET /hr/candidates, POST /hr/candidates/{id}/...) ----
@@ -748,15 +748,15 @@ export class HrService {
     };
   }
 
-  private putCandidate(c: Candidate): Candidate {
-    this.patch({ candidates: this.candidates().some(x => x.id === c.id) ? this.candidates().map(x => (x.id === c.id ? c : x)) : [c, ...this.candidates()] });
+  private putCandidate(c: Candidate, toFront = true): Candidate {
+    this.patch({ candidates: toFront ? [c, ...this.candidates().filter(x => x.id !== c.id)] : this.candidates().map(x => (x.id === c.id ? c : x)) });
     return c;
   }
 
   /** One candidate with history, documents and verification gaps (the Hiring process dialog). */
   fetchCandidate(id: string): Observable<Candidate> {
     return (this.api.GET(`${ApiRoutesConstants.HR_CANDIDATES}/${id}`) as Observable<any>).pipe(
-      map(res => this.putCandidate(this.candidateFromApi(res.data, this.candidates().find(c => c.id === id)))),
+      map(res => this.putCandidate(this.candidateFromApi(res.data, this.candidates().find(c => c.id === id)), false)), // a read: keep its place
     );
   }
 
@@ -1145,6 +1145,12 @@ export class HrService {
   private alert(title: string, message: string, link: string): void {
     this.notifications.add({ type: 'hr', title, message, link });
     Swal.fire({ toast: true, position: 'top-end', icon: 'info', title, text: message, showConfirmButton: false, timer: 4500, timerProgressBar: true });
+  }
+
+  /** Moves the row with `id` to the front (newly added / just edited rows lead every list). */
+  private front<T extends { id: string }>(list: T[], id: string): T[] {
+    const hit = list.find(x => x.id === id);
+    return hit ? [hit, ...list.filter(x => x.id !== id)] : list;
   }
 
   private patch(partial: Partial<HrState>): void {

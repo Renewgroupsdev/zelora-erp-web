@@ -42,7 +42,7 @@ export class Bills extends AccountsListBase {
   ];
 
   override filters = this.filtersFor('Service');
-  override sortActive = 'billNo';
+  override sortActive = ''; // API order = updated_at desc: new / edited bills lead
 
   readonly stats = computed<DetailCardData[]>(() => {
     const today = isoDate();

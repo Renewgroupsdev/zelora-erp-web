@@ -230,6 +230,9 @@
               <i class="bi" [ngClass]="scopeRowOpen() ? 'bi-eye-slash' : 'bi-diagram-3'"></i> {{ scopeRowOpen() ? 'Hide branch / franchise' : 'Choose branch / franchise' }}
             </button>
           }
+          @if (canSeeMyActivity()) {
+            <button type="button" class="dropdown-item" (click)="goToMyActivity()"><i class="bi bi-person-check"></i> My Activity</button>
+          }
           <button type="button" class="dropdown-item" (click)="goToSettings()"><i class="bi bi-gear"></i> Settings</button>
           <button type="button" class="dropdown-item danger" [disabled]="signingOut()" (click)="logout()">
             <i class="bi bi-box-arrow-right"></i> {{ signingOut() ? 'Logging out…' : 'Logout' }}

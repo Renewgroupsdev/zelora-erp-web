@@ -42,7 +42,7 @@
   ></app-common-filter-card>
 
   <div class="table-col">
-    <app-common-table-card
+    <app-common-table-card [historyType]="view() === 'daily' ? 'HrAttendanceRecord' : ''" historyKey="recordId" historyTitleKey="employee"
       [title]="view() === 'daily' ? displayDate(date()) : rangeLabel()"
       [recordCountText]="recordCountText"
       [columns]="columns"

@@ -80,6 +80,6 @@
 
   <div class="modal-footer-custom">
     <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
-    <button type="button" class="save-btn" (click)="save()"><i class="bi bi-check-lg"></i> Create Ledger</button>
+    <button type="button" class="save-btn" [disabled]="saving()" (click)="save()"><i class="bi bi-check-lg"></i> Create Ledger</button>
   </div>
 </div>

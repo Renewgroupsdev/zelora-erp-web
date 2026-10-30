@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, OnChanges, SimpleChanges, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, OnChanges, OnInit, SimpleChanges, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { BehaviorSubject, Subject, catchError, combineLatest, debounceTime, distinctUntilChanged, finalize, map, of, switchMap, tap } from 'rxjs';
+import { BehaviorSubject, Subject, catchError, combineLatest, debounceTime, distinctUntilChanged, filter, finalize, map, of, switchMap, tap } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { AuditService } from '../../shared/common-services/audit.service';
 import { saveBlob } from '../../shared/utils/export.util';
@@ -34,14 +34,16 @@ const ALL_FEATURES: AuditListFeatures = { user: true, module: true, event: true,
   templateUrl: './audit-event-list.html',
   styleUrls: ['./audit.scss'],
 })
-export class AuditEventList implements OnChanges {
+export class AuditEventList implements OnInit, OnChanges {
   private readonly audit = inject(AuditService);
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly kind = input<'events' | 'changes' | 'security'>('events');
+  /** 'me' = the caller's own trail (/audit/me/*); 'module' = one module's trail (needs `moduleSlug`). */
+  readonly kind = input<'events' | 'changes' | 'security' | 'me' | 'module'>('events');
+  readonly moduleSlug = input('');
   /** Filters the user cannot change (e.g. the selected person, or a security preset). */
   readonly fixed = input<AuditQuery>({});
   readonly features = input<AuditListFeatures>(ALL_FEATURES);
@@ -71,10 +73,12 @@ export class AuditEventList implements OnChanges {
   });
   protected readonly clock = clock;
 
-  protected readonly canExport = computed(() => this.auth.hasActionAccess('export-audit-logs'));
+  // The export endpoint exports whatever the filters match across the whole trail: never offered on someone's own / one module's view.
+  protected readonly canExport = computed(() => this.auth.hasActionAccess('export-audit-logs') && this.kind() !== 'me' && this.kind() !== 'module');
+  protected readonly own = computed(() => this.kind() === 'me');
   protected readonly canSeeChanges = computed(() => this.auth.hasActionAccess('view-audit-changes'));
   protected readonly canSeeNetwork = computed(() => this.auth.hasActionAccess('view-audit-sensitive'));
-  protected readonly subModules = computed(() => this.options()?.modules.find(m => m.slug === this.query().module)?.sub_modules ?? []);
+  protected readonly subModules = computed(() => this.options()?.modules.find(m => m.slug === (this.query().module ?? (this.kind() === 'module' ? this.moduleSlug() : undefined)))?.sub_modules ?? []);
   protected readonly ranges = RANGES;
   protected readonly pageSizes = [10, 25, 50, 100];
   protected readonly hasFilters = computed(() => {
@@ -95,13 +99,14 @@ export class AuditEventList implements OnChanges {
   private readonly fixed$ = new BehaviorSubject<AuditQuery>({});
   private readonly refresh$ = new BehaviorSubject<void>(undefined);
   private readonly search$ = new Subject<string>();
+  /** Inputs (kind, moduleSlug) are bound only after the constructor: no request before that, so a role never hits an endpoint it may not use. */
+  private readonly ready$ = new BehaviorSubject(false);
 
   constructor() {
-    this.audit.filters().pipe(catchError(() => of(null))).subscribe(o => this.options.set(o));
-
     this.search$.pipe(debounceTime(400), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef)).subscribe(q => this.apply({ search: q || undefined, page: 1 }));
 
-    combineLatest([this.route.queryParamMap, this.fixed$, this.refresh$]).pipe(
+    combineLatest([this.route.queryParamMap, this.fixed$, this.refresh$, this.ready$]).pipe(
+      filter(([, , , ready]) => ready),
       map(([params, fixed]) => ({ query: { ...queryFromParams(params), ...fixed }, ev: params.get('ev') })),
       tap(({ query, ev }) => {
         this.query.set(query);
@@ -111,7 +116,7 @@ export class AuditEventList implements OnChanges {
         this.loading.set(true);
         this.error.set(null);
       }),
-      switchMap(({ query }) => this.audit.list(this.kind(), query).pipe(
+      switchMap(({ query }) => this.fetch(query).pipe(
         catchError(err => { this.error.set(auditError(err)); return of(null); }),
         finalize(() => this.loading.set(false)),
       )),
@@ -120,6 +125,17 @@ export class AuditEventList implements OnChanges {
       this.rows.set(page?.data ?? []);
       this.pagination.set(page?.pagination ?? null);
     });
+  }
+
+  ngOnInit(): void {
+    (this.kind() === 'me' ? this.audit.meFilters() : this.audit.filters()).pipe(catchError(() => of(null))).subscribe(o => this.options.set(o));
+    this.ready$.next(true);
+  }
+
+  private fetch(query: AuditQuery) {
+    return this.kind() === 'module'
+      ? this.audit.moduleActivity(this.moduleSlug(), query).pipe(map(r => ({ data: r.data as AuditEvent[], pagination: r.pagination })))
+      : this.audit.list(this.kind() as 'events' | 'changes' | 'security' | 'me', query);
   }
 
   ngOnChanges(changes: SimpleChanges): void {

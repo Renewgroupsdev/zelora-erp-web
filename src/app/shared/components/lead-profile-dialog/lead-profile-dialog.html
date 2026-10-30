@@ -5,6 +5,8 @@
       <i class="bi bi-x-lg"></i>
     </button>
 
+    <app-record-history class="profile-history" type="CustomerLead" [recordId]="data.lead.id" [title]="data.lead.name" />
+
     <span class="profile-avatar">{{ initials(data.lead.name) }}</span>
 
     <div class="profile-header-info">

@@ -65,7 +65,7 @@ export class Roles implements OnInit {
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
-  sortActive = 'name';
+  sortActive = '';
   sortDirection: SortDirection = 'asc';
   private searchTerm = '';
 

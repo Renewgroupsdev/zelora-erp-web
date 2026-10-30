@@ -6,6 +6,7 @@ import { BehaviorSubject, catchError, combineLatest, debounceTime, distinctUntil
 import { AuthService } from '../../core/auth/auth.service';
 import { AuditService } from '../../shared/common-services/audit.service';
 import { AuditEvent, AuditPagination, AuditQuery, AuditSummary, AuditUserProfile, AuditUserRow } from '../../shared/models/audit.model';
+import { AuditActivityCharts, AuditSignIns } from './audit-activity-parts';
 import { AuditChart } from './audit-chart';
 import { AuditEventList } from './audit-event-list';
 import { OUTCOME_LABEL, OUTCOME_TONE, RANGES, RangeKey, SEVERITY_LABEL, SEVERITY_TONE, actorInitials, auditError, eventMeta, moduleText, rangeDates, recordText } from './audit-meta';
@@ -104,7 +105,7 @@ export class AuditSecurity {
 @Component({
   selector: 'app-audit-user-activity',
   standalone: true,
-  imports: [CommonModule, AuditEventList, AuditDenied],
+  imports: [CommonModule, RouterLink, AuditEventList, AuditDenied, AuditActivityCharts, AuditSignIns],
   styleUrls: ['./audit.scss'],
   templateUrl: './audit-user-activity.html',
 })
@@ -124,10 +125,19 @@ export class AuditUserActivity {
   protected readonly searchText = signal('');
   protected readonly selected = signal<{ type: string; id: number } | null>(null);
   protected readonly initials = actorInitials;
+  /** One person = every identity linked to the account, so the timeline matches the figures above it. */
   protected readonly fixed = computed<AuditQuery>(() => {
     const s = this.selected();
-    return s ? { actor_type: s.type, actor_id: s.id } : {};
+    return s ? { person: `${s.type}:${s.id}` } : {};
   });
+  protected readonly tabs: { key: 'overview' | 'timeline' | 'modules' | 'signins'; label: string; icon: string }[] = [
+    { key: 'overview', label: 'Overview', icon: 'bi-speedometer2' },
+    { key: 'timeline', label: 'Timeline', icon: 'bi-list-columns-reverse' },
+    { key: 'modules', label: 'Modules', icon: 'bi-grid-1x2' },
+    { key: 'signins', label: 'Sign-ins', icon: 'bi-box-arrow-in-right' },
+  ];
+  protected readonly tab = toSignal(this.route.queryParamMap.pipe(map(p => (['timeline', 'modules', 'signins'].includes(p.get('tab') ?? '') ? p.get('tab')! : 'overview') as 'overview' | 'timeline' | 'modules' | 'signins')), { initialValue: 'overview' as const });
+  protected readonly canSeeModules = inject(AuthService).hasActionAccess('view-module-activity');
 
   private readonly page$ = new BehaviorSubject(1);
   private readonly search$ = new BehaviorSubject('');
@@ -135,14 +145,15 @@ export class AuditUserActivity {
   constructor() {
     if (!this.allowed) return;
 
-    this.route.queryParamMap.pipe(map(p => p.get('u')), distinctUntilChanged(), tap(u => {
-      const [type, id] = (u ?? '').split(':');
+    // The profile follows the person and the period in the URL (the timeline below reads the same from / to).
+    this.route.queryParamMap.pipe(map(p => ({ u: p.get('u'), from: p.get('from') ?? undefined, to: p.get('to') ?? undefined })), distinctUntilChanged((a, b) => a.u === b.u && a.from === b.from && a.to === b.to), tap(k => {
+      const [type, id] = (k.u ?? '').split(':');
       this.selected.set(type && Number(id) ? { type, id: Number(id) } : null);
       this.profile.set(null);
       this.profileError.set(null);
-    }), switchMap(u => {
-      const [type, id] = (u ?? '').split(':');
-      return type && Number(id) ? this.audit.user(type, Number(id)).pipe(catchError(err => { this.profileError.set(auditError(err).message); return of(null); })) : of(null);
+    }), switchMap(k => {
+      const [type, id] = (k.u ?? '').split(':');
+      return type && Number(id) ? this.audit.user(type, Number(id), { from: k.from, to: k.to }).pipe(catchError(err => { this.profileError.set(auditError(err).message); return of(null); })) : of(null);
     }), takeUntilDestroyed(this.destroyRef)).subscribe(p => this.profile.set(p));
 
     combineLatest([this.page$, this.search$.pipe(debounceTime(350), distinctUntilChanged())]).pipe(
@@ -168,8 +179,16 @@ export class AuditUserActivity {
     this.page$.next(page);
   }
 
+  protected identityLabel(ids: { type: string }[]): string {
+    return ids.map(i => (i.type === 'employee' ? 'HR employee' : i.type === 'customer' ? 'Customer' : 'Staff account')).join(' + ');
+  }
+
+  protected setTab(key: string): void {
+    this.router.navigate([], { relativeTo: this.route, queryParams: { tab: key === 'overview' ? null : key }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+
   protected pick(u: AuditUserRow): void {
-    this.router.navigate([], { relativeTo: this.route, queryParams: { u: `${u.type}:${u.id}`, ev: null, page: null, q: null, from: null, to: null, module: null, sub: null, types: null, outcome: null, severity: null, source: null }, queryParamsHandling: 'merge' });
+    this.router.navigate([], { relativeTo: this.route, queryParams: { u: `${u.type}:${u.id}`, tab: null, ev: null, page: null, q: null, from: null, to: null, module: null, sub: null, types: null, outcome: null, severity: null, source: null }, queryParamsHandling: 'merge' });
   }
 
   protected isSelected(u: AuditUserRow): boolean {

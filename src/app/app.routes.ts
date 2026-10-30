@@ -94,6 +94,9 @@ export const routes: Routes = [
       { path: 'audit/users', loadComponent: () => import('./pages/audit/audit-pages').then(m => m.AuditUserActivity) },
       { path: 'audit/security', loadComponent: () => import('./pages/audit/audit-pages').then(m => m.AuditSecurity) },
       { path: 'audit/calls', loadComponent: () => import('./pages/audit/audit-calls').then(m => m.AuditCallHistory) },
+      { path: 'audit/me', loadComponent: () => import('./pages/audit/audit-me').then(m => m.AuditMyActivity) },
+      { path: 'audit/modules', loadComponent: () => import('./pages/audit/audit-modules').then(m => m.AuditModules) },
+      { path: 'audit/modules/:slug', loadComponent: () => import('./pages/audit/audit-modules').then(m => m.AuditModuleDetail) },
 
       { path: 'reports', loadComponent: () => import('./pages/reports/reports').then(m => m.Reports) },
       { path: 'reports/:id', loadComponent: () => import('./pages/reports/report-detail/report-detail').then(m => m.ReportDetail) },

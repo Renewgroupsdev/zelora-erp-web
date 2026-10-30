@@ -65,7 +65,7 @@ export class Source implements OnInit {
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
-  sortActive = 'source_name';
+  sortActive = '';
   sortDirection: SortDirection = 'asc';
   private searchTerm = '';
 

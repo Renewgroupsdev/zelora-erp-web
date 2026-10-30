@@ -208,6 +208,14 @@ export class TopNavbar {
     this.navLayout.closeSettingsMenu();
   }
 
+  /** Every staff role holds view-my-activity by default; an admin can still switch it off per role. */
+  readonly canSeeMyActivity = computed(() => this.authService.hasActionAccess('view-my-activity'));
+
+  goToMyActivity(): void {
+    this.navLayout.closeSettingsMenu();
+    this.router.navigate(['/app/audit/me']);
+  }
+
   goToSettings(): void {
     this.navLayout.closeSettingsMenu();
     this.router.navigate(['/app/settings']);

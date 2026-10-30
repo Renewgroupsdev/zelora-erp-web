@@ -54,7 +54,7 @@ export class Appraisals extends HrListBase implements OnInit {
 
   columns: TableColumn[] = APPRAISAL_COLUMNS;
   override filters = this.filtersFor('appraisals');
-  override sortActive = 'createdAt';
+  override sortActive = ''; // API order = updated_at desc: new / edited rows lead
 
   readonly stats = computed<DetailCardData[]>(() => {
     const list = this.hr.appraisals();
@@ -103,7 +103,7 @@ export class Appraisals extends HrListBase implements OnInit {
     this.view.set(view);
     this.columns = view === 'appraisals' ? APPRAISAL_COLUMNS : BONUS_COLUMNS;
     this.filters = this.filtersFor(view);
-    this.sortActive = view === 'appraisals' ? 'createdAt' : 'payMonth';
+    this.sortActive = '';
     this.sortDirection = 'desc';
     this.currentPage = 1;
     this.refresh();

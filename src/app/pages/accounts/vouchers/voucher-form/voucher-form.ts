@@ -58,6 +58,7 @@ export class VoucherForm {
   readonly type = signal<VoucherType>(this.data?.type ?? 'Receipt');
   readonly simple = computed(() => ['Receipt', 'Payment', 'Contra'].includes(this.type()));
   readonly error = signal<string | null>(null);
+  readonly saving = signal(false);
 
   date = this.today;
   branch = this.acc.branches[0] ?? '';
@@ -65,7 +66,7 @@ export class VoucherForm {
   reference = '';
   // Simple vouchers
   mode: PaymentMode = 'Cash';
-  accountId: string = LEDGER.cash;
+  accountId = '';
   particularId = '';
   amount: number | null = null;
   // Grid vouchers
@@ -92,10 +93,11 @@ export class VoucherForm {
   setType(type: VoucherType): void {
     this.type.set(type);
     this.error.set(null);
-    this.lines = (DEFAULT_LINES[type] ?? []).map(l => ({ ...l }));
+    // DEFAULT_LINES hold system ledger codes; the ledger ids are server ids.
+    this.lines = (DEFAULT_LINES[type] ?? []).map(l => ({ ...l, ledgerId: this.acc.idOf(l.ledgerId) }));
     if (type === 'Contra') {
-      this.accountId = LEDGER.cash;
-      this.particularId = LEDGER.bank;
+      this.accountId = this.acc.idOf(LEDGER.cash);
+      this.particularId = this.acc.idOf(LEDGER.bank);
     } else if (this.simple()) {
       this.setMode(this.mode);
       this.particularId = '';
@@ -104,7 +106,7 @@ export class VoucherForm {
 
   setMode(mode: PaymentMode): void {
     this.mode = mode;
-    if (this.type() !== 'Contra') this.accountId = mode === 'Cash' ? LEDGER.cash : LEDGER.bank;
+    if (this.type() !== 'Contra') this.accountId = this.acc.idOf(mode === 'Cash' ? LEDGER.cash : LEDGER.bank);
   }
 
   particularOptions(): Ledger[] {
@@ -149,7 +151,8 @@ export class VoucherForm {
     l.amount = Math.abs(diff) || l.amount;
   }
 
-  save(): void {
+  async save(): Promise<void> {
+    if (this.saving()) return;
     this.error.set(null);
     let entries;
     if (this.simple()) {
@@ -164,11 +167,13 @@ export class VoucherForm {
       entries = this.lines.filter(l => l.ledgerId || l.amount).map(l => ({ ledgerId: l.ledgerId, debit: l.side === 'Dr' ? Number(l.amount) || 0 : 0, credit: l.side === 'Cr' ? Number(l.amount) || 0 : 0 }));
     }
 
-    const result = this.acc.postVoucher({
+    this.saving.set(true);
+    const result = await this.acc.postVoucher({
       type: this.type(), date: this.date, entries, branch: this.branch,
       narration: this.narration.trim(), reference: this.reference.trim() || undefined,
       mode: this.simple() && this.type() !== 'Contra' ? this.mode : undefined,
     });
+    this.saving.set(false);
     if (typeof result === 'string') {
       this.error.set(result);
       return;

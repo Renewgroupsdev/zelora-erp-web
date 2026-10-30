@@ -1,0 +1,159 @@
+<div class="au-page">
+  <nav class="am-crumbs" aria-label="Breadcrumb">
+    <a routerLink="/app/audit/modules" [queryParams]="{ from: range().from, to: range().to }">Module Activity</a>
+    @if (module()?.parent_slug; as parent) { <span aria-hidden="true">›</span> <a [routerLink]="['/app/audit/modules', parent]" [queryParams]="{ from: range().from, to: range().to }">{{ module()?.parent_name || parent }}</a> }
+    <span aria-hidden="true">›</span> <span aria-current="page">{{ module()?.name || slug() }}</span>
+  </nav>
+
+  <div class="au-header">
+    <div>
+      <h1><i class="bi" [ngClass]="module()?.icon || 'bi-grid-1x2'" aria-hidden="true"></i> {{ module()?.name || 'Module activity' }}</h1>
+      <p>Activity between {{ range().from }} and {{ range().to }}.</p>
+    </div>
+    <div class="au-actions">
+      <div class="au-chips" role="group" aria-label="Date range">
+        @for (r of ranges; track r.key) { <button type="button" class="au-chip" (click)="setRange(r.key)">{{ r.label }}</button> }
+      </div>
+      <label class="sr-only" for="amd-from">From</label>
+      <input id="amd-from" class="au-input" style="width: auto" type="date" [value]="range().from" [max]="range().to" (change)="setDate('from', $any($event.target).value)" />
+      <label class="sr-only" for="amd-to">To</label>
+      <input id="amd-to" class="au-input" style="width: auto" type="date" [value]="range().to" [min]="range().from" (change)="setDate('to', $any($event.target).value)" />
+      <button type="button" class="au-btn" (click)="reload()" [disabled]="loading()" aria-label="Refresh"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
+    </div>
+  </div>
+
+  @if (!allowed) {
+    <app-audit-denied />
+  } @else if (error(); as err) {
+    <div class="au-panel">
+      <div class="au-state" [class.denied]="err.kind === 'forbidden'" [class.error]="err.kind !== 'forbidden'" role="alert">
+        <i class="bi" [ngClass]="err.kind === 'forbidden' ? 'bi-lock-fill' : 'bi-exclamation-octagon'" aria-hidden="true"></i>
+        <strong>{{ err.kind === 'forbidden' ? 'Access denied' : 'Could not load this module' }}</strong>{{ err.message }}
+        @if (err.kind !== 'forbidden') { <div><button type="button" class="au-btn" (click)="reload()">Try again</button> <a class="au-btn" routerLink="/app/audit/modules">All modules</a></div> }
+      </div>
+    </div>
+  } @else {
+    @let st = stats();
+    <div class="au-kpis" [attr.aria-busy]="loading()">
+      <div class="au-kpi blue"><span class="ico" style="background: var(--au-blue-bg); color: var(--au-blue)"><i class="bi bi-activity" aria-hidden="true"></i></span><div>
+        @if (loading() && !st) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (st?.total ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Events</div></div></div>
+      <div class="au-kpi teal"><span class="ico" style="background: var(--au-teal-bg); color: var(--au-teal)"><i class="bi bi-calendar-event" aria-hidden="true"></i></span><div>
+        @if (loading() && !st) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (st?.today ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Today</div></div></div>
+      <div class="au-kpi purple"><span class="ico" style="background: var(--au-purple-bg); color: var(--au-purple)"><i class="bi bi-people" aria-hidden="true"></i></span><div>
+        @if (loading() && !st) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (st?.people ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">People</div></div></div>
+      <div class="au-kpi green"><span class="ico" style="background: var(--au-green-bg); color: var(--au-green)"><i class="bi bi-plus-circle" aria-hidden="true"></i></span><div>
+        @if (loading() && !st) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (st?.created ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Created</div></div></div>
+      <div class="au-kpi orange"><span class="ico" style="background: var(--au-orange-bg); color: var(--au-orange)"><i class="bi bi-pencil-square" aria-hidden="true"></i></span><div>
+        @if (loading() && !st) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (st?.updated ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Updated</div></div></div>
+      <div class="au-kpi red"><span class="ico" style="background: var(--au-red-bg); color: var(--au-red)"><i class="bi bi-trash3" aria-hidden="true"></i></span><div>
+        @if (loading() && !st) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (st?.deleted ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Deleted</div></div></div>
+    </div>
+
+    <div class="au-tabs" role="tablist" aria-label="Module sections" style="padding: 0">
+      @for (t of tabs; track t.key) {
+        <button type="button" role="tab" [class.on]="tab() === t.key" [attr.aria-selected]="tab() === t.key" (click)="setTab(t.key)"><i class="bi" [ngClass]="t.icon" aria-hidden="true"></i> {{ t.label }}</button>
+      }
+    </div>
+
+    @switch (tab()) {
+      @case ('activity') {
+        <app-audit-event-list kind="module" [moduleSlug]="slug()" [features]="features" emptyText="No activity in this module matches these filters." />
+      }
+      @case ('people') {
+        <section class="au-panel" aria-label="People in this module">
+          <h2>People</h2><div class="sub">Most active people in this module in the period</div>
+          @if (loading() && !overview()) {
+            @for (i of [1, 2, 3, 4]; track i) { <div class="au-skel" style="margin: 14px 0"></div> }
+          } @else if (!(overview()?.top_users ?? []).length) {
+            <div class="au-state"><i class="bi bi-people" aria-hidden="true"></i><strong>No people yet</strong>Nobody acted in this module in the period.</div>
+          } @else {
+            @let top = overview()!.top_users[0].total;
+            <ul class="au-list">
+              @for (u of overview()!.top_users; track u.type + u.id) {
+                <li>
+                  <span class="au-who"><span class="av" aria-hidden="true">{{ initials(u.name) }}</span></span>
+                  <div class="txt">
+                    @if (canUsers) { <a class="au-link" [routerLink]="['/app/audit/users']" [queryParams]="{ u: u.type + ':' + u.id }">{{ u.name }}</a> } @else { <strong>{{ u.name }}</strong> }
+                    <div class="meta">{{ u.role || u.type }} · last {{ relativeTime(u.last_at) }}</div>
+                    <div class="am-rank"><span class="bar" aria-hidden="true"><i [style.width.%]="(u.total / top) * 100"></i></span></div>
+                  </div>
+                  <strong>{{ u.total.toLocaleString() }}</strong>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+      @case ('records') {
+        <section class="au-panel" aria-label="Most changed records">
+          <h2>Most changed records</h2><div class="sub">Records with the most data changes in the period. Use History for the full trail of one record.</div>
+          @if (loading() && !overview()) {
+            @for (i of [1, 2, 3, 4]; track i) { <div class="au-skel" style="margin: 14px 0"></div> }
+          } @else if (!(overview()?.top_records ?? []).length) {
+            <div class="au-state"><i class="bi bi-journal-text" aria-hidden="true"></i><strong>No record changes</strong>No record was created, edited or deleted in this module in the period.</div>
+          } @else {
+            <div class="au-scroll">
+              <table class="au-table">
+                <caption class="sr-only">Most changed records</caption>
+                <thead><tr><th scope="col">Record</th><th scope="col">Type</th><th scope="col">Changes</th><th scope="col">Last change</th><th scope="col"><span class="sr-only">History</span></th></tr></thead>
+                <tbody>
+                  @for (r of overview()!.top_records; track r.type + r.id) {
+                    <tr>
+                      <td style="font-weight: 600">{{ r.label || '#' + r.id }}</td>
+                      <td>{{ r.type_label || r.type }}</td>
+                      <td>{{ r.total }}</td>
+                      <td class="when">{{ relativeTime(r.last_at) }}</td>
+                      <td><app-record-history [type]="r.type" [recordId]="r.id" [title]="r.label || ''" variant="icon" /></td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+      }
+      @default {
+        @if (loading() && !overview()) {
+          <div class="au-grid"><div class="au-panel au-col-12"><div class="au-skel" style="height: 220px"></div></div></div>
+        } @else if (overview(); as o) {
+          @if (!(st?.total)) {
+            <div class="au-panel"><div class="au-state"><i class="bi bi-inbox" aria-hidden="true"></i><strong>No activity in this period</strong>Try a wider date range.</div></div>
+          } @else {
+            <div class="au-grid">
+              <section class="au-panel au-col-8" aria-label="Events per day">
+                <h2>Events per day</h2><div class="sub">Successful vs failed or denied</div>
+                <app-audit-chart type="bar" [stacked]="true" [labels]="dayLabels()" [datasets]="dayDatasets()" label="Events per day in this module" />
+              </section>
+              <section class="au-panel au-col-4" aria-label="Events by record type">
+                <h2>By record type</h2><div class="sub">What was handled</div>
+                <app-audit-chart type="doughnut" [labels]="typeLabels()" [datasets]="typeDatasets()" label="Events by record type" />
+              </section>
+              @if (o.by_sub_module.length) {
+                <section class="au-panel au-col-6" aria-label="Events by sub-module">
+                  <h2>By sub-module</h2><div class="sub">Where the activity happened</div>
+                  <app-audit-chart type="bar" [horizontal]="true" [labels]="subLabels()" [datasets]="subDatasets()" label="Events by sub-module" />
+                </section>
+              }
+              <section class="au-panel" [class.au-col-6]="o.by_sub_module.length" [class.au-col-12]="!o.by_sub_module.length" aria-label="Hand-offs">
+                <h2>Where data moved</h2><div class="sub">Hand-offs: assignee, branch, store or status changed</div>
+                <ul class="au-list">
+                  @for (h of o.handoffs; track h.label) {
+                    <li><span class="au-badge blue"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> {{ h.label }}</span><div class="txt"></div><strong>{{ h.total.toLocaleString() }}</strong></li>
+                  } @empty {
+                    <li class="au-empty-val">No hand-offs recorded in this period.</li>
+                  }
+                </ul>
+              </section>
+            </div>
+          }
+        }
+      }
+    }
+  }
+</div>

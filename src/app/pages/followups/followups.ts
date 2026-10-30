@@ -131,7 +131,7 @@ export class Followups implements OnInit, OnDestroy {
   pageSize = 10;
   totalRecords = 0;
   /** 'priority' is not a column: it puts the calls due soonest first (red, then orange, then the rest by time). */
-  sortActive = 'priority';
+  sortActive = '';
   sortDirection: SortDirection = 'asc';
   private searchTerm = '';
 

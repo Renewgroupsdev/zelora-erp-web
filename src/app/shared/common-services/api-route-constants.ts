@@ -148,6 +148,9 @@ export class ApiRoutesConstants {
    public static HR_LEAVE_REQUESTS = "hr/leave-requests";
    public static HR_LEAVE_BALANCES = "hr/leave-balances";
    public static HR_PAYROLL_RUN = "hr/payroll/run";
+   public static HR_TASKS = "hr/tasks";
+   //Targets & incentives (Accounts Management -> Targets)
+   public static TARGETS = "targets";
 
    //Direct file uploads (POST/DELETE uploads/{folder})
    public static UPLOADS = "uploads";

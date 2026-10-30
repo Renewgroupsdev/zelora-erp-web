@@ -5,6 +5,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
 import { CENTRAL_STORE_KEY, PurchaseOrder, displayDate, lineTotals } from '../../../../../shared/models/purchase.model';
 import { CanActionDirective } from '../../../../../shared/directives/can-action.directive';
+import { RecordHistory } from '../../../../../shared/components/record-history/record-history';
 
 export interface ReviewResult {
   action: 'approved' | 'rejected';
@@ -15,7 +16,7 @@ export interface ReviewResult {
 @Component({
   selector: 'app-purchase-request-review',
   standalone: true,
-  imports: [CanActionDirective, CommonModule, FormsModule, MatDialogModule],
+  imports: [CanActionDirective, CommonModule, FormsModule, MatDialogModule, RecordHistory],
   templateUrl: './purchase-request-review.html',
   styleUrl: '../../../../../shared/styles/erp-dialog.scss',
 })

@@ -57,7 +57,7 @@ export class LeavePermission extends HrListBase implements OnInit {
   ];
 
   columns: TableColumn[] = REQUEST_COLUMNS;
-  override sortActive = 'appliedAt';
+  override sortActive = ''; // API order = updated_at desc: new / edited requests lead
 
   readonly stats = computed<DetailCardData[]>(() => {
     const list = this.hr.leaves();
@@ -88,7 +88,7 @@ export class LeavePermission extends HrListBase implements OnInit {
   setView(view: View): void {
     this.view.set(view);
     this.columns = view === 'Balance' ? BALANCE_COLUMNS : REQUEST_COLUMNS;
-    this.sortActive = view === 'Balance' ? 'empCode' : 'appliedAt';
+    this.sortActive = view === 'Balance' ? 'empCode' : '';
     this.sortDirection = view === 'Balance' ? 'asc' : 'desc';
     this.currentPage = 1;
     this.refresh();

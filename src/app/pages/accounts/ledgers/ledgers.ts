@@ -55,7 +55,7 @@ export class Ledgers extends AccountsListBase {
 
   override filters = [{ key: 'status', label: 'Group', options: LEDGER_GROUPS }];
   columns: TableColumn[] = LEDGER_COLUMNS;
-  override sortActive = 'group';
+  override sortActive = ''; // API order = updated_at desc: new / edited ledgers lead (the trial balance sorts by group)
   override sortDirection: 'asc' | 'desc' = 'asc';
 
   readonly trial = computed(() => {
@@ -69,6 +69,8 @@ export class Ledgers extends AccountsListBase {
   setView(view: View): void {
     this.view.set(view);
     this.columns = view === 'trial' ? TRIAL_COLUMNS : LEDGER_COLUMNS;
+    this.sortActive = view === 'trial' ? 'group' : '';
+    this.sortDirection = 'asc';
     this.currentPage = 1;
     this.refresh();
   }

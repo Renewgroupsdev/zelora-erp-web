@@ -202,6 +202,7 @@
                   <i [class]="'bi ' + actionIcon('delete', 'bi-trash3-fill')"></i>
                 </button>
                 }
+<span class="row-history" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">@if (historyType) { <app-record-history [type]="historyType" [recordId]="historyId(row)" [title]="historyTitle(row)" variant="icon" /> }</span>
               </div>
             }
 
@@ -297,6 +298,7 @@
                     <i [class]="'bi ' + actionIcon('delete', 'bi-trash3-fill')"></i>
                   </button>
                   }
+<span class="row-history" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">@if (historyType) { <app-record-history [type]="historyType" [recordId]="historyId(row)" [title]="historyTitle(row)" variant="icon" /> }</span>
                 </div>
             }
 
@@ -314,6 +316,7 @@
                     <i class="bi" [ngClass]="action.icon"></i>
                   </button>
                 }
+<span class="row-history" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">@if (historyType) { <app-record-history [type]="historyType" [recordId]="historyId(row)" [title]="historyTitle(row)" variant="icon" /> }</span>
               </div>
             }
 

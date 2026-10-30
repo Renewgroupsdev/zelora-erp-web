@@ -131,6 +131,12 @@ export class ModuleActivity implements OnInit, OnDestroy {
     if (p && p.current_page < p.last_page) this.load$.next(p.current_page + 1);
   }
 
+  /** The module's own page (figures, people, records, full event list); the drawer's role already holds view-module-activity. */
+  protected openModuleLog(): void {
+    this.close();
+    this.router.navigate(['/app/audit/modules', this.slug()]);
+  }
+
   protected openInAudit(e?: Row): void {
     this.close();
     this.router.navigate(['/app/audit/logs'], { queryParams: e ? { ev: e.id } : { module: this.slug() } });

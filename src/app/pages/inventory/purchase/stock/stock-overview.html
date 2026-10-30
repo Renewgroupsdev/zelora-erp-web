@@ -51,7 +51,7 @@
   }
 
   <div class="table-col">
-    <app-common-table-card
+    <app-common-table-card [historyType]="view() === 'transfers' ? 'StockTransfer' : 'StockBatch'"
       [recordCountText]="recordCountText"
       [columns]="columns"
       [loading]="purchase.loading()"

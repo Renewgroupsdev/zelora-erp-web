@@ -5,6 +5,7 @@
       <div class="title-icon"><i class="bi bi-journal-text"></i></div>
       <div class="title-content"><h2>{{ v.type }} · {{ v.voucherNo }}</h2><p>{{ displayDate(v.date) }} · {{ v.branch }} · by {{ v.createdBy }}</p></div>
     </div>
+    <app-record-history type="Voucher" [recordId]="v.id" [title]="v.voucherNo" />
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 

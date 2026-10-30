@@ -95,7 +95,10 @@
     </div>
 
     @if (canOpenAudit) {
-      <footer class="ma-foot"><button type="button" class="au-link" (click)="openInAudit()"><i class="bi bi-clipboard2-data" aria-hidden="true"></i> Open this module in the full Audit Trail</button></footer>
+      <footer class="ma-foot">
+        <button type="button" class="au-link" (click)="openModuleLog()"><i class="bi bi-grid-1x2" aria-hidden="true"></i> Open full module log</button>
+        @if (canOpenAudit) { <button type="button" class="au-link" style="margin-left: 14px" (click)="openInAudit()"><i class="bi bi-clipboard2-data" aria-hidden="true"></i> Open in the Audit Trail</button> }
+      </footer>
     }
   </div>
 </div>

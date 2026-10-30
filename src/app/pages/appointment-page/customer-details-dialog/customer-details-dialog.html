@@ -13,6 +13,7 @@
         }
       </div>
     </div>
+    <app-record-history type="Appointment" [recordId]="appointmentId" [title]="appt()?.name ?? ''" />
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 
