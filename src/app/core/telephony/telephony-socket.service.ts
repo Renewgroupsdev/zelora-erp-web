@@ -24,6 +24,7 @@ const EVENTS = [
   'call.missed',
   'agent.status.changed',
   'call.alert.created',
+  'lead.changed',
 ];
 
 /**

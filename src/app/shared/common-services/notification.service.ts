@@ -12,7 +12,7 @@ export interface AppNotification {
   /** Route to navigate to when the notification is clicked, if any. */
   link?: string;
   /** Something other than a route to do when it is clicked (the navbar handles it), e.g. open a discount request to decide it. */
-  action?: { kind: 'discount-review'; id: number };
+  action?: { kind: 'discount-review'; id: number } | { kind: 'reassign-leads'; telecallerId: number; telecallerName: string; leadIds: number[] };
 }
 
 const ICONS: Record<NotificationType, string> = {
@@ -93,6 +93,36 @@ export class NotificationService {
         action: { kind: 'discount-review', id: r.id },
       })),
       ...list.filter(n => !n.id.startsWith('DISC-') || keep.has(n.id)),
+    ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+
+    return fresh.length;
+  }
+
+  /**
+   * Telecallers absent today who still hold open leads (GET telephony/leads/absent-alerts), one notification each
+   * (id ABS-<telecaller>-<date>) asking the branch manager to reassign them. It keeps its read state while the
+   * telecaller stays absent with leads and disappears once the leads are reassigned. Returns how many are new.
+   */
+  syncAbsentTelecallers(alerts: { telecaller_id: number; telecaller_name: string; state: string; date: string; leads_count: number; due_today: number; lead_ids: number[] }[]): number {
+    const known = new Set(this._notifications().filter(n => n.id.startsWith('ABS-')).map(n => n.id));
+    const byId = new Map(alerts.map(a => [`ABS-${a.telecaller_id}-${a.date}`, a]));
+    const fresh = alerts.filter(a => !known.has(`ABS-${a.telecaller_id}-${a.date}`));
+    const toNotification = (a: (typeof alerts)[number], read = false): AppNotification => ({
+      id: `ABS-${a.telecaller_id}-${a.date}`,
+      type: 'manager',
+      title: `${a.telecaller_name} is ${a.state === 'on_leave' ? 'on leave' : 'absent'} today`,
+      message: `${a.leads_count} lead${a.leads_count === 1 ? '' : 's'} to follow up` + (a.due_today ? ` (${a.due_today} due today)` : '')
+        + ' - reassign them to a telecaller who is in.',
+      timestamp: new Date(),
+      read,
+      action: { kind: 'reassign-leads', telecallerId: a.telecaller_id, telecallerName: a.telecaller_name, leadIds: a.lead_ids },
+    });
+
+    this._notifications.update(list => [
+      ...fresh.map(a => toNotification(a)),
+      // Known ones keep their read state / time but take the current lead list.
+      ...list.filter(n => !n.id.startsWith('ABS-') || byId.has(n.id))
+        .map(n => (n.id.startsWith('ABS-') ? { ...toNotification(byId.get(n.id)!, n.read), timestamp: n.timestamp } : n)),
     ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
 
     return fresh.length;

@@ -242,3 +242,58 @@ textarea { resize: vertical; }
   .grid { grid-template-columns: 1fr; }
   .dialog-head, .dialog-body, .dialog-foot { padding-left: 16px; padding-right: 16px; }
 }
+
+/* Lead details + earlier follow-up notes, shown while the telecaller is on the call */
+.lead-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft, rgba(17, 95, 78, 0.12));
+  background: var(--bg-light-green-soft, #f6fbf9);
+
+  h3 { margin: 0; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+}
+
+.lead-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  .chip { padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--primary-soft, #e3f3ee); color: var(--primary, #0f5245); }
+}
+
+.lead-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  margin: 0;
+
+  dt { font-size: 11px; color: var(--text-muted, #6a837d); }
+  dd { margin: 1px 0 0; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+}
+
+.enquiry {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--app-surface-solid, #fff);
+  border-left: 3px solid var(--primary, #0f5245);
+
+  span { font-size: 11px; color: var(--text-muted, #6a837d); }
+  p { margin: 2px 0 0; font-size: 12.5px; white-space: pre-line; }
+}
+
+.notes-history {
+  > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--primary, #0f5245); display: flex; align-items: center; gap: 6px; }
+  ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; }
+  li { padding: 7px 10px; border-radius: 10px; background: var(--app-surface-solid, #fff); }
+  li p { margin: 0; font-size: 12.5px; }
+  li small { font-size: 11px; color: var(--text-muted, #6a837d); }
+  .empty-notes { margin: 6px 0 0; font-size: 12px; color: var(--text-muted, #6a837d); }
+}
+
+@media (max-width: 520px) {
+  .lead-facts { grid-template-columns: minmax(0, 1fr); }
+}

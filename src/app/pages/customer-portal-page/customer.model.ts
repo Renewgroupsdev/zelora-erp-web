@@ -28,6 +28,8 @@ export interface Customer {
   preferred_service: string | null;
   /** Opens the customer details view (built from the latest appointment). */
   latest_appointment_id: number | null;
+  /** The latest converted appointment - its treatment plan's sittings open from the "Treatment sittings" action. */
+  converted_appointment_id: number | null;
 }
 
 /** GET /customers/stats - the stat cards and the Branch / Preferred service filter options. */

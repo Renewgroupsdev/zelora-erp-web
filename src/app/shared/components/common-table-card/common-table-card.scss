@@ -866,3 +866,54 @@
 @media (prefers-reduced-motion: reduce) {
   .row-followup-urgent .avatar { animation: none !important; }
 }
+
+.action-assign {
+  background: var(--status-orange-bg, #fef0e0);
+  color: var(--status-orange-text, #e07a1f);
+}
+
+.action-audit {
+  background: var(--status-purple-bg, #ede3ff);
+  color: var(--status-purple-text, #7c4fe0);
+}
+
+.row-action-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  filter: grayscale(1);
+  transform: none;
+  box-shadow: none;
+}
+
+/* A lead another telecaller is on a call with: greyed out, its buttons disabled (audit log stays open). */
+.mat-mdc-row.row-locked .mat-mdc-cell {
+  background: color-mix(in srgb, var(--status-gray-bg, #eef1f0) 70%, var(--app-surface-solid)) !important;
+  color: var(--text-muted);
+  filter: grayscale(.85);
+}
+
+.mat-mdc-row.row-locked .mat-mdc-cell:first-child {
+  box-shadow: inset 3px 0 0 var(--status-gray-text, #8a9792);
+}
+
+.row-lock-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 120px;
+  padding: 2px 8px;
+  margin-right: 2px;
+  border-radius: 999px;
+  background: var(--status-gray-bg, #eef1f0);
+  color: var(--status-gray-text, #5f6b66);
+  font-size: 10.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: row-lock-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes row-lock-pulse {
+  50% { opacity: .55; }
+}

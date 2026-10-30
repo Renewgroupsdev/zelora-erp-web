@@ -99,6 +99,14 @@ export class TelephonyDock implements OnDestroy {
       untracked(() => (ringing ? this.startRingtone() : this.stopRingtone()));
     });
 
+    // Outgoing call picked up by the customer: open the outcome popup at once, with the lead's enquiry and earlier
+    // follow-up notes, so the telecaller talks with the context in front of them and notes the conversation live.
+    effect(() => {
+      const call = this.active();
+      const picked = call?.direction === 'outbound' && (call.status === 'connected' || !!call.answered_at || !!call.connected_at);
+      if (picked && call!.employee_id === this.auth.currentUser()?.id) untracked(() => this.openOutcome(call!, true));
+    });
+
     effect(() => {
       const pending = this.telephony.pendingDisposition();
       if (pending && !this.telephony.onCall()) untracked(() => this.openOutcome(pending, true));

@@ -53,6 +53,8 @@ export interface QuickAction {
   variant?: 'primary' | 'danger' | 'default';
   /** Roles & Permissions action slug; the table hides the button when the role is not ticked on it. */
   permission?: string;
+  /** Stays clickable on a row another telecaller has locked (read-only actions: view, audit log). */
+  keepOnLock?: boolean;
 }
 
 export interface TableColumn {

@@ -111,6 +111,11 @@
                 <span class="status-dot" [ngClass]="statusClass(customer.status)">
                   <i class="bi bi-circle-fill"></i> {{ customer.status }}
                 </span>
+                @if (customer.converted_appointment_id && can('treatment-sittings')) {
+                  <button type="button" class="view-profile-btn" (click)="openSittings(customer)" title="Treatment sittings">
+                    <i class="bi bi-collection"></i> Sittings
+                  </button>
+                }
                 <button *appCan="'view-customer'" type="button" class="view-profile-btn" (click)="openProfile(customer)">
                   View Profile <i class="bi bi-arrow-right"></i>
                 </button>

@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import Swal from 'sweetalert2';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Component, OnInit, inject } from '@angular/core';
+import { openAssignCaller } from '../../shared/components/lead-dialogs/assign-caller-dialog';
+import { openLeadAudit } from '../../shared/components/lead-dialogs/lead-audit-dialog';
 import { BranchOption, BranchOptionsService } from '../../shared/common-services/branch-options.service';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { CommonDetailCard } from '../../shared/components/common-detail-card/common-detail-card';
@@ -22,8 +24,8 @@ import {
 import { AddLeadForm } from './add-lead-form/add-lead-form';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subscription, forkJoin, of } from 'rxjs';
-import { catchError, finalize } from 'rxjs/operators';
+import { Subscription, forkJoin, interval, of } from 'rxjs';
+import { catchError, debounceTime, filter, finalize } from 'rxjs/operators';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { ToastService } from '../../shared/common-services/toast.service';
@@ -38,6 +40,9 @@ import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-
 import { BranchContextService } from '../../shared/common-services/branch-context.service';
 import { environment } from '../../../environments/environment';
 import { toLeadAttribution } from '../../shared/common-services/meta-integration.service';
+
+/** While the WebSocket is down, the list re-reads this often so new Meta leads and call locks still show. */
+const FALLBACK_REFRESH_MS = 20_000;
 
 @Component({
   selector: 'app-lead-management',
@@ -63,6 +68,13 @@ export class LeadManagement implements OnInit {
       this.loadLeadData();
       this.loadFilterList();
     });
+
+    // Live: a new Meta / website lead, a call started or ended on a lead (it greys out for everyone else), an
+    // assignment - re-read the page on screen, quietly. Without the socket, a slow poll does the same.
+    this.telephony.leadChanged$.pipe(debounceTime(400), takeUntilDestroyed()).subscribe(() => this.loadLeadData(true));
+    interval(FALLBACK_REFRESH_MS)
+      .pipe(filter(() => !this.telephony.socketLive() && document.visibilityState === 'visible' && !this.loading), takeUntilDestroyed())
+      .subscribe(() => this.loadLeadData(true));
   }
 
 
@@ -238,9 +250,10 @@ export class LeadManagement implements OnInit {
 
   /** Fetches only the page on screen - search, filters, sort and paging all run in the API.
    *  (Downloading every lead and paging in the browser took one request per 15 leads.) */
-  loadLeadData(): void {
-    this.isLoading = true;
-    this.loading = true;
+  /** `quiet` (live refresh): keeps the rows on screen instead of showing the loader. */
+  loadLeadData(quiet = false): void {
+    this.isLoading = !quiet;
+    this.loading = !quiet;
 
     const params = new URLSearchParams(this.buildQueryParams());
     params.set('page', String(this.currentPage));
@@ -303,6 +316,21 @@ export class LeadManagement implements OnInit {
       next_follow_up: lead.next_follow_up_at ? this.formatDate(lead.next_follow_up_at) : '-',
       action: 'menu',
       id: lead.id,
+      assignedToId: lead.assigned_to ?? 0,
+      branchKey: lead.branch_type && lead.branch_id ? `${lead.branch_type}:${lead.branch_id}` : '',
+      // Someone else is on a call with this lead (or writing its outcome): greyed out, nobody else may act on it.
+      ...this.lockFor(lead),
+    };
+  }
+
+  private lockFor(lead: any): Record<string, string | number> {
+    const lock = lead.on_call;
+    if (!lock || lock.user_id === this.auth.currentUser()?.id) return {};
+    const who = lock.name || 'Another telecaller';
+    return {
+      locked: 1,
+      lockedBy: who,
+      lockedLabel: lock.status === 'wrap_up' ? `${who} is saving the call outcome` : `${who} is on a call with this lead`,
     };
   }
 
@@ -392,6 +420,8 @@ export class LeadManagement implements OnInit {
   /** Row buttons in the leads table, each tied to its Roles & Permissions action slug. */
   readonly leadActionPermissions: Record<string, string> = {
     call: 'call-lead',
+    assign: 'assign-lead-caller',
+    audit: 'view-lead-audit',
     validate: 'validate-lead',
     edit: 'edit-lead',
     followUp: 'lead-follow-up',
@@ -400,6 +430,9 @@ export class LeadManagement implements OnInit {
     delete: 'delete-lead',
     bulkActions: 'bulk-assign-leads',
   };
+
+  /** Row buttons on this page: outgoing call, edit, assign caller, audit log, delete. */
+  readonly leadActions = ['call', 'edit', 'assign', 'audit', 'delete'];
 
   /** Whether the signed-in role is ticked on this action slug. */
   can(slug: string): boolean {
@@ -458,7 +491,33 @@ export class LeadManagement implements OnInit {
     // moves); `event.rows` is already the reordered array, nothing else to sync here.
   }
 
+  /** Assign / reassign the telecaller who follows this lead up (it then moves to their Follow-ups). */
+  onAssignCaller(row: TableRow): void {
+    if (row['locked']) return;
+    const lead = row['lead'] as LeadCell;
+    openAssignCaller(this.dialog, {
+      leadIds: [Number(row['id'])],
+      subject: `${lead?.name ?? 'Lead'} · ${lead?.subtitle ?? ''}`,
+      currentId: Number(row['assignedToId']) || null,
+      currentName: row['telecaller'] && row['telecaller'] !== 'Unassigned' ? String(row['telecaller']) : null,
+      branchKey: String(row['branchKey'] ?? '') || null,
+    }).afterClosed().subscribe(saved => {
+      if (!saved) return;
+      this.loadLeadData();
+      this.loadFilterList();
+    });
+  }
+
+  onAuditLead(row: TableRow): void {
+    const lead = row['lead'] as LeadCell;
+    openLeadAudit(this.dialog, { id: Number(row['id']), name: lead?.name ?? 'Lead' });
+  }
+
   onCallLead(row: TableRow): void {
+    if (row['locked']) {
+      this.toast.warning(String(row['lockedLabel'] ?? 'Another telecaller is on this lead.'));
+      return;
+    }
     if (this.telephony.onCall()) {
       this.toast.warning('You are already on a call.');
       return;

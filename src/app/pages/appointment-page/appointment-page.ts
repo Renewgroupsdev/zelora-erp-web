@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { BranchOptionsService } from '../../shared/common-services/branch-options.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
@@ -20,32 +21,34 @@ import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { FlowAppointmentRecord, FlowStatus, inr, treatmentNames } from '../../shared/models/appointment-flow.model';
 import { AppointmentWizard } from './appointment-wizard/appointment-wizard';
-import { SittingsDialog } from './sittings-dialog/sittings-dialog';
 import { CustomerDetailsDialog } from './customer-details-dialog/customer-details-dialog';
-import { NewAppointmentDialog, NewAppointmentResult } from './new-appointment-dialog/new-appointment-dialog';
+import { NewAppointmentDialog, NewAppointmentPreset, NewAppointmentResult } from './new-appointment-dialog/new-appointment-dialog';
+import { AppointmentCalendar, CalendarSelection, CalendarView, calendarRange, toIsoDate } from './appointment-calendar/appointment-calendar';
+import { openLeadAudit } from '../../shared/components/lead-dialogs/lead-audit-dialog';
 import { AuthService } from '../../core/auth/auth.service';
 import { CanActionDirective } from '../../shared/directives/can-action.directive';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
-const STATUSES: FlowStatus[] = ['Scheduled', 'In Consultation', 'Awaiting Terms', 'Invoiced', 'Converted', 'Cancelled'];
+/** Converted is left out: a converted appointment is a customer, listed (with its sittings) in Customer Management. */
+const STATUSES: FlowStatus[] = ['Scheduled', 'In Consultation', 'Awaiting Terms', 'Invoiced', 'Cancelled'];
 
 /**
- * Appointments booked by telecallers (a follow-up turned into a visit). Each one is worked through the
- * consultation wizard, then the invoice, then becomes a customer whose treatment sittings are tracked here.
+ * Appointments booked by telecallers (a follow-up turned into a visit), shown as a slot calendar (month / week /
+ * day) or as a list. Each one is worked through the consultation wizard, then the invoice, then becomes a
+ * customer - from there its treatment sittings are tracked in Customer Management.
  */
 @Component({
   selector: 'app-appointment-page',
   standalone: true,
-  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, CanActionDirective, AppointmentCalendar],
   templateUrl: './appointment-page.html',
   styleUrl: './appointment-page.scss',
 })
-export class AppointmentPage implements OnInit, AfterViewInit {
+export class AppointmentPage implements OnInit {
   private readonly branchOptions = inject(BranchOptionsService);
   constructor(private dialog: MatDialog, private toast: ToastService, private api: ApiDataService) { }
 
   readonly inr = inr;
-  readonly treatmentNames = treatmentNames;
   private readonly auth = inject(AuthService);
 
   /** Roles & Permissions -> Appointment module action ticked for the signed-in role. */
@@ -53,11 +56,13 @@ export class AppointmentPage implements OnInit, AfterViewInit {
     return this.auth.hasActionAccess(action);
   }
 
-  filters: FilterOption[] = [
-    { key: 'status', label: 'Status', options: STATUSES },
-    { key: 'branch', label: 'Branch', multiSelect: true, options: [] },
-    { key: 'date', label: 'Date' },
-  ];
+  /** Calendar (slot booking) is the default; the list keeps the table for searching / sorting. */
+  mode: 'calendar' | 'list' = 'calendar';
+  calendarView: CalendarView = 'week';
+  calendarDate = new Date();
+
+  private branchNames: string[] = [];
+  filters: FilterOption[] = this.buildFilters();
 
   filterState: CommonFilterState = { status: null, source: null, branch: [], telecaller: null, dateFrom: null, dateTo: null };
 
@@ -86,49 +91,57 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   sortActive = 'schedule';
   sortDirection: SortDirection = 'asc';
   private searchTerm = '';
-
-  today = new Date();
-  timelineExpanded = typeof window === 'undefined' || window.matchMedia('(min-width: 576px)').matches;
-
-  @ViewChild('timelineScroll') private timelineScrollRef?: ElementRef<HTMLDivElement>;
-  canScrollTimelinePrev = false;
-  canScrollTimelineNext = false;
+  private listSub?: Subscription;
 
   ngOnInit(): void {
     this.loadBranches();
     this.loadAppointments();
   }
 
-  ngAfterViewInit(): void {
-    setTimeout(() => this.updateTimelineScrollState());
-  }
-
   // ---------------------------------------------------------------- data
+
+  /** The Date filter belongs to the list; the calendar picks its dates by navigating. */
+  private buildFilters(): FilterOption[] {
+    return [
+      { key: 'status', label: 'Status', options: STATUSES },
+      { key: 'branch', label: 'Branch', multiSelect: true, options: this.branchNames },
+      ...(this.mode === 'list' ? [{ key: 'date', label: 'Date' }] : []),
+    ];
+  }
 
   private loadBranches(): void {
     this.branchOptions.load().subscribe(list => {
-      const names = list.map(b => b.name);
-      this.filters = this.filters.map(f => (f.key === 'branch' ? { ...f, options: names } : f));
+      this.branchNames = list.map(b => b.name);
+      this.filters = this.buildFilters();
     });
   }
 
-  /** Status, date and search are filtered by the API; branch by name here. */
+  /** Status, dates and search are filtered by the API; branch by name here. The calendar loads only the
+   *  days on screen, the list uses the Date filter. */
   loadAppointments(): void {
     this.loading = true;
     const params = new URLSearchParams({ per_page: '500' });
     if (this.filterState.status) params.set('status', this.filterState.status);
-    if (this.filterState.dateFrom) params.set('date_from', this.filterState.dateFrom);
-    if (this.filterState.dateTo) params.set('date_to', this.filterState.dateTo);
+    if (this.mode === 'calendar') {
+      const { from, to } = calendarRange(this.calendarView, this.calendarDate);
+      params.set('date_from', toIsoDate(from));
+      params.set('date_to', toIsoDate(to));
+    } else {
+      if (this.filterState.dateFrom) params.set('date_from', this.filterState.dateFrom);
+      if (this.filterState.dateTo) params.set('date_to', this.filterState.dateTo);
+    }
     if (this.searchTerm) params.set('search', this.searchTerm);
 
-    this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}?${params}`).subscribe({
+    // A newer range / filter supersedes a request still in flight.
+    this.listSub?.unsubscribe();
+    this.listSub = this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}?${params}`).subscribe({
       next: (res: any) => {
         this.appointments = res?.data?.data ?? [];
         const s = res?.summary;
         if (s) this.summary = { total: +s.total || 0, today: +s.today || 0, scheduled: +s.scheduled || 0, in_progress: +s.in_progress || 0, converted: +s.converted || 0 };
         this.loading = false;
         this.refreshRows();
-        setTimeout(() => this.updateTimelineScrollState());
+        this.refreshPanel();
       },
       error: (err: any) => {
         this.loading = false;
@@ -137,46 +150,109 @@ export class AppointmentPage implements OnInit, AfterViewInit {
     });
   }
 
-  // ---------------------------------------------------------------- timeline
-
-  toggleTimeline(): void {
-    this.timelineExpanded = !this.timelineExpanded;
-    if (this.timelineExpanded) setTimeout(() => this.updateTimelineScrollState());
+  private matchesBranch(a: FlowAppointmentRecord): boolean {
+    const branches = this.filterState.branch;
+    return !branches.length || branches.includes(a.branch_name ?? a.branch?.name ?? '');
   }
 
-  @HostListener('window:resize')
-  onWindowResize(): void {
-    this.updateTimelineScrollState();
+  /** Every booking in the calendar range (converted / cancelled too - they still held the slot), by branch. */
+  get calendarAppointments(): FlowAppointmentRecord[] {
+    return this.appointments.filter(a => this.matchesBranch(a));
   }
 
-  scrollTimeline(direction: 1 | -1): void {
-    const el = this.timelineScrollRef?.nativeElement;
-    if (!el) return;
-    el.scrollBy({ left: direction * Math.min(el.clientWidth * 0.9, 480), behavior: 'smooth' });
+  // ---------------------------------------------------------------- calendar
+
+  setMode(mode: 'calendar' | 'list'): void {
+    if (mode === this.mode) return;
+    this.mode = mode;
+    this.filters = this.buildFilters();
+    this.currentPage = 1;
+    this.loadAppointments();
   }
 
-  onTimelineScroll(): void {
-    this.updateTimelineScrollState();
+  onCalendarView(view: CalendarView): void {
+    this.calendarView = view;
+    this.loadAppointments();
   }
 
-  private updateTimelineScrollState(): void {
-    const el = this.timelineScrollRef?.nativeElement;
-    this.canScrollTimelinePrev = !!el && el.scrollLeft > 4;
-    this.canScrollTimelineNext = !!el && el.scrollLeft < el.scrollWidth - el.clientWidth - 4;
+  onCalendarDate(date: Date): void {
+    this.calendarDate = date;
+    this.loadAppointments();
   }
 
-  get todaysAppointments(): FlowAppointmentRecord[] {
-    const today = this.toIso(this.today);
-    return this.appointments
-      .filter(a => a.appointment_date === today && a.status !== 'Cancelled' && a.status !== 'Converted')
-      .sort((a, b) => (a.appointment_time ?? '').localeCompare(b.appointment_time ?? ''));
+  /** A free slot: book a new appointment at that date and time. */
+  onSlotSelect(slot: NewAppointmentPreset): void {
+    if (!this.can('add-appointment')) return;
+    this.openWizard(undefined, slot);
   }
+
+  // ---------------------------------------------------------------- slide-over panel
+
+  /** Bookings of the clicked slot (or one booking), shown as cards with their actions. */
+  panel: CalendarSelection | null = null;
+
+  openPanel(selection: CalendarSelection): void {
+    this.panel = selection;
+  }
+
+  closePanel(): void {
+    this.panel = null;
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    // A dialog opened from the panel handles its own Escape.
+    if (!this.dialog.openDialogs.length) this.closePanel();
+  }
+
+  /** After a reload the panel shows the fresh records (status, payment) of the same bookings. */
+  private refreshPanel(): void {
+    if (!this.panel) return;
+    const byId = new Map(this.appointments.map(a => [a.id, a]));
+    this.panel = { ...this.panel, appointments: this.panel.appointments.map(a => byId.get(a.id) ?? a) };
+  }
+
+  canOpenForm(a: FlowAppointmentRecord): boolean {
+    return a.status !== 'Cancelled' && this.can('consultation-form');
+  }
+
+  panelAction(action: 'form' | 'invoice' | 'profile' | 'audit', a: FlowAppointmentRecord): void {
+    if (action === 'form') this.openWizardFor(a.id);
+    else if (action === 'invoice') this.downloadInvoice(a);
+    else if (action === 'audit') openLeadAudit(this.dialog, { id: a.id, name: a.name, kind: 'appointment' });
+    else this.openProfile(a);
+  }
+
+  serviceOf(a: FlowAppointmentRecord): string {
+    return treatmentNames(a) || (a.category ? `${a.category} consultation` : 'Consultation');
+  }
+
+  statusTone(status: FlowStatus): string {
+    if (status === 'Scheduled') return 'blue';
+    if (status === 'In Consultation' || status === 'Awaiting Terms') return 'orange';
+    if (status === 'Invoiced') return 'purple';
+    if (status === 'Converted') return 'green';
+    if (status === 'Cancelled') return 'red';
+    return 'gray';
+  }
+
+  paymentTone(a: FlowAppointmentRecord): string {
+    const s = this.paymentStatus(a);
+    return s === 'Paid' ? 'green' : s === 'Partial' ? 'orange' : 'gray';
+  }
+
+  initials(name: string): string {
+    const parts = name.trim().split(/\s+/);
+    return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+  }
+
+  pad(id: number): string {
+    return String(id).padStart(5, '0');
+  }
+
+  readonly Number = Number;
 
   // ---------------------------------------------------------------- formatting
-
-  private toIso(date: Date): string {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  }
 
   private formatDisplayDate(iso: string): string {
     const date = new Date(`${iso}T00:00:00`);
@@ -191,32 +267,9 @@ export class AppointmentPage implements OnInit, AfterViewInit {
     return `${hh % 12 === 0 ? 12 : hh % 12}:${String(mm).padStart(2, '0')} ${hh >= 12 ? 'PM' : 'AM'}`;
   }
 
-  initials(name: string): string {
-    const parts = name.trim().split(/\s+/);
-    return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
-  }
-
-  avatarColorForName(name: string): string {
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-    return `avatar-color-${(hash % 5) + 1}`;
-  }
-
-  statusClass(status: FlowStatus): string {
-    const map: Record<FlowStatus, string> = {
-      Scheduled: 'status-blue', 'In Consultation': 'status-orange', 'Awaiting Terms': 'status-orange',
-      Invoiced: 'status-blue', Converted: 'status-green', 'Consultation Only': 'status-gray', Cancelled: 'status-red',
-    };
-    return map[status] ?? 'status-gray';
-  }
-
   /** Payment status as sent by the API (`payment_status`). */
   paymentStatus(a: FlowAppointmentRecord): 'Paid' | 'Partial' | 'Pending' {
     return a.payment_status ?? 'Pending';
-  }
-
-  paymentStatusClass(status: 'Paid' | 'Partial' | 'Pending'): string {
-    return status === 'Paid' ? 'status-green' : status === 'Partial' ? 'status-orange' : 'status-gray';
   }
 
   // ---------------------------------------------------------------- stats
@@ -232,10 +285,6 @@ export class AppointmentPage implements OnInit, AfterViewInit {
       { label: 'In Progress', value: s.in_progress, trendText: 'Consultation / terms / invoice', trendDirection: 'neutral', icon: 'bi-clipboard2-pulse', iconVariant: 'orange' },
       { label: 'Converted', value: converted, trendText: `${rate}% of appointments`, trendDirection: 'neutral', icon: 'bi-person-check', iconVariant: 'green' },
     ];
-  }
-
-  get formattedTodayDate(): string {
-    return this.today.toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   // ---------------------------------------------------------------- table
@@ -282,9 +331,7 @@ export class AppointmentPage implements OnInit, AfterViewInit {
 
   private actionsFor(a: FlowAppointmentRecord): QuickAction[] {
     const actions: QuickAction[] = [];
-    if (a.status === 'Converted') {
-      if (this.can('treatment-sittings')) actions.push({ key: 'sittings', icon: 'bi-collection', label: 'Treatment sittings', variant: 'primary' });
-    } else if (a.status !== 'Cancelled' && this.can('consultation-form')) {
+    if (a.status !== 'Cancelled' && this.can('consultation-form')) {
       actions.push({ key: 'wizard', icon: 'bi-clipboard2-pulse', label: 'Consultation form', variant: 'primary' });
     }
     if (a.invoice_no && this.can('download-invoice')) actions.push({ key: 'invoice', icon: 'bi-receipt', label: 'Download invoice', variant: 'default' });
@@ -296,14 +343,16 @@ export class AppointmentPage implements OnInit, AfterViewInit {
     if (!appt) return;
 
     if (action === 'wizard') this.openWizard(appt);
-    else if (action === 'sittings') this.openSittings(appt);
     else if (action === 'invoice') this.downloadInvoice(appt);
   }
 
   /** Customer name link: the full customer record, view only (editing stays in the form / sittings actions). */
   openAppointmentProfile(row: TableRow): void {
     const appt = this.appointments.find(a => a.id === Number(row['id']));
-    if (!appt) return;
+    if (appt) this.openProfile(appt);
+  }
+
+  private openProfile(appt: FlowAppointmentRecord): void {
     if (!this.can('customer-details')) return void this.toast.warning('Your role cannot view customer details.');
     this.dialog.open(CustomerDetailsDialog, {
       width: '960px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false,
@@ -311,12 +360,13 @@ export class AppointmentPage implements OnInit, AfterViewInit {
     });
   }
 
-  /** Without an appointment ("Add Appointment"): mobile lookup + personal details first, then the wizard for the new visit. */
-  openWizard(appt?: FlowAppointmentRecord): void {
+  /** Without an appointment ("Add Appointment" / a free calendar slot): mobile lookup + personal details first,
+   *  then the wizard for the new visit. `preset` fills the date and time of the slot that was clicked. */
+  openWizard(appt?: FlowAppointmentRecord, preset?: NewAppointmentPreset): void {
     if (appt) return this.openWizardFor(appt.id);
     this.dialog.open(NewAppointmentDialog, {
       width: '760px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, disableClose: true,
-      panelClass: 'new-appointment-dialog',
+      panelClass: 'new-appointment-dialog', data: preset ?? null,
     }).afterClosed().subscribe((result?: NewAppointmentResult) => {
       if (!result) return;
       if (result.changed) this.loadAppointments();
@@ -331,13 +381,6 @@ export class AppointmentPage implements OnInit, AfterViewInit {
     }).afterClosed().subscribe((changed: boolean) => {
       if (changed) this.loadAppointments();
     });
-  }
-
-  openSittings(appt: FlowAppointmentRecord): void {
-    this.dialog.open(SittingsDialog, {
-      width: '960px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false,
-      panelClass: 'sittings-dialog', data: { appointmentId: appt.id },
-    }).afterClosed().subscribe(() => this.loadAppointments());
   }
 
   /** Loads the tax invoice as a blob and opens it in a new tab (download / print from the browser's PDF viewer). */
@@ -375,8 +418,8 @@ export class AppointmentPage implements OnInit, AfterViewInit {
   }
 
   private refreshRows(): void {
-    const branches = this.filterState.branch;
-    const filtered = this.appointments.filter(a => !branches.length || branches.includes(a.branch_name ?? a.branch?.name ?? ''));
+    // Converted appointments have become customers: they are listed in Customer Management, not here.
+    const filtered = this.appointments.filter(a => a.status !== 'Converted' && this.matchesBranch(a));
     const sorted = this.sortRows(filtered.map(a => this.mapRow(a)));
 
     this.totalRecords = sorted.length;

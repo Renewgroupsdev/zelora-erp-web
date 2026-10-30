@@ -6,6 +6,7 @@ import { ApiDataService } from '../http/api.service';
 import { TelephonySocketEvent, TelephonySocketService } from './telephony-socket.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import {
+  AbsentTelecallerAlert,
   AgentState,
   AgentStatus,
   CallAlert,
@@ -83,6 +84,11 @@ export class TelephonyService {
 
   /** Emits after an outcome is saved (lead status / follow-up changed), so lists can reload. */
   readonly outcomeSaved$ = new Subject<CallLog>();
+
+  /** A lead changed anywhere (new Meta / website lead, someone started / ended a call on it, assigned ...):
+   *  lead lists reload, and a lead someone else is calling greys out. Only flows while the socket is live. */
+  readonly leadChanged$ = new Subject<{ lead_id: number; action: string; user_id: number | null }>();
+  readonly socketLive = computed(() => this.socket.state() === 'connected');
 
   private poll?: Subscription;
   private alertPoll?: Subscription;
@@ -172,6 +178,11 @@ export class TelephonyService {
     return this.api.GET(ApiRoutesConstants.CALL_AGENT_LIST).pipe(map((res: any) => (res?.data ?? []) as TelecallerRow[]));
   }
 
+  /** Telecallers absent today who still hold open leads (branch manager / admin; empty for other roles). */
+  absentAlerts(): Observable<AbsentTelecallerAlert[]> {
+    return this.api.GET(ApiRoutesConstants.LEAD_ABSENT_ALERTS).pipe(map((res: any) => (res?.data ?? []) as AbsentTelecallerAlert[]));
+  }
+
   /** `unit` also moves the leads to that branch / franchise. */
   assignLeads(leadIds: number[], assignedTo: number | null, unit: { type: string; id: number } | null = null): Observable<any> {
     return this.api.POST(ApiRoutesConstants.LEAD_ASSIGN, {
@@ -239,6 +250,7 @@ export class TelephonyService {
     if (user) {
       this.socket.join(`telecaller.${user.id}`);
       this.socket.join(`branch-head.${user.id}`);
+      this.socket.join('leads');
     }
 
     // Poll interval follows the socket: 30 s heartbeat while live, 3 s while down. timer(0, ...) also re-reads at
@@ -260,6 +272,10 @@ export class TelephonyService {
 
   /** A call / agent event re-reads the agent state; a missed-call escalation re-reads the alert feed too. */
   private onSocketEvent(event: TelephonySocketEvent): void {
+    if (event.name === 'lead.changed') {
+      this.leadChanged$.next(event.data);
+      return;
+    }
     this.stateKick$.next();
     if (event.name === 'call.alert.created' || event.name === 'call.missed') this.alertKick$.next();
   }

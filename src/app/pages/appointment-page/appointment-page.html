@@ -4,7 +4,15 @@
     <h6 class="page-title"><i class="bi bi-calendar-check-fill"></i> Appointments</h6>
 
     <div class="page-header-actions">
-      <span class="today-date-badge"><i class="bi bi-calendar3"></i> {{ formattedTodayDate }}</span>
+      <!-- Calendar (slot booking) or list -->
+      <div class="mode-toggle" role="group" aria-label="View mode">
+        <button type="button" [class.active]="mode === 'calendar'" (click)="setMode('calendar')" title="Calendar view">
+          <i class="bi bi-calendar3"></i><span>Calendar</span>
+        </button>
+        <button type="button" [class.active]="mode === 'list'" (click)="setMode('list')" title="List view">
+          <i class="bi bi-list-ul"></i><span>List</span>
+        </button>
+      </div>
       <button *appCan="'add-appointment'" type="button" class="add-appointment-btn" (click)="openWizard()" title="Add Appointment">
         <i class="bi bi-plus-lg" aria-hidden="true"></i>
         <span>Add Appointment</span>
@@ -29,68 +37,6 @@
     }
   </div>
 
-  <div class="timeline-card">
-    <button type="button" class="timeline-header" [attr.aria-expanded]="timelineExpanded" (click)="toggleTimeline()">
-      <h3><i class="bi bi-clock-history"></i> Today's Timeline</h3>
-      <div class="timeline-header-actions">
-        <span class="timeline-count">{{ todaysAppointments.length }} booked</span>
-        <i class="bi timeline-toggle-icon" [class.bi-chevron-down]="!timelineExpanded" [class.bi-chevron-up]="timelineExpanded" aria-hidden="true"></i>
-      </div>
-    </button>
-
-    @if (timelineExpanded) {
-      @if (!todaysAppointments.length) {
-        <div class="timeline-empty">
-          <i class="bi bi-calendar2-check"></i>
-          <p>No appointments booked for today yet.</p>
-        </div>
-      } @else {
-        <div class="timeline-scroll-wrap">
-          <button type="button" class="timeline-nav-btn prev" (click)="scrollTimeline(-1)" [disabled]="!canScrollTimelinePrev" aria-label="Scroll to previous appointments">
-            <i class="bi bi-chevron-left"></i>
-          </button>
-
-          <div class="timeline-scroll" #timelineScroll (scroll)="onTimelineScroll()">
-            @for (appt of todaysAppointments; track appt.id) {
-              <div class="timeline-item">
-                <div class="timeline-time">{{ formatTime(appt.appointment_time) }}</div>
-
-                <div class="timeline-body">
-                  <span class="timeline-avatar" [ngClass]="avatarColorForName(appt.name)">{{ initials(appt.name) }}</span>
-                  <div class="timeline-info">
-                    <span class="timeline-name">{{ appt.name }}</span>
-                    <span class="timeline-service"><i class="bi bi-magic"></i> {{ treatmentNames(appt) || (appt.category ? appt.category + ' consultation' : 'Consultation') }}</span>
-                    <span class="timeline-branch"><i class="bi bi-geo-alt-fill"></i> {{ appt.branch?.name || '-' }}</span>
-                  </div>
-                </div>
-
-                <div class="timeline-payment">
-                  <span class="payment-amount"><i class="bi bi-cash-stack"></i> {{ inr(appt.total_amount) }}</span>
-                  <span class="status-pill sm" [ngClass]="paymentStatusClass(paymentStatus(appt))">{{ paymentStatus(appt) }}</span>
-                </div>
-
-                <div class="timeline-footer">
-                  @if (can(appt.status === 'Converted' ? 'treatment-sittings' : 'consultation-form')) {
-                    <button type="button" class="status-pill as-btn" [ngClass]="statusClass(appt.status)" (click)="appt.status === 'Converted' ? openSittings(appt) : openWizard(appt)" title="Open">{{ appt.status }}</button>
-                  } @else {
-                    <span class="status-pill" [ngClass]="statusClass(appt.status)">{{ appt.status }}</span>
-                  }
-                  <!-- <a class="timeline-call-btn" [href]="'tel:' + appt.mobile_no" [attr.aria-label]="'Call ' + appt.name" title="Call">
-                    <i class="bi bi-telephone-fill"></i>
-                  </a> -->
-                </div>
-              </div>
-            }
-          </div>
-
-          <button type="button" class="timeline-nav-btn next" (click)="scrollTimeline(1)" [disabled]="!canScrollTimelineNext" aria-label="Scroll to next appointments">
-            <i class="bi bi-chevron-right"></i>
-          </button>
-        </div>
-      }
-    }
-  </div>
-
   <app-common-filter-card
     searchPlaceholder="Search by customer, phone or invoice no"
     [filters]="filters"
@@ -100,25 +46,101 @@
     (exportClick)="onExport()"
   ></app-common-filter-card>
 
-  <div class="table-col">
-    <app-common-table-card
-      title="All Appointments"
-      [recordCountText]="recordCountText"
-      [columns]="columns"
-      [rows]="rows"
+  @if (mode === 'calendar') {
+    <app-appointment-calendar
+      [appointments]="calendarAppointments"
+      [view]="calendarView"
+      [date]="calendarDate"
       [loading]="loading"
-      [totalRecords]="totalRecords"
-      [pageSize]="pageSize"
-      [pageSizeOptions]="pageSizeOptions"
-      [currentPage]="currentPage"
-      [pageInfoText]="pageInfoText"
-      [sortActive]="sortActive"
-      [sortDirection]="sortDirection"
-      (pageChange)="onPageChange($event)"
-      (sortChange)="onSortChange($event)"
-      (quickActionClick)="onQuickAction($event)"
-      (profileClick)="openAppointmentProfile($event)"
-    ></app-common-table-card>
-  </div>
+      [canBook]="can('add-appointment')"
+      (viewChange)="onCalendarView($event)"
+      (dateChange)="onCalendarDate($event)"
+      (slotSelect)="onSlotSelect($event)"
+      (appointmentsOpen)="openPanel($event)"
+    ></app-appointment-calendar>
+  } @else {
+    <div class="table-col">
+      <app-common-table-card
+        title="All Appointments"
+        [recordCountText]="recordCountText"
+        [columns]="columns"
+        [rows]="rows"
+        [loading]="loading"
+        [totalRecords]="totalRecords"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="pageSizeOptions"
+        [currentPage]="currentPage"
+        [pageInfoText]="pageInfoText"
+        [sortActive]="sortActive"
+        [sortDirection]="sortDirection"
+        (pageChange)="onPageChange($event)"
+        (sortChange)="onSortChange($event)"
+        (quickActionClick)="onQuickAction($event)"
+        (profileClick)="openAppointmentProfile($event)"
+      ></app-common-table-card>
+    </div>
+  }
+
+  <!-- Slide-over: the bookings of the clicked slot, each with its actions -->
+  @if (panel) {
+    <div class="appt-panel-backdrop" (click)="closePanel()"></div>
+    <aside class="appt-panel" role="dialog" aria-modal="true" [attr.aria-label]="panel.title">
+      <header class="ap-head">
+        <span class="ap-head-icon"><i class="bi bi-calendar2-week"></i></span>
+        <div class="ap-head-text">
+          <h3>{{ panel.title }}</h3>
+          <p>{{ panel.appointments.length }} {{ panel.appointments.length === 1 ? 'booking' : 'bookings' }}</p>
+        </div>
+        <button type="button" class="ap-close" (click)="closePanel()" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+      </header>
+
+      <div class="ap-body">
+        @for (a of panel.appointments; track a.id) {
+          <article class="ap-card" [ngClass]="'ap-' + statusTone(a.status)">
+            <div class="ap-card-top">
+              <span class="ap-avatar">{{ initials(a.name) }}</span>
+              <div class="ap-who">
+                <strong>{{ a.name }}</strong>
+                <span>{{ a.customer?.customer_code || ('AP-' + pad(a.id)) }}</span>
+              </div>
+              <span class="ap-pill" [ngClass]="'pill-' + statusTone(a.status)">{{ a.status }}</span>
+            </div>
+
+            <dl class="ap-facts">
+              <div><dt><i class="bi bi-clock"></i></dt><dd>{{ formatTime(a.appointment_time) }}</dd></div>
+              <div><dt><i class="bi bi-telephone"></i></dt><dd>{{ a.mobile_no }}</dd></div>
+              <div class="wide"><dt><i class="bi bi-magic"></i></dt><dd>{{ serviceOf(a) }}</dd></div>
+              <div class="wide"><dt><i class="bi bi-geo-alt-fill"></i></dt><dd>{{ a.branch_name || a.branch?.name || '-' }}</dd></div>
+              <div><dt><i class="bi bi-cash-stack"></i></dt><dd>{{ Number(a.total_amount) ? inr(a.total_amount) : '-' }}</dd></div>
+              <div><dt><i class="bi bi-wallet2"></i></dt><dd><span class="ap-pill sm" [ngClass]="'pill-' + paymentTone(a)">{{ paymentStatus(a) }}</span></dd></div>
+            </dl>
+
+            <div class="ap-actions">
+              @if (canOpenForm(a)) {
+                <button type="button" class="ap-act primary" (click)="panelAction('form', a)" title="Consultation form">
+                  <i class="bi bi-clipboard2-pulse"></i><span>Consultation</span>
+                </button>
+              }
+              @if (a.invoice_no && can('download-invoice')) {
+                <button type="button" class="ap-act" (click)="panelAction('invoice', a)" title="Download invoice">
+                  <i class="bi bi-receipt"></i><span>Invoice</span>
+                </button>
+              }
+              @if (can('customer-details')) {
+                <button type="button" class="ap-act" (click)="panelAction('profile', a)" title="Customer details">
+                  <i class="bi bi-person-vcard"></i><span>Details</span>
+                </button>
+              }
+              @if (can('appointment-audit')) {
+                <button type="button" class="ap-act" (click)="panelAction('audit', a)" title="Activity audit log">
+                  <i class="bi bi-clipboard-data"></i><span>Audit log</span>
+                </button>
+              }
+            </div>
+          </article>
+        }
+      </div>
+    </aside>
+  }
 
 </div>

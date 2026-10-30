@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { BranchOptionsService, parseUnitKey, unitKey } from '../../../shared/common-services/branch-options.service';
 import { FormsModule } from '@angular/forms';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { finalize } from 'rxjs';
 import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
@@ -40,6 +40,12 @@ interface TreatmentOption {
 }
 
 /** What the dialog closes with: a new appointment for the consultation wizard, or just "reload the list". */
+/** The calendar slot that was clicked ("YYYY-MM-DD", "HH:mm"): the new booking starts at it. */
+export interface NewAppointmentPreset {
+  date: string;
+  time: string;
+}
+
 export interface NewAppointmentResult {
   appointmentId?: number;
   changed?: boolean;
@@ -69,6 +75,7 @@ export class NewAppointmentDialog implements OnInit {
   private readonly api = inject(ApiDataService);
   private readonly toast = inject(ToastService);
   private readonly dialogRef = inject(MatDialogRef<NewAppointmentDialog, NewAppointmentResult | undefined>);
+  private readonly preset = inject<NewAppointmentPreset | null>(MAT_DIALOG_DATA, { optional: true });
 
   readonly inr = inr;
   readonly heardFrom = HEARD_FROM;
@@ -106,11 +113,14 @@ export class NewAppointmentDialog implements OnInit {
 
   ngOnInit(): void {
     const now = new Date();
-    const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    this.form.appointment_date = this.today;
+    // Opened from a calendar slot: that slot; otherwise now.
+    const date = this.preset?.date || this.today;
+    const time = this.preset?.time || `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    this.form.appointment_date = date;
     this.form.appointment_time = time;
-    this.plan.start_date = this.today;
+    this.plan.start_date = date;
     this.plan.start_time = time;
+    if (this.preset) this.slot = { date, time };
     this.branchOptions.load().subscribe(list => this.branches.set(list.map(b => ({ key: b.key, name: b.name }))));
     this.api.GetAllPages(ApiRoutesConstants.SERVICE_CATEGORY_TREE_LIST).subscribe({
       next: (cats: any[]) => {
@@ -161,7 +171,9 @@ export class NewAppointmentDialog implements OnInit {
     this.extra = { count: 1, interval };
     this.plan = { ...this.plan, interval };
     const next = this.nextSitting();
-    this.slot = { date: next?.scheduled_date ?? '', time: (next?.scheduled_time ?? '').slice(0, 5) };
+    // A slot clicked on the calendar wins over the sitting's current one.
+    this.slot = this.preset ? { date: this.preset.date, time: this.preset.time }
+      : { date: next?.scheduled_date ?? '', time: (next?.scheduled_time ?? '').slice(0, 5) };
   }
 
   /** Number changed after a lookup: drop the details that belonged to the previous number. */
