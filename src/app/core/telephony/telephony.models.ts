@@ -41,6 +41,12 @@ export interface CallLead {
   assigned_to_emp_code?: string | null;
   source_name?: string;
   service_category_name?: string;
+  service_request_name?: string | null;
+  /** The customer's enquiry (form message / Meta form answer). */
+  reason?: string | null;
+  gender?: string | null;
+  location?: string | null;
+  branch_name?: string | null;
 }
 
 export interface CallLog {
@@ -89,9 +95,12 @@ export interface CallerProfile {
   is_known: boolean;
   recent_calls: CallLog[];
   next_follow_up: { follow_up_date: string; follow_up_time: string | null; type: number } | null;
+  /** Notes of earlier conversations with this lead, newest first. */
+  follow_up_notes?: { id: number; notes: string; telecaller: string | null; created_at: string }[];
 }
 
-export type DispositionAction = 'none' | 'follow_up' | 'callback' | 'appointment' | 'converted';
+/** `invalid` (Wrong Number): the lead goes back to Lead Management as Invalid. */
+export type DispositionAction = 'none' | 'follow_up' | 'callback' | 'appointment' | 'converted' | 'invalid';
 
 export interface CallDisposition {
   id: number;
@@ -125,6 +134,30 @@ export interface TelecallerRow {
   assigned_leads_count: number;
   status_changed_at: string | null;
   current_call: Pick<CallLog, 'id' | 'call_id' | 'direction' | 'status' | 'caller_number' | 'destination_number'> | null;
+  /** Today's attendance: `absent` = Absent / On Leave, or not checked in by the cut-off time. */
+  attendance?: { state: TelecallerAttendanceState; absent: boolean; check_in: string | null } | null;
+}
+
+export type TelecallerAttendanceState = 'on_duty' | 'checked_out' | 'on_leave' | 'absent' | 'not_checked_in' | 'no_employee';
+
+export const ATTENDANCE_LABELS: Record<TelecallerAttendanceState, string> = {
+  on_duty: 'Present',
+  checked_out: 'Checked out',
+  on_leave: 'On leave',
+  absent: 'Absent',
+  not_checked_in: 'Not checked in',
+  no_employee: 'No attendance',
+};
+
+/** A telecaller absent today who still holds open leads (GET telephony/leads/absent-alerts). */
+export interface AbsentTelecallerAlert {
+  telecaller_id: number;
+  telecaller_name: string;
+  state: TelecallerAttendanceState;
+  date: string;
+  leads_count: number;
+  due_today: number;
+  lead_ids: number[];
 }
 
 export interface CallReportSummary {
@@ -190,6 +223,8 @@ export interface FollowUpLead {
   /** 0 general / 1 cool / 2 hot - the most recent follow-up logged for this lead. */
   follow_up_type: number | null;
   caller_histories: CallerHistoryEntry[];
+  /** Someone is on a call with this lead (or writing its outcome); null when nobody is. */
+  on_call?: { user_id: number; name: string | null; status: 'on_call' | 'wrap_up'; since: string | null } | null;
 }
 
 export interface LeadWorkStats {

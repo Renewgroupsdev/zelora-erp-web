@@ -22,6 +22,7 @@ import { CanActionDirective } from '../../shared/directives/can-action.directive
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { CustomerDetailsDialog } from '../appointment-page/customer-details-dialog/customer-details-dialog';
+import { SittingsDialog } from '../appointment-page/sittings-dialog/sittings-dialog';
 import { Customer, CustomerSegment, CustomerStats } from './customer.model';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
@@ -29,6 +30,9 @@ const QUICK_ACTIONS: QuickAction[] = [
   { key: 'view', icon: 'bi-eye', label: 'View Profile', variant: 'primary', permission: 'view-customer' },
   { key: 'call', icon: 'bi-telephone', label: 'Call', variant: 'default', permission: 'call-customer' },
 ];
+
+/** A converted customer (Appointments -> invoice -> customer) has a treatment plan whose sittings are worked here. */
+const SITTINGS_ACTION: QuickAction = { key: 'sittings', icon: 'bi-collection', label: 'Treatment sittings', variant: 'default', permission: 'treatment-sittings' };
 
 /**
  * Customer Management. The list, the stat cards and the Branch / Preferred service filter options all come from
@@ -82,7 +86,7 @@ export class CustomerPortalPage implements OnInit {
     { key: 'totalAmount', header: 'Total Amount', type: 'text' },
     { key: 'balanceAmount', header: 'Balance Amount', type: 'text' },
     { key: 'status', header: 'Status', type: 'badge' },
-    { key: 'actions', header: 'Actions', type: 'quickActions', sortable: false, width: '80px' },
+    { key: 'actions', header: 'Actions', type: 'quickActions', sortable: false, width: '110px' },
   ];
 
   readonly pageSizeOptions = [12, 24, 48];
@@ -298,7 +302,7 @@ export class CustomerPortalPage implements OnInit {
       totalAmount: this.formatCurrency(customer.total_amount),
       balanceAmount: this.formatCurrency(customer.balance_amount),
       status: customer.status,
-      actions: QUICK_ACTIONS,
+      actions: customer.converted_appointment_id ? [...QUICK_ACTIONS, SITTINGS_ACTION] : QUICK_ACTIONS,
     };
   }
 
@@ -312,6 +316,16 @@ export class CustomerPortalPage implements OnInit {
 
     if (action === 'view') this.openProfile(customer);
     else if (action === 'call') window.location.href = `tel:${customer.mobile_no.replace(/\s+/g, '')}`;
+    else if (action === 'sittings') this.openSittings(customer);
+  }
+
+  /** Treatment sittings of the customer's latest converted appointment; the list reloads after (visits / balance change). */
+  openSittings(customer: Customer): void {
+    if (!customer.converted_appointment_id) return;
+    this.dialog.open(SittingsDialog, {
+      width: '960px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false,
+      panelClass: 'sittings-dialog', data: { appointmentId: customer.converted_appointment_id },
+    }).afterClosed().subscribe(() => this.loadCustomers());
   }
 
   openProfileFromRow(row: TableRow): void {

@@ -105,6 +105,8 @@ export class CommonTableCard {
   @Input() connectedTo: string | string[] = [];
   /** Row `id` to highlight; set it (with `rowSelect`) to turn the table into a master list. */
   @Input() selectedId: string | number | null = null;
+  /** Buttons the "action" column offers (keys of actionPermissions); null = every button, as before. */
+  @Input() actions: string[] | null = null;
 
   @Output() pageChange = new EventEmitter<TablePageChangeEvent>();
   @Output() sortChange = new EventEmitter<Sort>();
@@ -118,6 +120,8 @@ export class CommonTableCard {
   @Output() viewCallLogClick = new EventEmitter<TableRow>();
   @Output() editClick = new EventEmitter<TableRow>();
   @Output() deleteClick = new EventEmitter<TableRow>();
+  @Output() assignClick = new EventEmitter<TableRow>();
+  @Output() auditClick = new EventEmitter<TableRow>();
   @Output() rowReorder = new EventEmitter<TableReorderEvent>();
   @Output() quickActionClick = new EventEmitter<{ row: TableRow; action: string }>();
   @Output() profileClick = new EventEmitter<TableRow>();
@@ -143,8 +147,8 @@ export class CommonTableCard {
       case 'rowActions':
         return this.allowed('edit') || this.allowed('delete');
       case 'action':
-        return ['call', 'edit', 'followUp', 'sendToBranch', 'delete'].some(key => this.allowed(key))
-          || (this.allowed('validate') && this.rows.some(row => !!row['canValidate']));
+        return ['call', 'edit', 'followUp', 'sendToBranch', 'assign', 'audit', 'delete'].some(key => this.show(key))
+          || (this.show('validate') && this.rows.some(row => !!row['canValidate']));
       case 'callLog':
         return this.allowed('viewCallLog');
       default:
@@ -187,6 +191,11 @@ export class CommonTableCard {
   /** The row button's Icon from Roles & Permissions, or `fallback` (no action / empty icon). */
   actionIcon(key: string, fallback: string, slug = this.actionPermissions[key]): string {
     return (slug && this.auth.actionDetails(slug)?.logo?.trim()) || fallback;
+  }
+
+  /** An "action" column button: offered by the page (`actions`) and allowed for the role. */
+  show(key: string): boolean {
+    return (!this.actions ? !['assign', 'audit'].includes(key) : this.actions.includes(key)) && this.allowed(key);
   }
 
   /** Whether a row button is shown: true unless it has an action slug the role is not ticked on. */

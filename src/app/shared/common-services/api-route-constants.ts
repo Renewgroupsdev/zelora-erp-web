@@ -131,6 +131,9 @@ export class ApiRoutesConstants {
    public static LEAD_AUTO_ASSIGN = "telephony/leads/auto-assign";
    public static LEAD_WORK_STATS = "telephony/leads/stats";
    public static LEAD_FOLLOWUPS = "telephony/leads/followups";
+   public static LEAD_ABSENT_ALERTS = "telephony/leads/absent-alerts";
+   /** GET customer-leads/{id}/activities - the lead's audit trail. */
+   public static LEAD_ACTIVITIES = "customer-leads";
    public static USER_LIST = "users";
    public static USER_ADD = "users";
    public static USER_DELETE = "users";

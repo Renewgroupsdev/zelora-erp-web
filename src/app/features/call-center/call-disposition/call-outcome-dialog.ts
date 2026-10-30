@@ -8,7 +8,7 @@ import { AddLeadForm } from '../../../pages/lead-management/add-lead-form/add-le
 import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
-import { CallDisposition, CallLog, DispositionPayload, customerNumber, formatCallDuration } from '../../../core/telephony/telephony.models';
+import { CallDisposition, CallLog, CallerProfile, DispositionPayload, customerNumber, formatCallDuration } from '../../../core/telephony/telephony.models';
 import { TelephonyService } from '../../../core/telephony/telephony.service';
 import { to12Hour } from '../../../shared/utils/format.util';
 
@@ -27,6 +27,7 @@ const ACTION_ICONS: Record<string, string> = {
   callback: 'bi-telephone-forward',
   appointment: 'bi-calendar2-check',
   converted: 'bi-person-check',
+  invalid: 'bi-x-octagon',
   none: 'bi-chat-left-text',
 };
 
@@ -66,6 +67,8 @@ export class CallOutcomeDialog implements OnInit {
   readonly saving = signal(false);
   readonly endingCall = signal(false);
   readonly errors = signal<Record<string, string>>({});
+  /** The lead's enquiry and earlier conversations, shown while the telecaller talks (caller card). */
+  readonly profile = signal<CallerProfile | null>(null);
 
   /** The dialog opens as soon as the telecaller answers, so the outcome can be prepared while
    *  still on the call - but the backend refuses to save a disposition before the call ends.
@@ -94,9 +97,10 @@ export class CallOutcomeDialog implements OnInit {
   ngOnInit(): void {
     this.telephony.dispositions().subscribe({
       next: list => {
-        // An answered call cannot be "no answer".
-        this.dispositions.set(this.call.answered_at ? list.filter(d => d.code !== 'no_answer') : list);
-        if (!this.call.answered_at && list.some(d => d.code === 'no_answer')) this.selectedCode.set('no_answer');
+        // An answered call cannot be "no answer" (the popup also opens the moment an outgoing call is picked up).
+        const answered = !!(this.call.answered_at || this.call.connected_at || this.callLive());
+        this.dispositions.set(answered ? list.filter(d => d.code !== 'no_answer') : list);
+        if (!answered && list.some(d => d.code === 'no_answer')) this.selectedCode.set('no_answer');
       },
       error: () => this.toast.error('Could not load call outcomes.'),
     });
@@ -110,6 +114,11 @@ export class CallOutcomeDialog implements OnInit {
     });
 
     this.loadLeadDropdowns();
+
+    this.telephony.getCall(this.call.id).subscribe({
+      next: ({ caller }) => this.profile.set(caller),
+      error: () => this.profile.set(null),
+    });
   }
 
   private loadLeadDropdowns(): void {
@@ -177,11 +186,44 @@ export class CallOutcomeDialog implements OnInit {
     });
   }
 
+  /** Save while still on the call: hang up first (the API only takes an outcome for an ended call), then save. */
   save(): void {
-    if (this.callLive()) {
-      this.toast.warning('End the call before saving its outcome.');
+    if (this.saving() || this.endingCall()) return;
+    if (!this.callLive()) {
+      this.submit();
       return;
     }
+    if (!this.validate()) return;
+    this.endingCall.set(true);
+    this.telephony.hangup(this.call.id).subscribe({
+      next: () => {
+        this.endingCall.set(false);
+        this.submit();
+      },
+      error: (err: any) => {
+        this.endingCall.set(false);
+        this.toast.error(err?.error?.message || 'Could not end the call.');
+      },
+    });
+  }
+
+  private validate(): boolean {
+    if (!this.selected()) {
+      this.errors.set({ disposition: 'Choose an outcome.' });
+      return false;
+    }
+    if (this.needsLead() && !this.leadId) {
+      this.errors.set({ lead_id: 'Create the lead for this caller first.' });
+      return false;
+    }
+    if (this.selected()!.requires_note && !this.notes.trim()) {
+      this.errors.set({ notes: 'Notes are required for this outcome.' });
+      return false;
+    }
+    return true;
+  }
+
+  private submit(): void {
     const disposition = this.selected();
     if (!disposition) {
       this.errors.set({ disposition: 'Choose an outcome.' });
@@ -238,6 +280,8 @@ export class CallOutcomeDialog implements OnInit {
         return `Appointment booked for ${this.appointmentDate} ${this.appointmentTime}.`;
       case 'converted':
         return `${this.leadName ?? 'Lead'} is now a customer.`;
+      case 'invalid':
+        return `${this.leadName ?? 'Lead'} marked Invalid and returned to Lead Management.`;
       default:
         return d.label;
     }

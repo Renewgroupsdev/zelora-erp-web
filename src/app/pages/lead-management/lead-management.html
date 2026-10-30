@@ -62,6 +62,7 @@
         [sortDirection]="sortDirection"
         [dragDropEnabled]="false"
         [actionPermissions]="leadActionPermissions"
+        [actions]="leadActions"
         (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
         (rowActionClick)="onRowAction($event)"
@@ -72,6 +73,8 @@
         (validateClick)="onValidateLead($event.row, $event.valid)"
         (editClick)="onEditLead($event)"
         (deleteClick)="onDeleteLead($event)"
+        (assignClick)="onAssignCaller($event)"
+        (auditClick)="onAuditLead($event)"
       ></app-common-table-card>
     </div>
 

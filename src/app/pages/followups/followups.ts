@@ -1,5 +1,4 @@
 import { CommonModule } from '@angular/common';
-import Swal from 'sweetalert2';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { BranchOptionsService } from '../../shared/common-services/branch-options.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -19,11 +18,11 @@ import {
   TableRow,
   CommonFilterState,
 } from '../../shared/models/common-components.model';
-import { CallLogHistoryDialog } from '../../shared/components/call-log-history-dialog/call-log-history-dialog';
 import { ToastService } from '../../shared/common-services/toast.service';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize } from 'rxjs/operators';
+import { interval } from 'rxjs';
+import { debounceTime, filter } from 'rxjs/operators';
 import { FlowLead, FollowUpEntry } from '../../shared/common-services/crm-flow.service';
 import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
 import { TelephonyService } from '../../core/telephony/telephony.service';
@@ -32,17 +31,17 @@ import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { AuthService } from '../../core/auth/auth.service';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
+import { openLeadAudit } from '../../shared/components/lead-dialogs/lead-audit-dialog';
+import { openLeadView } from '../../shared/components/lead-dialogs/lead-view-dialog';
+
+/** While the WebSocket is down, the list re-reads this often so call locks still show. */
+const FALLBACK_REFRESH_MS = 20_000;
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'call', icon: 'bi-telephone-outbound', label: 'Call Lead', variant: 'primary', permission: 'call-follow-up-lead' },
+  { key: 'view', icon: 'bi-eye', label: 'View Lead', variant: 'default', keepOnLock: true },
   { key: 'appointment', icon: 'bi-calendar2-check', label: 'Book Appointment', variant: 'default', permission: 'book-follow-up-appointment' },
-  { key: 'call-log', icon: 'bi-clock-history', label: 'View Call Log', variant: 'default', permission: 'view-follow-up-call-log' },
-];
-
-/** A freshly assigned (Contacted) lead is checked by the telecaller first: genuine lead or not. */
-const VALIDATION_ACTIONS: QuickAction[] = [
-  { key: 'valid', icon: 'bi-check-lg', label: 'Valid lead', variant: 'default', permission: 'validate-follow-up-lead' },
-  { key: 'invalid', icon: 'bi-x-lg', label: 'Invalid lead', variant: 'danger', permission: 'validate-follow-up-lead' },
+  { key: 'audit', icon: 'bi-clipboard-data', label: 'Audit Log', variant: 'default', permission: 'view-lead-audit', keepOnLock: true },
 ];
 
 @Component({
@@ -65,6 +64,12 @@ export class Followups implements OnInit, OnDestroy {
   ) {
     // A call outcome (follow-up / callback / appointment) changes this list, so reload it when one is saved.
     this.telephony.outcomeSaved$.pipe(takeUntilDestroyed()).subscribe(() => this.loadFollowUps());
+    // A lead assigned / reassigned to me, one whose outcome moved it here, or a call started / ended on a lead
+    // (it greys out for everyone else): reload live, quietly. Without the socket, a slow poll does the same.
+    this.telephony.leadChanged$.pipe(debounceTime(600), takeUntilDestroyed()).subscribe(() => this.loadFollowUps(true));
+    interval(FALLBACK_REFRESH_MS)
+      .pipe(filter(() => !this.telephony.socketLive() && document.visibilityState === 'visible' && !this.loading), takeUntilDestroyed())
+      .subscribe(() => this.loadFollowUps(true));
   }
 
 
@@ -205,8 +210,9 @@ export class Followups implements OnInit, OnDestroy {
    *  Search, status and follow-up type are sent as query params so the backend does the
    *  filtering. Each row already carries its recent call history, so the second call onward
    *  shows the previous outcome without another round trip. */
-  private loadFollowUps(): void {
-    this.loading = true;
+  /** `quiet` (live refresh): keeps the rows on screen instead of showing the loader. */
+  private loadFollowUps(quiet = false): void {
+    this.loading = !quiet;
 
     const statusId = this.filterState.status ? this.statusIdByName.get(this.filterState.status) : undefined;
     const type = this.filterState.type ? this.FOLLOW_UP_TYPE_LABELS.indexOf(this.filterState.type) : undefined;
@@ -260,8 +266,21 @@ export class Followups implements OnInit, OnDestroy {
       telecaller: callers,
       status: lead.status_name ?? '',
       follow_up_type_label: this.FOLLOW_UP_TYPE_LABELS[lead.follow_up_type ?? 0] ?? '',
-      action: lead.status_name === 'Contacted' ? [...QUICK_ACTIONS, ...VALIDATION_ACTIONS] : QUICK_ACTIONS,
+      action: QUICK_ACTIONS,
       callLogEntries: callLog,
+      // Someone else is on a call with this lead (or writing its outcome): greyed out, nobody else may act on it.
+      ...this.lockFor(lead),
+    };
+  }
+
+  private lockFor(lead: FollowUpLead): Record<string, string | number> {
+    const lock = lead.on_call;
+    if (!lock || lock.user_id === this.auth.currentUser()?.id) return {};
+    const who = lock.name || 'Another telecaller';
+    return {
+      locked: 1,
+      lockedBy: who,
+      lockedLabel: lock.status === 'wrap_up' ? `${who} is saving the call outcome` : `${who} is on a call with this lead`,
     };
   }
 
@@ -350,10 +369,11 @@ export class Followups implements OnInit, OnDestroy {
   }
 
   onQuickAction({ row, action }: { row: TableRow; action: string }): void {
-    if (action === 'appointment') this.openFollowUpProfile(row);
-    else if (action === 'call-log') this.viewCallLog(row);
+    if (action === 'view') this.viewLead(row);
+    else if (action === 'audit') this.viewAudit(row);
+    else if (row['locked']) this.toast.warning(String(row['lockedLabel'] ?? 'Another telecaller is on this lead.'));
+    else if (action === 'appointment') this.openFollowUpProfile(row);
     else if (action === 'call') this.callLead(row);
-    else if (action === 'valid' || action === 'invalid') void this.validateLead(row, action === 'valid');
   }
 
   /** Dials over the telephony backend (the number is matched to its CRM lead there). The
@@ -376,61 +396,43 @@ export class Followups implements OnInit, OnDestroy {
     });
   }
 
-  /** Telecaller verdict. Invalid (note required) unassigns the lead and sends it back to Lead Management. */
-  /** Leads whose verdict is being saved: a second click cannot send it twice. */
-  private readonly validatingLeads = new Set<unknown>();
-
-  private async validateLead(row: TableRow, valid: boolean): Promise<void> {
-    const leadId = row['id'];
-    if (this.validatingLeads.has(leadId)) return;
-    let reason = '';
-    if (!valid) {
-      const result = await Swal.fire({
-        title: 'Mark this lead as invalid?',
-        input: 'text',
-        inputLabel: 'Note (required)',
-        inputPlaceholder: 'e.g. wrong number, not interested',
-        inputValidator: (value: string) => (value.trim() ? null : 'Add a note explaining why this lead is invalid.'),
-        showCancelButton: true,
-        confirmButtonText: 'Mark invalid',
-        confirmButtonColor: '#dc2626',
-      });
-      if (!result.isConfirmed) return;
-      reason = String(result.value ?? '').trim();
-    }
-
-    this.validatingLeads.add(leadId);
-    this.apiDataService.POST(`${ApiRoutesConstants.LEAD_VALIDATE}/${leadId}/validate`, { valid, reason }).pipe(finalize(() => this.validatingLeads.delete(leadId))).subscribe({
-      next: (res: any) => {
-        this.toast.success(res?.message || (valid ? 'Lead marked valid.' : 'Lead marked invalid.'));
-        this.loadFollowUps();
-      },
-      error: (err: any) => this.toast.error(err?.error?.message || 'Unable to update the lead. Please try again.'),
+  /** Read-only lead details - open even while another telecaller holds the lead. */
+  viewLead(row: TableRow): void {
+    const lead = row['lead'] as LeadCell;
+    const callers = (row['telecaller'] as CallerAvatar[]) ?? [];
+    openLeadView(this.dialog, {
+      id: Number(row['id']),
+      name: lead.name,
+      lockedLabel: row['locked'] ? String(row['lockedLabel'] ?? '') : undefined,
+      fields: [
+        { label: 'Contact', value: String(row['contact'] ?? ''), icon: 'bi-telephone' },
+        { label: 'Gender', value: String(row['gender'] ?? ''), icon: 'bi-gender-ambiguous' },
+        { label: 'Source', value: String(row['source'] ?? ''), icon: 'bi-megaphone' },
+        { label: 'Branch', value: String(row['branch'] ?? ''), icon: 'bi-geo-alt' },
+        { label: 'Service Category', value: String(row['service_category'] ?? ''), icon: 'bi-grid' },
+        { label: 'Service Request', value: String(row['service_request'] ?? ''), icon: 'bi-clipboard' },
+        { label: 'Telecaller', value: callers.map(c => c.name).join(', '), icon: 'bi-headset' },
+        { label: 'Status', value: String(row['status'] ?? ''), icon: 'bi-flag' },
+        { label: 'Follow-Up Date', value: String(row['follow_up_date'] ?? ''), icon: 'bi-calendar-event' },
+        { label: 'Follow-Ups / Type', value: `${row['followup_count'] ?? 0} · ${row['follow_up_type_label'] ?? ''}`, icon: 'bi-arrow-repeat' },
+      ],
+      callLog: (row['callLogEntries'] as CallerLogEntry[]) ?? [],
     });
   }
 
-  viewCallLog(row: TableRow): void {
+  viewAudit(row: TableRow): void {
     const lead = row['lead'] as LeadCell;
-    const entries = (row['callLogEntries'] as CallerLogEntry[]) ?? [];
-
-    this.dialog.open(CallLogHistoryDialog, {
-      width: '440px',
-      maxWidth: 'calc(100vw - 32px)',
-      maxHeight: '86vh',
-      autoFocus: false,
-      restoreFocus: true,
-      panelClass: 'call-log-history-dialog-panel',
-      data: {
-        leadName: lead.name,
-        subtitle: lead.subtitle,
-        entries,
-      },
-    });
+    openLeadAudit(this.dialog, { id: Number(row['id']), name: lead.name });
   }
 
   /** Opens the lead's follow-up card. The telecaller and branch come from the lead itself (shown, not editable),
    *  and the next call-back / appointment is saved to the database by the dialog. */
   openFollowUpProfile(row: TableRow): void {
+    // Another telecaller holds this lead: show it read-only instead.
+    if (row['locked']) {
+      this.viewLead(row);
+      return;
+    }
     const flowLead = this.toFlowLead(row);
     const dialogRef = this.dialog.open(LeadProfileDialog, {
       width: '600px', maxWidth: 'calc(100vw - 24px)', maxHeight: '92vh', autoFocus: false,

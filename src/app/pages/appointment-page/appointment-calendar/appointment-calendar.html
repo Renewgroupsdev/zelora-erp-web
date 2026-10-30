@@ -1,0 +1,137 @@
+<div class="cal-card">
+  <!-- Toolbar: today / prev / next, the period on screen, Month - Week - Day -->
+  <div class="cal-toolbar">
+    <div class="cal-nav-group">
+      <button type="button" class="cal-today-btn" (click)="goToday()">Today</button>
+      <button type="button" class="cal-icon-btn" (click)="shift(-1)" aria-label="Previous"><i class="bi bi-chevron-left"></i></button>
+      <button type="button" class="cal-icon-btn" (click)="shift(1)" aria-label="Next"><i class="bi bi-chevron-right"></i></button>
+      <h3 class="cal-title">{{ title }}</h3>
+      @if (loading) {
+        <span class="cal-loading" aria-live="polite"><i class="bi bi-arrow-repeat"></i></span>
+      }
+    </div>
+
+    <div class="cal-views" role="group" aria-label="Calendar view">
+      @for (v of views; track v.key) {
+        <button type="button" [class.active]="view === v.key" (click)="setView(v.key)">{{ v.label }}</button>
+      }
+    </div>
+  </div>
+
+  <div class="cal-legend">
+    <span><i class="ev-dot ev-blue"></i> Scheduled</span>
+    <span><i class="ev-dot ev-orange"></i> In progress</span>
+    <span><i class="ev-dot ev-purple"></i> Invoiced</span>
+    <span><i class="ev-dot ev-green"></i> Converted</span>
+    <span><i class="ev-dot ev-red"></i> Cancelled</span>
+    @if (canBook) {
+      <span class="cal-hint"><i class="bi bi-hand-index"></i> Click a free slot to book</span>
+    }
+  </div>
+
+  @if (view === 'month') {
+    <!-- Month: each day lists its bookings; "+N more" or the date opens that day -->
+    <div class="month-grid">
+      @for (w of weekdays; track w) {
+        <div class="month-wd">{{ w }}</div>
+      }
+      @for (cell of monthCells; track cell.iso) {
+        <div class="month-cell" [class.out]="!cell.inMonth" [class.today]="cell.isToday">
+          <button type="button" class="month-date" (click)="openDay(cell.date)" [attr.aria-label]="'Open ' + cell.iso">{{ cell.date.getDate() }}</button>
+          <div class="month-events">
+            @for (a of cell.appts.slice(0, 3); track a.id) {
+              <button type="button" class="month-ev" [ngClass]="statusClass(a.status)" [title]="tooltip(a)" (click)="open([a], $event)">
+                <span class="ev-time">{{ formatTime(a.appointment_time) }}</span><span class="ev-name">{{ a.name }}</span>
+              </button>
+            }
+            @if (cell.appts.length > 3) {
+              <button type="button" class="month-more" (click)="open(cell.appts, $event)">+{{ cell.appts.length - 3 }} more</button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <!-- Week / Day: 30-minute slot grid, bookings placed at their time -->
+    @let g = grid;
+    <div class="tg-scroll">
+      <div class="tg" [class.day-view]="view === 'day'" [style.--cols]="g.days.length">
+        <div class="tg-head">
+          <div class="tg-corner"></div>
+          @for (day of g.days; track day.iso) {
+            <button type="button" class="tg-day-head" [class.today]="day.isToday" (click)="openDay(day.date)">
+              <span class="wd">{{ weekdays[day.date.getDay()] }}</span>
+              <span class="dn">{{ day.date.getDate() }}</span>
+              @if (day.count) {
+                <span class="cnt">{{ day.count }}</span>
+              }
+            </button>
+          }
+        </div>
+
+        <div class="tg-body">
+          <div class="tg-gutter">
+            @for (s of g.slots; track s.minutes) {
+              <div class="tg-time" [style.height.px]="slotHeight">{{ s.label }}</div>
+            }
+          </div>
+
+          @for (day of g.days; track day.iso) {
+            <div class="tg-col" [class.today]="day.isToday" [class.past]="day.isPast">
+              @for (s of g.slots; track s.minutes) {
+                <button type="button" class="tg-slot" [class.hour]="s.hourStart" [class.bookable]="isBookable(day, s.minutes)"
+                        [style.height.px]="slotHeight" [disabled]="!isBookable(day, s.minutes)"
+                        (click)="bookSlot(day, s.minutes)"
+                        [attr.aria-label]="'Book ' + day.iso + ' ' + formatMinutes(s.minutes)">
+                  <span class="tg-plus"><i class="bi bi-plus-lg"></i> {{ formatMinutes(s.minutes) }}</span>
+                </button>
+              }
+
+              @for (p of day.placed; track p.key) {
+                @if (p.group) {
+                  <!-- Crowded slot: one block, all of its bookings open in the side panel -->
+                  <button type="button" class="tg-ev tg-group" [title]="p.appts.length + ' bookings: ' + firstNames(p.appts)"
+                          [style.top.px]="p.top" [style.height.px]="p.height"
+                          (click)="open(p.appts, $event)">
+                    <span class="ev-line">
+                      <span class="ev-time">{{ formatMinutes(p.minutes) }}</span>
+                      <strong>{{ p.appts.length }} bookings</strong>
+                      <span class="grp-dots">
+                        @for (s of groupSummary(p.appts); track s.cls) {
+                          <span class="grp-dot" [ngClass]="s.cls">{{ s.n }}</span>
+                        }
+                      </span>
+                    </span>
+                    @if (view === 'day') {
+                      <span class="ev-meta">{{ firstNames(p.appts) }}</span>
+                    }
+                  </button>
+                } @else {
+                  @let a = p.appts[0];
+                  <button type="button" class="tg-ev" [ngClass]="statusClass(a.status)" [title]="tooltip(a)"
+                          [style.top.px]="p.top" [style.height.px]="p.height"
+                          [style.left]="'calc(' + p.left + '% + 2px)'" [style.width]="'calc(' + p.width + '% - 4px)'"
+                          (click)="open([a], $event)">
+                    <span class="ev-line"><span class="ev-time">{{ formatTime(a.appointment_time) }}</span><strong>{{ a.name }}</strong></span>
+                    @if (view === 'day') {
+                      <span class="ev-meta">
+                        <i class="bi bi-magic"></i> {{ treatmentNames(a) || (a.category ? a.category + ' consultation' : 'Consultation') }}
+                        · <i class="bi bi-geo-alt-fill"></i> {{ a.branch_name || a.branch?.name || '-' }}
+                        · <i class="bi bi-telephone"></i> {{ a.mobile_no }}
+                      </span>
+                      <span class="ev-status">{{ a.status }}</span>
+                    }
+                  </button>
+                }
+              }
+
+              @if (day.isToday && g.nowTop !== null) {
+                <div class="tg-now" [style.top.px]="g.nowTop"><span></span></div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>

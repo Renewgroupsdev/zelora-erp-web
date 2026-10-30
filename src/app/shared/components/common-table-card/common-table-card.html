@@ -208,12 +208,17 @@
 
             @else if (col.type === 'action') {
               <div class="action-cell">
+                  <!-- Locked: another telecaller is on a call with this lead (or writing its outcome) -->
+                  @if (row['locked']) {
+                    <span class="row-lock-chip" [title]="row['lockedLabel']"><i class="bi bi-headset"></i> {{ row['lockedBy'] }}</span>
+                  }
                   <!-- Call -->
                   <!-- Rows flagged editDeleteOnly (e.g. an Invalid lead) keep only Edit and Delete -->
-                  @if (allowed('call') && !row['editDeleteOnly']) {
+                  @if (show('call') && !row['editDeleteOnly']) {
                   <button
                     type="button"
                     class="row-action-btn action-call"
+                    [disabled]="!!row['locked']"
                     (click)="callClick.emit(row)"
                     [attr.aria-label]="actionName('call', 'Call lead')"
                     [title]="actionName('call', 'Call lead')">
@@ -222,7 +227,7 @@
                   }
 
                   <!-- Telecaller check: is this lead genuine? -->
-                  @if (row['canValidate'] && allowed('validate') && !row['editDeleteOnly']) {
+                  @if (row['canValidate'] && show('validate') && !row['editDeleteOnly']) {
                     <button
                       type="button"
                       class="row-action-btn action-valid"
@@ -242,10 +247,11 @@
                   }
 
                   <!-- Edit -->
-                  @if (allowed('edit')) {
+                  @if (show('edit')) {
                   <button
                     type="button"
                     class="row-action-btn action-edit"
+                    [disabled]="!!row['locked']"
                     (click)="editClick.emit(row)"
                     [attr.aria-label]="actionName('edit', 'Edit lead')"
                     [title]="actionName('edit', 'Edit')">
@@ -264,7 +270,7 @@
                   </button> -->
 
                   <!-- Follow-up -->
-                  @if (allowed('followUp') && !row['editDeleteOnly']) {
+                  @if (show('followUp') && !row['editDeleteOnly']) {
                   <button
                     type="button"
                     class="row-action-btn action-followup"
@@ -276,7 +282,7 @@
                   }
 
                   <!-- Send to Branch -->
-                  @if (allowed('sendToBranch') && !row['editDeleteOnly']) {
+                  @if (show('sendToBranch') && !row['editDeleteOnly']) {
                   <button
                     type="button"
                     class="row-action-btn action-branch"
@@ -287,11 +293,37 @@
                   </button>
                   }
 
+                  <!-- Assign / reassign telecaller -->
+                  @if (show('assign')) {
+                  <button
+                    type="button"
+                    class="row-action-btn action-assign"
+                    [disabled]="!!row['locked']"
+                    (click)="assignClick.emit(row)"
+                    [attr.aria-label]="actionName('assign', 'Assign caller')"
+                    [title]="actionName('assign', 'Assign caller')">
+                    <i [class]="'bi ' + actionIcon('assign', 'bi-person-gear')"></i>
+                  </button>
+                  }
+
+                  <!-- Audit log -->
+                  @if (show('audit')) {
+                  <button
+                    type="button"
+                    class="row-action-btn action-audit"
+                    (click)="auditClick.emit(row)"
+                    [attr.aria-label]="actionName('audit', 'Audit log')"
+                    [title]="actionName('audit', 'Audit log')">
+                    <i [class]="'bi ' + actionIcon('audit', 'bi-clipboard-data')"></i>
+                  </button>
+                  }
+
                   <!-- Delete -->
-                  @if (allowed('delete')) {
+                  @if (show('delete')) {
                   <button
                     type="button"
                     class="row-action-btn action-delete"
+                    [disabled]="!!row['locked']"
                     (click)="deleteClick.emit(row)"
                     [attr.aria-label]="actionName('delete', 'Delete lead')"
                     [title]="actionName('delete', 'Delete')">
@@ -304,12 +336,17 @@
 
             @else if (col.type === 'quickActions') {
               <div class="quick-actions-cell">
+                <!-- Locked: another telecaller is on a call with this lead (or writing its outcome) -->
+                @if (row['locked']) {
+                  <span class="row-lock-chip" [title]="row['lockedLabel']"><i class="bi bi-headset"></i> {{ row['lockedBy'] }}</span>
+                }
                 @for (action of asQuickActions(row[col.key]); track action.key) {
                   <button
                     type="button"
                     class="row-action-btn"
                     [class.qa-primary]="action.variant === 'primary'"
                     [class.qa-danger]="action.variant === 'danger'"
+                    [disabled]="!!row['locked'] && !action.keepOnLock"
                     (click)="quickActionClick.emit({ row, action: action.key })"
                     [attr.aria-label]="action.label"
                     [title]="action.label">
@@ -336,6 +373,7 @@
         [class.row-selectable]="rowSelect.observed"
         [class.row-followup-soon]="row['_urgency'] === 'soon'"
         [class.row-followup-urgent]="row['_urgency'] === 'urgent'"
+        [class.row-locked]="!!row['locked']"
         (click)="onRowClick($event, row)"
         cdkDrag
         [cdkDragData]="row"

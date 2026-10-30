@@ -14,10 +14,47 @@
   </header>
 
   <div class="dialog-body">
+    @if (profile()?.lead; as lead) {
+      <!-- What the customer enquired about and what earlier calls said, while the telecaller talks -->
+      <section class="lead-card">
+        <div class="lead-card-head">
+          <h3><i class="bi bi-person-vcard"></i> Lead details</h3>
+          @if (lead.status_name) { <span class="chip">{{ lead.status_name }}</span> }
+        </div>
+        <dl class="lead-facts">
+          <div><dt>Service category</dt><dd>{{ lead.service_category_name || '-' }}</dd></div>
+          <div><dt>Service request</dt><dd>{{ lead.service_request_name || '-' }}</dd></div>
+          <div><dt>Source</dt><dd>{{ lead.source_name || '-' }}</dd></div>
+          <div><dt>Branch</dt><dd>{{ lead.branch_name || '-' }}</dd></div>
+          @if (lead.gender || lead.location) {
+            <div><dt>Gender / location</dt><dd>{{ lead.gender || '-' }} · {{ lead.location || '-' }}</dd></div>
+          }
+          @if (profile()?.next_follow_up; as fu) {
+            <div><dt>Next follow-up</dt><dd>{{ fu.follow_up_date }} {{ fu.follow_up_time || '' }}</dd></div>
+          }
+        </dl>
+        @if (lead.reason) {
+          <div class="enquiry"><span>Enquiry</span><p>{{ lead.reason }}</p></div>
+        }
+        <details class="notes-history" [open]="!!profile()?.follow_up_notes?.length">
+          <summary><i class="bi bi-journal-text"></i> Previous follow-up notes ({{ profile()?.follow_up_notes?.length || 0 }})</summary>
+          @if (profile()?.follow_up_notes?.length) {
+            <ul>
+              @for (n of profile()!.follow_up_notes!; track n.id) {
+                <li><p>{{ n.notes }}</p><small>{{ n.telecaller || 'Staff' }} · {{ n.created_at | date: 'dd MMM yyyy, hh:mm a' }}</small></li>
+              }
+            </ul>
+          } @else {
+            <p class="empty-notes">No earlier conversations - this is the first call.</p>
+          }
+        </details>
+      </section>
+    }
+
     @if (callLive()) {
       <div class="notice notice-live">
         <i class="bi bi-telephone"></i>
-        <span>Call still in progress - prepare the outcome now, Save unlocks once the call ends.</span>
+        <span>On the call - note the conversation now. "End call &amp; save" hangs up and saves the outcome.</span>
         <button type="button" class="link-btn danger" [disabled]="endingCall()" (click)="endCall()">
           {{ endingCall() ? 'Ending…' : 'End call' }}
         </button>
@@ -96,6 +133,10 @@
       </section>
     }
 
+    @if (action() === 'invalid') {
+      <p class="hint"><i class="bi bi-info-circle"></i> The lead will be marked <strong>Invalid</strong>, unassigned and returned to Lead Management.</p>
+    }
+
     @if (action() === 'converted') {
       <p class="hint"><i class="bi bi-info-circle"></i> The lead will be marked as <strong>Customer</strong>.</p>
     }
@@ -110,9 +151,9 @@
     @if (!data.required) {
       <button type="button" class="btn-secondary" (click)="skip()">Skip</button>
     }
-    <button type="button" class="btn-primary" [disabled]="saving() || !selectedCode() || callLive()"
-            [attr.title]="callLive() ? 'End the call to save its outcome' : null" (click)="save()">
-      {{ saving() ? 'Saving…' : (callLive() ? 'Waiting for call to end…' : 'Save outcome') }}
+    <button type="button" class="btn-primary" [disabled]="saving() || endingCall() || !selectedCode()"
+            [attr.title]="callLive() ? 'Hangs up, then saves the outcome' : null" (click)="save()">
+      {{ saving() || endingCall() ? 'Saving…' : (callLive() ? 'End call & save' : 'Save outcome') }}
     </button>
   </footer>
 </div>
