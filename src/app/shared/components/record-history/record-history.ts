@@ -3,6 +3,7 @@ import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, afte
 import { finalize } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { AuditService } from '../../common-services/audit.service';
+import { historyModuleSlug } from '../../constants/history-modules';
 import { AuditEvent, AuditFieldHistory, AuditPagination, AuditRecordLife } from '../../models/audit.model';
 import { AuditEventDrawer } from '../../../pages/audit/audit-event-drawer';
 import { OUTCOME_LABEL, OUTCOME_TONE, actorInitials, auditError, clock, dayHeading, eventMeta, sourceLabel } from '../../../pages/audit/audit-meta';
@@ -156,8 +157,8 @@ export class RecordHistoryDrawer implements OnInit, OnDestroy {
 }
 
 /**
- * "History" button for one record (lead, customer, branch...). Hidden for roles without "view-audit-data-changes"
- * and until the record has an id. `type` is the audited model name as the backend stores it (class basename,
+ * "History" button for one record (lead, customer, branch...). Hidden for roles without "view-audit-data-changes" or the
+ * module's "History" action (history-{module}), and until the record has an id. `type` is the audited model name as the backend stores it (class basename,
  * e.g. "Branch", "CustomerLead").
  */
 @Component({
@@ -182,6 +183,12 @@ export class RecordHistory {
   readonly variant = input<'button' | 'icon'>('button');
 
   private readonly auth = inject(AuthService);
-  protected readonly allowed = computed(() => this.auth.hasActionAccess('view-audit-data-changes'));
+  /** The global action, or the module's own History checkbox (Roles & Permissions -> Assign Permissions). */
+  protected readonly allowed = computed(() => {
+    if (this.auth.hasActionAccess('view-audit-data-changes')) return true;
+    const module = historyModuleSlug(this.type());
+
+    return !!module && this.auth.hasActionAccess(`history-${module}`);
+  });
   protected readonly open = signal(false);
 }

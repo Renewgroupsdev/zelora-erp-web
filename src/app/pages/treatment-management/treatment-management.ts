@@ -139,7 +139,8 @@ export class TreatmentManagement implements OnInit {
       perPage: this.pageSize(),
       search: this.search(),
       sortBy: SORT_FIELDS[this.sortActive()],
-      sortDirection: this.sortDirection() || 'asc',
+      // No column picked: the API default (latest updated first) applies.
+      sortDirection: SORT_FIELDS[this.sortActive()] ? this.sortDirection() || 'asc' : undefined,
       categoryId: category ? Number(category.id) : null,
       isActive: filters.status ? filters.status === 'Active' : null,
     }).subscribe({

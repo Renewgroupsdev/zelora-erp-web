@@ -1,7 +1,7 @@
 <div class="crm-page container-fluid px-0 d-flex flex-column">
 
   <div class="page-header d-flex align-items-center justify-content-between">
-    <h6 class="page-title"><i class="bi bi-person-vcard-fill"></i> Client</h6>
+    <h6 class="page-title"><i class="bi bi-person-vcard-fill"></i> Customer Management</h6>
 
     <div class="header-actions">
       <div class="view-toggle" role="group" aria-label="View mode">
@@ -81,7 +81,11 @@
           @for (customer of customers; track customer.id) {
             <div class="customer-card">
               <div class="customer-card-top">
-                <span class="customer-avatar" [ngClass]="avatarColorForName(customer.name)">{{ initials(customer.name) }}</span>
+                @if (customer.photo_url) {
+                  <img class="customer-avatar" [src]="customer.photo_url" [alt]="customer.name" style="object-fit: cover" />
+                } @else {
+                  <span class="customer-avatar" [ngClass]="avatarColorForName(customer.name)">{{ initials(customer.name) }}</span>
+                }
                 <span class="segment-chip" [ngClass]="segmentClass(customer.segment)">{{ customer.segment }}</span>
               </div>
 
@@ -116,6 +120,9 @@
                     <i class="bi bi-collection"></i> Sittings
                   </button>
                 }
+                <button *appCan="'edit-customer'" type="button" class="view-profile-btn" (click)="openEdit(customer)" title="Edit customer">
+                  <i class="bi bi-pencil-square"></i> Edit
+                </button>
                 <button *appCan="'view-customer'" type="button" class="view-profile-btn" (click)="openProfile(customer)">
                   View Profile <i class="bi bi-arrow-right"></i>
                 </button>

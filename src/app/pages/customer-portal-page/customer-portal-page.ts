@@ -23,11 +23,13 @@ import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { CustomerDetailsDialog } from '../appointment-page/customer-details-dialog/customer-details-dialog';
 import { SittingsDialog } from '../appointment-page/sittings-dialog/sittings-dialog';
+import { EditCustomerDialog } from './edit-customer-dialog/edit-customer-dialog';
 import { Customer, CustomerSegment, CustomerStats } from './customer.model';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'view', icon: 'bi-eye', label: 'View Profile', variant: 'primary', permission: 'view-customer' },
+  { key: 'edit', icon: 'bi-pencil-square', label: 'Edit Customer', variant: 'default', permission: 'edit-customer' },
   { key: 'call', icon: 'bi-telephone', label: 'Call', variant: 'default', permission: 'call-customer' },
 ];
 
@@ -293,7 +295,7 @@ export class CustomerPortalPage implements OnInit {
   private mapCustomerToRow(customer: Customer): TableRow {
     return {
       id: customer.id,
-      lead: { name: customer.name, subtitle: customer.customer_code } as LeadCell,
+      lead: { name: customer.name, subtitle: customer.customer_code, photo: customer.photo_url ?? undefined } as LeadCell,
       contact: customer.mobile_no,
       branch: customer.branch_name ?? '-',
       segment: customer.segment,
@@ -316,7 +318,24 @@ export class CustomerPortalPage implements OnInit {
 
     if (action === 'view') this.openProfile(customer);
     else if (action === 'call') window.location.href = `tel:${customer.mobile_no.replace(/\s+/g, '')}`;
+    else if (action === 'edit') this.openEdit(customer);
     else if (action === 'sittings') this.openSittings(customer);
+  }
+
+  /** Edit Customer [edit-customer]; after a save the list reloads from page 1, where the latest updated customer shows first. */
+  openEdit(customer: Customer): void {
+    this.dialog.open(EditCustomerDialog, {
+      width: '760px',
+      maxWidth: 'calc(100vw - 24px)',
+      maxHeight: '94vh',
+      autoFocus: false,
+      restoreFocus: true,
+      data: { id: customer.id, name: customer.name },
+    }).afterClosed().subscribe((saved) => {
+      if (!saved) return;
+      this.currentPage = 1;
+      this.loadCustomers();
+    });
   }
 
   /** Treatment sittings of the customer's latest converted appointment; the list reloads after (visits / balance change). */
