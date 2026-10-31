@@ -93,6 +93,8 @@ export interface FlowAppointmentRecord {
   appointment_date: string;
   appointment_time: string;
   photo_url?: string | null;
+  /** Sent by the visitor from the customer app (details + selfie in `photo_url`); waits for the doctor's approval (conversion). */
+  app_submitted_at?: string | null;
   bp: string | null;
   weight: string | null;
   is_allergy: boolean;

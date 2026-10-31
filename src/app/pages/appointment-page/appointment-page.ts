@@ -403,7 +403,10 @@ export class AppointmentPage implements OnInit {
   private mapRow(a: FlowAppointmentRecord): TableRow {
     return {
       id: a.id,
-      lead: { name: a.name, subtitle: a.customer?.customer_code ?? `AP-${String(a.id).padStart(5, '0')}` },
+      lead: {
+        name: a.name,
+        subtitle: (a.customer?.customer_code ?? `AP-${String(a.id).padStart(5, '0')}`) + (a.app_submitted_at ? ' · App request' : ''),
+      },
       contact: a.mobile_no,
       service: treatmentNames(a) ?? (a.category ? `${a.category} consultation` : 'Consultation'),
       branch: a.branch_name ?? a.branch?.name ?? '',
