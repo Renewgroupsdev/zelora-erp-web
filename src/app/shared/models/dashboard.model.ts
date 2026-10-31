@@ -70,7 +70,7 @@ export interface AppointmentsData {
 }
 
 export interface UnitRow {
-  key: string; type: 'branch' | 'franchise'; id: number; code: string; name: string;
+  key: string; type: 'branch' | 'franchise'; id: number; code: string; name: string; photo: string | null;
   revenue: number; leads: number; new_customers: number; appointments: number;
 }
 export interface UnitsData { units: UnitRow[]; total_revenue: number; }

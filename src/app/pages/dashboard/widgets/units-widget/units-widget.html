@@ -2,12 +2,20 @@
                [link]="canOpen('branch-management') ? '/app/branches' : null" linkLabel="View all"
                [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()"
                [empty]="!data()?.units?.length" emptyText="No active branches or franchises." emptyIcon="bi-shop-window">
+  <div card-actions class="dash-pager" [hidden]="!canPrev() && !canNext()">
+    <button type="button" (click)="scroll(-1)" [disabled]="!canPrev()" aria-label="Previous branches"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+    <button type="button" (click)="scroll(1)" [disabled]="!canNext()" aria-label="Next branches"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+  </div>
   @if (data()) {
-    <ul class="dash-units">
+    <ul class="dash-units" #track>
       @for (r of units(); track r.key) {
         <li>
-          <div class="dash-unit-art" [class]="r.type === 'branch' ? 'tone-green' : 'tone-teal'" aria-hidden="true">
-            <i class="bi bi-buildings"></i>
+          <div class="dash-unit-art" [class]="(r.type === 'branch' ? 'tone-green' : 'tone-teal') + (r.photo && !broken().has(r.key) ? ' has-photo' : '')">
+            @if (r.photo && !broken().has(r.key)) {
+              <img [src]="r.photo" [alt]="r.name" loading="lazy" (error)="photoFailed(r.key)" />
+            } @else {
+              <i class="bi bi-buildings" aria-hidden="true"></i>
+            }
             <span class="dash-unit-type">{{ r.type === 'branch' ? 'Branch' : 'Franchise' }}</span>
           </div>
           <div class="dash-unit-body">

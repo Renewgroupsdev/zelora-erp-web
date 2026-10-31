@@ -6,9 +6,12 @@
     <div class="dash-tiles">
       @for (s of stages().slice(0, 4); track s.label) {
         <div [class]="'tone-' + s.tone">
-          <strong>{{ s.value.toLocaleString('en-IN') }}</strong>
-          <span>{{ s.label }}</span>
-          <small>{{ s.ofPrior === null ? 'All leads' : s.ofPrior + '% of prior' }}</small>
+          <span class="dash-tile-icon"><i class="bi" [class]="s.icon" aria-hidden="true"></i></span>
+          <div class="dash-tile-text">
+            <strong>{{ s.value.toLocaleString('en-IN') }}</strong>
+            <span>{{ s.label }}</span>
+            <small>{{ s.ofPrior === null ? 'All leads' : s.ofPrior + '% of prior' }}</small>
+          </div>
         </div>
       }
     </div>
@@ -20,6 +23,7 @@
             <li [class]="'tone-' + s.tone" [style.--taper]="s.taper">
               <i class="bi" [class]="s.icon" aria-hidden="true"></i>
               <span class="dash-taper-label">{{ s.label }}</span>
+              @if (s.ofPrior !== null) { <small>{{ s.ofPrior }}%</small> }
               <b>{{ s.value.toLocaleString('en-IN') }}</b>
             </li>
           }
@@ -27,7 +31,7 @@
       }
 
       <div class="dash-sources">
-        <h3>By source</h3>
+        <h3>By source <small>Top {{ sources().length }}</small></h3>
         <div class="dash-sources-body">
           <ul>
             @for (s of sources(); track s.label) {
@@ -36,13 +40,14 @@
                 <span class="dash-source-label">{{ s.label }}</span>
                 <b>{{ s.value }}</b>
                 <span class="dash-source-pct">{{ s.pct }}%</span>
+                <span class="dash-source-bar"><u [style.width.%]="s.pct"></u></span>
               </li>
             } @empty { <li class="dash-muted">No sources yet</li> }
           </ul>
           <svg class="dash-mini-ring" viewBox="0 0 100 100" role="img" [attr.aria-label]="l.conversion_rate + '% of ' + l.total + ' leads converted'">
             <circle cx="50" cy="50" r="40" class="dash-ring-track" />
             <circle cx="50" cy="50" r="40" class="dash-ring-arc" pathLength="100" [attr.stroke-dasharray]="clamp(l.conversion_rate) + ' 100'" transform="rotate(-90 50 50)" />
-            <text x="50" y="45" text-anchor="middle" class="dash-ring-num">{{ l.total }}</text>
+            <text x="50" y="46" text-anchor="middle" class="dash-ring-num">{{ l.total }}</text>
             <text x="50" y="62" text-anchor="middle" class="dash-ring-cap">{{ l.conversion_rate }}% won</text>
           </svg>
         </div>

@@ -9,7 +9,7 @@ interface KpiCard {
 
 /**
  * Headline numbers of the business (or the unit, for a branch / franchise login) for the chosen period: one card per
- * figure with its change and, as the card's chart, this period drawn against the previous one.
+ * figure with its change against the previous period.
  */
 @Component({
   selector: 'app-kpi-strip',
@@ -37,11 +37,6 @@ export class KpiStrip extends DashWidget<KpisData> {
       { label: 'Stock value', icon: 'bi-box-seam-fill', tone: 'indigo', value: money(k.stock_value.value), kpi: k.stock_value, previous: prev(k.stock_value, money), hint: 'At purchase price, on hand' },
     ];
   });
-
-  share(v: number, kpi: Kpi): number {
-    const max = Math.max(kpi.value, kpi.previous ?? 0, 1);
-    return Math.max(2, (v / max) * 100);
-  }
 
   abs(change: number): string {
     return Math.abs(change).toFixed(1).replace(/\.0$/, '');

@@ -1,35 +1,80 @@
 <app-dash-card title="Appointments and treatment" [subtitle]="'Today\'s visits by hour · ' + (data()?.today?.length ?? 0) + ' booked'" icon="bi-calendar2-check" tone="green"
                [link]="canOpen('appoinment') ? '/app/appointments' : null" linkLabel="View all"
                [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()"
-               [empty]="!hours().length" emptyText="No visits booked for today. New bookings will show here." emptyIcon="bi-calendar2-x">
-  @if (hours().length) {
-    <ul class="dash-wave-legend" aria-label="Show or hide a status">
-      @for (s of series(); track s.key) {
-        <li>
-          <button type="button" [class.is-off]="hidden().has(s.key)" [class.is-zero]="!s.total" [disabled]="!s.total" [style.--c]="s.color" [attr.aria-pressed]="!hidden().has(s.key)" (click)="toggle(s.key)">
-            <span class="dash-wave-swatch" aria-hidden="true"></span>{{ s.label }} <b>{{ s.total }}</b>
-          </button>
-        </li>
-      }
-    </ul>
+               [empty]="!total()" emptyText="No visits booked for today. New bookings will show here." emptyIcon="bi-calendar2-x">
+  @if (total()) {
+    <div class="apt">
+      <div class="fin-chart apt-chart">
+        <div class="fin-chart-head">
+          <span class="fin-chart-title">Visits by hour</span>
+          <span class="apt-badge"><i class="bi bi-calendar2-check" aria-hidden="true"></i> {{ total() }} booked</span>
+        </div>
 
-    <div class="dash-wave-chart is-multi" role="img" [attr.aria-label]="summary()">
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-        @for (s of visible(); track s.key) { <path class="dash-wave-area" [attr.d]="s.area" [style.fill]="s.color" /> }
-        @for (s of visible(); track s.key) { <path class="dash-wave-line" [attr.d]="s.line" [style.stroke]="s.color" /> }
-      </svg>
-      @for (s of visible(); track s.key) {
-        @for (v of s.values; track $index) {
-          @if (v) { <span class="dash-wave-pt" [style.left.%]="x($index)" [style.top.%]="y(v)" [style.--c]="s.color" [title]="s.label + ' at ' + hours()[$index].label + ': ' + v"></span> }
-        }
-      }
-      <!-- hover columns: what each hour holds -->
-      <div class="dash-wave-cols">
-        @for (h of hours(); track h.hour) { <span [title]="h.title"></span> }
+        @let c = chart();
+        <div class="fin-plot apt-plot" #plot>
+          <svg class="fin-svg" [attr.width]="width()" [attr.height]="height" [attr.viewBox]="'0 0 ' + width() + ' ' + height" role="img" [attr.aria-label]="summary()">
+            @for (g of c.grid; track g.v) {
+              <line class="fin-grid" [attr.x1]="plotLeft" [attr.x2]="plotRight()" [attr.y1]="g.y" [attr.y2]="g.y" />
+              <text class="fin-ytick" [attr.x]="plotLeft - 8" [attr.y]="g.y" text-anchor="end" dominant-baseline="central">{{ g.label }}</text>
+            }
+            <line class="fin-axis" [attr.x1]="plotLeft" [attr.x2]="plotLeft" [attr.y1]="plotTop" [attr.y2]="baseline" />
+
+            @if (tip(); as t) { <line class="fin-guide" [attr.x1]="t.x" [attr.x2]="t.x" [attr.y1]="plotTop" [attr.y2]="baseline" /> }
+
+            @for (s of c.drawn; track s.key) {
+              @if (s.total) { <path class="apt-area" [attr.d]="s.area" [style.fill]="s.color" /> }
+            }
+            @for (s of c.drawn; track s.key) {
+              <path class="fin-line apt-line" [class.is-zero]="!s.total" [attr.d]="s.line" [style.stroke]="s.color" />
+            }
+            @for (s of c.drawn; track s.key) {
+              @for (p of s.pts; track $index) {
+                @if (p.v > 0) { <circle class="apt-dot" [attr.cx]="p.x" [attr.cy]="p.y" r="4.5" [style.stroke]="s.color" /> }
+              }
+            }
+
+            @for (h of hours(); track h.hour; let i = $index) {
+              <text class="fin-xtick" [class.is-last]="tip()?.i === i" [attr.x]="c.xs[i]" [attr.y]="baseline + 18" text-anchor="middle" dominant-baseline="central">{{ h.label }}</text>
+            }
+
+            @for (x of c.xs; track $index; let i = $index) {
+              <rect class="apt-col" [attr.x]="x - c.step / 2" [attr.y]="plotTop" [attr.width]="c.step" [attr.height]="c.ih" (mouseenter)="setHover(i)" (mouseleave)="setHover(null)" />
+            }
+          </svg>
+
+          @if (tip(); as t) {
+            <div class="apt-tip" [style.left.px]="t.left" [style.width.px]="168">
+              <strong>{{ t.hour }}</strong>
+              <ul>
+                @for (it of t.items; track it.label) {
+                  <li [class.is-off]="it.hidden"><span class="apt-tip-dot" [style.background]="it.color"></span><span>{{ it.label }}</span><b>{{ it.value }}</b></li>
+                }
+              </ul>
+              <small>{{ t.total }} {{ t.total === 1 ? 'visit' : 'visits' }} this hour</small>
+            </div>
+          }
+        </div>
+
+        <ul class="apt-legend" aria-label="Show or hide a status">
+          @for (s of series(); track s.key) {
+            <li>
+              <button type="button" [class.is-off]="hidden().has(s.key)" [style.--c]="s.color" [attr.aria-pressed]="!hidden().has(s.key)" (click)="toggle(s.key)">
+                <span class="apt-swatch" aria-hidden="true"></span>{{ s.label }}
+              </button>
+            </li>
+          }
+        </ul>
       </div>
-    </div>
-    <div class="dash-wave-axis" aria-hidden="true">
-      @for (h of hours(); track h.hour) { <small>{{ h.label }}</small> }
+
+      @if (insight(); as k) {
+        <div class="fin-insight" role="note">
+          <span class="fin-insight-icon"><i class="bi bi-clock-history" aria-hidden="true"></i></span>
+          <div>
+            <strong>Busiest hour</strong>
+            <p>{{ k.hour }} is the busiest hour today with <b>{{ k.visits }} {{ k.visits === 1 ? 'visit' : 'visits' }}</b>.</p>
+          </div>
+        </div>
+      }
     </div>
   }
 </app-dash-card>

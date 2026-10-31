@@ -1,33 +1,57 @@
 /* LeadsWidget: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
 
 .dash-page {
-  // leads: one tile per stage + tapered funnel + sources
+  // leads: one tile per stage + tapered funnel + sources. In a card stretched to its row-mate's height the funnel and the
+  // source list grow to fill it, so there is no empty band under them.
   .dash-tiles {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;
     > div {
-      display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 10px 14px; border-radius: 14px;
-      background: var(--tone-bg); border: 1px solid color-mix(in srgb, var(--tone-fg) 18%, transparent);
+      display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px 12px; border-radius: 14px;
+      background: linear-gradient(120deg, color-mix(in srgb, var(--tone-a) 16%, var(--dash-surface)), color-mix(in srgb, var(--tone-a) 4%, var(--dash-surface)) 80%);
+      border: 1px solid color-mix(in srgb, var(--tone-b) 18%, var(--dash-line));
+      box-shadow: 0 8px 18px -14px var(--tone-b);
     }
-    strong { font-size: 22px; font-weight: 700; letter-spacing: -.4px; line-height: 1.15; color: var(--tone-fg); }
-    span { font-size: 12.5px; font-weight: 500; color: var(--tone-fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    small { font-size: 11.5px; color: var(--text-muted); }
+    .dash-tile-icon {
+      flex: 0 0 auto; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; font-size: 16px; color: #fff;
+      background: linear-gradient(140deg, var(--tone-a), var(--tone-b)); box-shadow: 0 6px 12px -6px var(--tone-b);
+    }
+    .dash-tile-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    strong { font-size: 22px; font-weight: 800; letter-spacing: -.5px; line-height: 1.1; color: var(--tone-fg); }
+    .dash-tile-text > span { font-size: 12.5px; font-weight: 600; color: var(--text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    small { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   }
-  .dash-funnel-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 16px; align-items: start; }
+
+  .dash-funnel-row { flex: 1 1 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 16px; align-items: stretch; }
+
   .dash-sources {
-    min-width: 0; padding-left: 16px; border-left: 1px solid var(--dash-line);
-    h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    min-width: 0; display: flex; flex-direction: column; padding-left: 16px; border-left: 1px solid var(--dash-line);
+    h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 13.5px; font-weight: 700; margin-bottom: 8px;
+      small { font-size: 11.5px; font-weight: 500; color: var(--text-muted); } }
   }
-  .dash-sources-body { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 12px; align-items: center;
-    ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-    li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; min-width: 0; }
-    b { margin-left: auto; font-weight: 600; }
+  .dash-sources-body {
+    flex: 1 1 auto; display: grid; grid-template-columns: minmax(0, 1fr) 112px; gap: 12px; align-items: center;
+    ul { align-self: stretch; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
+    li { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto 46px; align-items: center; column-gap: 8px; row-gap: 3px; font-size: 12.5px; min-width: 0; }
+    li.dash-muted { display: block; }
+    b { font-weight: 700; font-variant-numeric: tabular-nums; }
   }
-  .dash-source-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .dash-source-pct { min-width: 40px; padding: 1px 6px; border-radius: 6px; text-align: center; font-size: 11.5px; font-weight: 600; background: var(--tone-bg); color: var(--tone-fg); }
+  .dash-source-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .dash-source-pct { padding: 1px 6px; border-radius: 6px; text-align: center; font-size: 11.5px; font-weight: 700; background: var(--tone-bg); color: var(--tone-fg); }
+  .dash-source-bar {
+    grid-column: 2 / -1; display: block; height: 3px; border-radius: 99px; overflow: hidden; background: color-mix(in srgb, var(--tone-b) 12%, transparent);
+    u { display: block; height: 100%; border-radius: inherit; text-decoration: none; background: linear-gradient(90deg, var(--tone-a), var(--tone-b)); }
+  }
+
+  .dash-sources .dash-mini-ring {
+    width: 112px; height: 112px; filter: drop-shadow(0 8px 10px color-mix(in srgb, #1fa463 22%, transparent));
+    .dash-ring-num { font-size: 24px; font-weight: 800; }
+    .dash-ring-cap { font-size: 9.5px; font-weight: 600; }
+  }
+
   .dash-taper {
-    list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+    flex: 1 1 auto; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; min-width: 0;
     li {
-      display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 38px;
+      flex: 1 1 0; max-height: 66px; display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 40px;
       margin: 0 var(--taper, 0%); padding: 6px 14px; border-radius: 10px;
       clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 100%, 8px 100%);
       background: linear-gradient(90deg, var(--tone-a), var(--tone-b));
@@ -35,16 +59,17 @@
       box-shadow: 0 6px 14px -10px var(--tone-b);
     }
     .dash-taper-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    b { font-size: 14px; }
-    small { font-size: 11px; font-weight: 500; opacity: .9; white-space: nowrap; }
+    b { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    small { padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 700; white-space: nowrap; background: rgba(255, 255, 255, .22); }
   }
 
   @container dash-main (max-width: 760px) {
     .dash-funnel-row { grid-template-columns: minmax(0, 1fr); }
     .dash-sources { padding-left: 0; border-left: 0; }
+    .dash-taper li { max-height: none; }
   }
   @media (max-width: 720px) {
-    .dash-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; > div { padding: 8px 10px; } strong { font-size: 18px; } span { font-size: 11.5px; } }
+    .dash-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; > div { padding: 8px 10px; } strong { font-size: 18px; } .dash-tile-text > span { font-size: 11.5px; } .dash-tile-icon { width: 30px; height: 30px; font-size: 14px; } }
   }
   @media (max-width: 420px) {
     .dash-tiles { grid-template-columns: minmax(0, 1fr); }

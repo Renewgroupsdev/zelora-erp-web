@@ -21,16 +21,7 @@
         } @else {
           <span class="dash-stat-change is-flat">{{ c.hint }}</span>
         }
-        @if (c.previous !== null) {
-          <!-- This period against the previous one, as two bars scaled to the larger. -->
-          <div class="dash-stat-compare" role="img" [attr.aria-label]="'This period ' + c.value + ', previous period ' + c.previous">
-            <span class="is-now" [style.width.%]="share(c.kpi.value, c.kpi)"></span>
-            <span class="is-prev" [style.width.%]="share(c.kpi.previous ?? 0, c.kpi)"></span>
-          </div>
-          <small class="dash-stat-hint">Previous {{ c.previous }}</small>
-        } @else {
-          <small class="dash-stat-hint">{{ c.kpi.change !== null ? c.hint : '' }}</small>
-        }
+        @if (c.kpi.change !== null) { <small class="dash-stat-hint">{{ c.hint }}</small> }
       </article>
     }
   </div>

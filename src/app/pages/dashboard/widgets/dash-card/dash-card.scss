@@ -2,7 +2,7 @@
 
 .dash-page {
   .dash-card-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-  .dash-card-body { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .dash-card-body { flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 
   .dash-link {
     display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: var(--radius-pill, 999px);

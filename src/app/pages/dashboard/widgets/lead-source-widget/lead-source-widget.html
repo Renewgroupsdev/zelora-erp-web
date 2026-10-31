@@ -1,8 +1,61 @@
-<app-dash-card title="Lead source" subtitle="Where this period's leads came from" icon="bi-pie-chart" tone="green"
+<app-dash-card title="Lead sources" subtitle="Total leads by source" icon="bi-bar-chart-fill" tone="blue"
                [link]="canOpen('lead-management') ? '/app/lead-management' : null" linkLabel="View details"
                [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()"
                [empty]="!data()?.by_source?.length" emptyText="No leads came in during this period." emptyIcon="bi-pie-chart">
   @if (data(); as l) {
-    <div class="dash-source"><app-bf-donut [data]="l.by_source" centerLabel="Leads" emptyText="No sources yet" /></div>
+    <div class="dash-src">
+      <div class="dash-src-fig">
+      <div class="dash-src-ring">
+        <svg viewBox="0 0 200 200" role="img" [attr.aria-label]="'Leads by source, ' + count(total()) + ' in total'">
+          <defs>
+            @for (s of slices(); track s.label; let i = $index) {
+              <linearGradient [attr.id]="'dash-src-g' + i" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" [attr.stop-color]="s.light" />
+                <stop offset="1" [attr.stop-color]="s.color" />
+              </linearGradient>
+            }
+          </defs>
+          <circle class="dash-src-track" cx="100" cy="100" [attr.r]="radius" [attr.stroke-width]="stroke" />
+          <g transform="rotate(-90 100 100)">
+            @for (s of slices(); track s.label; let i = $index) {
+              <circle class="dash-src-arc" cx="100" cy="100" [attr.r]="radius"
+                      [class.is-on]="hover() === i" [class.is-dim]="hover() !== null && hover() !== i"
+                      [attr.stroke]="'url(#dash-src-g' + i + ')'"
+                      [attr.stroke-dasharray]="s.arc + ' ' + (circumference - s.arc)"
+                      [attr.stroke-dashoffset]="-s.start"
+                      (mouseenter)="setHover(i)" (mouseleave)="setHover(null)" />
+            }
+          </g>
+          <circle class="dash-src-disc" cx="100" cy="100" [attr.r]="radius - stroke / 2 - 3" />
+          @for (s of slices(); track s.label; let i = $index) {
+            @if (s.lx !== null) {
+              <text class="dash-src-label" [class.is-dim]="hover() !== null && hover() !== i" [attr.x]="s.lx" [attr.y]="s.ly" text-anchor="middle" dominant-baseline="central">{{ s.pct }}%</text>
+            }
+          }
+        </svg>
+        <div class="dash-src-center">
+          <span class="dash-src-icon"><i class="bi bi-people-fill" aria-hidden="true"></i></span>
+          <strong>{{ count(shown().value) }}</strong>
+          <small>{{ shown().label }}</small>
+        </div>
+      </div>
+      @if (l.conversion_rate > 0) {
+        <span class="dash-src-badge"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>{{ l.conversion_rate }}% converted</span>
+      }
+      </div>
+
+      <ul class="dash-src-list">
+        @for (s of slices(); track s.label; let i = $index) {
+          <li [style.--c]="s.color" [style.--cl]="s.light" [class.is-on]="hover() === i" [class.is-dim]="hover() !== null && hover() !== i"
+              (mouseenter)="setHover(i)" (mouseleave)="setHover(null)">
+            <span class="dash-src-chip"><i class="bi" [class]="s.icon" aria-hidden="true"></i></span>
+            <span class="dash-src-name" [title]="s.label">{{ s.label }}</span>
+            <strong class="dash-src-count">{{ count(s.value) }}</strong>
+            <b class="dash-src-pct">{{ s.pct }}%</b>
+            <span class="dash-src-bar"><u [style.width.%]="s.share * 100"></u></span>
+          </li>
+        }
+      </ul>
+    </div>
   }
 </app-dash-card>

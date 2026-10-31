@@ -1,24 +1,103 @@
-<app-dash-card title="Front Desk" subtitle="Today's visits and what to follow up at the counter" icon="bi-person-workspace" tone="blue"
+<app-dash-card title="Walk-in" subtitle="Today's visits and what to follow up at the counter" icon="bi-person-walking" tone="blue"
                [link]="canOpen('appoinment') ? '/app/appointments' : null" linkLabel="Appointments"
                [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()">
   @if (data(); as d) {
-    <div class="dash-kpis is-inner">
-      <app-dash-kpi label="Visits today" icon="bi-calendar2-day" tone="blue" [value]="'' + d.appointments_today" [hint]="d.checked_in + ' checked in · ' + d.walk_ins_today + ' walk-ins'" />
-      <app-dash-kpi label="Sittings today" icon="bi-heart-pulse" tone="purple" [value]="d.sittings_done_today + ' / ' + d.sittings_today" hint="Completed / scheduled" />
-      <app-dash-kpi label="Awaiting terms" icon="bi-file-earmark-check" tone="orange" [value]="'' + d.awaiting_terms" [hint]="d.invoiced_not_converted + ' invoiced, not converted'" />
-      <app-dash-kpi label="Balances to collect" icon="bi-cash-coin" tone="red" [value]="inrShort(d.pending_payments.amount)" [hint]="d.pending_payments.count + ' treatment plans'" />
-    </div>
-    <div class="dash-split">
-      <div><h3 class="dash-sub">Today's queue</h3><app-visit-list [rows]="d.today" emptyText="No visits booked for today." /></div>
-      <div>
-        <h3 class="dash-sub">Collect at the counter</h3>
-        @if (d.pending_payments.items.length) {
-          <ul class="dash-list is-compact">
-            @for (p of d.pending_payments.items; track p.id) {
-              <li><div class="dash-list-main"><strong>{{ p.customer }}</strong><small>{{ p.treatment }} &middot; {{ p.mobile }}</small></div><span class="dash-amount">{{ inr(p.due) }}</span></li>
-            }
-          </ul>
-        } @else { <div class="dash-ok"><i class="bi bi-check2-circle" aria-hidden="true"></i> Every active plan is paid up.</div> }
+    <div class="fd">
+      <div class="fd-tiles">
+        @for (t of tiles(); track t.label) {
+          <article class="fd-tile" [class]="'tone-' + t.tone">
+            <div class="fd-ring" [attr.title]="t.ring !== null ? t.ring + '%' : null">
+              <svg viewBox="0 0 52 52" aria-hidden="true" focusable="false">
+                <circle class="fd-ring-track" cx="26" cy="26" r="22" />
+                @if (t.ring !== null) {
+                  <circle class="fd-ring-arc" cx="26" cy="26" r="22" pathLength="100" [attr.stroke-dasharray]="t.ring + ' 100'" transform="rotate(-90 26 26)" />
+                }
+              </svg>
+              <span class="fd-ring-icon"><i class="bi" [class]="t.icon" aria-hidden="true"></i></span>
+            </div>
+            <div class="fd-tile-text">
+              <strong>{{ t.value }}</strong>
+              <span>{{ t.label }}</span>
+              <small>{{ t.hint }}</small>
+            </div>
+            @if (t.ring !== null) { <span class="fd-tile-pct">{{ t.ring }}%</span> }
+          </article>
+        }
+      </div>
+
+      <div class="fd-panels">
+        <section class="fd-panel">
+          <header class="fd-panel-head">
+            <span class="fd-panel-icon tone-blue"><i class="bi bi-people" aria-hidden="true"></i></span>
+            <h3>Today's queue</h3>
+            <span class="fd-count tone-blue">{{ d.today.length }}</span>
+          </header>
+
+          @if (d.today.length) {
+            <div class="fd-mix">
+              <div class="fd-donut" role="img" [attr.aria-label]="'Queue by status, ' + d.today.length + ' visits'">
+                <svg viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+                  <circle class="fd-donut-track" cx="60" cy="60" [attr.r]="radius" />
+                  <g transform="rotate(-90 60 60)">
+                    @for (s of mix(); track s.label) {
+                      <circle class="fd-donut-arc" cx="60" cy="60" [attr.r]="radius" [attr.stroke]="s.color"
+                              [attr.stroke-dasharray]="s.arc + ' ' + (circumference - s.arc)" [attr.stroke-dashoffset]="-s.start"><title>{{ s.label }} {{ s.count }}</title></circle>
+                    }
+                  </g>
+                </svg>
+                <div class="fd-donut-center"><strong>{{ d.today.length }}</strong><small>visits</small></div>
+              </div>
+              <ul class="fd-mix-legend">
+                @for (s of mix(); track s.label) {
+                  <li [class]="'tone-' + s.tone"><i></i><span>{{ s.label }}</span><b>{{ s.count }}</b><em>{{ s.pct }}%</em></li>
+                }
+              </ul>
+            </div>
+
+            <ol class="fd-timeline">
+              @for (v of d.today; track v.id) {
+                <li [class]="'tone-' + tone(v.status)">
+                  <span class="fd-time">{{ to12Hour(v.time) ?? '--' }}</span>
+                  <span class="fd-node" aria-hidden="true"></span>
+                  <span class="fd-avatar">{{ initials(v.name) }}</span>
+                  <div class="dash-list-main">
+                    <strong>{{ v.name }}</strong>
+                    <small>{{ v.treatment || v.category || 'Consultation' }}@if (v.doctor) { &middot; {{ v.doctor }} }@if (v.type === 'walk-in') { &middot; Walk-in }</small>
+                  </div>
+                  <span class="dash-pill" [class]="'tone-' + tone(v.status)">{{ v.status }}</span>
+                </li>
+              }
+            </ol>
+          } @else { <p class="dash-muted">No visits booked for today.</p> }
+        </section>
+
+        <section class="fd-panel">
+          <header class="fd-panel-head">
+            <span class="fd-panel-icon tone-red"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
+            <h3>Collect at the counter</h3>
+            @if (d.pending_payments.items.length) { <span class="fd-count tone-red">{{ inrShort(d.pending_payments.amount) }}</span> }
+          </header>
+          @if (d.pending_payments.items.length) {
+            <div class="fd-cols" role="img" aria-label="Balance due per customer">
+              @for (c of dueCols(); track c.id) {
+                <div class="fd-col" [attr.title]="c.full + ' · ' + inr(c.due)">
+                  <span class="fd-col-val">{{ inrShort(c.due) }}</span>
+                  <span class="fd-col-bar" [style.--h]="c.h"></span>
+                  <span class="fd-col-name">{{ c.name }}</span>
+                </div>
+              }
+            </div>
+            <ul class="fd-due">
+              @for (p of d.pending_payments.items; track p.id) {
+                <li>
+                  <span class="fd-initial">{{ p.customer.charAt(0) }}</span>
+                  <div class="dash-list-main"><strong>{{ p.customer }}</strong><small>{{ p.treatment }} &middot; {{ p.mobile }}</small></div>
+                  <span class="dash-amount">{{ inr(p.due) }}</span>
+                </li>
+              }
+            </ul>
+          } @else { <div class="dash-ok"><i class="bi bi-check2-circle" aria-hidden="true"></i> Every active plan is paid up.</div> }
+        </section>
       </div>
     </div>
   }
