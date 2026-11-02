@@ -48,7 +48,7 @@ export class PurchaseReturns extends PurchaseListBase {
     { key: 'actions', header: 'Action', type: 'quickActions', width: '6%', sortable: false },
   ];
 
-  override sortActive = 'returnedAt';
+  override sortActive = ''; // API order = updated_at desc: new / edited rows lead
 
   readonly stats = computed<DetailCardData[]>(() => {
     const s = this.purchase.summaries().returns ?? {};

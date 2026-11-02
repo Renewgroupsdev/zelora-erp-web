@@ -17,6 +17,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ApiRoutesConstants } from '../../common-services/api-route-constants';
 import { ToastService } from '../../common-services/toast.service';
 import { to12Hour } from '../../utils/format.util';
+import { RecordHistory } from '../record-history/record-history';
 import {
   BaldnessType,
   ComboOffer,
@@ -92,7 +93,7 @@ export interface LeadProfileDialogResult {
 @Component({
   selector: 'app-lead-profile-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, DatePickerDirective, TimePickerDirective],
+  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, DatePickerDirective, TimePickerDirective, RecordHistory],
   templateUrl: './lead-profile-dialog.html',
   styleUrl: './lead-profile-dialog.scss',
 })

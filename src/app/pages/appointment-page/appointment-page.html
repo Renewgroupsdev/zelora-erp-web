@@ -98,10 +98,19 @@
         @for (a of panel.appointments; track a.id) {
           <article class="ap-card" [ngClass]="'ap-' + statusTone(a.status)">
             <div class="ap-card-top">
-              <span class="ap-avatar">{{ initials(a.name) }}</span>
+              @if (a.app_submitted_at && a.photo_url) {
+                <img class="ap-avatar" [src]="a.photo_url" alt="Selfie sent from the app" />
+              } @else {
+                <span class="ap-avatar">{{ initials(a.name) }}</span>
+              }
               <div class="ap-who">
                 <strong>{{ a.name }}</strong>
-                <span>{{ a.customer?.customer_code || ('AP-' + pad(a.id)) }}</span>
+                <span>
+                  {{ a.customer?.customer_code || ('AP-' + pad(a.id)) }}
+                  @if (a.app_submitted_at) {
+                    <em class="ap-app-tag" title="Sent from the customer app - waiting for the doctor's approval"><i class="bi bi-phone"></i> App request</em>
+                  }
+                </span>
               </div>
               <span class="ap-pill" [ngClass]="'pill-' + statusTone(a.status)">{{ a.status }}</span>
             </div>

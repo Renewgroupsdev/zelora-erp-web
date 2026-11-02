@@ -1,5 +1,5 @@
 /**
- * Accounts - Tally-style double entry:
+ * Accounts - Tally-style double entry (persisted by the API, see AccountsService; every id is a database id):
  *  - Ledgers sit under groups (Cash-in-Hand, Bank Accounts, Sundry Debtors, Sales Accounts...).
  *  - Every voucher (Sales, Purchase, Receipt, Payment, Contra, Journal, Credit Note, Debit Note) posts
  *    equal debits and credits to ledgers.
@@ -31,7 +31,10 @@ export const INCOME_GROUPS: LedgerGroup[] = ['Sales Accounts', 'Indirect Incomes
 export const EXPENSE_GROUPS: LedgerGroup[] = ['Purchase Accounts', 'Direct Expenses', 'Indirect Expenses'];
 
 export interface Ledger {
+  /** Server (database) id. */
   id: string;
+  /** Stable code of the system ledgers (cash, bank, service income...). */
+  code?: string;
   name: string;
   group: LedgerGroup;
   /** Signed: positive = Dr, negative = Cr. */
@@ -122,6 +125,7 @@ export interface Bill {
 }
 
 export interface DayClose {
+  id: string;
   date: string;
   opening: number;
   receipts: number;

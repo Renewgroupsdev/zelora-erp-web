@@ -40,7 +40,7 @@ export class Department extends LocalListBase implements OnInit {
     { key: 'action', header: 'Action', type: 'rowActions', width: '15%', sortable: false },
   ];
 
-  override sortActive = 'name';
+  override sortActive = '';
   override sortDirection: 'asc' | 'desc' = 'asc';
 
   /** Raw departments from GET /departments (every page). */

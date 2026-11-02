@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { DiscountType, LookupOption, TreatmentManagementService, TreatmentPayload, TreatmentRecord } from '../../shared/common-services/treatment-management.service';
 import { Breadcrumb } from '../../shared/components/breadcrumb/breadcrumb';
@@ -11,6 +11,24 @@ import { BreadcrumbItem } from '../../shared/models/common-components.model';
 import { ToastService } from '../../shared/common-services/toast.service';
 import { CanActionDirective } from '../../shared/directives/can-action.directive';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
+
+/** A product may be listed once per treatment: flags the FormArray (and marks each repeated row) when it is picked twice. */
+function uniqueProducts(array: AbstractControl): ValidationErrors | null {
+  const rows = (array as FormArray).controls;
+  const seen = new Set<number>();
+  let duplicate = false;
+  for (const row of rows) {
+    const control = row.get('product_id');
+    const id = control?.value;
+    const repeated = id != null && seen.has(Number(id));
+    if (id != null) seen.add(Number(id));
+    if (repeated) duplicate = true;
+    const errors = { ...(control?.errors ?? {}) };
+    if (repeated) errors['duplicate'] = true; else delete errors['duplicate'];
+    control?.setErrors(Object.keys(errors).length ? errors : null, { emitEvent: false });
+  }
+  return duplicate ? { duplicateProduct: true } : null;
+}
 
 @Component({
   selector: 'app-treatment-create',
@@ -50,6 +68,7 @@ export class TreatmentCreate implements OnInit {
     // blank default row never flashes (or stays) while it loads. Create starts with one empty row.
     materials: this.fb.array(
       (this.route.snapshot.queryParamMap.get('id') ? [] : [this.createMaterial()]) as any[],
+      uniqueProducts,
     ),
   });
 
@@ -128,6 +147,11 @@ export class TreatmentCreate implements OnInit {
 
   invalid(control: AbstractControl | null | undefined): boolean {
     return !!control && control.invalid && (control.touched || control.dirty);
+  }
+
+  /** True when another row already uses this product (its option is disabled in the dropdown). */
+  productTaken(productId: number | string, rowIndex: number): boolean {
+    return this.materials.controls.some((row, i) => i !== rowIndex && Number(row.get('product_id')?.value) === Number(productId));
   }
 
   addMaterial(): void {
@@ -266,6 +290,9 @@ export class TreatmentCreate implements OnInit {
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      if (this.materials.errors?.['duplicateProduct']) {
+        this.toast.warning('Duplicate product', 'Each product can be added only once. Remove the repeated item.');
+      }
       return;
     }
 

@@ -7,6 +7,8 @@
  */
 
 export interface BranchTarget {
+  /** Database id once the target is saved (undefined for a branch with no target yet). */
+  id?: string;
   branch: string;
   /** YYYY-MM */
   month: string;
@@ -24,6 +26,7 @@ export interface IncentiveSlab {
 }
 
 export interface IncentiveRules {
+  id?: string;
   slabs: IncentiveSlab[];
   /** Rupees paid to the telecaller for every converted lead. */
   perConversion: number;
@@ -34,6 +37,8 @@ export interface IncentiveRules {
 export type TargetStatus = 'Not set' | 'Behind' | 'On track' | 'Achieved' | 'Exceeded';
 
 export interface BranchPerformance {
+  /** BranchTarget id of the month (for the record history); undefined while no target is saved. */
+  targetId?: string;
   branch: string;
   revenueTarget: number;
   achieved: number;
@@ -81,6 +86,7 @@ export const CATEGORY_ICONS: Record<TreatmentCategory, string> = {
 };
 
 export interface EmployeeTarget {
+  id?: string;
   employeeId: string;
   /** YYYY-MM */
   month: string;
@@ -94,6 +100,8 @@ export interface CategoryResult {
 }
 
 export interface EmployeePerformance {
+  /** EmployeeTarget id of the month (for the record history). */
+  targetId?: string;
   employeeId: string;
   name: string;
   designation: string;

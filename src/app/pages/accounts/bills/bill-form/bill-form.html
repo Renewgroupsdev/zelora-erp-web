@@ -140,6 +140,6 @@
 
   <div class="modal-footer-custom">
     <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
-    <button type="button" class="save-btn" (click)="save()"><i class="bi bi-floppy"></i> {{ kind() === 'Proforma' ? 'Save Proforma' : 'Save & Post Bill' }}</button>
+    <button type="button" class="save-btn" [disabled]="saving()" (click)="save()"><i class="bi bi-floppy"></i> {{ kind() === 'Proforma' ? 'Save Proforma' : 'Save & Post Bill' }}</button>
   </div>
 </div>

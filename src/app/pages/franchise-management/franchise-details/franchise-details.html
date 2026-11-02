@@ -23,6 +23,7 @@
         </div>
       </div>
       <div class="header-actions">
+        <app-record-history type="Franchise" [recordId]="f.id" [title]="f.name" />
         <button *appCan="'edit-franchise'" type="button" class="add-lead-btn" (click)="edit()"><i class="bi bi-pencil-square"></i> Edit</button>
         <button type="button" class="ghost-btn" (click)="back()"><i class="bi bi-arrow-left"></i> Back</button>
       </div>

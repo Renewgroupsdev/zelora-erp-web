@@ -4,6 +4,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { DisplayModuleNode, RolePermissionAction } from '../roles-permission.model';
 import { parseRoleIds } from '../add-roles-permission-form/module-form.util';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
+import { RecordHistory } from '../../../../shared/components/record-history/record-history';
 
 export interface ModuleReorderEvent {
   items: { id: number; position: number }[];
@@ -26,7 +27,7 @@ interface RoleAccessSummary {
 @Component({
   selector: 'app-module-tree-node',
   standalone: true,
-  imports: [CommonModule, DragDropModule, ModuleTreeNode, CanActionDirective],
+  imports: [CommonModule, DragDropModule, ModuleTreeNode, CanActionDirective, RecordHistory],
   templateUrl: './module-tree-node.html',
   styleUrl: './module-tree-node.scss',
 })

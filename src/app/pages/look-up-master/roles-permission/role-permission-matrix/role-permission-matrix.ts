@@ -22,6 +22,7 @@ import {
 import { isSuccessResponse } from '../roles-permission.model';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { PageLoader } from '../../../../shared/components/page-loader/page-loader';
+import { RecordHistory } from '../../../../shared/components/record-history/record-history';
 import { AutoModuleTabs } from '../../../../shared/components/module-tabs/auto-module-tabs';
 
 /** One screen to grant a single role access across the entire existing module/sub-module/action
@@ -30,7 +31,7 @@ import { AutoModuleTabs } from '../../../../shared/components/module-tabs/auto-m
 @Component({
   selector: 'app-role-permission-matrix',
   standalone: true,
-  imports: [AutoModuleTabs, CommonModule, FormsModule, DragDropModule, CommonFilterCard, MatrixTreeNode, PageLoader],
+  imports: [AutoModuleTabs, CommonModule, FormsModule, DragDropModule, CommonFilterCard, MatrixTreeNode, PageLoader, RecordHistory],
   templateUrl: './role-permission-matrix.html',
   styleUrl: './role-permission-matrix.scss',
 })

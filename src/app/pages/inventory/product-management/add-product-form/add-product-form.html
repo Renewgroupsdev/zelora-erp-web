@@ -28,6 +28,10 @@
 
       <div class="form-grid">
 
+        <div class="form-field full-width">
+          <app-image-picker label="Product image" icon="bi-box-seam" [currentUrl]="imageUrl" (changed)="onImage($event)" />
+        </div>
+
         @if (isEdit) {
           <div class="form-field">
             <label for="product-code">Product Code</label>

@@ -1,4 +1,8 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Observable, firstValueFrom } from 'rxjs';
+import Swal from 'sweetalert2';
+import { ApiDataService } from '../../core/http/api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import {
   Bill,
@@ -10,18 +14,17 @@ import {
   Ledger,
   LedgerGroup,
   PaymentMode,
-  VOUCHER_PREFIX,
   Voucher,
   VoucherEntry,
   VoucherType,
   billTotals,
   voucherAmount,
 } from '../models/accounts.model';
-import { BRANCHES, addDays, isoDate, loadState, saveState, uid } from '../utils/format.util';
+import { addDays, isoDate } from '../utils/format.util';
 import { NotificationService } from './notification.service';
 import { BranchOptionsService } from './branch-options.service';
 
-const STORAGE_KEY = 'zelora_accounts_store_v1';
+const BASE = 'accounts';
 
 interface AccountsState {
   ledgers: Ledger[];
@@ -30,7 +33,12 @@ interface AccountsState {
   dayCloses: DayClose[];
 }
 
-/** Fixed system ledgers the posting rules rely on. */
+const emptyState = (): AccountsState => ({ ledgers: [], vouchers: [], bills: [], dayCloses: [] });
+
+/**
+ * Stable codes of the fixed system ledgers the posting rules rely on (Ledger.code on the server). Ledger ids are
+ * server ids, so look a system ledger up with AccountsService.idOf(code) - never use the code as an id.
+ */
 export const LEDGER = {
   cash: 'L-CASH',
   bank: 'L-HDFC',
@@ -83,15 +91,24 @@ export interface NewVoucherInput {
 }
 
 /**
- * Front-end store for Accounts (design stage - no API yet). State lives in signals and is mirrored to
- * localStorage; the posting functions below are what the backend must reproduce.
+ * Accounts store backed by /api/accounts. The server owns the books (posting rules, numbering, day locks, audit trail):
+ * state is loaded from GET /accounts/state when a user is signed in, and every mutation is an API call whose response
+ * (the rows it created / changed) is merged into the signals. Read helpers (balances, day book, reports) are computed on
+ * the client from the loaded lists. Mutations resolve to the saved record, or to the server's message (a string) when
+ * the action is refused.
  */
 @Injectable({ providedIn: 'root' })
 export class AccountsService {
+  private readonly api = inject(ApiDataService);
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
   private readonly branchList = inject(BranchOptionsService);
-  private readonly state = signal<AccountsState>(attributeSeedBills(loadState(STORAGE_KEY, seedState)));
+  private readonly state = signal<AccountsState>(emptyState());
+
+  /** True once the books were loaded for the signed-in user. */
+  readonly loaded = signal(false);
+  readonly loading = signal(false);
+  readonly loadError = signal<string | null>(null);
 
   readonly ledgers = computed(() => this.state().ledgers);
   readonly vouchers = computed(() => this.state().vouchers.filter(v => !v.cancelled));
@@ -108,12 +125,46 @@ export class AccountsService {
     .reduce((s, b) => s + billTotals(b.items).grandTotal - b.paidAmount, 0));
 
   constructor() {
-    effect(() => saveState(STORAGE_KEY, this.state()));
+    // Load for the signed-in user; a sign-out (or another login) never shows the previous user's books.
+    effect(() => {
+      const user = this.auth.currentUser();
+      untracked(() => {
+        this.state.set(emptyState());
+        this.loaded.set(false);
+        if (user) void this.load();
+      });
+    });
     this.branchList.ensure();
   }
 
   get userName(): string {
     return this.auth.currentUser()?.name || 'Accountant';
+  }
+
+  /** Fetches ledgers, vouchers, bills and day closes. Safe to call again to refresh. */
+  async load(): Promise<void> {
+    this.loading.set(true);
+    this.loadError.set(null);
+    try {
+      const res = await firstValueFrom(this.api.GET(`${BASE}/state`) as Observable<any>);
+      const d = res?.data ?? {};
+      this.state.set({
+        ledgers: (d.ledgers ?? []).map(toLedger),
+        vouchers: (d.vouchers ?? []).map(toVoucher),
+        bills: (d.bills ?? []).map(toBill),
+        dayCloses: (d.day_closes ?? []).map(toDayClose),
+      });
+      this.loaded.set(true);
+    } catch (e) {
+      this.loadError.set(errorMessage(e));
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  /** Id of a system ledger by its stable code ('' while the books are not loaded). */
+  idOf(code: string): string {
+    return this.ledgers().find(l => l.code === code)?.id ?? '';
   }
 
   ledger(id: string): Ledger | undefined {
@@ -171,6 +222,7 @@ export class AccountsService {
   // ---- Day Book ----
   dayBook(date: string): DayBookSummary {
     const cashIds = new Set(this.cashLedgers().map(l => l.id));
+    const cashLedgerId = this.idOf(LEDGER.cash);
     const position = (upto: string, before: boolean) => [...cashIds].reduce((s, id) => s + this.balance(id, upto, before), 0);
     // Opening = the frozen closing of the latest closed day before this one, plus any cash movement since that close.
     // With no closed day before it, fall back to the ledger position.
@@ -199,7 +251,7 @@ export class AccountsService {
     }
 
     const closing = round2(opening + receipts - payments);
-    const bankClosing = [...cashIds].filter(id => id !== LEDGER.cash).reduce((s, id) => s + this.balance(id, date), 0);
+    const bankClosing = [...cashIds].filter(id => id !== cashLedgerId).reduce((s, id) => s + this.balance(id, date), 0);
     return {
       date, opening, receipts, payments, closing,
       // Cash is the remainder so cash + bank always equals the carried-forward closing.
@@ -214,100 +266,126 @@ export class AccountsService {
     return this.dayCloses().some(d => d.date === date);
   }
 
-  /** Locks the day; its closing balance is the next day's opening balance. */
-  closeDay(date: string): DayClose | null {
+  /** Locks the day on the server (it works the figures out itself); its closing balance is the next day's opening. */
+  async closeDay(date: string): Promise<DayClose | null> {
     if (this.isClosed(date) || date > isoDate()) return null;
-    const b = this.dayBook(date);
-    const close: DayClose = {
-      date, opening: b.opening, receipts: b.receipts, payments: b.payments, closing: b.closing,
-      cashClosing: b.cashClosing, bankClosing: b.bankClosing, closedBy: this.userName, closedAt: new Date().toISOString(),
-    };
-    this.mutate(s => s.dayCloses.push(close));
-    this.notifications.add({ type: 'accounts', title: `Day closed · ${date}`, message: `Collection ₹${b.receipts.toLocaleString('en-IN')} · closing ₹${b.closing.toLocaleString('en-IN')} carried to ${addDays(date, 1)}.`, link: '/app/accounts/day-book' });
+    const res = await this.send('POST', `${BASE}/day-closes`, { date });
+    if (typeof res === 'string') {
+      this.notifyError('Day not closed', res);
+      return null;
+    }
+    this.merge(res.data.changes);
+    const close = this.dayCloses().find(d => d.date === date) ?? null;
+    if (close) {
+      this.notifications.add({ type: 'accounts', title: `Day closed · ${date}`, message: `Collection ₹${close.receipts.toLocaleString('en-IN')} · closing ₹${close.closing.toLocaleString('en-IN')} carried to ${addDays(date, 1)}.`, link: '/app/accounts/day-book' });
+    }
     return close;
   }
 
-  reopenDay(date: string): void {
-    this.mutate(s => { s.dayCloses = s.dayCloses.filter(d => d.date !== date); });
+  async reopenDay(date: string): Promise<boolean> {
+    const res = await this.send('DELETE', `${BASE}/day-closes/${date}`);
+    if (typeof res === 'string') {
+      this.notifyError('Day not reopened', res);
+      return false;
+    }
+    const removed = String(res.data?.removed_day_close_id ?? '');
+    this.state.update(s => ({ ...s, dayCloses: s.dayCloses.filter(d => d.id !== removed && d.date !== date) }));
+    return true;
   }
 
   // ---- Ledgers ----
-  addLedger(input: Omit<Ledger, 'id'>): Ledger | string {
+  async addLedger(input: Omit<Ledger, 'id'>): Promise<Ledger | string> {
     if (this.ledgers().some(l => l.name.trim().toLowerCase() === input.name.trim().toLowerCase())) return 'A ledger with this name already exists.';
-    const ledger: Ledger = { ...input, name: input.name.trim(), id: uid('L') };
-    this.mutate(s => s.ledgers.push(ledger));
-    return ledger;
+    const res = await this.send('POST', `${BASE}/ledgers`, {
+      name: input.name.trim(), group: input.group, opening_balance: input.openingBalance,
+      phone: input.phone || null, gstin: input.gstin || null, address: input.address || null,
+    });
+    return this.saved(res, s => s.ledgers);
   }
 
-  updateLedger(id: string, patch: Partial<Ledger>): void {
-    this.mutate(s => { s.ledgers = s.ledgers.map(l => (l.id === id ? { ...l, ...patch } : l)); });
+  async updateLedger(id: string, patch: Partial<Ledger>): Promise<Ledger | string> {
+    const body: Record<string, unknown> = {};
+    if (patch.name !== undefined) body['name'] = patch.name;
+    if (patch.group !== undefined) body['group'] = patch.group;
+    if (patch.openingBalance !== undefined) body['opening_balance'] = patch.openingBalance;
+    if (patch.phone !== undefined) body['phone'] = patch.phone || null;
+    if (patch.gstin !== undefined) body['gstin'] = patch.gstin || null;
+    if (patch.address !== undefined) body['address'] = patch.address || null;
+    const res = await this.send('PUT', `${BASE}/ledgers/${id}`, body);
+    if (typeof res !== 'string') this.merge(res.data.changes);
+    return typeof res === 'string' ? res : this.ledger(id)!;
   }
 
   // ---- Vouchers ----
   /** Returns the voucher, or an error message when it can't be posted. */
-  postVoucher(input: NewVoucherInput): Voucher | string {
+  async postVoucher(input: NewVoucherInput): Promise<Voucher | string> {
     const error = validateVoucher(input, this.isClosed(input.date));
     if (error) return error;
-    let voucher!: Voucher;
-    this.mutate(s => { voucher = addVoucher(s, input, this.userName); });
-    return voucher;
+    const unit = this.unitOf(input.branch);
+    if (!unit) return 'Select a branch.';
+    const res = await this.send('POST', `${BASE}/vouchers`, {
+      type: input.type, date: input.date, narration: input.narration || null, mode: input.mode ?? null, reference: input.reference ?? null,
+      ...unit,
+      entries: input.entries.filter(e => e.debit || e.credit).map(e => ({ ledger_id: Number(e.ledgerId), debit: e.debit, credit: e.credit })),
+    });
+    return this.saved(res, s => s.vouchers);
   }
 
   // ---- Bills ----
-  createBill(input: NewBillInput, collect: { amount: number; mode: PaymentMode } | null): Bill | string {
+  async createBill(input: NewBillInput, collect: { amount: number; mode: PaymentMode } | null): Promise<Bill | string> {
     if (input.kind === 'Service' && this.isClosed(input.date)) return `${input.date} is closed in the Day Book - reopen it or bill today.`;
-    let bill!: Bill;
-    this.mutate(s => {
-      bill = addBill(s, input, this.userName);
-      if (bill.kind === 'Service' && collect?.amount) addReceipt(s, bill, collect.amount, collect.mode, bill.date, this.userName);
+    const unit = this.unitOf(input.branch);
+    if (!unit) return 'Select a branch.';
+    const employee = Number(input.employeeId);
+    const res = await this.send('POST', `${BASE}/bills`, {
+      kind: input.kind, date: input.date, due_date: input.dueDate || null,
+      customer_name: input.customerName, customer_phone: input.customerPhone || null, customer_address: input.customerAddress || null,
+      customer_gstin: input.customerGstin || null, notes: input.notes || null,
+      // HR employee ids are server ids; anything else (an unsaved / legacy id) is sent as "no seller".
+      employee_id: Number.isInteger(employee) && employee > 0 ? employee : null,
+      ...unit,
+      items: input.items.map(i => ({ description: i.description, sac: i.sac || null, qty: i.qty, rate: i.rate, discount_percent: i.discountPercent, gst_percent: i.gstPercent })),
+      collect: input.kind === 'Service' && collect?.amount ? { amount: collect.amount, mode: collect.mode } : null,
     });
-    return bill;
+    return this.saved(res, s => s.bills);
   }
 
-  convertProforma(id: string, date = isoDate()): Bill | string {
+  async convertProforma(id: string, date = isoDate()): Promise<Bill | string> {
     const p = this.bills().find(b => b.id === id);
     if (!p || p.kind !== 'Proforma' || p.status === 'Converted' || p.status === 'Cancelled') return 'Only an open proforma can be converted.';
     if (this.isClosed(date)) return `${date} is closed in the Day Book.`;
-    let bill!: Bill;
-    this.mutate(s => {
-      bill = addBill(s, { ...p, kind: 'Service', date, dueDate: addDays(date, 7), notes: `${p.notes ? p.notes + ' · ' : ''}Against proforma ${p.billNo}` }, this.userName);
-      bill.convertedFromId = p.id;
-      const draft = s.bills.find(b => b.id === p.id)!;
-      draft.status = 'Converted';
-      draft.convertedToId = bill.id;
-    });
-    return bill;
+    const res = await this.send('POST', `${BASE}/bills/${id}/convert`, { date });
+    return this.saved(res, s => s.bills);
   }
 
-  markProformaSent(id: string): void {
-    this.mutate(s => { const b = s.bills.find(x => x.id === id); if (b && b.status === 'Draft') b.status = 'Sent'; });
+  async markProformaSent(id: string): Promise<void> {
+    const res = await this.send('POST', `${BASE}/bills/${id}/send`, {});
+    if (typeof res === 'string') this.notifyError('Not updated', res);
+    else this.merge(res.data.changes);
   }
 
-  collectPayment(billId: string, amount: number, mode: PaymentMode, date = isoDate()): Voucher | string {
+  async collectPayment(billId: string, amount: number, mode: PaymentMode, date = isoDate()): Promise<Voucher | string> {
     const bill = this.bills().find(b => b.id === billId);
     if (!bill || bill.kind !== 'Service') return 'Bill not found.';
     const due = billTotals(bill.items).grandTotal - bill.paidAmount;
     if (amount <= 0 || amount > due + 0.01) return `Amount must be between ₹1 and ₹${due.toLocaleString('en-IN')}.`;
     if (this.isClosed(date)) return `${date} is closed in the Day Book.`;
-    let v!: Voucher;
-    this.mutate(s => { v = addReceipt(s, s.bills.find(b => b.id === billId)!, amount, mode, date, this.userName); });
-    return v;
+    const res = await this.send('POST', `${BASE}/bills/${billId}/payments`, { amount, mode, date });
+    return this.saved(res, s => s.vouchers);
   }
 
   /** Proforma: just cancelled. Unpaid service bill: reversed with a Credit Note (sales return). */
-  cancelBill(id: string, reason: string): Voucher | string | null {
+  async cancelBill(id: string, reason: string): Promise<Voucher | string | null> {
     const bill = this.bills().find(b => b.id === id);
     if (!bill) return 'Bill not found.';
-    if (bill.kind === 'Proforma') {
-      this.mutate(s => { s.bills.find(b => b.id === id)!.status = 'Cancelled'; });
-      return null;
-    }
-    if (bill.paidAmount > 0) return 'This bill has collections - refund them with a Payment voucher first.';
+    if (bill.kind === 'Service' && bill.paidAmount > 0) return 'This bill has collections - refund them with a Payment voucher first.';
     const date = isoDate();
-    if (this.isClosed(date)) return `${date} is closed in the Day Book.`;
-    let note!: Voucher;
-    this.mutate(s => { note = reverseBill(s, s.bills.find(b => b.id === id)!, date, reason, this.userName); });
-    return note;
+    if (bill.kind === 'Service' && this.isClosed(date)) return `${date} is closed in the Day Book.`;
+    const res = await this.send('POST', `${BASE}/bills/${id}/cancel`, { reason, date });
+    if (typeof res === 'string') return res;
+    this.merge(res.data.changes);
+    const note = this.state().vouchers.find(v => v.billId === id && v.type === 'Credit Note');
+    return bill.kind === 'Proforma' ? null : note ?? null;
   }
 
   // ---- Reports ----
@@ -333,31 +411,115 @@ export class AccountsService {
 
   voucherAmount = voucherAmount;
 
-  private mutate(fn: (draft: AccountsState) => void): void {
-    const draft = structuredClone(this.state());
-    fn(draft);
-    this.state.set(draft);
+  // ---- API plumbing ----
+
+  /** Branch / franchise picked by name -> the type + id pair the API stores. */
+  private unitOf(name: string): { branch_type: string; branch_id: number } | null {
+    const option = this.branchList.byName(name);
+    return option ? { branch_type: option.type, branch_id: option.id } : null;
+  }
+
+  /** The call's response, or the server's message when it was refused. */
+  private async send(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<any | string> {
+    try {
+      const call = method === 'POST' ? this.api.POST(path, body) : method === 'PUT' ? this.api.PUT(path, body) : this.api.Delete(path, {});
+      return await firstValueFrom(call as Observable<any>);
+    } catch (e) {
+      return errorMessage(e);
+    }
+  }
+
+  /** Merges the response's changed rows and returns the record named by `result_id` from the matching list. */
+  private saved<T extends { id: string }>(res: any | string, list: (s: AccountsState) => T[]): T | string {
+    if (typeof res === 'string') return res;
+    this.merge(res.data.changes);
+    const id = String(res.data.result_id);
+    return list(this.state()).find(r => r.id === id) as T;
+  }
+
+  /** Upserts the rows the server created / changed (every list by id). */
+  private merge(changes: { ledgers?: any[]; vouchers?: any[]; bills?: any[]; day_closes?: any[] } | undefined): void {
+    if (!changes) return;
+    // Ledgers / vouchers / bills: changed rows lead (the lists arrive updated_at desc); day closes keep their order.
+    const upsertFront = <T extends { id: string }>(list: T[], rows: T[]) => [...rows.filter((r, i, a) => a.findIndex(x => x.id === r.id) === i), ...list.filter(x => !rows.some(r => r.id === x.id))];
+    const upsert = <T extends { id: string }>(list: T[], rows: T[]) => {
+      const next = [...list];
+      for (const row of rows) {
+        const at = next.findIndex(x => x.id === row.id);
+        if (at >= 0) next[at] = row;
+        else next.push(row);
+      }
+      return next;
+    };
+    this.state.update(s => ({
+      ledgers: upsertFront(s.ledgers, (changes.ledgers ?? []).map(toLedger)),
+      vouchers: upsertFront(s.vouchers, (changes.vouchers ?? []).map(toVoucher)),
+      bills: upsertFront(s.bills, (changes.bills ?? []).map(toBill)),
+      // A re-closed day replaces the earlier (reopened) close of the same date.
+      dayCloses: (changes.day_closes ?? []).map(toDayClose).reduce((acc, row) => upsert(acc.filter(d => d.date !== row.date || d.id === row.id), [row]), s.dayCloses),
+    }));
+  }
+
+  private notifyError(title: string, message: string): void {
+    Swal.fire({ icon: 'error', title, text: message, confirmButtonColor: '#6C63FF' });
   }
 }
 
 // ---------------------------------------------------------------------------
-// Posting rules (pure - shared by the live service and the seed)
+// API -> model mappers and helpers
 // ---------------------------------------------------------------------------
 
+const num = (v: unknown) => Number(v) || 0;
+const str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Indian financial year label for a date, e.g. 2026-10-02 -> "26-27". */
-export function fyLabel(date: string): string {
-  const [y, m] = date.split('-').map(Number);
-  const start = m >= 4 ? y : y - 1;
-  return `${String(start).slice(2)}-${String(start + 1).slice(2)}`;
+function errorMessage(e: unknown): string {
+  if (e instanceof HttpErrorResponse) {
+    const body = e.error ?? {};
+    const details = body.errors && typeof body.errors === 'object' && !Array.isArray(body.errors)
+      ? Object.values(body.errors as Record<string, string[]>).flat().filter(m => typeof m === 'string')
+      : [];
+    return (details.length ? details.slice(0, 4).join(' ') : body.message || e.message || 'Something went wrong.');
+  }
+  return e instanceof Error ? e.message : 'Something went wrong.';
 }
 
-function nextNo(prefix: string, existing: string[], date: string): string {
-  const fy = fyLabel(date);
-  const head = `${prefix}/${fy}/`;
-  const max = existing.filter(n => n.startsWith(head)).reduce((m, n) => Math.max(m, Number(n.slice(head.length)) || 0), 0);
-  return `${head}${String(max + 1).padStart(4, '0')}`;
+function toLedger(r: any): Ledger {
+  return {
+    id: String(r.id), code: r.code ?? undefined, name: r.name, group: r.group, openingBalance: num(r.opening_balance),
+    phone: r.phone ?? undefined, gstin: r.gstin ?? undefined, address: r.address ?? undefined, system: !!r.system,
+  };
+}
+
+function toVoucher(r: any): Voucher {
+  return {
+    id: String(r.id), voucherNo: r.voucher_no, type: r.type, date: r.date, narration: str(r.narration),
+    mode: r.mode ?? undefined, reference: r.reference ?? undefined, billId: r.bill_id ? String(r.bill_id) : undefined,
+    branch: str(r.branch), createdBy: str(r.created_by), createdAt: str(r.created_at), cancelled: !!r.cancelled,
+    entries: ((r.entries ?? []) as any[]).map(e => ({ ledgerId: String(e.ledger_id), debit: num(e.debit), credit: num(e.credit) })),
+  };
+}
+
+function toBill(r: any): Bill {
+  return {
+    id: String(r.id), billNo: r.bill_no, kind: r.kind, date: r.date, dueDate: r.due_date ?? null,
+    customerName: r.customer_name, customerPhone: str(r.customer_phone), customerAddress: str(r.customer_address), customerGstin: str(r.customer_gstin),
+    partyLedgerId: r.party_ledger_id ? String(r.party_ledger_id) : undefined, branch: str(r.branch),
+    items: ((r.items ?? []) as any[]).map(i => ({ description: i.description, sac: str(i.sac), qty: num(i.qty), rate: num(i.rate), discountPercent: num(i.discount_percent), gstPercent: num(i.gst_percent) })),
+    notes: str(r.notes), status: r.status, paidAmount: num(r.paid_amount),
+    convertedFromId: r.converted_from_id ? String(r.converted_from_id) : undefined,
+    convertedToId: r.converted_to_id ? String(r.converted_to_id) : undefined,
+    salesVoucherId: r.sales_voucher_id ? String(r.sales_voucher_id) : undefined,
+    employeeId: r.employee_id ? String(r.employee_id) : undefined,
+    createdBy: str(r.created_by), createdAt: str(r.created_at),
+  };
+}
+
+function toDayClose(r: any): DayClose {
+  return {
+    id: String(r.id), date: r.date, opening: num(r.opening), receipts: num(r.receipts), payments: num(r.payments), closing: num(r.closing),
+    cashClosing: num(r.cash_closing), bankClosing: num(r.bank_closing), closedBy: str(r.closed_by), closedAt: str(r.closed_at),
+  };
 }
 
 export function validateVoucher(input: NewVoucherInput, dayClosed: boolean): string | null {
@@ -373,111 +535,6 @@ export function validateVoucher(input: NewVoucherInput, dayClosed: boolean): str
   return null;
 }
 
-function addVoucher(s: AccountsState, input: NewVoucherInput, by: string): Voucher {
-  const v: Voucher = {
-    ...input,
-    entries: input.entries.filter(e => e.debit || e.credit).map(e => ({ ledgerId: e.ledgerId, debit: round2(e.debit), credit: round2(e.credit) })),
-    id: uid('V'),
-    voucherNo: nextNo(VOUCHER_PREFIX[input.type], s.vouchers.filter(x => x.type === input.type).map(x => x.voucherNo), input.date),
-    createdBy: by,
-    createdAt: new Date(`${input.date}T${new Date().toTimeString().slice(0, 8)}`).toISOString(),
-  };
-  s.vouchers.push(v);
-  return v;
-}
-
-/** Finds the customer's Sundry Debtors ledger (by name + phone), creating it on first bill - like Tally party ledgers. */
-function ensureParty(s: AccountsState, name: string, phone: string, address: string, gstin: string): Ledger {
-  const key = name.trim().toLowerCase();
-  const found = s.ledgers.find(l => l.group === 'Sundry Debtors' && l.name.toLowerCase() === key && (!phone || !l.phone || l.phone === phone));
-  if (found) return found;
-  const ledger: Ledger = { id: uid('L'), name: name.trim(), group: 'Sundry Debtors', openingBalance: 0, phone, address, gstin };
-  s.ledgers.push(ledger);
-  return ledger;
-}
-
-function addBill(s: AccountsState, input: NewBillInput, by: string): Bill {
-  const bill: Bill = {
-    ...input,
-    items: input.items.map(i => ({ ...i })),
-    id: uid('B'),
-    billNo: nextNo(input.kind === 'Proforma' ? 'PF' : 'SB', s.bills.filter(b => b.kind === input.kind).map(b => b.billNo), input.date),
-    status: input.kind === 'Proforma' ? 'Draft' : 'Unpaid',
-    paidAmount: 0,
-    createdBy: by,
-    createdAt: new Date().toISOString(),
-  };
-
-  if (bill.kind === 'Service') {
-    // Sales voucher: Dr customer (grand total) / Cr income (taxable + round off) / Cr output CGST + SGST.
-    const party = ensureParty(s, bill.customerName, bill.customerPhone, bill.customerAddress, bill.customerGstin);
-    const t = billTotals(bill.items);
-    const services = bill.items.filter(i => i.sac.startsWith('99'));
-    const serviceTaxable = billTotals(services).taxable;
-    const productTaxable = t.taxable - serviceTaxable;
-    const cgst = round2(t.gst / 2);
-    const entries: VoucherEntry[] = [
-      { ledgerId: party.id, debit: t.grandTotal, credit: 0 },
-      { ledgerId: LEDGER.serviceIncome, debit: 0, credit: round2(serviceTaxable + (productTaxable ? 0 : t.roundOff)) },
-      { ledgerId: LEDGER.productSales, debit: 0, credit: round2(productTaxable + (productTaxable ? t.roundOff : 0)) },
-      { ledgerId: LEDGER.outputCgst, debit: 0, credit: cgst },
-      { ledgerId: LEDGER.outputSgst, debit: 0, credit: round2(t.gst - cgst) },
-    ];
-    // Fix any paisa drift from rounding so the voucher always balances.
-    const drift = round2(entries.reduce((x, e) => x + e.debit - e.credit, 0));
-    if (drift) entries[productTaxable ? 2 : 1].credit = round2(entries[productTaxable ? 2 : 1].credit + drift);
-
-    const v = addVoucher(s, { type: 'Sales', date: bill.date, branch: bill.branch, reference: bill.billNo, narration: `Service bill ${bill.billNo} · ${bill.customerName}`, entries }, by);
-    v.billId = bill.id;
-    bill.partyLedgerId = party.id;
-    bill.salesVoucherId = v.id;
-  }
-
-  s.bills.push(bill);
-  return bill;
-}
-
-function addReceipt(s: AccountsState, bill: Bill, amount: number, mode: PaymentMode, date: string, by: string): Voucher {
-  const v = addVoucher(s, {
-    type: 'Receipt', date, mode, branch: bill.branch, reference: bill.billNo,
-    narration: `Received from ${bill.customerName} against ${bill.billNo} (${mode})`,
-    entries: [
-      { ledgerId: mode === 'Cash' ? LEDGER.cash : LEDGER.bank, debit: amount, credit: 0 },
-      { ledgerId: bill.partyLedgerId!, debit: 0, credit: amount },
-    ],
-  }, by);
-  v.billId = bill.id;
-  bill.paidAmount = round2(bill.paidAmount + amount);
-  bill.status = bill.paidAmount >= billTotals(bill.items).grandTotal - 0.01 ? 'Paid' : 'Partially Paid';
-  return v;
-}
-
-/** Credit Note that mirrors the bill's Sales voucher (every Dr becomes Cr and vice versa). */
-function reverseBill(s: AccountsState, bill: Bill, date: string, reason: string, by: string): Voucher {
-  const sales = s.vouchers.find(v => v.id === bill.salesVoucherId);
-  const note = addVoucher(s, {
-    type: 'Credit Note', date, branch: bill.branch, reference: bill.billNo,
-    narration: `Cancellation of ${bill.billNo}: ${reason}`,
-    entries: (sales?.entries ?? []).map(e => ({ ledgerId: e.ledgerId, debit: e.credit, credit: e.debit })),
-  }, by);
-  note.billId = bill.id;
-  bill.status = 'Cancelled';
-  return note;
-}
-
-/** Cash + bank position (+Dr) up to a date - the same rule the Day Book uses. */
-function cashPosition(s: AccountsState, upto: string, before: boolean, ledgerIds: string[]): number {
-  return ledgerIds.reduce((sum, id) => sum
-    + (s.ledgers.find(l => l.id === id)?.openingBalance ?? 0)
-    + s.vouchers
-      .filter(v => !v.cancelled && (before ? v.date < upto : v.date <= upto))
-      .reduce((x, v) => x + v.entries.filter(e => e.ledgerId === id).reduce((y, e) => y + e.debit - e.credit, 0), 0), 0);
-}
-
-// ---------------------------------------------------------------------------
-// Seed: a week of clinic trading, older days closed
-// ---------------------------------------------------------------------------
-
 /** Clinic services + retail products offered as quick picks on the bill form. */
 export const BILL_CATALOG: Omit<BillItem, 'qty'>[] = [
   { description: 'Hair PRP Session', sac: '999722', rate: 4500, discountPercent: 0, gstPercent: 18 },
@@ -491,120 +548,3 @@ export const BILL_CATALOG: Omit<BillItem, 'qty'>[] = [
   { description: 'Slimming Session - Body Contouring', sac: '999722', rate: 5500, discountPercent: 0, gstPercent: 18 },
   { description: 'Weight Loss Programme (8 sittings)', sac: '999722', rate: 24000, discountPercent: 10, gstPercent: 18 },
 ];
-
-/** Seeded HR employees (hr.service seed) who sell at each branch. */
-const SEED_SELLERS: Record<string, string[]> = {
-  'Anna Nagar': ['EMP-seed-3'],
-  Velachery: ['EMP-seed-2'],
-  'T. Nagar': ['EMP-seed-4'],
-  Adyar: ['EMP-seed-7', 'EMP-seed-9'],
-};
-
-/** Demo bills saved before employee attribution existed get a seller so targets have data. */
-function attributeSeedBills(s: AccountsState): AccountsState {
-  for (const b of s.bills) {
-    if (b.kind === 'Service' && !b.employeeId && b.createdBy === 'Sneha Krishnan') b.employeeId = SEED_SELLERS[b.branch]?.[0];
-  }
-  return s;
-}
-
-const CUSTOMERS: [string, string][] = [
-  ['Ananya Sharma', '9840012345'], ['Arjun Nair', '9884023456'], ['Fathima Begum', '9790034567'], ['Ravi Shankar', '9962045678'],
-  ['Deepa Venkat', '9003056789'], ['Mohammed Irfan', '9445067890'], ['Swathi Rao', '9710078901'], ['Gokul Krishnan', '9677089012'],
-];
-
-function seedState(): AccountsState {
-  const s: AccountsState = {
-    ledgers: [
-      { id: LEDGER.cash, name: 'Cash', group: 'Cash-in-Hand', openingBalance: 25000, system: true },
-      { id: LEDGER.bank, name: 'HDFC Bank - Current A/c', group: 'Bank Accounts', openingBalance: 350000, system: true },
-      { id: LEDGER.serviceIncome, name: 'Service Income', group: 'Sales Accounts', openingBalance: 0, system: true },
-      { id: LEDGER.productSales, name: 'Product Sales', group: 'Sales Accounts', openingBalance: 0, system: true },
-      { id: LEDGER.outputCgst, name: 'Output CGST', group: 'Duties & Taxes', openingBalance: 0, system: true },
-      { id: LEDGER.outputSgst, name: 'Output SGST', group: 'Duties & Taxes', openingBalance: 0, system: true },
-      { id: LEDGER.inputCgst, name: 'Input CGST', group: 'Duties & Taxes', openingBalance: 0, system: true },
-      { id: LEDGER.inputSgst, name: 'Input SGST', group: 'Duties & Taxes', openingBalance: 0, system: true },
-      { id: LEDGER.purchase, name: 'Purchase - Consumables', group: 'Purchase Accounts', openingBalance: 0, system: true },
-      { id: LEDGER.capital, name: 'Capital Account', group: 'Capital Account', openingBalance: -375000, system: true },
-      { id: 'L-RENT', name: 'Rent', group: 'Indirect Expenses', openingBalance: 0 },
-      { id: 'L-SALARY', name: 'Salaries & Wages', group: 'Indirect Expenses', openingBalance: 0 },
-      { id: 'L-EB', name: 'Electricity Charges', group: 'Indirect Expenses', openingBalance: 0 },
-      { id: 'L-MKT', name: 'Marketing & Ads', group: 'Indirect Expenses', openingBalance: 0 },
-      { id: 'L-OFFICE', name: 'Office Expenses', group: 'Indirect Expenses', openingBalance: 0 },
-      { id: 'L-INT', name: 'Bank Interest', group: 'Indirect Incomes', openingBalance: 0 },
-      { id: 'L-DSP', name: 'Derma Supplies Pvt Ltd', group: 'Sundry Creditors', openingBalance: 0, gstin: '33AABCD1234E1Z5' },
-      { id: 'L-HCD', name: 'Hair Care Distributors', group: 'Sundry Creditors', openingBalance: 0, gstin: '33AACFH5678K1Z2' },
-    ],
-    vouchers: [],
-    bills: [],
-    dayCloses: [],
-  };
-
-  const by = 'Sneha Krishnan';
-  const today = isoDate();
-  let seed = 7;
-  const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
-  const pick = <T>(list: T[]) => list[Math.floor(rand() * list.length)];
-  const modes: PaymentMode[] = ['Cash', 'UPI', 'UPI', 'Card', 'Cash'];
-
-  for (let back = 6; back >= 0; back--) {
-    const date = addDays(today, -back);
-    if (new Date(`${date}T00:00:00`).getDay() === 0) continue;
-
-    const count = back === 0 ? 2 : 3 + Math.floor(rand() * 3);
-    for (let i = 0; i < count; i++) {
-      const [name, phone] = pick(CUSTOMERS);
-      const items: BillItem[] = [{ ...pick(BILL_CATALOG.filter(c => c.sac.startsWith('99'))), qty: 1 }];
-      if (rand() > 0.6) items.push({ ...pick(BILL_CATALOG.filter(c => !c.sac.startsWith('99'))), qty: 1 + Math.floor(rand() * 2) });
-      const branch = pick(BRANCHES);
-      const bill = addBill(s, { kind: 'Service', date, dueDate: addDays(date, 7), customerName: name, customerPhone: phone, customerAddress: 'Chennai', customerGstin: '', branch, employeeId: pick(SEED_SELLERS[branch]), items, notes: '' }, by);
-      const total = billTotals(items).grandTotal;
-      const r = rand();
-      if (r < 0.75) addReceipt(s, bill, total, pick(modes), date, by);
-      else if (r < 0.9) addReceipt(s, bill, Math.round(total / 2), pick(modes), date, by);
-    }
-
-    const cashOut = (ledgerId: string, amount: number, narration: string, mode: PaymentMode = 'Cash') =>
-      addVoucher(s, { type: 'Payment', date, mode, branch: 'Anna Nagar', narration, entries: [{ ledgerId, debit: amount, credit: 0 }, { ledgerId: mode === 'Cash' ? LEDGER.cash : LEDGER.bank, debit: 0, credit: amount }] }, by);
-
-    if (back === 6) {
-      cashOut('L-RENT', 45000, 'Rent for Anna Nagar branch', 'Bank Transfer');
-      addVoucher(s, { type: 'Purchase', date, branch: 'Anna Nagar', reference: 'DSP/7781', narration: 'Consumables purchase - Derma Supplies', entries: [{ ledgerId: LEDGER.purchase, debit: 25000, credit: 0 }, { ledgerId: LEDGER.inputCgst, debit: 2250, credit: 0 }, { ledgerId: LEDGER.inputSgst, debit: 2250, credit: 0 }, { ledgerId: 'L-DSP', debit: 0, credit: 29500 }] }, by);
-    }
-    if (back === 5) cashOut('L-EB', 3200, 'EB bill - Velachery');
-    if (back === 4) {
-      addVoucher(s, { type: 'Debit Note', date, branch: 'Anna Nagar', reference: 'DSP/7781', narration: '2 damaged face wash bottles returned to Derma Supplies', entries: [{ ledgerId: 'L-DSP', debit: 520, credit: 0 }, { ledgerId: LEDGER.purchase, debit: 0, credit: 520 }] }, by);
-      cashOut('L-DSP', 20000, 'Part payment to Derma Supplies', 'Bank Transfer');
-    }
-    if (back === 3) cashOut('L-OFFICE', 850, 'Stationery & printing');
-    if (back === 2) addVoucher(s, { type: 'Contra', date, branch: 'Anna Nagar', narration: 'Cash deposited into HDFC', entries: [{ ledgerId: LEDGER.bank, debit: 30000, credit: 0 }, { ledgerId: LEDGER.cash, debit: 0, credit: 30000 }] }, by);
-    if (back === 1) cashOut('L-MKT', 6500, 'Instagram ads - October', 'Card');
-  }
-
-  // A duplicate bill reversed with a credit note.
-  const cancelDate = addDays(today, -3);
-  const wrong = addBill(s, { kind: 'Service', date: cancelDate, dueDate: null, customerName: 'Swathi Rao', customerPhone: '9710078901', customerAddress: 'Chennai', customerGstin: '', branch: 'Adyar', items: [{ ...BILL_CATALOG[2], qty: 1 }], notes: '' }, by);
-  reverseBill(s, wrong, cancelDate, 'billed twice', by);
-
-  // Proforma quotes.
-  const p1 = addBill(s, { kind: 'Proforma', date: addDays(today, -2), dueDate: addDays(today, 12), customerName: 'Karthika Suresh', customerPhone: '9884567123', customerAddress: 'Mylapore, Chennai', customerGstin: '', branch: 'T. Nagar', items: [{ description: 'Hair Transplant - 2500 grafts (FUE)', sac: '999311', qty: 1, rate: 85000, discountPercent: 10, gstPercent: 18 }, { ...BILL_CATALOG[0], qty: 3 }], notes: 'Includes 1 follow-up PRP free.' }, by);
-  p1.status = 'Sent';
-  addBill(s, { kind: 'Proforma', date: today, dueDate: addDays(today, 15), customerName: 'Wellness Corp Pvt Ltd', customerPhone: '9444012000', customerAddress: 'OMR, Chennai', customerGstin: '33AAACW9999F1Z1', branch: 'Velachery', items: [{ description: 'Corporate skin check-up camp (50 employees)', sac: '999312', qty: 50, rate: 400, discountPercent: 0, gstPercent: 18 }], notes: 'On-site camp, 1 day.' }, by);
-
-  // Close every seeded day before yesterday - each closing is the next day's opening.
-  const cashIds = s.ledgers.filter(l => CASH_GROUPS.includes(l.group)).map(l => l.id);
-  const bankIds = cashIds.filter(id => id !== LEDGER.cash);
-  for (let back = 6; back >= 2; back--) {
-    const date = addDays(today, -back);
-    const day = s.vouchers.filter(v => v.date === date && v.type !== 'Contra');
-    const flow = (side: 'debit' | 'credit') => day.reduce((x, v) => x + v.entries.filter(e => cashIds.includes(e.ledgerId)).reduce((y, e) => y + e[side], 0), 0);
-    const bankClosing = cashPosition(s, date, false, bankIds);
-    const closing = cashPosition(s, date, false, cashIds);
-    s.dayCloses.push({
-      date, opening: cashPosition(s, date, true, cashIds), receipts: flow('debit'), payments: flow('credit'), closing,
-      cashClosing: closing - bankClosing, bankClosing, closedBy: by, closedAt: new Date(`${date}T21:00:00`).toISOString(),
-    });
-  }
-
-  return s;
-}

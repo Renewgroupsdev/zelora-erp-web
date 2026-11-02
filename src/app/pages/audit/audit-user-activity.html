@@ -1,0 +1,127 @@
+<div class="au-page">
+  <div class="au-header">
+    <div><h1><i class="bi bi-person-lines-fill" aria-hidden="true"></i> User Activity</h1><p>Pick a person to review their actions, changes, failed attempts and sign-ins.</p></div>
+  </div>
+
+  @if (!allowed) {
+    <app-audit-denied />
+  } @else {
+    <div class="au-split">
+      <aside class="au-panel" aria-label="People in the audit trail">
+        <label class="sr-only" for="au-user-search">Search people</label>
+        <input id="au-user-search" class="au-input" type="search" placeholder="Search name, role or code" [value]="searchText()" (input)="onSearch($any($event.target).value)" />
+        <div class="au-userlist" style="margin-top: 8px" [attr.aria-busy]="loadingUsers()">
+          @if (usersError()) {
+            <div class="au-state error" role="alert"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i>{{ usersError() }}</div>
+          } @else if (loadingUsers() && !users().length) {
+            @for (i of [1, 2, 3, 4, 5]; track i) { <div class="au-skel" style="margin: 14px 4px"></div> }
+          } @else if (!users().length) {
+            <div class="au-state"><i class="bi bi-people" aria-hidden="true"></i>No people found.</div>
+          }
+          @for (u of users(); track u.type + u.id) {
+            <button type="button" class="u" [class.on]="isSelected(u)" [attr.aria-pressed]="isSelected(u)" (click)="pick(u)">
+              <span class="au-who"><span class="av" aria-hidden="true">{{ initials(u.name) }}</span></span>
+              <span><span class="n">{{ u.name }}</span><br /><span class="m">{{ u.role || typeLabel(u.type) }}@if (u.branch) { · {{ u.branch }} }</span></span>
+              <span class="c">{{ u.total }} events@if (u.failed) { <br /><span style="color: var(--au-red)">{{ u.failed }} failed</span> }</span>
+            </button>
+          }
+        </div>
+        @if (pagination(); as p) {
+          @if (p.last_page > 1) {
+            <div class="au-pager" style="border-top: 0; padding-inline: 0">
+              <button type="button" class="au-btn sm" (click)="go(p.current_page - 1)" [disabled]="p.current_page <= 1 || loadingUsers()">Previous</button>
+              <span>{{ p.current_page }} / {{ p.last_page }}</span>
+              <button type="button" class="au-btn sm" (click)="go(p.current_page + 1)" [disabled]="p.current_page >= p.last_page || loadingUsers()">Next</button>
+            </div>
+          }
+        }
+      </aside>
+
+      <div style="min-width: 0; display: flex; flex-direction: column; gap: 10px">
+        @if (!selected()) {
+          <div class="au-panel"><div class="au-state"><i class="bi bi-person-check" aria-hidden="true"></i><strong>No person selected</strong>Choose someone from the list to see their activity.</div></div>
+        } @else {
+          @if (profileError()) {
+            <div class="au-note" role="alert">{{ profileError() }}</div>
+          } @else if (profile(); as p) {
+            <section class="au-panel" aria-label="Account summary">
+              <div class="au-who" style="gap: 12px">
+                <span class="av" style="width: 42px; height: 42px; font-size: .9rem" aria-hidden="true">{{ initials(p.name) }}</span>
+                <div>
+                  <div class="nm" style="font-size: 1rem">{{ p.name }}</div>
+                  <div class="rl">{{ p.role || typeLabel(p.type) }}@if (p.code) { · {{ p.code }} }@if (p.branch) { · {{ p.branch }} }@if (p.account_status) { · Account: {{ p.account_status }} }</div>
+                  @if ((p.linked_identities?.length ?? 0) > 1) {
+                    <div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px">
+                      <span class="au-badge teal" title="One person, two accounts: both are included in the figures and the timeline"><i class="bi bi-link-45deg" aria-hidden="true"></i> Linked: {{ identityLabel(p.linked_identities!) }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+              <div class="au-kpis" style="margin-top: 10px">
+                <div class="au-kpi"><div><div class="val">{{ p.stats.total }}</div><div class="lbl">Total events</div></div></div>
+                <div class="au-kpi"><div><div class="val">{{ p.stats.changes }}</div><div class="lbl">Data changes</div></div></div>
+                <div class="au-kpi"><div><div class="val" [style.color]="p.stats.failed_or_denied ? 'var(--au-red)' : ''">{{ p.stats.failed_or_denied }}</div><div class="lbl">Failed / denied</div></div></div>
+                <div class="au-kpi"><div><div class="val">{{ p.stats.sign_ins }}</div><div class="lbl">Sign-ins</div></div></div>
+              </div>
+              <p class="sub" style="margin: 8px 0 0">Actions are shown under the account that performed them. If an administrator acts on someone's behalf, the event is recorded under the administrator's own name.</p>
+            </section>
+          } @else {
+            <div class="au-panel"><div class="au-skel" style="height: 60px"></div></div>
+          }
+          @if (profile(); as p) {
+            <div class="au-tabs" role="tablist" aria-label="Person sections" style="padding: 0">
+              @for (t of tabs; track t.key) {
+                @if (t.key !== 'modules' || canSeeModules) {
+                  <button type="button" role="tab" [class.on]="tab() === t.key" [attr.aria-selected]="tab() === t.key" (click)="setTab(t.key)"><i class="bi" [ngClass]="t.icon" aria-hidden="true"></i> {{ t.label }}</button>
+                }
+              }
+            </div>
+
+            @switch (tab()) {
+              @case ('overview') {
+                <p class="sub" style="margin: 0; font-size: .76rem; color: var(--au-muted)">Charts cover {{ p.period?.from }} to {{ p.period?.to }} ({{ (p.period_total ?? 0).toLocaleString() }} events). Pick another period under Timeline.</p>
+                <app-audit-activity-charts [report]="p" />
+              }
+              @case ('modules') {
+                <section class="au-panel" aria-label="Modules this person worked in">
+                  <h2>Modules worked in</h2><div class="sub">Events per module in the period, most active first</div>
+                  @if (!(p.by_module ?? []).length) {
+                    <div class="au-state"><i class="bi bi-grid-1x2" aria-hidden="true"></i><strong>No module activity</strong>Nothing recorded for this person in the period.</div>
+                  } @else {
+                    <div class="au-scroll">
+                      <table class="au-table">
+                        <caption class="sr-only">Modules this person worked in</caption>
+                        <thead><tr><th scope="col">Module</th><th scope="col">Events</th><th scope="col">Last activity</th><th scope="col"><span class="sr-only">Open</span></th></tr></thead>
+                        <tbody>
+                          @for (m of p.by_module; track m.slug) {
+                            <tr>
+                              <td style="font-weight: 600">{{ m.name }}</td>
+                              <td>{{ m.total.toLocaleString() }}</td>
+                              <td class="when">{{ m.last_at | date: 'dd MMM yyyy, hh:mm a' }}</td>
+                              <td>@if (canSeeModules) { <a class="au-link" [routerLink]="['/app/audit/modules', m.slug]" [queryParams]="{ tab: 'activity', actor: p.type + ':' + p.id }">Open module log →</a> }</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  }
+                </section>
+              }
+              @case ('signins') {
+                <section class="au-panel" aria-label="Recent sign-ins">
+                  <h2>Recent sign-ins</h2><div class="sub">Latest sign-in events of this person</div>
+                  <app-audit-sign-ins [rows]="p.recent_sign_ins ?? []" />
+                </section>
+              }
+              @default {
+                <app-audit-event-list kind="events" [fixed]="fixed()" emptyText="No activity recorded for this person with these filters." />
+              }
+            }
+          } @else if (!profileError()) {
+            <div class="au-panel"><div class="au-skel" style="height: 120px"></div></div>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

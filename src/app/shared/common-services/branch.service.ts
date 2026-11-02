@@ -87,7 +87,7 @@ export class BranchService {
   /** Every branch (the list is small, so the screens filter / sort / page it in the browser) plus the stat cards. */
   load(): Observable<BranchRecord[]> {
     this.loading.set(true);
-    return (this.api.GET(`${ApiRoutesConstants.BRANCHES}?per_page=200&sort_by=code&sort_direction=asc`) as Observable<any>).pipe(
+    return (this.api.GET(`${ApiRoutesConstants.BRANCHES}?per_page=200`) as Observable<any>).pipe(
       tap({ error: () => this.loading.set(false) }),
       map(res => {
         this.overview.set(res.stats ? overviewFromApi(res.stats) : null);
@@ -105,7 +105,7 @@ export class BranchService {
     return (this.api.GET(`${ApiRoutesConstants.BRANCHES}/${id}`) as Observable<any>).pipe(
       map(res => {
         const branch = branchFromApi(res.data);
-        this.upsert(branch);
+        this.upsert(branch, false);
         return { branch, summary: summaryFromApi(res.data.summary ?? {}) };
       }),
     );
@@ -167,9 +167,14 @@ export class BranchService {
     return this.api.GET_BLOB(`${ApiRoutesConstants.BRANCHES}/export?${qs}`) as Observable<Blob>;
   }
 
-  private upsert(branch: BranchRecord): void {
-    const exists = this.list().some(b => b.id === branch.id);
-    this.list.set(exists ? this.list().map(b => (b.id === branch.id ? { ...b, ...branch } : b)) : [...this.list(), branch]);
+  /** A saved record moves to the top (newest / last-updated first, like the API order); a plain re-read keeps its place. */
+  private upsert(branch: BranchRecord, toFront = true): void {
+    const old = this.list().find(b => b.id === branch.id);
+    if (old && !toFront) {
+      this.list.set(this.list().map(b => (b.id === branch.id ? { ...b, ...branch } : b)));
+      return;
+    }
+    this.list.set([old ? { ...old, ...branch } : branch, ...this.list().filter(b => b.id !== branch.id)]);
   }
 
   /** Stat cards depend on every branch, so re-read them after a change. */

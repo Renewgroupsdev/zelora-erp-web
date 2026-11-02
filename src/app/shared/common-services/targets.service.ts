@@ -1,15 +1,19 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Observable, Subject, catchError, concatMap, EMPTY, forkJoin, map, of, tap } from 'rxjs';
+import { ApiDataService } from '../../core/http/api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { isAdmin } from '../../core/auth/auth.model';
 import {
   BranchPerformance, BranchTarget, CategoryResult, DEFAULT_RULES, EmployeePerformance, EmployeeTarget, IncentiveRules, IncentiveSlab,
   TREATMENT_CATEGORIES, TreatmentCategory, billCategory, emptyAmounts, isTreatmentStaff, slabRate, targetStatus,
 } from '../models/targets.model';
-import { isoDate, loadState, saveState } from '../utils/format.util';
 import { AccountsService } from './accounts.service';
+import { ApiRoutesConstants } from './api-route-constants';
+import { BranchContextService } from './branch-context.service';
+import { BranchOptionsService } from './branch-options.service';
 import { HrService } from './hr.service';
-
-const STORAGE_KEY = 'zelora_targets_store_v1';
+import { ToastService } from './toast.service';
+import { apiErrorMessage } from './work-task.service';
 
 interface TargetsState {
   targets: BranchTarget[];
@@ -37,16 +41,25 @@ export interface TargetAccess {
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const pct = (achieved: number, target: number) => (target ? (achieved / target) * 100 : 0);
 
+const emptyState = (): TargetsState => ({ targets: [], employeeTargets: [], rules: structuredClone(DEFAULT_RULES) });
+
 /**
- * Front-end store for targets (design stage - no API yet). Achievement is read live from the Accounts
- * vouchers; the incentive rules below are what the backend must reproduce.
+ * Targets and incentive rules, stored on the server (GET/PUT/POST targets/...). Every change goes to the API and the signal is
+ * refilled from its response; requests run one after another so quick edits of one table cannot overtake each other. Achievement
+ * is still read live from the Accounts vouchers (computed here, not stored).
  */
 @Injectable({ providedIn: 'root' })
 export class TargetsService {
   private readonly acc = inject(AccountsService);
   private readonly hr = inject(HrService);
   private readonly auth = inject(AuthService);
-  private readonly state = signal<TargetsState>(loadState(STORAGE_KEY, seedState));
+  private readonly api = inject(ApiDataService);
+  private readonly units = inject(BranchOptionsService);
+  private readonly context = inject(BranchContextService);
+  private readonly toast = inject(ToastService);
+  private readonly state = signal<TargetsState>(emptyState());
+  private readonly queue = new Subject<Observable<unknown>>();
+  readonly loading = signal(false);
 
   readonly targets = computed(() => this.state().targets);
   readonly employeeTargets = computed(() => this.state().employeeTargets);
@@ -72,7 +85,27 @@ export class TargetsService {
   });
 
   constructor() {
-    effect(() => saveState(STORAGE_KEY, this.state()));
+    this.queue.pipe(concatMap(req => req.pipe(catchError(err => {
+      this.toast.error('Could not save', apiErrorMessage(err, 'The change was not saved. The list has been refreshed.'));
+      this.load();
+      return EMPTY;
+    })))).subscribe();
+
+    // Load on first use and again whenever the data in force changes (other login, header branch / franchise filter).
+    effect(() => {
+      this.context.key();
+      if (!this.auth.currentUser()) return;
+      untracked(() => this.load());
+    });
+  }
+
+  /** GET targets: branch targets, employee targets and the incentive rules. Employees are refreshed too: targets carry database employee ids. */
+  load(): void {
+    this.loading.set(true);
+    forkJoin([this.hr.loadEmployees().pipe(catchError(() => of([]))), this.api.GET(ApiRoutesConstants.TARGETS) as Observable<any>]).subscribe({
+      next: ([, res]) => { this.applyOverview(res?.data); this.loading.set(false); },
+      error: err => { console.error('GET targets failed', err); this.loading.set(false); },
+    });
   }
 
   // ---- Branch targets ----
@@ -81,50 +114,73 @@ export class TargetsService {
       ?? { branch, month, revenueTarget: 0, conversionTarget: 0, conversions: 0 };
   }
 
+  /** PUT targets/branch. The table shows the new value at once; the saved row (with its database id) replaces it when the server answers. */
   setTarget(branch: string, month: string, patch: Partial<Pick<BranchTarget, 'revenueTarget' | 'conversionTarget' | 'conversions'>>): void {
     if (!this.access().canEdit) return;
-    const clean = Object.fromEntries(Object.entries(patch).map(([k, v]) => [k, Math.max(0, Number(v) || 0)]));
+    const unit = this.units.byName(branch);
+    if (!unit) return;
+    const clean = Object.fromEntries(Object.entries(patch).map(([k, v]) => [k, Math.max(0, Number(v) || 0)])) as typeof patch;
     this.mutate(s => {
       const found = s.targets.find(t => t.branch === branch && t.month === month);
       if (found) Object.assign(found, clean);
       else s.targets.push({ branch, month, revenueTarget: 0, conversionTarget: 0, conversions: 0, ...clean });
     });
+    const body: Record<string, unknown> = { branch_or_franchise_type: unit.type, branch_or_franchise_id: unit.id, month };
+    if (clean.revenueTarget !== undefined) body['revenue_target'] = clean.revenueTarget;
+    if (clean.conversionTarget !== undefined) body['conversion_target'] = clean.conversionTarget;
+    if (clean.conversions !== undefined) body['conversions'] = clean.conversions;
+    this.queue.next((this.api.PUT(`${ApiRoutesConstants.TARGETS}/branch`, body) as Observable<any>).pipe(
+      tap((res: any) => this.mutate(s => {
+        const saved = this.branchFromApi(res.data);
+        const i = s.targets.findIndex(t => t.branch === saved.branch && t.month === saved.month);
+        if (i >= 0) s.targets[i] = saved; else s.targets.push(saved);
+      })),
+    ));
   }
 
-  /** Copies the previous month's branch and employee targets (not conversion counts) into `month` where none are set. */
-  copyFromPrevious(month: string): number {
-    if (!this.access().canEdit) return 0;
-    const [y, m] = month.split('-').map(Number);
-    const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
-    let copied = 0;
-    this.mutate(s => {
-      for (const t of s.targets.filter(x => x.month === prev)) {
-        if (s.targets.some(x => x.branch === t.branch && x.month === month && x.revenueTarget)) continue;
-        s.targets = s.targets.filter(x => !(x.branch === t.branch && x.month === month));
-        s.targets.push({ ...t, month, conversions: 0 });
-        copied++;
-      }
-      for (const t of s.employeeTargets.filter(x => x.month === prev)) {
-        if (s.employeeTargets.some(x => x.employeeId === t.employeeId && x.month === month && Object.values(x.amounts).some(Boolean))) continue;
-        s.employeeTargets = s.employeeTargets.filter(x => !(x.employeeId === t.employeeId && x.month === month));
-        s.employeeTargets.push({ employeeId: t.employeeId, month, amounts: { ...t.amounts } });
-        copied++;
-      }
-    });
-    return copied;
+  /**
+   * POST targets/copy-previous: copies the previous month's branch and employee targets (not conversion counts) into `month`
+   * where none are set. Emits how many were copied (0 when the user may not edit).
+   */
+  copyFromPrevious(month: string): Observable<number> {
+    if (!this.access().canEdit) return of(0);
+    return (this.api.POST(`${ApiRoutesConstants.TARGETS}/copy-previous`, { month }) as Observable<any>).pipe(
+      tap(res => this.applyOverview(res?.data)),
+      map(res => Number(res?.copied) || 0),
+    );
+  }
+
+  /** PUT targets/rules with both parts at once (one audit entry per change). */
+  saveRules(slabs: IncentiveSlab[], perConversion: number, conversionBonus: number): void {
+    if (!this.access().canEdit) return;
+    const rules = {
+      slabs: slabs.filter(x => x.minPercent >= 0 && x.ratePercent >= 0).sort((a, b) => a.minPercent - b.minPercent),
+      perConversion: Math.max(0, Number(perConversion) || 0), conversionBonus: Math.max(0, Number(conversionBonus) || 0),
+    };
+    this.putRules(rules, { slabs: rules.slabs.map(s => ({ min_percent: s.minPercent, rate_percent: s.ratePercent })), per_conversion: rules.perConversion, conversion_bonus: rules.conversionBonus });
   }
 
   setSlabs(slabs: IncentiveSlab[]): void {
     if (!this.access().canEdit) return;
-    this.mutate(s => { s.rules.slabs = slabs.filter(x => x.minPercent >= 0 && x.ratePercent >= 0).sort((a, b) => a.minPercent - b.minPercent); });
+    const clean = slabs.filter(x => x.minPercent >= 0 && x.ratePercent >= 0).sort((a, b) => a.minPercent - b.minPercent);
+    this.putRules({ slabs: clean }, { slabs: clean.map(s => ({ min_percent: s.minPercent, rate_percent: s.ratePercent })) });
   }
 
   setTelecallerRules(perConversion: number, conversionBonus: number): void {
     if (!this.access().canEdit) return;
-    this.mutate(s => { s.rules.perConversion = Math.max(0, Number(perConversion) || 0); s.rules.conversionBonus = Math.max(0, Number(conversionBonus) || 0); });
+    const rules = { perConversion: Math.max(0, Number(perConversion) || 0), conversionBonus: Math.max(0, Number(conversionBonus) || 0) };
+    this.putRules(rules, { per_conversion: rules.perConversion, conversion_bonus: rules.conversionBonus });
+  }
+
+  private putRules(local: Partial<IncentiveRules>, body: Record<string, unknown>): void {
+    this.mutate(s => { Object.assign(s.rules, local); });
+    this.queue.next((this.api.PUT(`${ApiRoutesConstants.TARGETS}/rules`, body) as Observable<any>).pipe(
+      tap((res: any) => this.mutate(s => { s.rules = this.rulesFromApi(res.data); })),
+    ));
   }
 
   // ---- Employee + treatment targets ----
+  /** PUT targets/employee. */
   setEmployeeTarget(employeeId: string, month: string, category: TreatmentCategory, amount: number): void {
     if (!this.access().canEdit) return;
     const value = Math.max(0, Number(amount) || 0);
@@ -133,6 +189,13 @@ export class TargetsService {
       if (found) found.amounts[category] = value;
       else s.employeeTargets.push({ employeeId, month, amounts: { ...emptyAmounts(), [category]: value } });
     });
+    this.queue.next((this.api.PUT(`${ApiRoutesConstants.TARGETS}/employee`, { employee_id: Number(employeeId), month, amounts: { [category.toLowerCase()]: value } }) as Observable<any>).pipe(
+      tap((res: any) => this.mutate(s => {
+        const saved = this.employeeFromApi(res.data);
+        const i = s.employeeTargets.findIndex(t => t.employeeId === saved.employeeId && t.month === saved.month);
+        if (i >= 0) s.employeeTargets[i] = saved; else s.employeeTargets.push(saved);
+      })),
+    ));
   }
 
   private amountsFor(employeeId: string, month: string): Record<TreatmentCategory, number> {
@@ -187,7 +250,7 @@ export class TargetsService {
       const r = this.rollup(this.amountsFor(e.id, month), achieved);
       const rate = r.target ? slabRate(r.percent, rules.slabs) : 0;
       return {
-        employeeId: e.id, name: e.name, designation: e.designation, branch: e.branch, ...r,
+        employeeId: e.id, targetId: this.employeeTargets().find(t => t.employeeId === e.id && t.month === month)?.id, name: e.name, designation: e.designation, branch: e.branch, ...r,
         slabRate: rate, incentive: round2((r.achieved * rate) / 100), status: targetStatus(r.target, r.percent),
       };
     }).sort((a, b) => a.branch.localeCompare(b.branch) || b.achieved - a.achieved);
@@ -224,7 +287,7 @@ export class TargetsService {
       const revenueIncentive = round2((achieved * rate) / 100);
       const telecallerIncentive = t.conversions * rules.perConversion + (t.conversionTarget && t.conversions >= t.conversionTarget ? rules.conversionBonus : 0);
       return {
-        branch, revenueTarget: t.revenueTarget, achieved, percent, slabRate: rate, revenueIncentive,
+        branch, targetId: t.id, revenueTarget: t.revenueTarget, achieved, percent, slabRate: rate, revenueIncentive,
         conversionTarget: t.conversionTarget, conversions: t.conversions, conversionPercent, telecallerIncentive,
         totalIncentive: revenueIncentive + telecallerIncentive, status: targetStatus(t.revenueTarget, percent),
       };
@@ -236,27 +299,38 @@ export class TargetsService {
     fn(draft);
     this.state.set(draft);
   }
-}
 
-function seedState(): TargetsState {
-  const month = isoDate().slice(0, 7);
-  const seeds: [string, number, number, number][] = [
-    ['Anna Nagar', 150000, 40, 34],
-    ['Velachery', 120000, 30, 31],
-    ['T. Nagar', 100000, 25, 12],
-    ['Adyar', 90000, 20, 18],
-  ];
-  // [employee id, hair, skin, slimming, combo] for the seeded HR staff who sell treatments.
-  const staff: [string, number, number, number, number][] = [
-    ['EMP-seed-2', 20000, 40000, 10000, 15000],
-    ['EMP-seed-3', 40000, 10000, 10000, 20000],
-    ['EMP-seed-4', 15000, 20000, 10000, 10000],
-    ['EMP-seed-7', 20000, 15000, 15000, 15000],
-    ['EMP-seed-9', 10000, 25000, 10000, 5000],
-  ];
-  return {
-    targets: seeds.map(([branch, revenueTarget, conversionTarget, conversions]) => ({ branch, month, revenueTarget, conversionTarget, conversions })),
-    employeeTargets: staff.map(([employeeId, Hair, Skin, Slimming, Combo]) => ({ employeeId, month, amounts: { Hair, Skin, Slimming, Combo } })),
-    rules: structuredClone(DEFAULT_RULES),
-  };
+  private applyOverview(data: any): void {
+    if (!data) return;
+    this.state.set({
+      targets: ((data.branch_targets ?? []) as any[]).map(r => this.branchFromApi(r)),
+      employeeTargets: ((data.employee_targets ?? []) as any[]).map(r => this.employeeFromApi(r)),
+      rules: data.rules ? this.rulesFromApi(data.rules) : structuredClone(DEFAULT_RULES),
+    });
+  }
+
+  private branchFromApi(r: any): BranchTarget {
+    return {
+      id: String(r.id),
+      branch: this.units.byKey(r.key)?.name ?? r.branch ?? '',
+      month: r.month,
+      revenueTarget: Number(r.revenue_target) || 0,
+      conversionTarget: Number(r.conversion_target) || 0,
+      conversions: Number(r.conversions) || 0,
+    };
+  }
+
+  private employeeFromApi(r: any): EmployeeTarget {
+    const a = r.amounts ?? {};
+    return { id: String(r.id), employeeId: String(r.employee_id), month: r.month, amounts: { Hair: Number(a.Hair) || 0, Skin: Number(a.Skin) || 0, Slimming: Number(a.Slimming) || 0, Combo: Number(a.Combo) || 0 } };
+  }
+
+  private rulesFromApi(r: any): IncentiveRules {
+    return {
+      id: r.id ? String(r.id) : undefined,
+      slabs: ((r.slabs ?? []) as any[]).map(s => ({ minPercent: Number(s.min_percent) || 0, ratePercent: Number(s.rate_percent) || 0 })).sort((a, b) => a.minPercent - b.minPercent),
+      perConversion: Number(r.per_conversion) || 0,
+      conversionBonus: Number(r.conversion_bonus) || 0,
+    };
+  }
 }

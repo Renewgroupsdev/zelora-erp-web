@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import Swal from 'sweetalert2';
+import { finalize } from 'rxjs';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { HrService } from '../../../../shared/common-services/hr.service';
 import { LEAVE_QUOTA, LeaveType } from '../../../../shared/models/hr.model';
@@ -23,6 +25,7 @@ export class LeaveForm {
   readonly leaveTypes = Object.keys(LEAVE_QUOTA) as LeaveType[];
   readonly today = isoDate();
   readonly submitted = signal(false);
+  readonly saving = signal(false);
 
   empId = signal(this.hr.activeEmployees()[0]?.id ?? '');
   leaveType: LeaveType = 'Casual Leave';
@@ -63,8 +66,9 @@ export class LeaveForm {
 
   save(): void {
     this.submitted.set(true);
-    if (this.error()) return;
+    if (this.error() || this.saving()) return;
     const isLeave = this.kind() === 'Leave';
+    this.saving.set(true);
     this.hr.applyLeave({
       empId: this.empId(),
       kind: this.kind(),
@@ -75,8 +79,10 @@ export class LeaveForm {
       fromTime: isLeave ? null : this.fromTime,
       toTime: isLeave ? null : this.toTime,
       reason: this.reason.trim(),
+    }).pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: () => this.dialogRef.close(true),
+      error: err => Swal.fire({ icon: 'error', title: 'Could not submit the request', text: err?.error?.message ?? 'Please try again.', confirmButtonColor: '#6C63FF' }),
     });
-    this.dialogRef.close(true);
   }
 
   close(): void {

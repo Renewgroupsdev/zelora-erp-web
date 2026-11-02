@@ -31,6 +31,7 @@ export class BillForm {
   readonly today = isoDate();
   readonly kind = signal<BillKind>(this.data.kind);
   readonly submitted = signal(false);
+  readonly saving = signal(false);
   readonly serverError = signal<string | null>(null);
 
   date = this.today;
@@ -112,11 +113,13 @@ export class BillForm {
     return null;
   }
 
-  save(): void {
+  async save(): Promise<void> {
+    if (this.saving()) return;
     this.submitted.set(true);
     this.serverError.set(null);
     if (this.error()) return;
-    const result = this.acc.createBill(
+    this.saving.set(true);
+    const result = await this.acc.createBill(
       {
         kind: this.kind(), date: this.date, dueDate: this.dueDate, branch: this.branch, employeeId: this.employeeId || undefined, notes: this.notes.trim(),
         customerName: this.customerName.trim(), customerPhone: this.customerPhone.trim(), customerAddress: this.customerAddress.trim(),
@@ -125,6 +128,7 @@ export class BillForm {
       },
       this.kind() === 'Service' && this.collectNow ? { amount: Number(this.collectAmount ?? this.totals().grandTotal), mode: this.collectMode } : null,
     );
+    this.saving.set(false);
     if (typeof result === 'string') {
       this.serverError.set(result);
       return;

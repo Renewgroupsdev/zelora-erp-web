@@ -12,11 +12,12 @@ import { downloadExcel } from '../../../shared/utils/export.util';
 import { inr, isoDate } from '../../../shared/utils/format.util';
 import { accountsTabs } from '../accounts-list-base';
 import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
+import { RecordHistory } from '../../../shared/components/record-history/record-history';
 
 @Component({
   selector: 'app-targets',
   standalone: true,
-  imports: [AutoModuleTabs, CommonModule, FormsModule, ModuleTabs, CanActionDirective],
+  imports: [AutoModuleTabs, CommonModule, FormsModule, ModuleTabs, CanActionDirective, RecordHistory],
   templateUrl: './targets.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './targets.scss'],
 })
@@ -81,8 +82,10 @@ export class Targets {
   }
 
   async copyPrevious(): Promise<void> {
-    const copied = this.store.copyFromPrevious(this.month());
-    Swal.fire({ toast: true, position: 'top-end', icon: copied ? 'success' : 'info', title: copied ? `${copied} branch target(s) copied` : 'No earlier targets to copy', showConfirmButton: false, timer: 2500 });
+    this.store.copyFromPrevious(this.month()).subscribe({
+      next: copied => Swal.fire({ toast: true, position: 'top-end', icon: copied ? 'success' : 'info', title: copied ? `${copied} target(s) copied` : 'No earlier targets to copy', showConfirmButton: false, timer: 2500 }),
+      error: err => Swal.fire({ icon: 'error', title: 'Could not copy', text: err?.error?.message || 'Please try again.' }),
+    });
   }
 
   addSlab(): void {
@@ -98,8 +101,7 @@ export class Targets {
   }
 
   saveRules(): void {
-    this.store.setSlabs(this.slabDraft());
-    this.store.setTelecallerRules(this.perConversion(), this.conversionBonus());
+    this.store.saveRules(this.slabDraft(), this.perConversion(), this.conversionBonus());
     this.slabDraft.set(this.rules().slabs.map(s => ({ ...s })));
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Incentive rules saved', showConfirmButton: false, timer: 2500 });
   }

@@ -7,6 +7,7 @@
         <p>{{ owner ? owner.name + ' · ' + owner.designation : 'SEO task' }}{{ readOnly ? ' · view only' : '' }}</p>
       </div>
     </div>
+    @if (existing) { <app-record-history type="HrWorkTask" [recordId]="existing.id" [title]="existing.title" /> }
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 

@@ -33,6 +33,10 @@
           </div>
         </div>
 
+        @if (selectedRoleId) {
+          <app-record-history class="role-history" type="Role" [recordId]="selectedRoleId" [title]="selectedRoleName" />
+        }
+
         <div class="toolbar-search">
           <app-common-filter-card
             searchPlaceholder="Search by module name or slug"

@@ -1,0 +1,129 @@
+<div class="customer-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-pencil-square"></i></div>
+      <div class="title-content">
+        <h2>Edit Customer</h2>
+        <p>{{ data.name }}@if (customerCode) { · {{ customerCode }} }</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  @if (loading()) {
+    <div class="modal-body-custom"><p>Loading...</p></div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <div class="modal-body-custom">
+        <div class="section-title"><i class="bi bi-person-vcard"></i> Customer Information</div>
+
+        <div class="form-grid">
+          <div class="form-field full-width">
+            <app-image-picker label="Customer photo" icon="bi-person" [currentUrl]="photoUrl" (changed)="onPhoto($event)" />
+          </div>
+
+          <div class="form-field">
+            <label for="ec-first">First name <span class="required-asterisk">*</span></label>
+            <div class="input-wrap"><i class="bi bi-person"></i>
+              <input id="ec-first" type="text" formControlName="first_name" [class.is-invalid]="isInvalid('first_name')" /></div>
+            @if (isInvalid('first_name')) { <small class="error-text">{{ error('first_name', 'First name is required.') }}</small> }
+          </div>
+
+          <div class="form-field">
+            <label for="ec-last">Last name</label>
+            <div class="input-wrap"><i class="bi bi-person"></i>
+              <input id="ec-last" type="text" formControlName="last_name" [class.is-invalid]="isInvalid('last_name')" /></div>
+            @if (isInvalid('last_name')) { <small class="error-text">{{ error('last_name', 'Last name is too long.') }}</small> }
+          </div>
+
+          <div class="form-field">
+            <label for="ec-mobile">Mobile no <span class="required-asterisk">*</span></label>
+            <div class="input-wrap"><i class="bi bi-telephone"></i>
+              <input id="ec-mobile" type="tel" formControlName="mobile_no" maxlength="10" [class.is-invalid]="isInvalid('mobile_no')" /></div>
+            @if (isInvalid('mobile_no')) { <small class="error-text">{{ error('mobile_no', 'Enter a valid 10-digit mobile number.') }}</small> }
+          </div>
+
+          <div class="form-field">
+            <label for="ec-alt">Alternate mobile no</label>
+            <div class="input-wrap"><i class="bi bi-telephone-plus"></i>
+              <input id="ec-alt" type="tel" formControlName="alternate_mobile_no" maxlength="10" [class.is-invalid]="isInvalid('alternate_mobile_no')" /></div>
+            @if (isInvalid('alternate_mobile_no')) { <small class="error-text">{{ error('alternate_mobile_no', 'Enter a valid 10-digit number.') }}</small> }
+          </div>
+
+          <div class="form-field">
+            <label for="ec-email">Email</label>
+            <div class="input-wrap"><i class="bi bi-envelope"></i>
+              <input id="ec-email" type="email" formControlName="email" [class.is-invalid]="isInvalid('email')" /></div>
+            @if (isInvalid('email')) { <small class="error-text">{{ error('email', 'Enter a valid email address.') }}</small> }
+          </div>
+
+          <div class="form-field">
+            <label for="ec-dob">Date of birth</label>
+            <div class="input-wrap"><i class="bi bi-calendar3"></i>
+              <input id="ec-dob" type="date" formControlName="date_of_birth" [class.is-invalid]="isInvalid('date_of_birth')" /></div>
+            @if (isInvalid('date_of_birth')) { <small class="error-text">{{ error('date_of_birth', 'Enter a valid date.') }}</small> }
+          </div>
+
+          <div class="form-field full-width">
+            <label>Gender</label>
+            <div class="gender-options">
+              @for (gender of genderOptions; track gender.value) {
+                <label class="gender-option" [class.selected]="form.get('gender')?.value === gender.value">
+                  <input type="radio" formControlName="gender" [value]="gender.value" />
+                  <span class="gender-option-content"><i class="bi" [class]="gender.icon"></i><span class="gender-option-label">{{ gender.label }}</span></span>
+                </label>
+              }
+            </div>
+          </div>
+
+          <div class="form-field full-width">
+            <label for="ec-address">Address</label>
+            <div class="input-wrap"><i class="bi bi-geo-alt"></i>
+              <input id="ec-address" type="text" formControlName="address" [class.is-invalid]="isInvalid('address')" /></div>
+          </div>
+
+          <div class="form-field">
+            <label for="ec-city">City</label>
+            <div class="input-wrap"><i class="bi bi-building"></i><input id="ec-city" type="text" formControlName="city" /></div>
+          </div>
+
+          <div class="form-field">
+            <label for="ec-state">State</label>
+            <div class="input-wrap"><i class="bi bi-map"></i><input id="ec-state" type="text" formControlName="state" /></div>
+          </div>
+
+          <div class="form-field">
+            <label for="ec-pin">PIN code</label>
+            <div class="input-wrap"><i class="bi bi-pin-map"></i>
+              <input id="ec-pin" type="text" formControlName="pincode" maxlength="6" [class.is-invalid]="isInvalid('pincode')" /></div>
+            @if (isInvalid('pincode')) { <small class="error-text">{{ error('pincode', 'Enter a valid 6-digit PIN code.') }}</small> }
+          </div>
+
+          <div class="form-field">
+            <label for="ec-occ">Occupation</label>
+            <div class="input-wrap"><i class="bi bi-briefcase"></i><input id="ec-occ" type="text" formControlName="occupation" /></div>
+          </div>
+
+          <div class="form-field full-width">
+            <label for="ec-status">Status</label>
+            <div class="input-wrap select-wrap"><i class="bi bi-toggle-on"></i>
+              <select id="ec-status" formControlName="is_active">
+                <option [ngValue]="true">Active</option>
+                <option [ngValue]="false">Inactive</option>
+              </select>
+              <i class="bi bi-chevron-down select-arrow"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer-custom">
+        <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+        <button type="submit" class="save-btn" [disabled]="saving()">
+          <i class="bi" [class.bi-arrow-repeat]="saving()" [class.bi-check2]="!saving()"></i>
+          {{ saving() ? 'Saving...' : 'Update Customer' }}
+        </button>
+      </div>
+    </form>
+  }
+</div>

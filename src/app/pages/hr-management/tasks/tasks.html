@@ -176,7 +176,7 @@
       </div>
       <div class="table-scroll">
         <table class="tk-table wide">
-          <thead><tr><th>Due</th><th>Employee</th><th>Branch</th><th>Task</th><th>Status</th><th>Result</th><th>Result / metric</th></tr></thead>
+          <thead><tr><th>Due</th><th>Employee</th><th>Branch</th><th>Task</th><th>Status</th><th>Result</th><th>Result / metric</th><th aria-label="History"></th></tr></thead>
           <tbody>
             @for (t of rows(); track t.id) {
               <tr class="click" tabindex="0" (click)="open(t.id)" (keydown.enter)="open(t.id)">
@@ -187,9 +187,10 @@
                 <td><span [class]="'pill ' + statusClass(t)">{{ statusLabel(t) }}</span></td>
                 <td><span [class]="'pill ' + resultClass(t.result)">{{ t.result }}</span></td>
                 <td>{{ t.metric || '–' }}</td>
+                <td class="nowrap" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()"><app-record-history type="HrWorkTask" [recordId]="t.id" [title]="t.title" variant="icon" /></td>
               </tr>
             } @empty {
-              <tr><td colspan="7" class="empty">
+              <tr><td colspan="8" class="empty">
                 @if (access().role === 'seo') { No tasks yet. Click “Log task” to add your first one. } @else { No tasks match these filters. }
               </td></tr>
             }

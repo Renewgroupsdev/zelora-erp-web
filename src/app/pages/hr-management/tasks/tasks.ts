@@ -9,6 +9,7 @@ import { ALL_WORK_TASK_TYPES, WORK_TASK_STATUSES, WorkTask, isTaskOverdue } from
 import { downloadExcel } from '../../../shared/utils/export.util';
 import { addDays, displayDate, isoDate } from '../../../shared/utils/format.util';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
+import { RecordHistory } from '../../../shared/components/record-history/record-history';
 import { injectHrTabs } from '../hr-list-base';
 import { TaskForm } from './task-form/task-form';
 
@@ -18,7 +19,7 @@ type Period = 'thisweek' | 'thismonth' | 'lastmonth' | 'all';
 @Component({
   selector: 'app-hr-tasks',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, ModuleTabs, CanActionDirective],
+  imports: [CommonModule, FormsModule, MatDialogModule, ModuleTabs, CanActionDirective, RecordHistory],
   templateUrl: './tasks.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './tasks.scss'],
 })
@@ -125,8 +126,7 @@ export class Tasks {
     const q = this.search().trim().toLowerCase();
     return this.scoped()
       .filter(t => (!this.status() || (this.status() === 'Overdue' ? isTaskOverdue(t, this.today) : t.status === this.status()))
-        && (!q || [t.title, t.type, t.metric, t.notes, this.employeeName(t.empId)].join(' ').toLowerCase().includes(q)))
-      .sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
+        && (!q || [t.title, t.type, t.metric, t.notes, this.employeeName(t.empId)].join(' ').toLowerCase().includes(q)));
   });
 
   readonly branches = this.hr.branches;

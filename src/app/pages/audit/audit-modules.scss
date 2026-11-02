@@ -1,0 +1,34 @@
+// Module-wise activity: card grid and detail page. Builds on the shared au-* look in audit.scss.
+.am-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+
+.am-card { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; background: var(--au-surface); border: 1px solid var(--au-border); border-radius: 14px; color: inherit; text-decoration: none; transition: border-color .15s, box-shadow .15s, transform .15s;
+  &:hover { border-color: var(--au-accent); box-shadow: 0 8px 20px rgba(17, 95, 78, .1); transform: translateY(-2px); }
+  &:focus-within { outline: 2px solid var(--au-blue); outline-offset: 2px; }
+  &.quiet { opacity: .72; background: var(--au-soft); }
+  @media (prefers-reduced-motion: reduce) { transition: none; &:hover { transform: none; } }
+  .top { display: flex; gap: 12px; align-items: center; }
+  .ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 1.15rem; background: var(--au-teal-bg); color: var(--au-teal); flex: none; }
+  .nm { font-weight: 700; font-size: .95rem; }
+  .when { font-size: .72rem; color: var(--au-muted); }
+  .main { text-align: right; margin-left: auto; .n { font-size: 1.5rem; font-weight: 800; line-height: 1; letter-spacing: -.01em; } .l { font-size: .68rem; color: var(--au-muted); } }
+  .mini { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: var(--au-gray-bg);
+    i { display: block; height: 100%; } .c { background: var(--au-green); } .u { background: var(--au-blue); } .d { background: var(--au-red); } }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .72rem; color: var(--au-muted); b { color: var(--au-text); } }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: .72rem; }
+  .subs { display: flex; flex-wrap: wrap; gap: 5px; padding-top: 8px; border-top: 1px dashed var(--au-border); }
+  .sub-chip { display: inline-flex; gap: 5px; align-items: center; font-size: .72rem; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--au-border); background: var(--au-surface); color: var(--au-text); text-decoration: none;
+    &:hover { border-color: var(--au-accent); background: var(--au-soft); } &:focus-visible { outline: 2px solid var(--au-blue); outline-offset: 1px; } .n { color: var(--au-muted); } &.zero { opacity: .6; } }
+}
+// The whole card is one link (stretched); the sub-module chips sit above it as their own links.
+.am-card .stretch { position: absolute; inset: 0; border-radius: 14px; z-index: 0; &:focus-visible { outline: 2px solid var(--au-blue); outline-offset: 2px; } }
+.am-card .top, .am-card .legend, .am-card .meta, .am-card .mini { position: relative; pointer-events: none; }
+.am-card .subs { position: relative; z-index: 1; }
+
+.am-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--au-surface); border: 1px solid var(--au-border); border-radius: 12px;
+  .grp { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } .au-input { width: 220px; }
+  .tot { font-size: .76rem; color: var(--au-muted); } }
+
+.am-crumbs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .74rem; color: var(--au-muted); a { color: var(--au-blue); text-decoration: none; &:hover { text-decoration: underline; } } }
+
+.am-rank { display: flex; align-items: center; gap: 10px;
+  .bar { flex: 1; height: 6px; background: var(--au-gray-bg); border-radius: 999px; overflow: hidden; i { display: block; height: 100%; background: var(--au-accent); } } }

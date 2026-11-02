@@ -9,6 +9,7 @@
         <p>{{ e.empCode }} · {{ e.designation }} · {{ e.department }} · {{ e.branch }}</p>
       </div>
     </div>
+    <app-record-history type="HrEmployee" [recordId]="e.id" [title]="e.name" />
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 

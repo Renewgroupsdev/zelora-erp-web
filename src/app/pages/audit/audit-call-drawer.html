@@ -1,0 +1,102 @@
+<div class="au-backdrop" (click)="close()">
+  <div #panel class="au-drawer" role="dialog" aria-modal="true" aria-labelledby="au-call-title" (click)="$event.stopPropagation()">
+    <header>
+      <div>
+        <h2 id="au-call-title"><i class="bi bi-telephone" aria-hidden="true"></i> Call details</h2>
+        @if (call(); as c) { <div class="sub">{{ c.call_id }} · {{ c.started_at?.display }} (Asia/Kolkata)</div> }
+      </div>
+      <button #closeBtn type="button" class="au-btn sm" (click)="close()" aria-label="Close call details"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+    </header>
+
+    <div class="body">
+      @if (loading()) {
+        @for (i of [1, 2, 3, 4, 5]; track i) { <div class="au-skel" style="margin: 12px 0"></div> }
+      } @else if (error()) {
+        <div class="au-state error" role="alert"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i><strong>Could not load this call</strong>{{ error() }}</div>
+      } @else if (call(); as c) {
+        <section aria-label="Summary">
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px">
+            <span class="au-badge" [ngClass]="tone(c.status)">{{ c.status_label }}</span>
+            @if (c.outcome) { <span class="au-badge purple">Outcome: {{ c.outcome }}</span> }
+            <span class="au-badge gray">{{ c.direction === 'inbound' ? 'Incoming call' : 'Outgoing call' }}</span>
+          </div>
+          <div class="au-stat-grid">
+            <div><b>{{ dur(c.talk_seconds) }}</b><span>Talk time</span></div>
+            <div><b>{{ dur(c.ring_seconds) }}</b><span>Ringing</span></div>
+            <div><b>{{ dur(c.hold_seconds) }}</b><span>On hold</span></div>
+            <div><b>{{ dur(c.total_seconds) }}</b><span>Total</span></div>
+          </div>
+        </section>
+
+        <section aria-label="People">
+          <h3>Who</h3>
+          <dl class="au-dl">
+            <dt>Telecaller</dt><dd>{{ c.telecaller?.name || 'Unassigned' }}@if (c.telecaller?.emp_code) { · Emp No: {{ c.telecaller?.emp_code }} }</dd>
+            <dt>Lead / caller</dt><dd>{{ c.lead?.name || 'Unknown' }} · {{ c.number || c.lead?.mobile || '-' }}</dd>
+            <dt>Branch / franchise</dt><dd>{{ c.branch || '-' }}</dd>
+            @if (c.queue) { <dt>Queue</dt><dd>{{ c.queue }}</dd> }
+            @if (c.extension) { <dt>Extension</dt><dd>{{ c.extension }}</dd> }
+            <dt>Started</dt><dd>{{ c.started_at?.display || '-' }}</dd>
+            <dt>Answered</dt><dd>{{ c.answered_at?.display || 'Not answered' }}</dd>
+            <dt>Ended</dt><dd>{{ c.ended_at?.display || '-' }}</dd>
+            @if (c.disposed_at) { <dt>Outcome saved</dt><dd>{{ c.disposed_at.display }}</dd> }
+          </dl>
+        </section>
+
+        @if (c.notes || c.call_notes.length) {
+          <section aria-label="Notes">
+            <h3>Notes</h3>
+            @if (c.notes) { <p class="au-note" style="border-left-color: var(--au-accent); background: var(--au-soft); color: var(--au-text); white-space: pre-wrap">{{ c.notes }}</p> }
+            @for (n of c.call_notes; track $index) {
+              <div class="au-note" style="border-left-color: var(--au-blue); background: var(--au-blue-bg); color: var(--au-text); margin-top: 6px">
+                <strong>{{ n.by || 'Unknown' }}</strong> · {{ n.at?.display }}<br />{{ n.note }}
+              </div>
+            }
+          </section>
+        }
+
+        <section aria-label="Line timeline">
+          <h3>Line timeline</h3>
+          @if (c.timeline.length) {
+            <div class="au-vline">
+              @for (e of c.timeline; track $index; let last = $last) {
+                <div class="it" [class.current]="last">
+                  <div class="t">{{ e.at?.display }}</div>
+                  <div class="d"><strong>{{ e.label }}</strong>@if (e.by) { · {{ e.by }} }</div>
+                </div>
+              }
+            </div>
+          } @else { <span class="au-empty-val">No line events were recorded for this call.</span> }
+        </section>
+
+        @if (c.assignments.length) {
+          <section aria-label="Telecallers rung">
+            <h3>Rang telecallers</h3>
+            <table class="au-diff">
+              <thead><tr><th scope="col">Telecaller</th><th scope="col">Result</th><th scope="col">Rang at</th><th scope="col">Answered</th></tr></thead>
+              <tbody>
+                @for (a of c.assignments; track $index) {
+                  <tr><td>{{ a.telecaller || '-' }}</td><td>{{ a.status }}</td><td>{{ a.assigned_at?.display || '-' }}</td><td>{{ a.accepted_at?.display || '-' }}</td></tr>
+                }
+              </tbody>
+            </table>
+          </section>
+        }
+
+        @if (c.recording_url || c.recordings.length) {
+          <section aria-label="Recordings">
+            <h3>Recording</h3>
+            @if (c.recording_url) { <audio controls preload="none" [src]="c.recording_url" style="width: 100%" aria-label="Call recording"></audio> }
+            @for (r of c.recordings; track $index) {
+              @if (r.url && r.url !== c.recording_url) { <audio controls preload="none" [src]="r.url" style="width: 100%; margin-top: 6px" aria-label="Call recording"></audio> }
+            }
+          </section>
+        }
+
+        @if (c.lead && canChanges) {
+          <a class="au-link" [routerLink]="['/app/audit/changes']" [queryParams]="{ rt: 'CustomerLead', rid: c.lead.id }"><i class="bi bi-clock-history" aria-hidden="true"></i> See every change made to {{ c.lead.name }}</a>
+        }
+      }
+    </div>
+  </div>
+</div>

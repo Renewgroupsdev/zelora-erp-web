@@ -35,6 +35,8 @@ export interface ProductRecord {
   gst_amount: number | string;
   total_amount: number | string;
   status: RecordStatus;
+  /** Product image (null when none). */
+  image_url?: string | null;
 }
 
 export interface ProductPayload {
@@ -90,6 +92,21 @@ export class InventoryService {
 
   updateProduct(id: string, payload: ProductPayload): Observable<any> {
     return this.api.PUT(`${ApiRoutesConstants.PRODUCT_ADD}/${id}`, payload);
+  }
+
+  /**
+   * Create / update with the product image: multipart form data. An update is sent as POST + _method=PUT (PHP only
+   * reads files from POST). `removeImage` clears the saved image.
+   */
+  saveProductWithImage(id: string | null, payload: ProductPayload, image: File | null, removeImage: boolean): Observable<any> {
+    const form = new FormData();
+    Object.entries(payload).forEach(([key, value]) => form.append(key, value == null ? '' : String(value)));
+    if (image) form.append('image', image);
+    if (removeImage) form.append('remove_image', '1');
+    if (!id) return this.api.POST(ApiRoutesConstants.PRODUCT_ADD, form);
+
+    form.append('_method', 'PUT');
+    return this.api.POST(`${ApiRoutesConstants.PRODUCT_ADD}/${id}`, form);
   }
 
   /** Server-side pricing preview (selling price, GST amount, total) - nothing is saved. */

@@ -75,7 +75,7 @@ export class Branches extends LocalListBase implements OnInit {
     { key: 'actions', header: 'Actions', type: 'quickActions', width: '8%', sortable: false },
   ];
 
-  override sortActive = 'code';
+  override sortActive = '';
   override sortDirection: 'asc' | 'desc' = 'asc';
 
   /** Branch shown in the details panel; falls back to the first row on screen. */

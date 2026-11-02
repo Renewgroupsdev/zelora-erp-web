@@ -101,7 +101,7 @@ export class FranchiseService {
   /** Every franchise (a small list, so the screen filters / sorts / pages it in the browser) plus the stat cards. */
   load(): Observable<FranchiseRecord[]> {
     this.loading.set(true);
-    return (this.api.GET(`${ApiRoutesConstants.FRANCHISES}?per_page=200&sort_by=code&sort_direction=asc`) as Observable<any>).pipe(
+    return (this.api.GET(`${ApiRoutesConstants.FRANCHISES}?per_page=200`) as Observable<any>).pipe(
       tap({ error: () => this.loading.set(false) }),
       map(res => {
         this.overviewState.set(res.stats ? overviewFromApi(res.stats) : null);
@@ -118,7 +118,7 @@ export class FranchiseService {
     return (this.api.GET(`${ApiRoutesConstants.FRANCHISES}/${id}`) as Observable<any>).pipe(
       map(res => {
         const franchise = franchiseFromApi(res.data);
-        this.upsert(franchise);
+        this.upsert(franchise, false);
         return { franchise, summary: summaryFromApi(res.data.summary ?? {}) };
       }),
     );
@@ -191,9 +191,14 @@ export class FranchiseService {
     return this.api.GET_BLOB(`${ApiRoutesConstants.FRANCHISES}/export?${qs}`) as Observable<Blob>;
   }
 
-  private upsert(franchise: FranchiseRecord): void {
-    const exists = this.list().some(f => f.id === franchise.id);
-    this.list.set(exists ? this.list().map(f => (f.id === franchise.id ? { ...f, ...franchise } : f)) : [...this.list(), franchise]);
+  /** A saved record moves to the top (newest / last-updated first, like the API order); a plain re-read keeps its place. */
+  private upsert(franchise: FranchiseRecord, toFront = true): void {
+    const old = this.list().find(f => f.id === franchise.id);
+    if (old && !toFront) {
+      this.list.set(this.list().map(f => (f.id === franchise.id ? { ...f, ...franchise } : f)));
+      return;
+    }
+    this.list.set([old ? { ...old, ...franchise } : franchise, ...this.list().filter(f => f.id !== franchise.id)]);
   }
 
   /** Stat cards and per-row totals depend on every franchise, so re-read them after a change. */

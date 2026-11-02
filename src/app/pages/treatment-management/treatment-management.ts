@@ -78,8 +78,8 @@ export class TreatmentManagement implements OnInit {
   readonly currentPage = signal(1);
   readonly pageSize = signal(10);
   readonly pageSizeOptions = [10, 30, 50, 100];
-  readonly sortActive = signal('treatment');
-  readonly sortDirection = signal<SortDirection>('asc');
+  readonly sortActive = signal('');
+  readonly sortDirection = signal<SortDirection>('');
 
   readonly records = signal<TreatmentRecord[]>([]);
   readonly totalRecords = signal(0);
@@ -138,8 +138,9 @@ export class TreatmentManagement implements OnInit {
       page: this.currentPage(),
       perPage: this.pageSize(),
       search: this.search(),
-      sortBy: SORT_FIELDS[this.sortActive()] ?? 'name',
-      sortDirection: this.sortDirection() || 'asc',
+      sortBy: SORT_FIELDS[this.sortActive()],
+      // No column picked: the API default (latest updated first) applies.
+      sortDirection: SORT_FIELDS[this.sortActive()] ? this.sortDirection() || 'asc' : undefined,
       categoryId: category ? Number(category.id) : null,
       isActive: filters.status ? filters.status === 'Active' : null,
     }).subscribe({

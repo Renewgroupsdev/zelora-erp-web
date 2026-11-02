@@ -1,0 +1,86 @@
+<div class="au-page">
+  <div class="au-header">
+    <div>
+      <h1><i class="bi bi-grid-1x2" aria-hidden="true"></i> Module Activity</h1>
+      <p>What happened in each module between {{ range().from }} and {{ range().to }}. Select a module for its full log, people and records.</p>
+    </div>
+    <div class="au-actions">
+      <div class="au-chips" role="group" aria-label="Date range">
+        @for (r of ranges; track r.key) { <button type="button" class="au-chip" (click)="setRange(r.key)">{{ r.label }}</button> }
+      </div>
+      <label class="sr-only" for="am-from">From</label>
+      <input id="am-from" class="au-input" style="width: auto" type="date" [value]="range().from" [max]="range().to" (change)="setDate('from', $any($event.target).value)" />
+      <label class="sr-only" for="am-to">To</label>
+      <input id="am-to" class="au-input" style="width: auto" type="date" [value]="range().to" [min]="range().from" (change)="setDate('to', $any($event.target).value)" />
+      <button type="button" class="au-btn" (click)="reload()" [disabled]="loading()" aria-label="Refresh"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
+    </div>
+  </div>
+
+  @if (!allowed) {
+    <app-audit-denied />
+  } @else if (error(); as err) {
+    <div class="au-panel">
+      <div class="au-state" [class.denied]="err.kind === 'forbidden'" [class.error]="err.kind !== 'forbidden'" role="alert">
+        <i class="bi" [ngClass]="err.kind === 'forbidden' ? 'bi-lock-fill' : 'bi-exclamation-octagon'" aria-hidden="true"></i>
+        <strong>{{ err.kind === 'forbidden' ? 'Access denied' : 'Could not load module activity' }}</strong>{{ err.message }}
+        @if (err.kind !== 'forbidden') { <div><button type="button" class="au-btn" (click)="reload()">Try again</button></div> }
+      </div>
+    </div>
+  } @else {
+    <div class="am-toolbar">
+      <div class="grp">
+        <label class="sr-only" for="am-search">Search modules</label>
+        <input id="am-search" class="au-input" type="search" placeholder="Search modules" [value]="search()" (input)="search.set($any($event.target).value)" />
+        <div class="au-seg" role="group" aria-label="Sort modules">
+          @for (s of sorts; track s.key) { <button type="button" [class.on]="sort() === s.key" [attr.aria-pressed]="sort() === s.key" (click)="sort.set(s.key)">{{ s.label }}</button> }
+        </div>
+      </div>
+      @if (!loading()) { <span class="tot" aria-live="polite">{{ totals().events.toLocaleString() }} events in {{ totals().active }} of {{ totals().modules }} modules</span> }
+    </div>
+
+    <div [attr.aria-busy]="loading()">
+      @if (loading() && !rows().length) {
+        <div class="am-grid">@for (i of [1, 2, 3, 4, 5, 6]; track i) { <div class="au-skel" style="height: 150px; border-radius: 14px"></div> }</div>
+      } @else if (!rows().length) {
+        <div class="au-panel"><div class="au-state"><i class="bi bi-grid-1x2" aria-hidden="true"></i><strong>No modules available</strong>Your role has no module with an activity trail.</div></div>
+      } @else if (!visible().length) {
+        <div class="au-panel"><div class="au-state"><i class="bi bi-search" aria-hidden="true"></i><strong>No module matches “{{ search() }}”</strong><button type="button" class="au-btn" (click)="search.set('')">Clear search</button></div></div>
+      } @else {
+        <div class="am-grid">
+          @for (m of visible(); track m.slug) {
+            <article class="am-card" [class.quiet]="!m.total">
+              <a class="stretch" [routerLink]="['/app/audit/modules', m.slug]" [queryParams]="{ from: range().from, to: range().to }" [attr.aria-label]="'Open ' + m.name + ' activity: ' + m.total + ' events'"></a>
+              <div class="top">
+                <span class="ico" aria-hidden="true"><i class="bi" [ngClass]="m.icon || 'bi-grid'"></i></span>
+                <div style="min-width: 0">
+                  <div class="nm">{{ m.name }}</div>
+                  <div class="when">{{ m.total ? 'Last: ' + relativeTime(m.last_activity_at) : 'No activity in this period' }}</div>
+                </div>
+                <div class="main"><div class="n">{{ m.total.toLocaleString() }}</div><div class="l">events</div></div>
+              </div>
+              @if (m.total) {
+                <div class="mini" role="img" [attr.aria-label]="m.created + ' created, ' + m.updated + ' updated, ' + m.deleted + ' deleted'">
+                  <i class="c" [style.width.%]="share(m, 'created')"></i><i class="u" [style.width.%]="share(m, 'updated')"></i><i class="d" [style.width.%]="share(m, 'deleted')"></i>
+                </div>
+                <div class="legend"><span><b>{{ m.created }}</b> created</span><span><b>{{ m.updated }}</b> updated</span><span><b>{{ m.deleted }}</b> deleted</span></div>
+                <div class="meta">
+                  <span class="au-badge blue"><i class="bi bi-calendar-event" aria-hidden="true"></i> {{ m.today }} today</span>
+                  <span class="au-badge purple"><i class="bi bi-people" aria-hidden="true"></i> {{ m.people }} {{ m.people === 1 ? 'person' : 'people' }}</span>
+                  @if (m.failed_or_denied) { <span class="au-badge orange"><i class="bi bi-x-octagon" aria-hidden="true"></i> {{ m.failed_or_denied }} failed / denied</span> }
+                  @if (m.top_user) { <span class="au-badge teal" [title]="'Most active: ' + m.top_user.name"><i class="bi bi-person-check" aria-hidden="true"></i> {{ m.top_user.name }} · {{ m.top_user.total }}</span> }
+                </div>
+              }
+              @if (m.sub_modules?.length) {
+                <div class="subs" role="group" [attr.aria-label]="m.name + ' sub-modules'">
+                  @for (s of m.sub_modules; track s.slug) {
+                    <a class="sub-chip" [class.zero]="!s.total" [routerLink]="['/app/audit/modules', s.slug]" [queryParams]="{ from: range().from, to: range().to }">{{ s.name }} <span class="n">{{ s.total }}</span></a>
+                  }
+                </div>
+              }
+            </article>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

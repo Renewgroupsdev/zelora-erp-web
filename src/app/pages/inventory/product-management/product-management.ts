@@ -22,7 +22,7 @@ import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-modu
 /** Table column key -> products API `sort_by` value. */
 const SORT_FIELDS: Record<string, string> = {
   code: 'code',
-  name: 'name',
+  product: 'name',
   purchase: 'purchase_price',
   margin: 'margin_percent',
   selling: 'selling_price',
@@ -65,7 +65,7 @@ export class ProductManagement implements OnInit {
 
   columns: TableColumn[] = [
     { key: 'code', header: 'Code', type: 'text', width: '8%' },
-    { key: 'name', header: 'Product', type: 'text', width: '15%' },
+    { key: 'product', header: 'Product', type: 'lead', width: '15%' },
     { key: 'hsn', header: 'HSN', type: 'text', width: '7%' },
     { key: 'vendor', header: 'Vendor', type: 'text', width: '14%', sortable: false },
     { key: 'purchase', header: 'Purchase Price', type: 'text', width: '10%' },
@@ -83,8 +83,8 @@ export class ProductManagement implements OnInit {
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
-  sortActive = 'code';
-  sortDirection: SortDirection = 'asc';
+  sortActive = '';
+  sortDirection: SortDirection = '';
   private searchTerm = '';
 
   ngOnInit(): void {
@@ -112,8 +112,9 @@ export class ProductManagement implements OnInit {
       page: this.currentPage,
       perPage: this.pageSize,
       search: this.searchTerm,
-      sortBy: SORT_FIELDS[this.sortActive] ?? 'code',
-      sortDirection: this.sortDirection || 'asc',
+      sortBy: SORT_FIELDS[this.sortActive],
+      // No column picked: the API default (latest created / updated first) applies.
+      sortDirection: SORT_FIELDS[this.sortActive] ? this.sortDirection || 'asc' : undefined,
       status: this.filterState.status as 'Active' | 'Inactive' | null,
       vendorId: vendor?.id ?? null,
     }).subscribe({
@@ -217,6 +218,8 @@ export class ProductManagement implements OnInit {
       id: p.id,
       code: p.code,
       name: p.name,
+      // Thumbnail + name; the initials avatar when the product has no image.
+      product: { name: p.name, photo: p.image_url ?? undefined },
       hsn: p.hsn_code || '-',
       vendor: p.vendor?.name ?? '-',
       purchase: inr(p.purchase_price),

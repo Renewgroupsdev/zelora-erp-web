@@ -9,6 +9,7 @@
         <p>{{ b.kind === 'Proforma' ? 'Proforma bill' : 'Service bill' }} · {{ b.customerName }} · {{ b.branch }}</p>
       </div>
     </div>
+    <app-record-history type="Bill" [recordId]="b.id" [title]="b.billNo" />
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 

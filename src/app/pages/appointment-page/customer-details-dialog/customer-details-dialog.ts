@@ -7,6 +7,7 @@ import { ToastService } from '../../../shared/common-services/toast.service';
 import { FlowAppointmentRecord, FlowDocument, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { HairGradeIcon } from '../../../shared/components/hair-grade-icon/hair-grade-icon';
+import { RecordHistory } from '../../../shared/components/record-history/record-history';
 
 interface DetailItem {
   label: string;
@@ -21,7 +22,7 @@ interface DetailItem {
 @Component({
   selector: 'app-customer-details-dialog',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, PageLoader, HairGradeIcon],
+  imports: [CommonModule, MatDialogModule, PageLoader, HairGradeIcon, RecordHistory],
   templateUrl: './customer-details-dialog.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', './customer-details-dialog.scss'],
 })
@@ -30,6 +31,7 @@ export class CustomerDetailsDialog implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly dialogRef = inject(MatDialogRef<CustomerDetailsDialog>);
   private readonly data = inject<{ appointmentId: number }>(MAT_DIALOG_DATA);
+  protected readonly appointmentId = this.data.appointmentId;
 
   readonly inr = inr;
   readonly appt = signal<FlowAppointmentRecord | null>(null);

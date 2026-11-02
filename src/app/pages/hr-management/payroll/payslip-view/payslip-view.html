@@ -1,5 +1,6 @@
 @let s = slip();
 @let e = employee();
+@if (e) {
 <div class="lead-modal">
   <div class="modal-header-custom">
     <div class="modal-title-wrap">
@@ -82,3 +83,4 @@
     <button *appCan="'download-payslip'" type="button" class="save-btn" (click)="downloadPdf()"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
   </div>
 </div>
+}

@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { Observable } from 'rxjs';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { HrService } from '../../../../shared/common-services/hr.service';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
@@ -72,6 +73,7 @@ export class CandidateProcess {
 
   readonly error = signal<string | null>(null);
   readonly showReject = signal(false);
+  readonly busy = signal(false);
 
   // Interview scheduling
   schedAt = `${addDays(isoDate(), 1)}T11:00`;
@@ -104,6 +106,8 @@ export class CandidateProcess {
     this.bgRemarks = c.verification?.backgroundRemarks ?? '';
     this.offerGross = v ? Math.min(v.budgetMax, Math.max(v.budgetMin, c.expectedCtc)) : c.expectedCtc;
     this.joiningDate = addDays(isoDate(), Math.max(7, c.noticeDays));
+    // The list rows carry no history / documents / verification gaps: load the full candidate.
+    this.hr.fetchCandidate(c.id).subscribe({ next: x => { this.bgStatus = x.verification?.backgroundCheck ?? this.bgStatus; this.bgRemarks = x.verification?.backgroundRemarks ?? this.bgRemarks; }, error: () => undefined });
   }
 
   doc(type: string): CandidateDocument | undefined {
@@ -123,40 +127,53 @@ export class CandidateProcess {
     this.error.set(null);
   }
 
+  /** Runs a server action; a failure shows the API's message in the dialog's error line. */
+  private run(source: Observable<unknown>, done?: () => void): void {
+    this.busy.set(true);
+    source.subscribe({
+      next: () => { this.busy.set(false); done?.(); },
+      error: err => {
+        this.busy.set(false);
+        const errors = err?.error?.errors as Record<string, string[]> | undefined;
+        this.error.set((errors && Object.values(errors).flat()[0]) || err?.error?.message || 'Something went wrong. Please try again.');
+      },
+    });
+  }
+
   // ---- Stage actions ----
   shortlist(): void {
     this.begin();
-    this.hr.shortlistCandidate(this.candidate().id);
+    this.run(this.hr.shortlistCandidate(this.candidate().id));
   }
 
   schedule(): void {
     this.begin();
     if (!this.schedAt || new Date(this.schedAt).getTime() < Date.now() - 60000) return void this.fail('Pick a future interview date and time.');
     if (!this.interviewer.trim()) return void this.fail('Enter who will interview the candidate.');
-    this.hr.scheduleInterview(this.candidate().id, { scheduledAt: new Date(this.schedAt).toISOString(), interviewer: this.interviewer.trim(), mode: this.mode });
+    this.run(this.hr.scheduleInterview(this.candidate().id, { scheduledAt: new Date(this.schedAt).toISOString(), interviewer: this.interviewer.trim(), mode: this.mode }));
   }
 
   markInterviewed(): void {
     this.begin();
     if (!this.doneAt) return void this.fail('Enter when the interview took place.');
     if (!this.performance) return void this.fail('Give the candidate a performance rating (1-5).');
-    this.hr.recordInterview(this.candidate().id, { interviewedAt: new Date(this.doneAt).toISOString(), performanceRating: this.performance, notes: this.interviewNotes.trim() });
-    this.reviewRating = this.performance;
+    this.run(this.hr.recordInterview(this.candidate().id, { interviewedAt: new Date(this.doneAt).toISOString(), performanceRating: this.performance, notes: this.interviewNotes.trim() }), () => (this.reviewRating = this.performance));
   }
 
   decide(selected: boolean): void {
     this.begin();
     if (!this.reviewRating) return void this.fail('Give the final review rating (1-5).');
     if (!this.reviewComments.trim()) return void this.fail(selected ? 'Write a short review of the candidate.' : 'Write the reason for rejecting the candidate.');
-    this.hr.reviewCandidate(this.candidate().id, { rating: this.reviewRating, comments: this.reviewComments.trim(), selected });
+    this.run(this.hr.reviewCandidate(this.candidate().id, { rating: this.reviewRating, comments: this.reviewComments.trim(), selected }));
   }
 
   confirmReject(): void {
     this.begin();
     if (!this.rejectReason.trim()) return void this.fail('Enter the reason for rejecting the candidate.');
-    this.hr.rejectCandidate(this.candidate().id, this.rejectReason.trim());
-    this.showReject.set(false);
-    this.rejectReason = '';
+    this.run(this.hr.rejectCandidate(this.candidate().id, this.rejectReason.trim()), () => {
+      this.showReject.set(false);
+      this.rejectReason = '';
+    });
   }
 
   /** Back to the scheduling form; the interview history is kept. */
@@ -170,7 +187,7 @@ export class CandidateProcess {
 
   startVerification(): void {
     this.begin();
-    this.hr.startVerification(this.candidate().id);
+    this.run(this.hr.startVerification(this.candidate().id));
   }
 
   upload(type: string, event: Event): void {
@@ -181,25 +198,26 @@ export class CandidateProcess {
     if (!file) return;
     if (file.size > MAX_FILE_BYTES) return void this.fail(`${file.name} is larger than 5 MB.`);
     if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) return void this.fail('Upload a PDF, JPG or PNG file.');
-    this.hr.uploadCandidateDocument(this.candidate().id, type, file.name);
+    this.run(this.hr.uploadCandidateDocument(this.candidate().id, type, file));
   }
 
   verifyDoc(type: string, verified: boolean): void {
     this.begin();
     const remarks = (this.docRemarks[type] ?? '').trim();
     if (!verified && !remarks) return void this.fail(`Add a remark explaining why ${type} is rejected.`);
-    this.hr.verifyCandidateDocument(this.candidate().id, type, verified, remarks);
+    this.run(this.hr.verifyCandidateDocument(this.candidate().id, type, verified, remarks), () => delete this.docRemarks[type]);
   }
 
   saveBackground(): void {
     this.begin();
     if (this.bgStatus === 'Issue Found' && !this.bgRemarks.trim()) return void this.fail('Describe the issue found in the background check.');
-    this.hr.setBackgroundCheck(this.candidate().id, this.bgStatus, this.bgRemarks.trim());
+    this.run(this.hr.setBackgroundCheck(this.candidate().id, this.bgStatus, this.bgRemarks.trim()));
   }
 
   completeVerification(): void {
     this.begin();
-    if (!this.hr.completeVerification(this.candidate().id)) this.error.set('Verify every required document and clear the background check first.');
+    if (this.gaps().length) return void this.fail('Verify every required document and clear the background check first.');
+    this.run(this.hr.completeVerification(this.candidate().id));
   }
 
   releaseOffer(): void {
@@ -209,15 +227,14 @@ export class CandidateProcess {
     if (v && this.offerGross > v.budgetMax) return void this.fail(`Offer is above the approved budget of ₹${v.budgetMax.toLocaleString('en-IN')}.`);
     if (!this.joiningDate || this.joiningDate < this.today) return void this.fail('Pick a valid joining date.');
     if (!this.validUntil || this.validUntil < this.today) return void this.fail('Pick the date until which the offer is valid.');
-    const offer = this.hr.releaseOffer(this.candidate().id, { monthlyGross: Number(this.offerGross), joiningDate: this.joiningDate, validUntil: this.validUntil });
-    if (!offer) this.error.set('Complete the background verification before releasing an offer.');
+    if (!this.candidate().verification?.completedAt) return void this.fail('Complete the background verification before releasing an offer.');
+    this.run(this.hr.releaseOffer(this.candidate().id, { monthlyGross: Number(this.offerGross), joiningDate: this.joiningDate, validUntil: this.validUntil }));
   }
 
   respond(accepted: boolean): void {
     this.begin();
     if (!accepted && !this.responseRemarks.trim()) return void this.fail('Note why the candidate declined the offer.');
-    this.hr.respondToOffer(this.candidate().id, accepted, this.responseRemarks.trim());
-    if (accepted) this.addEmployee();
+    this.run(this.hr.respondToOffer(this.candidate().id, accepted, this.responseRemarks.trim()), () => { if (accepted) this.addEmployee(); });
   }
 
   /** Opens the Add Employee form prefilled from the application and offer; saving it completes the hire. */

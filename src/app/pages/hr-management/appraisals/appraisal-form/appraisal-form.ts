@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import Swal from 'sweetalert2';
+import { finalize } from 'rxjs';
 import { HrService } from '../../../../shared/common-services/hr.service';
 import { BonusType, salaryBreakup } from '../../../../shared/models/hr.model';
 import { monthKey } from '../../../../shared/utils/format.util';
@@ -22,6 +24,7 @@ export class AppraisalForm {
   readonly bonusTypes: BonusType[] = ['Performance', 'Festival', 'Retention', 'Referral', 'Joining'];
   readonly year = new Date().getFullYear();
   readonly submitted = signal(false);
+  readonly saving = signal(false);
 
   readonly empId = signal(this.hr.activeEmployees().find(e => e.status === 'Active')?.id ?? '');
   readonly employee = computed(() => this.hr.employee(this.empId()));
@@ -59,14 +62,17 @@ export class AppraisalForm {
 
   save(): void {
     this.submitted.set(true);
-    if (this.error()) return;
+    if (this.error() || this.saving()) return;
+    this.saving.set(true);
     this.hr.createAppraisal({
       empId: this.empId(), cycle: this.cycle, rating: this.rating, kpiScore: Number(this.kpiScore),
       strengths: this.strengths.trim(), improvements: this.improvements.trim(), reviewer: this.reviewer,
       incrementPercent: Number(this.incrementPercent), effectiveFrom: this.effectiveFrom,
       bonus: this.withBonus ? { type: this.bonusType, amount: Number(this.bonusAmount), payMonth: this.bonusMonth } : null,
+    }).pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: () => this.dialogRef.close(true),
+      error: err => Swal.fire({ icon: 'error', title: 'Could not save the appraisal', text: err?.error?.message ?? 'Please try again.', confirmButtonColor: '#6C63FF' }),
     });
-    this.dialogRef.close(true);
   }
 
   close(): void {

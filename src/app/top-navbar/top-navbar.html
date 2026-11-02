@@ -141,6 +141,13 @@
     <!-- Branch group chat & posts - only the signed-in user's own branch -->
     <app-branch-chat></app-branch-chat>
 
+    @if (activityModule(); as mod) {
+      <button type="button" class="activity-btn" (click)="activityOpen.set(true)" [attr.aria-label]="'Show ' + mod.name + ' activity'" [title]="'Who handled ' + mod.name + ' data'">
+        <i class="bi bi-activity" aria-hidden="true"></i><span class="activity-label">Activity</span>
+      </button>
+      @if (activityOpen()) { <app-module-activity [slug]="mod.slug" (closed)="activityOpen.set(false)" /> }
+    }
+
     <div class="notification-menu-wrapper">
       <button
         type="button"
@@ -222,6 +229,9 @@
             <button type="button" class="dropdown-item scope-menu-item" (click)="toggleScopeRow()">
               <i class="bi" [ngClass]="scopeRowOpen() ? 'bi-eye-slash' : 'bi-diagram-3'"></i> {{ scopeRowOpen() ? 'Hide branch / franchise' : 'Choose branch / franchise' }}
             </button>
+          }
+          @if (canSeeMyActivity()) {
+            <button type="button" class="dropdown-item" (click)="goToMyActivity()"><i class="bi bi-person-check"></i> My Activity</button>
           }
           <button type="button" class="dropdown-item" (click)="goToSettings()"><i class="bi bi-gear"></i> Settings</button>
           <button type="button" class="dropdown-item danger" [disabled]="signingOut()" (click)="logout()">

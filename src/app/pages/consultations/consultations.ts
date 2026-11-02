@@ -73,7 +73,7 @@ export class Consultations implements OnInit {
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
-  sortActive = 'schedule';
+  sortActive = '';
   sortDirection: SortDirection = 'asc';
   private searchTerm = '';
 
@@ -246,7 +246,8 @@ export class Consultations implements OnInit {
       if (key === 'lead') return String((v as any)?.name ?? '').toLowerCase();
       return typeof v === 'number' ? v : String(v ?? '').toLowerCase();
     };
-    const sorted = filtered.map(a => this.mapRow(a)).sort((l, r) => (value(l) < value(r) ? -dir : value(l) > value(r) ? dir : 0));
+    const mapped = filtered.map(a => this.mapRow(a));
+    const sorted = !this.sortActive ? mapped : mapped.sort((l, r) => (value(l) < value(r) ? -dir : value(l) > value(r) ? dir : 0));
 
     this.totalRecords = sorted.length;
     const totalPages = Math.max(1, Math.ceil(this.totalRecords / this.pageSize));

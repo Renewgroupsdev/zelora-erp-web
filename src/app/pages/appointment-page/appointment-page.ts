@@ -88,7 +88,7 @@ export class AppointmentPage implements OnInit {
   currentPage = 1;
   pageSize = 10;
   totalRecords = 0;
-  sortActive = 'schedule';
+  sortActive = '';
   sortDirection: SortDirection = 'asc';
   private searchTerm = '';
   private listSub?: Subscription;
@@ -403,7 +403,10 @@ export class AppointmentPage implements OnInit {
   private mapRow(a: FlowAppointmentRecord): TableRow {
     return {
       id: a.id,
-      lead: { name: a.name, subtitle: a.customer?.customer_code ?? `AP-${String(a.id).padStart(5, '0')}` },
+      lead: {
+        name: a.name,
+        subtitle: (a.customer?.customer_code ?? `AP-${String(a.id).padStart(5, '0')}`) + (a.app_submitted_at ? ' · App request' : ''),
+      },
       contact: a.mobile_no,
       service: treatmentNames(a) ?? (a.category ? `${a.category} consultation` : 'Consultation'),
       branch: a.branch_name ?? a.branch?.name ?? '',
@@ -430,6 +433,7 @@ export class AppointmentPage implements OnInit {
   }
 
   private sortRows(rows: TableRow[]): TableRow[] {
+    if (!this.sortActive) return rows;
     const dir = this.sortDirection === 'desc' ? -1 : 1;
     const key = this.sortActive === 'schedule' ? 'scheduleSort' : this.sortActive === 'total' ? 'totalSort' : this.sortActive;
     const value = (row: TableRow) => {

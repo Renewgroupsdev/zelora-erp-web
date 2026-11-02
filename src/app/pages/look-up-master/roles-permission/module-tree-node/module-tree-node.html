@@ -89,6 +89,11 @@
           <i class="bi bi-box-arrow-up-right"></i>
         </button>
       }
+      @if (node.id) {
+        <span class="row-history" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
+          <app-record-history type="ModulePermission" [recordId]="node.id" [title]="node.module_name" variant="icon" />
+        </span>
+      }
       <button *appCan="'add-module'" type="button" class="row-action-btn action-add" title="Add sub-module" aria-label="Add sub-module" (click)="onAddChild($event)">
         <i class="bi bi-plus-lg"></i>
       </button>

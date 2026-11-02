@@ -60,7 +60,7 @@ export class GoodsInward extends PurchaseListBase {
   ]);
 
   columns: TableColumn[] = GRN_COLUMNS;
-  override sortActive = 'receivedAt';
+  override sortActive = ''; // API order = updated_at desc: new / edited rows lead
 
   readonly openOrders = computed(() => this.purchase.orders().filter(o => o.canInward));
 

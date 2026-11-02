@@ -6,6 +6,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { InventoryService, ProductPayload, ProductRecord } from '../../../../shared/common-services/inventory.service';
 import { ToastService } from '../../../../shared/common-services/toast.service';
 import { catchError, combineLatest, map, debounceTime, distinctUntilChanged, filter, of, startWith, switchMap } from 'rxjs';
+import { ImagePick, ImagePicker } from '../../../../shared/components/image-picker/image-picker';
 
 export interface AddProductFormData {
   product: ProductRecord | null;
@@ -15,7 +16,7 @@ export interface AddProductFormData {
 @Component({
   selector: 'app-add-product-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule],
+  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, ImagePicker],
   templateUrl: './add-product-form.html',
   styleUrl: './add-product-form.scss',
 })
@@ -43,6 +44,10 @@ export class AddProductForm {
     status: ['Active' as 'Active' | 'Inactive'],
   });
 
+  /** Product image picked in the form (null = keep the saved one unless removed). */
+  private imagePick: ImagePick = { file: null, removed: false };
+  readonly imageUrl: string | null;
+
   /** Selling price, GST amount and total - always calculated by the API. */
   readonly pricing = signal({ sellingPrice: 0, discountAmount: 0, gstAmount: 0, totalAmount: 0 });
 
@@ -53,6 +58,7 @@ export class AddProductForm {
     const product = data.product;
     this.isEdit = !!product;
     this.code = product?.code ?? '';
+    this.imageUrl = product?.image_url ?? null;
 
     // An inactive vendor is not in the dropdown list, but the product may still point at it.
     const vendors = [...(data.vendors ?? [])];
@@ -141,9 +147,7 @@ export class AddProductForm {
     };
 
     this.isSaving.set(true);
-    const request$ = this.data.product
-      ? this.inventory.updateProduct(this.data.product.id, payload)
-      : this.inventory.createProduct(payload);
+    const request$ = this.inventory.saveProductWithImage(this.data.product?.id ?? null, payload, this.imagePick.file, this.imagePick.removed);
 
     request$.subscribe({
       next: (res: any) => {
@@ -163,6 +167,10 @@ export class AddProductForm {
         console.error('Failed to save product:', err);
       },
     });
+  }
+
+  onImage(pick: ImagePick): void {
+    this.imagePick = pick;
   }
 
   close(): void {

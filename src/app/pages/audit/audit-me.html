@@ -1,0 +1,66 @@
+<div class="au-page">
+  <div class="au-header">
+    <div>
+      <h1><i class="bi bi-person-check" aria-hidden="true"></i> My Activity</h1>
+      <p>
+        Everything you did in the application between {{ range().from }} and {{ range().to }}.
+        @if (identityText()) { {{ identityText() }}. }
+      </p>
+    </div>
+    <div class="au-actions">
+      <div class="au-chips" role="group" aria-label="Date range">
+        @for (r of ranges; track r.key) { <button type="button" class="au-chip" (click)="setRange(r.key)">{{ r.label }}</button> }
+      </div>
+      <label class="sr-only" for="au-me-from">From</label>
+      <input id="au-me-from" class="au-input" style="width: auto" type="date" [value]="range().from" [max]="range().to" (change)="setDate('from', $any($event.target).value)" />
+      <label class="sr-only" for="au-me-to">To</label>
+      <input id="au-me-to" class="au-input" style="width: auto" type="date" [value]="range().to" [min]="range().from" (change)="setDate('to', $any($event.target).value)" />
+      <button type="button" class="au-btn" (click)="reload()" [disabled]="loading()" aria-label="Refresh"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
+    </div>
+  </div>
+
+  @if (!allowed) {
+    <app-audit-denied />
+  } @else if (error(); as err) {
+    <div class="au-panel">
+      <div class="au-state" [class.denied]="err.kind === 'forbidden'" [class.error]="err.kind !== 'forbidden'" role="alert">
+        <i class="bi" [ngClass]="err.kind === 'forbidden' ? 'bi-lock-fill' : 'bi-exclamation-octagon'" aria-hidden="true"></i>
+        <strong>{{ err.kind === 'forbidden' ? 'Access denied' : 'Could not load your activity' }}</strong>{{ err.message }}
+        @if (err.kind !== 'forbidden') { <div><button type="button" class="au-btn" (click)="reload()">Try again</button></div> }
+      </div>
+    </div>
+  } @else {
+    @let k = summary()?.kpis;
+    <div class="au-kpis" [attr.aria-busy]="loading()">
+      <div class="au-kpi blue"><span class="ico" style="background: var(--au-blue-bg); color: var(--au-blue)"><i class="bi bi-activity" aria-hidden="true"></i></span><div>
+        @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.total ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Events</div></div></div>
+      <div class="au-kpi green"><span class="ico" style="background: var(--au-green-bg); color: var(--au-green)"><i class="bi bi-pencil-square" aria-hidden="true"></i></span><div>
+        @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.changes ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Data changes</div><div class="hint">Created, edited, deleted, restored</div></div></div>
+      <div class="au-kpi orange"><span class="ico" style="background: var(--au-orange-bg); color: var(--au-orange)"><i class="bi bi-x-octagon" aria-hidden="true"></i></span><div>
+        @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.failed_or_denied ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Failed or denied</div></div></div>
+      <div class="au-kpi purple"><span class="ico" style="background: var(--au-purple-bg); color: var(--au-purple)"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i></span><div>
+        @if (loading() && !k) { <div class="au-skel" style="width: 60px; height: 22px"></div> } @else { <div class="val">{{ (k?.sign_ins ?? 0).toLocaleString() }}</div> }
+        <div class="lbl">Sign-ins</div></div></div>
+      <div class="au-kpi teal"><span class="ico" style="background: var(--au-teal-bg); color: var(--au-teal)"><i class="bi bi-clock-history" aria-hidden="true"></i></span><div>
+        @if (loading() && !k) { <div class="au-skel" style="width: 90px; height: 22px"></div> } @else { <div class="val" style="font-size: 1rem">{{ lastSeen() ?? 'No activity yet' }}</div> }
+        <div class="lbl">Last activity (all time)</div></div></div>
+    </div>
+
+    @if (summary(); as s) {
+      <app-audit-activity-charts [report]="s" />
+
+      <section class="au-panel" aria-label="My recent sign-ins">
+        <h2>My recent sign-ins</h2><div class="sub">Your latest sign-ins with the device and network address they came from</div>
+        <app-audit-sign-ins [rows]="s.recent_sign_ins" />
+      </section>
+    }
+
+    <section aria-label="What I changed">
+      <h2 style="font-size: .95rem; font-weight: 700; margin: 4px 2px">What I did</h2>
+      <app-audit-event-list kind="me" [features]="features" emptyText="No activity of yours matches these filters." />
+    </section>
+  }
+</div>

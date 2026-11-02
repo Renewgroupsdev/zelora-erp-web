@@ -122,6 +122,6 @@
   <div class="modal-footer-custom">
     <span class="footer-note"><i class="bi bi-keyboard"></i> Debits must equal credits.</span>
     <button type="button" class="cancel-btn" (click)="close()">Quit</button>
-    <button type="button" class="save-btn" (click)="save()"><i class="bi bi-check2-square"></i> Accept</button>
+    <button type="button" class="save-btn" [disabled]="saving()" (click)="save()"><i class="bi bi-check2-square"></i> Accept</button>
   </div>
 </div>

@@ -63,8 +63,7 @@ export class StockOverview extends PurchaseListBase {
   ]);
 
   columns: TableColumn[] = STOCK_COLUMNS;
-  override sortActive = 'storeTotal';
-  override sortDirection: 'asc' | 'desc' = 'asc';
+  override sortActive = ''; // API order = updated_at desc: new / edited rows lead
 
   readonly stats = computed<DetailCardData[]>(() => {
     const s = this.purchase.summaries().stock ?? {};
@@ -83,8 +82,8 @@ export class StockOverview extends PurchaseListBase {
     this.filterState = { status: null, source: null, branch: [], telecaller: null, dateFrom: null, dateTo: null };
     this.searchTerm = '';
     this.columns = view === 'stock' ? STOCK_COLUMNS : TRANSFER_COLUMNS;
-    this.sortActive = view === 'stock' ? 'storeTotal' : 'transferredAt';
-    this.sortDirection = view === 'stock' ? 'asc' : 'desc';
+    this.sortActive = '';
+    this.sortDirection = 'desc';
     this.currentPage = 1;
     this.refresh();
   }

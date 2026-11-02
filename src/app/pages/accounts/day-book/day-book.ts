@@ -192,14 +192,14 @@ export class DayBook extends AccountsListBase {
       confirmButtonColor: '#6C63FF',
     });
     if (!ok.isConfirmed) return;
-    if (this.acc.closeDay(b.date)) {
+    if (await this.acc.closeDay(b.date)) {
       Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Day closed', text: `${inr(b.closing)} carried forward`, showConfirmButton: false, timer: 3000 });
     }
   }
 
   async reopenDay(): Promise<void> {
     const ok = await this.confirm(`Reopen ${displayDate(this.date())}?`, 'Entries can be posted again. Close it again once corrections are done.');
-    if (ok) this.acc.reopenDay(this.date());
+    if (ok) await this.acc.reopenDay(this.date());
   }
 
   private async confirm(title: string, text: string): Promise<boolean> {

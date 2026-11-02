@@ -42,7 +42,7 @@
   ></app-common-filter-card>
 
   <div class="table-col">
-    <app-common-table-card
+    <app-common-table-card [historyType]="view() === 'candidates' ? 'HrCandidate' : 'HrManpowerRequest'"
       [recordCountText]="recordCountText"
       [columns]="columns"
       [rows]="rows"

@@ -46,7 +46,7 @@ export class Vouchers extends AccountsListBase {
     { key: 'actions', header: 'Action', type: 'quickActions', width: '5%', sortable: false },
   ];
 
-  override sortActive = 'date';
+  override sortActive = ''; // API order = updated_at desc: new / edited vouchers lead
 
   readonly stats = computed<DetailCardData[]>(() => {
     const list = this.acc.vouchers();

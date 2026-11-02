@@ -1050,3 +1050,13 @@
     padding-bottom: 4px;
   }
 }
+
+.activity-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 10px;
+  border: 1px solid var(--border-soft-strong, rgba(17, 95, 78, .16)); background: var(--app-surface-solid, #fff);
+  color: var(--text-dark, #163b35); font-size: .8rem; font-weight: 600; cursor: pointer;
+  &:hover { background: var(--bg-light-green-soft, #f6fbf9); }
+  &:focus-visible { outline: 2px solid #2563c9; outline-offset: 2px; }
+  i { font-size: 1rem; color: var(--primary, #4aab90); }
+  @media (max-width: 760px) { .activity-label { display: none; } padding: 0 10px; }
+}

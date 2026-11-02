@@ -141,6 +141,19 @@ export class ApiRoutesConstants {
    //HR Management
    public static HR_EMPLOYEES = "hr/employees";
    public static HR_ATTENDANCE = "hr/attendance";
+   public static HR_PAYSLIPS = "hr/payslips";
+   public static HR_ONBOARDINGS = "hr/onboardings";
+   public static HR_EXITS = "hr/exits";
+   public static HR_APPRAISALS = "hr/appraisals";
+   public static HR_BONUSES = "hr/bonuses";
+   public static HR_MANPOWER = "hr/manpower-requests";
+   public static HR_CANDIDATES = "hr/candidates";
+   public static HR_LEAVE_REQUESTS = "hr/leave-requests";
+   public static HR_LEAVE_BALANCES = "hr/leave-balances";
+   public static HR_PAYROLL_RUN = "hr/payroll/run";
+   public static HR_TASKS = "hr/tasks";
+   //Targets & incentives (Accounts Management -> Targets)
+   public static TARGETS = "targets";
 
    //Direct file uploads (POST/DELETE uploads/{folder})
    public static UPLOADS = "uploads";
@@ -176,5 +189,8 @@ export class ApiRoutesConstants {
    public static QR_SCAN_SUMMARY = "qr-scans/summary";
    /** ?branch_type=&branch_id= -> encrypted code the branch / franchise QR carries. */
    public static QR_SCAN_TOKEN = "qr-scans/token";
+
+   /** Audit Trail (read-only): summary, events, changes, history, users, security, filters, export. */
+   public static AUDIT = "audit";
 
 }

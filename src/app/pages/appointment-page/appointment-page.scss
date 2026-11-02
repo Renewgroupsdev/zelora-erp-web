@@ -338,6 +338,19 @@ app-common-table-card {
   font-weight: 700;
 }
 
+img.ap-avatar { object-fit: cover; }
+
+.ap-app-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 600;
+  background: var(--status-blue-bg);
+  color: var(--status-blue-text);
+}
+
 .ap-who {
   min-width: 0;
   display: flex;

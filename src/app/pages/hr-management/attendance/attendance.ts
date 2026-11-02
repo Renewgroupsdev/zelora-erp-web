@@ -200,6 +200,8 @@ export class Attendance extends HrListBase implements OnInit {
       const hours = a ? workedHours(a) : 0;
       return {
         id: e.empId,
+        // The audited attendance record of that day (empty while "Not Marked"): drives the History button.
+        recordId: a?.id ?? '',
         empCode: e.empCode,
         employee: e.name,
         department: e.department,
