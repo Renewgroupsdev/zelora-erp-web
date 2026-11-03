@@ -7,6 +7,8 @@ import { environment } from '../../environments/environment';
 import { AuthService } from '../core/auth/auth.service';
 import { CookieService } from '../shared/common-services/cookie.service';
 import { AuthBackground } from '../shared/components/auth-background/auth-background';
+import { AuthBrandPanel } from '../shared/components/auth-brand-panel/auth-brand-panel';
+import { AuthFeaturePanel } from '../shared/components/auth-feature-panel/auth-feature-panel';
 import { firstModulePath } from '../shared/models/permission.model';
 import { LoginResponse } from '../core/auth/auth.model';
 
@@ -40,7 +42,7 @@ export function identifierKind(value: string): IdentifierKind {
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [Preloader, CommonModule, ReactiveFormsModule, FormsModule, AuthBackground],
+  imports: [Preloader, CommonModule, ReactiveFormsModule, FormsModule, AuthBackground, AuthBrandPanel, AuthFeaturePanel],
   templateUrl: './login-page.html',
   styleUrl: './login-page.scss',
 })

@@ -46,20 +46,22 @@
   position: relative;
   width: min(392px, calc(100vw - 34px));
   box-sizing: border-box;
-  padding: 76px 28px 24px;
+  padding: 70px 24px 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  background: rgba(255, 255, 255, .84);
-  border: 1px solid rgba(255, 255, 255, .95);
+  background: linear-gradient(150deg, rgba(255, 255, 255, .42) 0%, rgba(255, 255, 255, .14) 55%, rgba(236, 247, 241, .22) 100%);
+  border: 1px solid rgba(255, 255, 255, .85);
   border-radius: 26px;
   box-shadow:
     0 24px 60px rgba(13, 74, 58, .14),
-    0 4px 14px rgba(13, 74, 58, .06);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  animation: notfound-in .62s cubic-bezier(.22, 1, .36, 1) both;
+    0 4px 14px rgba(13, 74, 58, .06),
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    inset 0 0 28px rgba(255, 255, 255, .35);
+  backdrop-filter: blur(9px) saturate(1.35);
+  -webkit-backdrop-filter: blur(9px) saturate(1.35);
+    animation: notfound-in .62s cubic-bezier(.22, 1, .36, 1) both;
 }
 
 @keyframes notfound-in {
@@ -78,11 +80,13 @@
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  background: #ffffff;
+  background: radial-gradient(circle at 50% 30%, #ffffff 0%, #f4f8f6 100%);
   border-radius: 50%;
   box-shadow:
-    0 14px 34px rgba(13, 74, 58, .16),
-    0 0 0 6px rgba(255, 255, 255, .55);
+    inset 0 -8px 16px rgba(15, 90, 69, .07),
+    0 18px 38px rgba(13, 74, 58, .2),
+    0 3px 8px rgba(13, 74, 58, .1);
+  border: 3px solid rgba(255, 255, 255, .95);
 }
 
 .notfound-logo {
@@ -133,7 +137,7 @@
   border-radius: 26px;
   cursor: pointer;
   color: #fff;
-  background: linear-gradient(90deg, #237f62 0%, #0f5a45 55%, #0a4436 100%);
+  background: linear-gradient(180deg, #14803f 0%, #0b6433 55%, #08502a 100%);
   box-shadow:
     0 10px 24px rgba(15, 90, 69, .32),
     inset 0 1px 0 rgba(255, 255, 255, .18);
@@ -142,7 +146,16 @@
   letter-spacing: .2px;
   transition: transform .18s ease, box-shadow .18s ease;
 
-  i { font-size: 18px; transition: transform .18s ease; }
+  i {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border: 1.5px solid rgba(255, 255, 255, .9);
+    border-radius: 50%;
+    font-size: 16px;
+    transition: transform .18s ease;
+  }
 
   &:hover {
     transform: translateY(-1px);
@@ -154,6 +167,19 @@
   &:focus-visible {
     outline: 3px solid rgba(15, 90, 69, .25);
     outline-offset: 3px;
+  }
+}
+
+/* Three-column layout: brand | card | benefits */
+@media (min-width: 900px) {
+  .notfound-card { zoom: var(--auth-zoom); }
+
+  .notfound-wrapper {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(16px, 2.6vw, 56px);
+    padding: 80px clamp(16px, 2.6vw, 56px) 24px;
   }
 }
 

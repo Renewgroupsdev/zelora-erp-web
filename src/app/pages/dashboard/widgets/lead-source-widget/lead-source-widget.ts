@@ -16,10 +16,6 @@ const COLORS: [string, string][] = [
   ['#4da3ff', '#1f6fe5'], ['#b57bff', '#8a3df0'], ['#6f7dff', '#3a47d8'], ['#ffb04d', '#f5760a'], ['#5fe08c', '#1fae5b'],
   ['#3fd8e0', '#0fa9b8'], ['#ff7ab8', '#e0338a'], ['#ffd84d', '#d9a406'], ['#ff7a8a', '#e0304a'],
 ];
-const OTHER: [string, string] = ['#b4bfce', '#8393a9'];
-/** More sources than this and the smallest ones are grouped as "Other sources" so the list stays readable. */
-const MAX_ROWS = 7;
-
 const R = 70;
 const STROKE = 42;
 const CIRC = 2 * Math.PI * R;
@@ -52,24 +48,18 @@ export class LeadSourceWidget extends DashWidget<LeadsData> {
     const total = rows.reduce((s, d) => s + d.value, 0);
     if (!total) return [];
 
-    let shown = rows;
-    if (rows.length > MAX_ROWS) {
-      const rest = rows.slice(MAX_ROWS - 1);
-      shown = [...rows.slice(0, MAX_ROWS - 1), { label: 'Other sources', value: rest.reduce((s, d) => s + d.value, 0) }];
-    }
-
     let from = 0;
-    return shown.map((d, i) => {
+    return rows.map((d, i) => {
       const share = d.value / total;
       const length = share * CIRC;
-      const [light, color] = d.label === 'Other sources' ? OTHER : COLORS[i % COLORS.length];
+      const [light, color] = COLORS[i % COLORS.length];
       // Middle of the wedge, measured from 12 o'clock (the ring is drawn rotated by -90deg).
       const mid = ((from + length / 2) / CIRC) * 2 * Math.PI - Math.PI / 2;
       const slice: SourceSlice = {
         label: d.label, value: d.value, share, pct: this.percent(share), color, light,
         icon: this.iconFor(d.label),
         // A hairline gap between wedges (none when there is only one), so they read as separate pieces.
-        arc: shown.length > 1 ? Math.max(length - GAP, 0.5) : length,
+        arc: rows.length > 1 ? Math.max(length - GAP, 0.5) : length,
         start: from,
         lx: share >= MIN_LABEL_SHARE ? 100 + R * Math.cos(mid) : null,
         ly: 100 + R * Math.sin(mid),

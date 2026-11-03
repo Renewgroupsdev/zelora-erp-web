@@ -29,7 +29,7 @@ interface ScopeTypeInfo {
 @Component({
   selector: 'app-top-navbar',
   standalone: true,
-  imports: [CommonModule, BranchChat, ModuleActivity],
+  imports: [CommonModule, BranchChat],
   templateUrl: './top-navbar.html',
   styleUrl: './top-navbar.scss',
 })
