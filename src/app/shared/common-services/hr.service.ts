@@ -9,8 +9,10 @@ import { isTelecallerRole } from '../../core/auth/auth.model';
 import {
   Appraisal,
   AttendanceBreak,
+  AttendanceGeofence,
   AttendanceRecord,
   AttendanceStatus,
+  AttendanceTrailPoint,
   BonusRecord,
   BreakType,
   BonusType,
@@ -28,6 +30,7 @@ import {
   ChecklistItem,
   ExitCase,
   FULL_DAY_HOURS,
+  GeofenceViolation,
   InterviewMode,
   JobPortal,
   LEAVE_QUOTA,
@@ -391,8 +394,34 @@ export class HrService {
       remarks: r.remarks ?? undefined, distanceM: r.login_distance_m ?? null,
       checkInPhotoUrl: r.check_in_photo_url ?? null, checkOutPhotoUrl: r.check_out_photo_url ?? null,
       checkOutDistanceM: r.check_out_distance_m ?? null, checkOutReason: r.check_out_reason ?? null,
+      checkInAccuracyM: r.check_in_accuracy_m ?? null, checkOutAccuracyM: r.check_out_accuracy_m ?? null,
+      isMockLocation: !!r.is_mock_location, autoClosed: !!r.auto_closed, autoCloseReason: r.auto_close_reason ?? null,
       breaks: (r.breaks ?? []).map((b: any): AttendanceBreak => ({ type: b.type, start: b.start, end: b.end ?? null })),
     };
+  }
+
+  /** GET /hr/attendance/{id}/geofence: the employee app's location trail and geofence violations of one day. */
+  fetchAttendanceGeofence(recordId: string): Observable<AttendanceGeofence> {
+    return (this.api.GET(`${ApiRoutesConstants.HR_ATTENDANCE}/${recordId}/geofence`) as Observable<any>).pipe(
+      map(res => {
+        const d = res.data ?? {};
+        return {
+          radiusM: Number(d.radius_m) || 0,
+          branch: d.branch ?? null,
+          autoClosed: !!d.auto_closed,
+          autoCloseReason: d.auto_close_reason ?? null,
+          isMockLocation: !!d.is_mock_location,
+          violations: ((d.violations ?? []) as any[]).map((v): GeofenceViolation => ({
+            id: v.id, status: v.status, startedAt: v.started_at, deadlineAt: v.deadline_at, returnedAt: v.returned_at ?? null,
+            autoClosedAt: v.auto_closed_at ?? null, distanceM: v.distance_m ?? null, resolution: v.resolution ?? null,
+          })),
+          points: ((d.points ?? []) as any[]).map((p): AttendanceTrailPoint => ({
+            latitude: Number(p.latitude), longitude: Number(p.longitude), accuracyM: p.accuracy_m ?? null, distanceM: p.distance_m ?? null,
+            inside: p.inside ?? null, isMock: !!p.is_mock, source: p.source, at: p.at,
+          })),
+        };
+      }),
+    );
   }
 
   /** Puts records in the store (same employee + date is replaced). `replaceDate` first drops that day's stale rows. */

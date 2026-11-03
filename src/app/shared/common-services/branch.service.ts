@@ -117,6 +117,7 @@ export class BranchService {
       name: input.name, city: input.city, state: input.state || null, phone: input.phone, email: input.email || null,
       address: input.address || null, status: input.status, opened_on: input.openedOn || null, photo: input.photo || null,
       latitude: input.latitude ?? null, longitude: input.longitude ?? null,
+      geofence_radius_m: input.geofenceRadiusM || null,
       head_name: input.headName, head_phone: input.headPhone || null, head_email: input.headEmail || null,
     };
     const request$: Observable<any> = id
@@ -192,6 +193,7 @@ export function branchFromApi(r: any): BranchRecord {
     status: r.status === 'Inactive' ? 'Inactive' : 'Active', openedOn: r.opened_on ?? '',
     photo: r.photo || undefined,
     latitude: r.latitude ?? null, longitude: r.longitude ?? null,
+    geofenceRadiusM: r.geofence_radius_m ?? null, defaultGeofenceRadiusM: r.default_geofence_radius_m ?? undefined,
     employees: r.employees, customers: r.customers, monthlySales: r.monthly_sales,
   };
 }

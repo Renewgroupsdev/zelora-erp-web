@@ -25,6 +25,9 @@ export interface BranchRecord {
   /** Geo location (decimal degrees), set from the form's map tools. */
   latitude?: number | null;
   longitude?: number | null;
+  /** Employee app attendance radius in metres; null = the company default (defaultGeofenceRadiusM). */
+  geofenceRadiusM?: number | null;
+  defaultGeofenceRadiusM?: number;
   /** Filled for list rows by the API. */
   employees?: number;
   customers?: number;

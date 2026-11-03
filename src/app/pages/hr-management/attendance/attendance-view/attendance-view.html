@@ -88,6 +88,59 @@
           }
         </div>
 
+        @if (r.source === 'Mobile') {
+          <div class="section-title"><i class="bi bi-geo-alt"></i> Location &amp; geofence <span class="hint">· tracked by the employee app while checked in</span></div>
+          @if (r.autoClosed) {
+            <div class="geo-alert red" role="status"><i class="bi bi-slash-circle"></i><span><strong>Closed automatically by the server.</strong> {{ r.autoCloseReason }}</span></div>
+          }
+          @if (r.isMockLocation) {
+            <div class="geo-alert orange" role="status"><i class="bi bi-exclamation-triangle"></i><span>A mock (fake) GPS location was reported on this day. Mock readings never count as inside the work location.</span></div>
+          }
+          @if (geofenceLoading()) {
+            <div class="loader-wrap small"><app-page-loader [inline]="true"></app-page-loader></div>
+          } @else if (geofence(); as g) {
+            @let st = trailStats();
+            <div class="summary-tiles">
+              <div class="tile"><small>Allowed radius</small><strong>{{ g.radiusM }} m</strong></div>
+              <div class="tile"><small>Readings</small><strong>{{ st.readings }}</strong></div>
+              <div class="tile" [class.red]="st.outside > 0"><small>Outside readings</small><strong>{{ st.outside }}</strong></div>
+              <div class="tile"><small>Farthest</small><strong>{{ st.farthest }} m</strong></div>
+              <div class="tile orange"><small>Weak GPS</small><strong>{{ st.weak }}</strong></div>
+              <div class="tile" [class.red]="g.violations.length > 0"><small>Violations</small><strong>{{ g.violations.length }}</strong></div>
+            </div>
+            @if (trailChart(); as c) {
+              <figure class="trail-chart" [attr.aria-label]="'Distance from the branch between ' + displayTime(c.from) + ' and ' + displayTime(c.to)">
+                <svg [attr.viewBox]="'0 0 ' + chartW + ' ' + chartH" preserveAspectRatio="none">
+                  <line class="radius" x1="0" [attr.x2]="chartW" [attr.y1]="c.radiusY" [attr.y2]="c.radiusY"></line>
+                  <path class="dist" [attr.d]="c.line"></path>
+                  @for (p of c.outside; track $index) { <circle class="out" [attr.cx]="p.x" [attr.cy]="p.y" r="3.5"></circle> }
+                </svg>
+                <figcaption><span>{{ displayTime(c.from) }}</span><span class="legend"><i class="sw dist"></i> Distance from branch <i class="sw radius"></i> {{ g.radiusM }} m limit <i class="sw out"></i> Outside</span><span>{{ displayTime(c.to) }}</span></figcaption>
+              </figure>
+            } @else if (!st.readings) {
+              <p class="empty-note">No location readings were received for this day.</p>
+            }
+            @if (g.violations.length) {
+              <div class="items-table-wrap">
+                <table class="items-table">
+                  <thead><tr><th>Left at</th><th>Deadline</th><th>Back at</th><th class="num">Distance</th><th>Outcome</th></tr></thead>
+                  <tbody>
+                    @for (v of g.violations; track v.id) {
+                      <tr [attr.title]="v.resolution ?? ''">
+                        <td>{{ displayTime(v.startedAt) }}</td>
+                        <td>{{ displayTime(v.deadlineAt) }}</td>
+                        <td>{{ v.returnedAt ? displayTime(v.returnedAt) : v.autoClosedAt ? 'Closed ' + displayTime(v.autoClosedAt) : '-' }}</td>
+                        <td class="num">{{ v.distanceM != null ? v.distanceM + ' m' : '-' }}</td>
+                        <td><span class="pill" [ngClass]="violationClass(v)">{{ violationLabel(v) }}</span></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
+        }
+
         <div class="section-title"><i class="bi bi-cup-hot"></i> Breaks</div>
         <div class="items-table-wrap">
           <table class="items-table">
