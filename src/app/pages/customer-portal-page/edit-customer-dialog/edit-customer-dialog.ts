@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, Inject, OnInit, signal } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
@@ -16,7 +16,7 @@ export interface EditCustomerData {
 @Component({
   selector: 'app-edit-customer-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, ImagePicker],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatDialogModule, ImagePicker],
   templateUrl: './edit-customer-dialog.html',
   styleUrl: '../add-customer-form/add-customer-form.scss',
 })
@@ -24,6 +24,8 @@ export class EditCustomerDialog implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   customerCode = '';
+  /** Consultation fee in the customer app: 'default' (the Settings amount), 'free', or 'custom' (own amount). */
+  feeMode: 'default' | 'free' | 'custom' = 'default';
   /** Saved photo, and what the form changed about it. */
   photoUrl: string | null = null;
   private photoPick: ImagePick = { file: null, removed: false };
@@ -60,6 +62,7 @@ export class EditCustomerDialog implements OnInit {
       is_active: [true],
       // Customer app: free consultation for this customer (the app then shows no consultation fee and takes no payment).
       consultation_fee_waived: [false],
+      consultation_fee_amount: [null as number | string | null, [Validators.min(0), Validators.max(100000)]],
     });
   }
 
@@ -70,6 +73,10 @@ export class EditCustomerDialog implements OnInit {
         this.customerCode = c.customer_code ?? '';
         this.photoUrl = c.photo_url ?? null;
         this.form.patchValue(Object.fromEntries(Object.entries(c).map(([k, v]) => [k, v ?? ''])));
+        const own = c.consultation_fee_amount;
+        const hasOwn = own !== null && own !== undefined && own !== '';
+        this.feeMode = c.consultation_fee_waived || (hasOwn && Number(own) === 0) ? 'free' : hasOwn ? 'custom' : 'default';
+        this.form.patchValue({ consultation_fee_waived: this.feeMode === 'free', consultation_fee_amount: this.feeMode === 'custom' ? Number(own) : null });
         this.loading.set(false);
       },
       error: (err: any) => {
@@ -87,6 +94,11 @@ export class EditCustomerDialog implements OnInit {
   /** The API's message for a field, else the form's own wording. */
   error(name: string, fallback: string): string {
     return this.serverErrors()[name] ?? fallback;
+  }
+
+  onFeeMode(mode: 'default' | 'free' | 'custom'): void {
+    this.feeMode = mode;
+    this.form.patchValue({ consultation_fee_waived: mode === 'free', consultation_fee_amount: mode === 'custom' ? this.form.value.consultation_fee_amount : null });
   }
 
   onPhoto(pick: ImagePick): void {

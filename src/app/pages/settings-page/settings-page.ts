@@ -49,6 +49,13 @@ export class SettingsPage implements OnInit {
   consultationFeeEnabled = true;
   consultationFeeAmount: number | null = null;
   savingConsultationFee = false;
+  // Customer app booking: time between slots, and the opening hours used by branches that have no Working Hours of their own
+  readonly slotOptions = [15, 20, 30, 45, 60, 90];
+  readonly weekDays = [{ value: 1, label: 'Mon' }, { value: 2, label: 'Tue' }, { value: 3, label: 'Wed' }, { value: 4, label: 'Thu' }, { value: 5, label: 'Fri' }, { value: 6, label: 'Sat' }, { value: 0, label: 'Sun' }];
+  slotMinutes = 45;
+  bookingStart = '09:00';
+  bookingEnd = '20:00';
+  bookingOpenDays: number[] = [1, 2, 3, 4, 5, 6];
 
   // Branch / franchise QR code
   loadingBranches = false;
@@ -77,6 +84,10 @@ export class SettingsPage implements OnInit {
         this.leadFormUrl = settings?.leadform_url ?? '';
         this.appBaseUrl = settings?.app_base_url ?? '';
         this.consultationFeeEnabled = (settings?.consultation_fee_enabled ?? '1') !== '0';
+        this.slotMinutes = Number(settings?.appointment_slot_minutes) || 45;
+        this.bookingStart = settings?.booking_default_start || '09:00';
+        this.bookingEnd = settings?.booking_default_end || '20:00';
+        this.bookingOpenDays = (settings?.booking_default_open_days ?? '1,2,3,4,5,6').split(',').filter((x: string) => x !== '').map(Number);
         this.consultationFeeAmount = settings?.consultation_fee_amount != null && settings.consultation_fee_amount !== '' ? Number(settings.consultation_fee_amount) : null;
       },
       error: (err: any) => {
@@ -149,20 +160,37 @@ export class SettingsPage implements OnInit {
     });
   }
 
+  toggleOpenDay(day: number): void {
+    this.bookingOpenDays = this.bookingOpenDays.includes(day) ? this.bookingOpenDays.filter((d) => d !== day) : [...this.bookingOpenDays, day];
+  }
+
   saveConsultationFee(): void {
     const amount = Number(this.consultationFeeAmount ?? 0);
     if (!Number.isFinite(amount) || amount < 0) {
       this.toast.error('Enter a valid consultation fee.');
       return;
     }
+    if (!this.bookingStart || !this.bookingEnd || this.bookingEnd <= this.bookingStart) {
+      this.toast.error('The closing time must be after the opening time.');
+      return;
+    }
     this.savingConsultationFee = true;
-    const payload = { settings: { consultation_fee_enabled: this.consultationFeeEnabled ? '1' : '0', consultation_fee_amount: String(amount) } };
+    const payload = {
+      settings: {
+        consultation_fee_enabled: this.consultationFeeEnabled ? '1' : '0',
+        consultation_fee_amount: String(amount),
+        appointment_slot_minutes: String(this.slotMinutes),
+        booking_default_start: this.bookingStart,
+        booking_default_end: this.bookingEnd,
+        booking_default_open_days: this.bookingOpenDays.join(','),
+      },
+    };
 
     this.apiDataService.PUT(ApiRoutesConstants.SETTINGS_UPDATE, payload).subscribe({
       next: (response: any) => {
         this.savingConsultationFee = false;
         if (response?.success !== false) {
-          this.toast.success('Consultation fee saved');
+          this.toast.success('Booking settings saved');
         } else {
           this.toast.error(response?.message || 'Failed to save the consultation fee.');
         }

@@ -125,7 +125,7 @@
     <section class="settings-card">
       <div class="card-heading">
         <div class="heading-icon"><i class="bi bi-currency-rupee"></i></div>
-        <div><h2>Customer app - consultation fee</h2><p>Customers pay only this fee when they book in the app (no treatment price is shown). Turn it off to make booking free for everybody, or mark single customers as free on their Edit Customer form.</p></div>
+        <div><h2>Customer app - booking &amp; consultation fee</h2><p>Customers pay only the consultation fee when they book in the app (no treatment price is shown). Turn it off to make booking free for everybody, or set a different fee / free for single customers on their Edit Customer form.</p></div>
       </div>
       <div class="store-url-row">
         <label class="store-url-label"><i class="bi bi-toggle-on"></i> Charge the consultation fee</label>
@@ -140,6 +140,27 @@
         <label class="store-url-label"><i class="bi bi-cash-coin"></i> Consultation fee (INR)</label>
         <div class="inline-input-row">
           <input type="number" min="0" step="1" class="playstore-input" placeholder="e.g. 500" [(ngModel)]="consultationFeeAmount" name="consultationFeeAmount">
+        </div>
+      </div>
+      <div class="store-url-row">
+        <label class="store-url-label"><i class="bi bi-clock-history"></i> Time between slots</label>
+        <div class="inline-input-row">
+          <select class="playstore-input" [(ngModel)]="slotMinutes" name="slotMinutes">
+            <option *ngFor="let m of slotOptions" [ngValue]="m">{{ m }} minutes</option>
+          </select>
+        </div>
+      </div>
+      <div class="store-url-row">
+        <label class="store-url-label"><i class="bi bi-door-open"></i> Default opening hours (branches without their own Working Hours)</label>
+        <div class="inline-input-row">
+          <input type="time" class="playstore-input" [(ngModel)]="bookingStart" name="bookingStart">
+          <input type="time" class="playstore-input" [(ngModel)]="bookingEnd" name="bookingEnd">
+        </div>
+      </div>
+      <div class="store-url-row">
+        <label class="store-url-label"><i class="bi bi-calendar-week"></i> Open days</label>
+        <div class="inline-input-row" style="flex-wrap:wrap;gap:10px">
+          <label *ngFor="let d of weekDays" style="display:inline-flex;align-items:center;gap:4px"><input type="checkbox" [checked]="bookingOpenDays.includes(d.value)" (change)="toggleOpenDay(d.value)"> {{ d.label }}</label>
           <button type="button" class="btn-primary" [disabled]="savingConsultationFee" (click)="saveConsultationFee()">
             {{ savingConsultationFee ? 'Saving...' : 'Save' }}
           </button>

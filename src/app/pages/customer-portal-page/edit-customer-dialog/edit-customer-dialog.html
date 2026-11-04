@@ -118,11 +118,15 @@
           <div class="form-field full-width">
             <label for="ec-free">Consultation fee (customer app)</label>
             <div class="input-wrap select-wrap"><i class="bi bi-currency-rupee"></i>
-              <select id="ec-free" formControlName="consultation_fee_waived">
-                <option [ngValue]="false">Charge the consultation fee</option>
-                <option [ngValue]="true">Free - hide the fee for this customer</option>
+              <select id="ec-free" [ngModel]="feeMode" [ngModelOptions]="{ standalone: true }" (ngModelChange)="onFeeMode($event)">
+                <option value="default">Default fee (set in Settings)</option>
+                <option value="custom">Own amount for this customer</option>
+                <option value="free">Free - hide the fee for this customer</option>
               </select>
               <i class="bi bi-chevron-down select-arrow"></i></div>
+            @if (feeMode === 'custom') {
+              <div class="input-wrap" style="margin-top:8px"><i class="bi bi-cash-coin"></i><input type="number" min="1" max="100000" step="1" formControlName="consultation_fee_amount" placeholder="Fee in INR" /></div>
+            }
             <small class="hint-text">Free customers book without paying and never see a consultation fee in the app.</small>
           </div>
         </div>
