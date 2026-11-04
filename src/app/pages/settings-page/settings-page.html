@@ -122,6 +122,31 @@
       <a class="btn-secondary" routerLink="/app/settings/meta-lead-ads"><i class="bi bi-facebook"></i> Meta Lead Ads</a>
     </section>
 
+    <section class="settings-card">
+      <div class="card-heading">
+        <div class="heading-icon"><i class="bi bi-currency-rupee"></i></div>
+        <div><h2>Customer app - consultation fee</h2><p>Customers pay only this fee when they book in the app (no treatment price is shown). Turn it off to make booking free for everybody, or mark single customers as free on their Edit Customer form.</p></div>
+      </div>
+      <div class="store-url-row">
+        <label class="store-url-label"><i class="bi bi-toggle-on"></i> Charge the consultation fee</label>
+        <div class="inline-input-row">
+          <select class="playstore-input" [(ngModel)]="consultationFeeEnabled" name="consultationFeeEnabled">
+            <option [ngValue]="true">On - customers pay when booking</option>
+            <option [ngValue]="false">Off - booking is free for everybody</option>
+          </select>
+        </div>
+      </div>
+      <div class="store-url-row">
+        <label class="store-url-label"><i class="bi bi-cash-coin"></i> Consultation fee (INR)</label>
+        <div class="inline-input-row">
+          <input type="number" min="0" step="1" class="playstore-input" placeholder="e.g. 500" [(ngModel)]="consultationFeeAmount" name="consultationFeeAmount">
+          <button type="button" class="btn-primary" [disabled]="savingConsultationFee" (click)="saveConsultationFee()">
+            {{ savingConsultationFee ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
+      </div>
+    </section>
+
     <section class="settings-card qr-card">
 
       <div class="card-heading">

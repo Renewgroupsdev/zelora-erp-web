@@ -58,6 +58,8 @@ export class EditCustomerDialog implements OnInit {
       pincode: ['', Validators.pattern(/^[1-9][0-9]{5}$/)],
       occupation: ['', Validators.maxLength(100)],
       is_active: [true],
+      // Customer app: free consultation for this customer (the app then shows no consultation fee and takes no payment).
+      consultation_fee_waived: [false],
     });
   }
 

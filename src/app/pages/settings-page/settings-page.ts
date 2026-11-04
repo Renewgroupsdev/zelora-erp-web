@@ -45,6 +45,11 @@ export class SettingsPage implements OnInit {
   appBaseUrl = '';
   savingAppBaseUrl = false;
 
+  // Customer app consultation fee (app_settings consultation_fee_enabled / consultation_fee_amount)
+  consultationFeeEnabled = true;
+  consultationFeeAmount: number | null = null;
+  savingConsultationFee = false;
+
   // Branch / franchise QR code
   loadingBranches = false;
   selectedBranchKey: string | null = null;
@@ -71,6 +76,8 @@ export class SettingsPage implements OnInit {
         this.appstoreUrl = settings?.appstore_url ?? '';
         this.leadFormUrl = settings?.leadform_url ?? '';
         this.appBaseUrl = settings?.app_base_url ?? '';
+        this.consultationFeeEnabled = (settings?.consultation_fee_enabled ?? '1') !== '0';
+        this.consultationFeeAmount = settings?.consultation_fee_amount != null && settings.consultation_fee_amount !== '' ? Number(settings.consultation_fee_amount) : null;
       },
       error: (err: any) => {
         console.error('Failed to load settings:', err);
@@ -138,6 +145,31 @@ export class SettingsPage implements OnInit {
         this.savingStoreUrls = false;
         this.toast.error(err?.error?.message || 'Failed to save app store links.');
         console.error('Failed to save app store links:', err);
+      },
+    });
+  }
+
+  saveConsultationFee(): void {
+    const amount = Number(this.consultationFeeAmount ?? 0);
+    if (!Number.isFinite(amount) || amount < 0) {
+      this.toast.error('Enter a valid consultation fee.');
+      return;
+    }
+    this.savingConsultationFee = true;
+    const payload = { settings: { consultation_fee_enabled: this.consultationFeeEnabled ? '1' : '0', consultation_fee_amount: String(amount) } };
+
+    this.apiDataService.PUT(ApiRoutesConstants.SETTINGS_UPDATE, payload).subscribe({
+      next: (response: any) => {
+        this.savingConsultationFee = false;
+        if (response?.success !== false) {
+          this.toast.success('Consultation fee saved');
+        } else {
+          this.toast.error(response?.message || 'Failed to save the consultation fee.');
+        }
+      },
+      error: (err: any) => {
+        this.savingConsultationFee = false;
+        this.toast.error(err?.error?.message || 'Failed to save the consultation fee.');
       },
     });
   }
