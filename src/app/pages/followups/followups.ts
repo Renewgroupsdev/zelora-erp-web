@@ -31,7 +31,6 @@ import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { AuthService } from '../../core/auth/auth.service';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
-import { openLeadAudit } from '../../shared/components/lead-dialogs/lead-audit-dialog';
 import { openLeadView } from '../../shared/components/lead-dialogs/lead-view-dialog';
 
 /** While the WebSocket is down, the list re-reads this often so call locks still show. */
@@ -41,7 +40,6 @@ const QUICK_ACTIONS: QuickAction[] = [
   { key: 'call', icon: 'bi-telephone-outbound', label: 'Call Lead', variant: 'primary', permission: 'call-follow-up-lead' },
   { key: 'view', icon: 'bi-eye', label: 'View Lead', variant: 'default', keepOnLock: true },
   { key: 'appointment', icon: 'bi-calendar2-check', label: 'Book Appointment', variant: 'default', permission: 'book-follow-up-appointment' },
-  { key: 'audit', icon: 'bi-clipboard-data', label: 'Audit Log', variant: 'default', permission: 'view-lead-audit', keepOnLock: true },
 ];
 
 @Component({
@@ -370,7 +368,6 @@ export class Followups implements OnInit, OnDestroy {
 
   onQuickAction({ row, action }: { row: TableRow; action: string }): void {
     if (action === 'view') this.viewLead(row);
-    else if (action === 'audit') this.viewAudit(row);
     else if (row['locked']) this.toast.warning(String(row['lockedLabel'] ?? 'Another telecaller is on this lead.'));
     else if (action === 'appointment') this.openFollowUpProfile(row);
     else if (action === 'call') this.callLead(row);
@@ -420,10 +417,6 @@ export class Followups implements OnInit, OnDestroy {
     });
   }
 
-  viewAudit(row: TableRow): void {
-    const lead = row['lead'] as LeadCell;
-    openLeadAudit(this.dialog, { id: Number(row['id']), name: lead.name });
-  }
 
   /** Opens the lead's follow-up card. The telecaller and branch come from the lead itself (shown, not editable),
    *  and the next call-back / appointment is saved to the database by the dialog. */

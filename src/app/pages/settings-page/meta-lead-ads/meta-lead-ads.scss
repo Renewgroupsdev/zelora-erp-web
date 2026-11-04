@@ -1,42 +1,115 @@
 @use './meta-shared';
 
-.setup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+// ---- connection status ----
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
 
-.kv { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.kv > span:first-child { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; }
+.setup-grid > .kv {
+  padding: 14px 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: var(--app-surface-soft);
+  gap: 8px;
+}
+
+.kv { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.kv > span:first-child {
+  font-size: 10.5px; font-weight: 800; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .8px;
+}
 .kv .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-.perm-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.url-box {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--border-soft-strong);
+  border-radius: 11px;
+  background: var(--app-surface-solid);
 
-.page-list { display: flex; flex-direction: column; gap: 10px; }
+  .mono { flex: 1 1 auto; min-width: 0; word-break: break-all; color: var(--text-dark); line-height: 1.4; }
+}
 
-.page-card { display: flex; flex-direction: column; gap: 10px; }
-.page-card.is-off { opacity: .85; }
+.copy-btn {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px;
+  padding: 7px 12px; border: 0; border-radius: 8px; cursor: pointer;
+  background: var(--primary-soft, rgba(6, 95, 70, .1)); color: var(--primary-dark);
+  font-size: 11.5px; font-weight: 700; transition: background .15s ease, color .15s ease;
 
-.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.page-name { margin: 0; font-family: var(--font-family-display); font-size: 15px; font-weight: 700; color: var(--text-dark); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.page-name .fb { color: #1877f2; }
+  &:hover { background: var(--primary); color: #fff; }
+}
 
-.import-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text-dark); }
+.perm-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.queue-chip { text-transform: uppercase; letter-spacing: .6px; }
 
-.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 14px; }
+// ---- connected pages ----
+.page-list { display: flex; flex-direction: column; gap: 16px; }
 
-.counts { display: flex; flex-wrap: wrap; gap: 6px; }
+.page-card {
+  display: flex; flex-direction: column; gap: 18px;
+  border-left: 4px solid var(--primary);
+}
+.page-card.is-off { opacity: .8; border-left-color: var(--border-soft-strong); }
 
-.mapping { padding-top: 10px; border-top: 1px dashed var(--border-soft); }
-.mapping-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.page-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  padding-bottom: 14px; border-bottom: 1px solid var(--border-soft);
+}
+.page-name {
+  margin: 0 0 6px; font-family: var(--font-family-display); font-size: 18px; font-weight: 800;
+  color: var(--text-dark); display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.page-name .fb {
+  display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 10px;
+  background: #1877f2; color: #fff; font-size: 17px;
+}
 
-.checks { display: flex; flex-direction: column; gap: 6px; }
-.check { display: flex; gap: 8px; font-size: 12px; align-items: flex-start; }
+.import-toggle {
+  display: inline-flex; align-items: center; gap: 10px; padding: 8px 14px;
+  border: 1px solid var(--border-soft); border-radius: 999px; background: var(--app-surface-soft);
+  font-size: 12px; font-weight: 700; color: var(--text-dark);
+}
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.facts > .kv {
+  padding: 12px 14px; border: 1px solid var(--border-soft); border-radius: 12px;
+  background: var(--app-surface-soft); gap: 6px;
+}
+.facts > .kv > span:not(:first-child):not(.muted) { font-size: 14px; font-weight: 600; color: var(--text-dark); line-height: 1.35; }
+
+.counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.counts .chip { justify-content: center; padding: 10px 12px; border-radius: 12px; font-size: 12px; }
+
+.mapping { padding-top: 16px; border-top: 1px dashed var(--border-soft-strong); }
+.mapping-actions {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  padding-top: 16px; border-top: 1px solid var(--border-soft);
+}
+.mapping .mapping-actions { border-top: 0; padding-top: 0; margin-top: 14px; }
+
+// ---- test result ----
+.checks { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.check {
+  display: flex; gap: 10px; font-size: 12.5px; align-items: flex-start;
+  padding: 8px 12px; border-radius: 10px; background: rgba(255, 255, 255, .6);
+}
 .check i.ok { color: #067647; }
 .check i.bad { color: #d92d20; }
 .check i.skip { color: var(--text-muted); }
 
-.pick-row { display: grid; grid-template-columns: minmax(180px, 1.2fr) repeat(2, minmax(150px, 1fr)) auto; gap: 8px; align-items: end; padding: 9px 0; border-top: 1px solid var(--border-soft); }
+// ---- page picker ----
+.pick-row {
+  display: grid; grid-template-columns: minmax(180px, 1.2fr) repeat(2, minmax(150px, 1fr)) auto;
+  gap: 12px; align-items: end; padding: 14px 0; border-top: 1px solid var(--border-soft);
+}
 .pick-row:first-of-type { border-top: 0; }
-.pick-name strong { display: block; font-size: 13px; color: var(--text-dark); }
+.pick-name strong { display: block; font-size: 14px; color: var(--text-dark); margin-bottom: 2px; }
 
 @media (max-width: 860px) {
   .pick-row { grid-template-columns: 1fr 1fr; }
   .pick-name { grid-column: 1 / -1; }
+  .setup-grid { grid-template-columns: 1fr; }
 }

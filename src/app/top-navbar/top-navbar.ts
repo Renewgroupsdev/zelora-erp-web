@@ -15,6 +15,7 @@ import { BranchOptionsService } from '../shared/common-services/branch-options.s
 import { BranchChat } from '../shared/components/branch-chat/branch-chat';
 import { DiscountRequestsService } from '../shared/common-services/discount-requests.service';
 import { AbsentTelecallersService } from '../shared/common-services/absent-telecallers.service';
+import { PurchaseApprovalAlertsService } from '../shared/common-services/purchase-approval-alerts.service';
 import { openAssignCaller } from '../shared/components/lead-dialogs/assign-caller-dialog';
 import { DiscountReviewDialog } from '../shared/components/discount-review-dialog/discount-review-dialog';
 
@@ -158,11 +159,14 @@ export class TopNavbar {
     private dialog: MatDialog,
     private discounts: DiscountRequestsService,
     private absentTelecallers: AbsentTelecallersService,
+    private purchaseAlerts: PurchaseApprovalAlertsService,
   ) {
     // Branch managers / approvers: discount requests of their branch show up here as notifications.
     this.discounts.start();
     // Branch managers: telecallers absent today with leads to follow up (click to reassign).
     this.absentTelecallers.start();
+    // Head office / admin: purchase requests sent by the branches wait for approval here.
+    this.purchaseAlerts.start();
   }
 
   onNotificationClick(notification: AppNotification): void {

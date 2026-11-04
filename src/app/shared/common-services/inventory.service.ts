@@ -109,6 +109,11 @@ export class InventoryService {
     return this.api.POST(`${ApiRoutesConstants.PRODUCT_ADD}/${id}`, form);
   }
 
+  /** Every price a product has had (opening, edits, accepted vendor quotes). */
+  productPriceHistory(productId: string): Observable<any> {
+    return this.api.GET(`${ApiRoutesConstants.PRODUCT_ADD}/${productId}/price-history`);
+  }
+
   /** Server-side pricing preview (selling price, GST amount, total) - nothing is saved. */
   calculatePricing(request: PricingPreviewRequest): Observable<any> {
     return this.api.POST(`${ApiRoutesConstants.PRODUCT_ADD}/calculate-pricing`, request);

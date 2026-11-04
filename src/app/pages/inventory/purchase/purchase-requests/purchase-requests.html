@@ -12,7 +12,7 @@
 
   <app-purchase-tabs></app-purchase-tabs>
 
-  @if (purchase.pendingCount() && purchase.canApprove()) {
+  @if (purchase.pendingCount() && purchase.canApproveRequests()) {
     <div class="alert-banner info">
       <i class="bi bi-bell-fill"></i>
       <div>

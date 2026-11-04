@@ -6,7 +6,7 @@
       <div class="title-icon"><i class="bi bi-clipboard-check-fill"></i></div>
       <div class="title-content">
         <h2>{{ r.requestNo }} <span class="pill" [ngClass]="statusClass()">{{ r.status }}</span></h2>
-        <p>{{ canReview() ? 'Check the request and confirm the purchase order' : 'Purchase request details' }}</p>
+        <p>{{ canReview() ? 'Compare the vendor quotes and approve with the least one' : 'Purchase request details' }}</p>
       </div>
     </div>
     <app-record-history type="PurchaseRequest" [recordId]="r.id" [title]="r.requestNo" />
@@ -16,11 +16,13 @@
   <div class="modal-body-custom">
     <div class="info-grid">
       <div><small>Branch</small><strong>{{ r.branch }}</strong></div>
-      <div><small>Vendor</small><strong>{{ r.vendorName }}</strong></div>
+      @if (r.vendorName && r.vendorName !== '-') { <div><small>Vendor</small><strong>{{ r.vendorName }}</strong></div> }
       <div><small>Requested By</small><strong>{{ r.requestedBy }}</strong></div>
       <div><small>Requested On</small><strong>{{ displayDate(r.requestedAt) }}</strong></div>
-      <div><small>Required By</small><strong>{{ displayDate(r.requiredBy) }}</strong></div>
-      <div><small>Priority</small><strong><span class="pill" [class.red]="r.priority === 'Urgent'" [class.blue]="r.priority !== 'Urgent'">{{ r.priority }}</span></strong></div>
+      <div><small>PO Date</small><strong>{{ displayDate(r.requiredBy) }}</strong></div>
+      @if (r.priority === 'Urgent' || r.priority === 'Low') {
+        <div><small>Priority</small><strong><span class="pill" [class.red]="r.priority === 'Urgent'" [class.blue]="r.priority !== 'Urgent'">{{ r.priority }}</span></strong></div>
+      }
     </div>
 
     @if (r.remarks) {
@@ -46,7 +48,7 @@
         <tbody>
           @for (item of r.items; track item.productId) {
             <tr>
-              <td><strong>{{ item.productName }}</strong><div class="muted">{{ item.productCode }}</div></td>
+              <td><strong>{{ item.productName }}</strong><div class="muted">{{ item.productCode }}</div>              </td>
               <td>{{ item.hsnCode || '-' }}</td>
               <td class="num"><span class="pill" [class.red]="centralQty(item.productId) < 10" [class.green]="centralQty(item.productId) >= 10">{{ centralQty(item.productId) }}</span></td>
               <td class="num"><span class="pill" [class.red]="branchQty(item.productId) < 10" [class.green]="branchQty(item.productId) >= 10">{{ branchQty(item.productId) }}</span></td>
@@ -66,8 +68,117 @@
       <div class="grand"><span>Total</span><span>₹{{ totals().grandTotal | number:'1.2-2' }}</span></div>
     </div>
 
+    @if (r.status === 'Pending' || quotes().length) {
+      <div class="section-title">
+        <i class="bi bi-receipt-cutoff"></i> Vendor proforma quotes
+      </div>
+
+      @if (r.status === 'Pending' && canReview()) {
+        <div class="pl-card">
+          <div class="pl-head">
+            <div class="form-field" style="margin: 0; flex: 1">
+              <label for="vq-vendor">Choose the vendor to order from</label>
+              <div class="input-wrap"><i class="bi bi-truck"></i>
+                <select id="vq-vendor" [ngModel]="quote.vendorId" (ngModelChange)="onQuoteVendor($event)">
+                  <option [ngValue]="null">Select vendor</option>
+                  @for (v of vendorOptions(); track v.vendorId) { <option [ngValue]="v.vendorId">{{ v.name }} - est. ₹{{ v.estimate | number:'1.2-2' }}{{ v.lowest ? ' (lowest)' : '' }}</option> }
+                </select><i class="bi bi-chevron-down select-arrow"></i>
+              </div>
+            </div>
+          </div>
+
+          @if (quote.vendorId) {
+            <div class="pl-table">
+              <div class="pl-row pl-hd"><span>Product</span><span class="num">Qty</span><span class="num">Unit price (₹)</span><span class="num">GST</span><span class="num">Amount</span></div>
+              @for (item of r.items; track item.productId) {
+                <div class="pl-row">
+                  <span class="pl-prod"><strong>{{ item.productName }}</strong><small>{{ item.productCode }}</small></span>
+                  <span class="num">{{ item.requestedQty }}</span>
+                  <span class="num pl-price">
+                    <input class="cell-input" type="number" min="0" step="0.01" [(ngModel)]="quote.prices[item.productId]" />
+                    @if (price(item.productId) !== item.unitPrice) {
+                      <small [class.up]="price(item.productId) > item.unitPrice" [class.down]="price(item.productId) < item.unitPrice">
+                        {{ price(item.productId) > item.unitPrice ? '▲' : '▼' }} {{ (price(item.productId) - item.unitPrice) | number:'1.2-2' }} vs ₹{{ item.unitPrice | number:'1.2-2' }}
+                      </small>
+                    }
+                  </span>
+                  <span class="num">{{ item.gstPercent }}%</span>
+                  <span class="num"><strong>₹{{ lineAmount(item) | number:'1.2-2' }}</strong></span>
+                </div>
+              }
+              <div class="pl-row pl-total"><span>Total for this vendor</span><span></span><span></span><span></span><span class="num"><strong>₹{{ priceTotal() | number:'1.2-2' }}</strong></span></div>
+            </div>
+
+            <details class="pl-proforma" open>
+              <summary><i class="bi bi-paperclip"></i> Attach the vendor's proforma quote <small>(required to approve - saved with this request)</small></summary>
+              <div class="form-grid">
+                <div class="form-field"><label for="vq-no">Proforma / quote no <span>*</span></label><div class="input-wrap"><i class="bi bi-hash"></i><input id="vq-no" type="text" maxlength="60" [(ngModel)]="quote.quoteNo" /></div></div>
+                <div class="form-field"><label for="vq-date">Quote date</label><div class="input-wrap"><i class="bi bi-calendar-event"></i><input id="vq-date" type="date" [max]="today" [(ngModel)]="quote.quoteDate" /></div></div>
+                <div class="form-field"><label for="vq-valid">Valid till</label><div class="input-wrap"><i class="bi bi-calendar-check"></i><input id="vq-valid" type="date" [min]="quote.quoteDate" [(ngModel)]="quote.validTill" /></div></div>
+                <div class="form-field">
+                  <label for="vq-file">Proforma file <span>*</span></label>
+                  <label class="file-pick" for="vq-file"><i class="bi bi-paperclip"></i> {{ quoteFileName() ? 'Change file' : 'Choose PDF / image (max 4 MB)' }}</label>
+                  <input id="vq-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="onQuoteFile($event)" hidden />
+                  @if (quoteFileName()) {
+                    <div class="file-rename"><i class="bi bi-pencil-square"></i><input type="text" maxlength="100" [(ngModel)]="quoteFileBase" aria-label="File name" placeholder="File name" /><span>{{ quoteFileExt }}</span></div>
+                  }
+                </div>
+              </div>
+              @if (quoteError()) { <small class="error-text">{{ quoteError() }}</small> }
+              <div class="quote-form-actions"><button type="button" class="save-btn" [disabled]="quoteSaving()" (click)="saveQuote()"><i class="bi bi-send-check"></i> {{ quoteSaving() ? 'Saving...' : 'Save vendor quote' }}</button></div>
+            </details>
+          } @else {
+            <div class="pl-hint"><i class="bi bi-arrow-up-circle"></i> Choose a vendor to load its price for every product, then save its proforma quote to approve with it.</div>
+          }
+        </div>
+      }
+
+      <div class="quote-list">
+        @for (q of quotes(); track q.id) {
+          <div class="qcard" [class.sel]="selectedQuoteId() === q.id" [class.dis]="!q.complete || q.expired">
+            @if (canReview()) {
+              <input type="radio" name="vendorQuote" [checked]="selectedQuoteId() === q.id" [disabled]="!q.complete || q.expired" (change)="pickQuote(q.id)" [attr.aria-label]="'Approve with ' + q.vendorName" />
+            }
+            <div class="qmain">
+              <div class="qtop">
+                <b>{{ q.vendorName }}</b>
+                @if (q.lowest) { <span class="pill green">Lowest</span> }
+                @if (q.status === 'Selected') { <span class="pill blue">Selected</span> }
+                @if (q.status === 'Not selected') { <span class="pill">Not selected</span> }
+                @if (q.expired) { <span class="pill red">Expired</span> }
+                @if (!q.complete) { <span class="pill orange">Incomplete</span> }
+              </div>
+              <small>{{ q.quoteNo }} · {{ displayDate(q.quoteDate) }}@if (q.validTill) { · valid till {{ displayDate(q.validTill) }} }@if (q.vendorEmail) { · {{ q.vendorEmail }} }</small>
+              <details class="qdetails"><summary>Price per product</summary>
+                @for (i of q.items; track i.productId) { <div class="qline"><span>{{ i.productName }} × {{ i.qty }}</span><span>₹{{ i.quotedPrice | number:'1.2-2' }} + {{ i.gstPercent }}% = ₹{{ i.amount | number:'1.2-2' }}</span></div> }
+              </details>
+            </div>
+            <div class="qtotal">₹{{ q.total | number:'1.2-2' }}</div>
+            <div class="qact">
+              @if (q.hasFile) { <button type="button" (click)="viewQuote(q)" title="View the vendor's proforma"><i class="bi bi-file-earmark-text"></i></button> }
+              @if (canManageQuotes() && r.status === 'Pending') { <button type="button" class="no" (click)="removeQuote(q)" title="Remove this quote"><i class="bi bi-trash3"></i></button> }
+            </div>
+          </div>
+        } @empty {
+          <div class="quote-empty"><i class="bi bi-info-circle"></i> No vendor quotes yet. Add at least one proforma quote, then approve with the vendor you choose.</div>
+        }
+      </div>
+    }
+
     @if (canReview()) {
-      <div class="section-title"><i class="bi bi-person-check"></i> Branch Head Decision</div>
+      <div class="section-title"><i class="bi bi-person-check"></i> Head Office Decision</div>
+      @if (selectedQuote(); as sq) {
+        <div class="chosen-vendor" [class.warn]="!sq.complete || sq.expired">
+          <i class="bi bi-truck"></i>
+          <div><small>Approve with</small><strong>{{ sq.vendorName }} · ₹{{ sq.total | number:'1.2-2' }}</strong>
+            <small>The purchase order and its invoice are sent to {{ sq.vendorEmail || 'the vendor (no e-mail on file)' }}{{ sq.vendorPhone ? ' and WhatsApp ' + sq.vendorPhone : '' }}.</small></div>
+          @if (sq.lowest) { <span class="pill green">Lowest quote</span> }
+        </div>
+      } @else if (chosenVendor(); as cv) {
+        <div class="chosen-vendor warn"><i class="bi bi-info-circle"></i><div><strong>{{ cv.name }} · ₹{{ priceTotal() | number:'1.2-2' }}</strong><small>Save this vendor's proforma quote above to enable approval.</small></div></div>
+      } @else {
+        <div class="chosen-vendor warn"><i class="bi bi-info-circle"></i><div><strong>Choose a vendor quote</strong><small>Pick a saved quote (the least one is pre-selected) to approve and send the PO invoice to that vendor.</small></div></div>
+      }
       <div class="form-grid">
         <div class="form-field">
           <label for="rv-expected">Expected Delivery</label>
@@ -93,7 +204,7 @@
         <div class="full-width"><small>Remarks</small><strong>{{ r.reviewRemarks || '-' }}</strong></div>
       </div>
     } @else if (r.status === 'Pending') {
-      <div class="section-title" style="color: var(--status-orange-text)"><i class="bi bi-hourglass-split"></i> Waiting for branch head approval</div>
+      <div class="section-title" style="color: var(--status-orange-text)"><i class="bi bi-hourglass-split"></i> Waiting for head office approval</div>
     }
   </div>
 
@@ -101,7 +212,7 @@
     <button type="button" class="cancel-btn" (click)="close()">Close</button>
     @if (canReview()) {
       <button *appCan="'reject-purchase-request'; let action" type="button" class="danger-btn" [disabled]="saving()" (click)="reject()"><i [class]="'bi ' + (action.logo || 'bi-x-circle')"></i> {{ action.action_name || 'Reject' }}</button>
-      <button *appCan="'approve-purchase-request'; let action" type="button" class="save-btn" [disabled]="saving()" (click)="approve()"><i [class]="'bi ' + (action.logo || 'bi-check2-circle')"></i> {{ action.action_name || 'Approve &amp; Generate PO' }}</button>
+      <button *appCan="'approve-purchase-request'; let action" type="button" class="save-btn" [disabled]="saving() || !canApproveNow()" [title]="canApproveNow() ? 'Raise the purchase order for the chosen vendor' : 'Choose a complete, valid vendor quote first'" (click)="approve()"><i [class]="'bi ' + (action.logo || 'bi-check2-circle')"></i> {{ selectedQuote() ? 'Approve &amp; send PO to ' + selectedQuote()!.vendorName : (action.action_name || 'Approve &amp; Generate PO') }}</button>
     }
   </div>
 </div>

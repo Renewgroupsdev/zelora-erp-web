@@ -16,6 +16,7 @@ import {
 import { InventoryService, ProductRecord } from '../../../shared/common-services/inventory.service';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AddProductForm } from './add-product-form/add-product-form';
+import { ProductView } from './product-view/product-view';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
@@ -173,6 +174,23 @@ export class ProductManagement implements OnInit {
   onEditProduct(row: TableRow): void {
     const product = this.records.find(p => p.id === row['id']);
     if (product) this.openAddPopup(product);
+  }
+
+  onViewProduct(row: TableRow): void {
+    const product = this.records.find(p => p.id === row['id']);
+    if (!product) return;
+
+    this.dialog.open(ProductView, {
+      width: '860px',
+      maxWidth: 'calc(100vw - 24px)',
+      maxHeight: '92vh',
+      autoFocus: false,
+      restoreFocus: true,
+      panelClass: 'product-view-dialog',
+      data: { product },
+    }).afterClosed().subscribe(action => {
+      if (action === 'edit') this.openAddPopup(product);
+    });
   }
 
   async onDeleteProduct(row: TableRow): Promise<void> {

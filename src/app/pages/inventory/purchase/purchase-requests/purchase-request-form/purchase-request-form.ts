@@ -5,7 +5,7 @@ import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { BranchOptionsService } from '../../../../../shared/common-services/branch-options.service';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
-import { CENTRAL_STORE_KEY, PurchaseOption, Priority, lineTotals } from '../../../../../shared/models/purchase.model';
+import { PurchaseOption, lineTotals } from '../../../../../shared/models/purchase.model';
 
 @Component({
   selector: 'app-purchase-request-form',
@@ -22,25 +22,20 @@ export class PurchaseRequestForm {
   /** Requesting branch options (GET /branches/options). */
   readonly branches = this.branchOptions.options;
 
-  readonly vendors = this.purchase.vendors;
   readonly products = toSignal(this.purchase.productOptions(), { initialValue: [] as PurchaseOption[] });
   readonly submitted = signal(false);
   readonly saving = signal(false);
-  readonly priorities: Priority[] = ['Low', 'Normal', 'Urgent'];
   readonly today = new Date().toISOString().slice(0, 10);
 
   readonly form = this.fb.group({
     branchKey: [null as string | null, Validators.required],
-    vendorId: [null as number | null, Validators.required],
+    /** PO date: the date the branch wants the purchase order raised for. */
     requiredBy: [null as string | null],
-    priority: ['Normal' as Priority],
     remarks: ['', Validators.maxLength(255)],
     items: this.fb.array([this.newItem()]),
   });
 
   constructor() {
-    // On-hand qty shown per line; stock is not part of the Purchase Requests tab load.
-    void this.purchase.reload('stock');
     this.branchOptions.ensure();
     // Default to the user's own branch (else the first branch) once the branch list has loaded.
     effect(() => {
@@ -63,21 +58,9 @@ export class PurchaseRequestForm {
     });
   }
 
-  /** Products supplied by the chosen vendor (all products until one is picked). */
-  vendorProducts(): PurchaseOption[] {
-    const vendorId = this.form.controls.vendorId.value;
-    const list = this.products();
-    return vendorId ? list.filter(p => p.vendorId === vendorId) : list;
-  }
-
   product(index: number): PurchaseOption | undefined {
     const id = this.items.at(index).get('productId')?.value;
     return this.products().find(p => p.id === id);
-  }
-
-  centralQty(index: number): number {
-    const p = this.product(index);
-    return p ? this.purchase.storeQtyByKey(CENTRAL_STORE_KEY, p.id) : 0;
   }
 
   lineAmount(index: number): number {
@@ -92,14 +75,6 @@ export class PurchaseRequestForm {
       gstPercent: this.product(i)?.gstPercent ?? 0,
       requestedQty: Number(this.items.at(i).get('qty')?.value) || 0,
     })));
-  }
-
-  onVendorChange(): void {
-    // Drop products that the newly selected vendor doesn't supply.
-    const allowed = new Set(this.vendorProducts().map(p => p.id));
-    this.items.controls.forEach(c => {
-      if (c.value.productId && !allowed.has(c.value.productId)) c.patchValue({ productId: null });
-    });
   }
 
   addItem(): void {
@@ -131,9 +106,7 @@ export class PurchaseRequestForm {
     this.saving.set(true);
     const request = await this.purchase.createRequest({
       branchKey: String(raw.branchKey),
-      vendorId: raw.vendorId,
       requiredBy: raw.requiredBy,
-      priority: raw.priority ?? 'Normal',
       remarks: (raw.remarks ?? '').trim(),
       // Price + GST are taken from the product master on the server.
       items: raw.items.map((row: { productId: string | null; qty: number | null }) => ({ productId: String(row.productId), qty: Number(row.qty) })),

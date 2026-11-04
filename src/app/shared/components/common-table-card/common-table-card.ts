@@ -65,9 +65,19 @@ export class CommonTableCard {
     return typeof v === 'string' || typeof v === 'number' ? v : null;
   }
 
+  /** Name of the record plus its code ("karthick · LD-00060"): a name / avatar cell carries both, a plain row uses its `code`. */
   historyTitle(row: TableRow): string {
-    const v = row[this.historyTitleKey];
-    return typeof v === 'string' ? v : '';
+    const v = row[this.historyTitleKey] as unknown;
+    if (v && typeof v === 'object') {
+      const cell = v as { name?: string; subtitle?: string };
+      return [cell.name, cell.subtitle].filter(Boolean).join(' · ');
+    }
+    // Rows without a name column (purchase documents ...) are titled by their document number.
+    const docNo = ['requestNo', 'poNo', 'grnNo', 'returnNo', 'noteNo', 'transferNo', 'billNo', 'voucherNo', 'invoiceNo', 'batchNo']
+      .map(k => row[k]).find(x => typeof x === 'string' && x);
+    const name = typeof v === 'string' && v ? v : typeof docNo === 'string' ? docNo : '';
+    const code = row['code'];
+    return typeof code === 'string' && code && code !== name && !name.includes(code) ? [name, code].filter(Boolean).join(' · ') : name;
   }
 
   @Input() title = '';

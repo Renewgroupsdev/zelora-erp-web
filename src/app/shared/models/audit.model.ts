@@ -399,3 +399,13 @@ export interface AuditLineageRecord {
 export interface AuditPathStep extends AuditJourneyStep {
   record: AuditRecordRef;
 }
+
+/** When / by whom a record was created, read from the record itself (/audit/origin). */
+export interface AuditOrigin {
+  created_at: string;
+  created_at_display: string;
+  created_by: { name: string; role: string | null } | null;
+  label: string | null;
+  /** Steps read from the record and its linked documents (review, order, receipts, returns ...); `own` = this record's own step. */
+  milestones?: { tag: string; tone: string; icon: string; own: boolean; at: string; at_display: string; description: string; actor: string | null; role: string | null }[];
+}

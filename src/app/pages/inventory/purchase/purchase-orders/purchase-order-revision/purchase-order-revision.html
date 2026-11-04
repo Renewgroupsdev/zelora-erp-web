@@ -1,0 +1,130 @@
+@let o = order();
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-currency-exchange"></i></div>
+      <div class="title-content">
+        <h2>{{ o.poNo }} · Vendor price revision</h2>
+        <p>{{ o.vendorName }} · invoice {{ o.invoiceNo }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+
+    <div class="section-title">
+      <i class="bi bi-send-check"></i> Invoice sent to the vendor
+      <span class="spacer"></span>
+      <button type="button" class="link-btn" [disabled]="sending()" (click)="resend()"><i class="bi bi-arrow-repeat"></i> {{ sending() ? 'Sending...' : 'Send again' }}</button>
+    </div>
+    <div class="delivery-list">
+      @for (d of o.deliveries ?? []; track d.id) {
+        <div class="delivery" [class.bad]="d.status === 'failed'">
+          <i class="bi" [class.bi-envelope-fill]="d.channel === 'mail'" [class.bi-whatsapp]="d.channel === 'whatsapp'"></i>
+          <div><strong>{{ d.channel === 'mail' ? 'E-mail' : 'WhatsApp' }}</strong> <span class="muted">{{ d.recipient }}</span>
+            @if (d.status === 'failed') { <div class="error-text">{{ d.error || 'Not sent' }}</div> }</div>
+          <span class="pill" [class.green]="d.status === 'sent'" [class.red]="d.status === 'failed'">{{ d.status === 'sent' ? 'Sent' : 'Failed' }}</span>
+          <small>{{ d.sentAt | date: 'dd MMM, h:mm a' }}</small>
+        </div>
+      } @empty {
+        <div class="quote-empty"><i class="bi bi-info-circle"></i> The invoice has not been sent to the vendor yet.</div>
+      }
+    </div>
+
+    <div class="section-title">
+      <i class="bi bi-file-earmark-diff"></i> Revised proforma quotes
+      <span class="spacer"></span>
+      @if (canSubmit() && !hasPending() && !showForm()) {
+        <button type="button" class="link-btn" (click)="openForm()"><i class="bi bi-cloud-upload"></i> Upload vendor's revised quote</button>
+      }
+    </div>
+
+    @if (showForm()) {
+      <div class="quote-form">
+        <p class="muted" style="margin: 0 0 8px; font-size: 12px">The vendor changed a price after the purchase order. Enter the new price of every product it changed, attach its revised proforma, and it goes to the admin to accept.</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="rv-no">Revised quote no <span>*</span></label>
+            <div class="input-wrap"><i class="bi bi-hash"></i><input id="rv-no" type="text" maxlength="60" [(ngModel)]="form.quoteNo" /></div>
+          </div>
+          <div class="form-field">
+            <label for="rv-date">Quote date</label>
+            <div class="input-wrap"><i class="bi bi-calendar-event"></i><input id="rv-date" type="date" [max]="today" [(ngModel)]="form.quoteDate" /></div>
+          </div>
+        </div>
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead><tr><th>Product</th><th class="num">PO price</th><th class="num">Vendor's new price (₹)</th></tr></thead>
+            <tbody>
+              @for (l of lines(); track l.productId) {
+                <tr>
+                  <td><strong>{{ l.productName }}</strong><div class="muted">{{ l.productCode }}</div></td>
+                  <td class="num">₹{{ l.unitPrice | number:'1.2-2' }}</td>
+                  <td class="num"><input class="cell-input" type="number" min="0" step="0.01" [(ngModel)]="form.prices[l.productId]" /></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="rv-file">Revised proforma file <span>*</span></label>
+            <label class="file-pick" for="rv-file"><i class="bi bi-paperclip"></i> {{ fileName() ? 'Change file' : 'Choose PDF / image (max 4 MB)' }}</label>
+            <input id="rv-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="onFile($event)" hidden />
+            @if (fileName()) {
+              <div class="file-rename"><i class="bi bi-pencil-square"></i><input type="text" maxlength="100" [(ngModel)]="fileBase" aria-label="File name" placeholder="File name" /><span>{{ fileExt }}</span></div>
+            }
+          </div>
+          <div class="form-field">
+            <label for="rv-remarks">Remarks</label>
+            <div class="input-wrap"><i class="bi bi-chat-left-text"></i><input id="rv-remarks" type="text" maxlength="500" [(ngModel)]="form.remarks" placeholder="Why the price changed" /></div>
+          </div>
+        </div>
+        @if (error()) { <small class="error-text">{{ error() }}</small> }
+        <div class="quote-form-actions">
+          <button type="button" class="cancel-btn" (click)="showForm.set(false)">Cancel</button>
+          <button type="button" class="save-btn" [disabled]="saving()" (click)="submit()"><i class="bi bi-send"></i> {{ saving() ? 'Sending...' : 'Send to admin' }}</button>
+        </div>
+      </div>
+    }
+
+    <div class="quote-list">
+      @if (loading()) { <div class="quote-empty">Loading…</div> }
+      @for (r of revisions(); track r.id) {
+        <div class="rev-card">
+          <div class="qtop">
+            <b>{{ r.quoteNo }}</b>
+            <span class="pill" [class.orange]="r.status === 'Pending'" [class.green]="r.status === 'Accepted'" [class.red]="r.status === 'Rejected'">{{ r.status === 'Pending' ? 'Waiting for admin' : r.status }}</span>
+            <span class="spacer"></span>
+            @if (r.hasFile) { <button type="button" class="link-btn" (click)="viewFile(r)"><i class="bi bi-file-earmark-text"></i> View proforma</button> }
+          </div>
+          <small class="muted">{{ displayDate(r.quoteDate) }} · sent by {{ r.submittedBy || '-' }} on {{ r.submittedAt | date: 'dd MMM y, h:mm a' }}@if (r.remarks) { · {{ r.remarks }} }</small>
+          <table class="items-table rev-table">
+            <thead><tr><th>Product</th><th class="num">Was</th><th class="num">Vendor's new price</th></tr></thead>
+            <tbody>
+              @for (i of r.items; track i.productId) {
+                <tr><td>{{ i.productName }}</td><td class="num">₹{{ i.oldPrice | number:'1.2-2' }}</td><td class="num"><strong [class.up]="i.newPrice > i.oldPrice" [class.down]="i.newPrice < i.oldPrice">₹{{ i.newPrice | number:'1.2-2' }}</strong></td></tr>
+              }
+            </tbody>
+          </table>
+          @if (r.status === 'Pending' && canReview()) {
+            <div class="quote-form-actions">
+              <button type="button" class="danger-btn" (click)="reject(r)"><i class="bi bi-x-circle"></i> Reject</button>
+              <button type="button" class="save-btn" (click)="accept(r)"><i class="bi bi-check2-circle"></i> Accept &amp; update prices</button>
+            </div>
+          } @else if (r.status !== 'Pending') {
+            <small class="muted">{{ r.status }} by {{ r.reviewedBy }} on {{ r.reviewedAt | date: 'dd MMM y, h:mm a' }}@if (r.reviewRemarks) { · {{ r.reviewRemarks }} }</small>
+          }
+        </div>
+      } @empty {
+        @if (!loading()) { <div class="quote-empty"><i class="bi bi-info-circle"></i> No price revisions. If the vendor changes a price after this order, upload its revised proforma quote here.</div> }
+      }
+    </div>
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+  </div>
+</div>

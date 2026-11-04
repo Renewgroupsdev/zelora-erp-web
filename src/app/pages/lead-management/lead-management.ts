@@ -3,7 +3,6 @@ import Swal from 'sweetalert2';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Component, OnInit, inject } from '@angular/core';
 import { openAssignCaller } from '../../shared/components/lead-dialogs/assign-caller-dialog';
-import { openLeadAudit } from '../../shared/components/lead-dialogs/lead-audit-dialog';
 import { BranchOption, BranchOptionsService } from '../../shared/common-services/branch-options.service';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { CommonDetailCard } from '../../shared/components/common-detail-card/common-detail-card';
@@ -432,7 +431,7 @@ export class LeadManagement implements OnInit {
   };
 
   /** Row buttons on this page: outgoing call, edit, assign caller, audit log, delete. */
-  readonly leadActions = ['call', 'edit', 'assign', 'audit', 'delete'];
+  readonly leadActions = ['call', 'edit', 'assign', 'delete'];
 
   /** Whether the signed-in role is ticked on this action slug. */
   can(slug: string): boolean {
@@ -508,10 +507,6 @@ export class LeadManagement implements OnInit {
     });
   }
 
-  onAuditLead(row: TableRow): void {
-    const lead = row['lead'] as LeadCell;
-    openLeadAudit(this.dialog, { id: Number(row['id']), name: lead?.name ?? 'Lead' });
-  }
 
   onCallLead(row: TableRow): void {
     if (row['locked']) {

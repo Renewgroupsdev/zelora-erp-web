@@ -41,6 +41,8 @@ export interface PurchaseMeta {
   roundOffLimit: number;
   centralStore: string;
   canApprove: boolean;
+  /** Head office / admin: may approve or reject purchase requests (vendor quotes -> PO). */
+  canApproveRequests: boolean;
   /** The user's own branch / franchise as a store key, null when the user has none. */
   /** The user's own branch / franchise as a store key, null when the user has none. */
   userStoreKey: string | null;
@@ -110,6 +112,8 @@ export interface PurchaseOrder {
   canInward: boolean;
   canCancel: boolean;
   canClose: boolean;
+  /** Latest sends of the invoice to the vendor (e-mail / WhatsApp). */
+  deliveries?: VendorDelivery[];
 }
 
 export interface InwardLine {
@@ -316,3 +320,52 @@ export function displayDate(iso: string | null | undefined): string {
   const d = new Date(iso);
   return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
+
+/** One vendor's proforma quote for a purchase request: every product priced; the head office approves with the least one. */
+export interface VendorQuoteItem { productId: string; productName: string; qty: number; quotedPrice: number; gstPercent: number; amount: number }
+export interface VendorQuote {
+  id: number;
+  vendorId: number;
+  vendorName: string;
+  vendorEmail: string | null;
+  vendorPhone: string | null;
+  quoteNo: string;
+  quoteDate: string;
+  validTill: string | null;
+  total: number;
+  status: 'Received' | 'Selected' | 'Not selected';
+  /** Prices every product of the request. */
+  complete: boolean;
+  expired: boolean;
+  /** The least complete, unexpired total. */
+  lowest: boolean;
+  hasFile: boolean;
+  remarks: string | null;
+  addedBy: string | null;
+  items: VendorQuoteItem[];
+}
+
+/** A vendor worth asking for a request: supplies its products, with an estimated total (last quote, else master price). */
+export interface VendorOption { vendorId: number; name: string; email: string | null; phone: string | null; estimate: number; covers: number; of: number; complete: boolean; quoted: boolean; lowest: boolean; lines: { productId: string; productName: string; qty: number; price: number; gstPercent: number; source: string }[] }
+
+/** The PO invoice sent to the vendor (one row per channel and attempt). */
+export interface VendorDelivery { id: number; channel: 'mail' | 'whatsapp'; recipient: string; status: 'sent' | 'failed'; error: string | null; sentAt: string | null }
+
+/** A vendor changed prices after the PO; the revised proforma waits for the admin. */
+export interface PriceRevisionItem { productId: string; productName: string; productCode: string; oldPrice: number; newPrice: number; gstPercent: number | null }
+export interface PriceRevision {
+  id: number;
+  vendorName: string | null;
+  quoteNo: string;
+  quoteDate: string;
+  remarks: string | null;
+  status: 'Pending' | 'Accepted' | 'Rejected';
+  hasFile: boolean;
+  submittedBy: string | null;
+  submittedAt: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewRemarks: string | null;
+  items: PriceRevisionItem[];
+}
+export interface RevisionLine { productId: string; productName: string; productCode: string; unitPrice: number; gstPercent: number }

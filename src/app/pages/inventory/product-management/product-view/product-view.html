@@ -1,0 +1,109 @@
+<div class="pv">
+  <header class="pv-hero">
+    <button type="button" class="pv-close" (click)="close()" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+
+    @if (product.image_url && !imgFailed()) {
+      <button type="button" class="pv-media" (click)="zoom.set(true)" aria-label="View larger image" title="View larger image">
+        <img [src]="product.image_url" [alt]="product.name" (error)="imgFailed.set(true)" />
+        <span class="pv-media-zoom"><i class="bi bi-arrows-fullscreen"></i></span>
+      </button>
+    } @else {
+      <div class="pv-media empty"><span>{{ initials }}</span></div>
+    }
+
+    <div class="pv-title">
+      <span class="pv-code">{{ product.code }}</span>
+      <h2>{{ product.name }}</h2>
+      <div class="pv-meta">
+        <span class="pv-chip" [class.off]="!isActive"><i class="dot"></i>{{ product.status }}</span>
+        <span class="pv-chip"><i class="bi bi-buildings"></i> {{ product.vendor?.name || 'No vendor' }}</span>
+      </div>
+    </div>
+
+    <div class="pv-price">
+      <span>Total Amount</span>
+      <strong>{{ inr(product.total_amount) }}</strong>
+      <small>Incl. {{ num(product.gst_percent) }}% GST</small>
+    </div>
+  </header>
+
+  <div class="pv-body">
+    <section class="pv-section">
+      <h3><i class="bi bi-bar-chart-fill"></i> Pricing Breakdown <span class="rule"></span></h3>
+      <div class="pv-grid">
+        <div class="pv-tile">
+          <span class="ico"><i class="bi bi-cart3"></i></span>
+          <div><span>Purchase Price</span><strong>{{ inr(product.purchase_price) }}</strong></div>
+        </div>
+        <div class="pv-tile">
+          <span class="ico"><i class="bi bi-tag-fill"></i></span>
+          <div><span>Margin ({{ num(product.margin_percent) }}%)</span><strong>{{ inr(marginAmount) }}</strong></div>
+        </div>
+        <div class="pv-tile">
+          <span class="ico"><i class="bi bi-percent"></i></span>
+          <div><span>Discount ({{ num(product.discount_percent) }}%)</span><strong>{{ inr(product.discount_amount) }}</strong></div>
+        </div>
+        <div class="pv-tile accent">
+          <span class="ico solid"><i class="bi bi-currency-rupee"></i></span>
+          <div><span>Selling Price</span><strong>{{ inr(product.selling_price) }}</strong></div>
+        </div>
+        <div class="pv-tile">
+          <span class="ico"><i class="bi bi-receipt"></i></span>
+          <div><span>GST ({{ num(product.gst_percent) }}%)</span><strong>{{ inr(product.gst_amount) }}</strong></div>
+        </div>
+        <div class="pv-tile total">
+          <span class="ico gold"><i class="bi bi-coin"></i></span>
+          <div><span>Total Amount</span><strong>{{ inr(product.total_amount) }}</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pv-section">
+      <h3><i class="bi bi-card-text"></i> Product Information <span class="rule"></span></h3>
+      <dl class="pv-info">
+        <div class="item"><i class="bi bi-upc-scan"></i><div><dt>Product Code</dt><dd>{{ product.code }}</dd></div></div>
+        <div class="item"><i class="bi bi-bank"></i><div><dt>HSN Code</dt><dd>{{ product.hsn_code || '-' }}</dd></div></div>
+        <div class="item"><i class="bi bi-buildings"></i><div><dt>Vendor</dt><dd>{{ product.vendor?.name || '-' }}</dd></div></div>
+        <div class="item">
+          <i class="bi bi-toggle-on"></i>
+          <div><dt>Status</dt><dd><span class="pv-pill" [class.off]="!isActive"><i class="dot"></i>{{ product.status }}</span></dd></div>
+        </div>
+        <div class="item wide"><i class="bi bi-file-earmark-text"></i><div><dt>Description</dt><dd>{{ product.description || 'No description added.' }}</dd></div></div>
+      </dl>
+    </section>
+
+    <section class="pv-section">
+      <h3><i class="bi bi-graph-up"></i> Price history <span class="rule"></span></h3>
+      @if (history() === null) {
+        <div class="ph-empty">Loading…</div>
+      } @else if (!history()!.length) {
+        <div class="ph-empty">No price changes recorded yet.</div>
+      } @else {
+        <div class="ph-list">
+          @for (h of history(); track h.id) {
+            <div class="ph-row">
+              <div class="ph-top"><span [class]="'ph-src ' + h.source">{{ sourceLabel(h.source) }}</span><small>{{ h.changed_at | date: 'dd MMM y, h:mm a' }}@if (h.changed_by) { · {{ h.changed_by }} }</small></div>
+              <div class="ph-price">
+                @if (h.old_purchase_price !== null) { <span class="old">{{ inr(h.old_purchase_price) }}</span><i class="bi bi-arrow-right"></i> }<b>{{ inr(h.new_purchase_price) }}</b>
+                <small>purchase · selling {{ inr(h.new_selling_price) }} · total {{ inr(h.new_total_amount) }}</small>
+              </div>
+              @if (h.vendor || h.quote_no || h.remarks) { <small class="ph-note">@if (h.vendor) { {{ h.vendor }} · }@if (h.quote_no) { proforma {{ h.quote_no }} · }{{ h.remarks }}</small> }
+            </div>
+          }
+        </div>
+      }
+    </section>
+  </div>
+
+  <footer class="pv-foot">
+    <button type="button" class="pv-btn ghost" (click)="close()"><i class="bi bi-x-lg"></i> Close</button>
+    <button *appCan="'edit-product'" type="button" class="pv-btn primary" (click)="edit()"><i class="bi bi-pencil-fill"></i> Edit Product</button>
+  </footer>
+
+  @if (zoom() && product.image_url) {
+    <div class="pv-lightbox" (click)="zoom.set(false)" role="dialog" aria-label="Product image">
+      <button type="button" class="pv-lb-close" (click)="zoom.set(false)" aria-label="Close image"><i class="bi bi-x-lg"></i></button>
+      <img [src]="product.image_url" [alt]="product.name" (click)="$event.stopPropagation()" />
+    </div>
+  }
+</div>

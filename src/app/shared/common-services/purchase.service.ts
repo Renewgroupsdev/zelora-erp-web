@@ -18,6 +18,11 @@ import {
   PurchaseOrderStatus,
   PurchaseRequest,
   PurchaseRequestStatus,
+  PriceRevision,
+  RevisionLine,
+  VendorDelivery,
+  VendorOption,
+  VendorQuote,
   PurchaseReturn,
   PurchaseReturnReason,
   PurchaseReturnType,
@@ -38,9 +43,11 @@ const BASE = 'purchase';
 export interface NewRequestInput {
   /** Requesting branch / franchise as a key: "branch:9" | "franchise:7". */
   branchKey: string;
-  vendorId: number | null;
+  /** The head office picks the vendor when it approves (from the vendor quotes), so a branch no longer sends one. */
+  vendorId?: number | null;
+  /** The PO date the branch wants. */
   requiredBy: string | null;
-  priority: Priority;
+  priority?: Priority;
   remarks: string;
   items: { productId: string; qty: number }[];
 }
@@ -134,6 +141,7 @@ const DEFAULT_META: PurchaseMeta = {
   roundOffLimit: 5,
   centralStore: CENTRAL_STORE,
   canApprove: false,
+  canApproveRequests: false,
   userStoreKey: null,
 };
 
@@ -179,6 +187,7 @@ export class PurchaseService {
 
   /** Branch heads / managers / admins approve, cancel and close (decided by the server). */
   readonly canApprove = computed(() => this.meta().canApprove);
+  readonly canApproveRequests = computed(() => this.meta().canApproveRequests);
   readonly pendingCount = computed(() => this.requests().filter(r => r.status === 'Pending').length);
   readonly openTransfers = computed(() => this.transfers().filter(t => t.status === 'In Transit' || t.status === 'Partially Received'));
 
@@ -300,23 +309,118 @@ export class PurchaseService {
 
   async createRequest(input: NewRequestInput): Promise<PurchaseRequest | null> {
     const res = await this.send('POST', `${BASE}/requests`, {
-      ...unitPair(input.branchKey), vendor_id: input.vendorId, required_by: input.requiredBy || null,
-      priority: input.priority, remarks: input.remarks || null,
+      ...unitPair(input.branchKey), required_by: input.requiredBy || null,
+      remarks: input.remarks || null,
       items: input.items.map(i => ({ product_id: Number(i.productId), qty: i.qty })),
     });
     if (!res) return null;
     await this.refresh('requests');
-    this.notifications.add({ type: 'purchase', title: 'Purchase request sent', message: `${res.data.request_no} is waiting for branch head approval.`, link: '/app/inventory/purchase-requests' });
+    this.notifications.add({ type: 'purchase', title: 'Purchase request sent', message: `${res.data.request_no} was sent to the head office for approval.`, link: '/app/inventory/purchase-requests' });
     return toRequest(res.data);
   }
 
-  async approveRequest(id: string, remarks: string, expectedAt: string | null): Promise<PurchaseOrder | null> {
-    const res = await this.send('POST', `${BASE}/requests/${id}/approve`, { remarks: remarks || null, expected_at: expectedAt || null });
+  /** Head-office approval with the chosen vendor quote: raises the PO for that vendor and sends its invoice by e-mail and WhatsApp. */
+  async approveRequest(id: string, remarks: string, expectedAt: string | null, choice: { quoteId?: number; vendorId?: number; prices?: Record<string, number> }): Promise<PurchaseOrder | null> {
+    const res = await this.send('POST', `${BASE}/requests/${id}/approve`, {
+      quote_id: choice.quoteId ?? null, vendor_id: choice.quoteId ? null : (choice.vendorId ?? null), prices: choice.quoteId ? null : (choice.prices ?? null),
+      remarks: remarks || null, expected_at: expectedAt || null,
+    });
     if (!res) return null;
     await this.refresh('requests', 'orders');
     const order = toOrder(res.data.order);
     this.notifications.add({ type: 'manager', title: 'Purchase order confirmed', message: `${order.poNo} raised to ${order.vendorName}.`, link: '/app/inventory/purchase-orders' });
+    this.announceDeliveries(order.poNo, order.vendorName, ((res.data.deliveries ?? []) as any[]).map(toDelivery));
     return this.orders().find(o => o.id === order.id) ?? order;
+  }
+
+  // ---- vendor proforma quotes of a request
+  async requestQuotes(id: string): Promise<{ items: VendorQuote[]; canManage: boolean }> {
+    const res = await this.send('GET', `${BASE}/requests/${id}/quotes`, null, false);
+    return { items: ((res?.data?.items ?? []) as any[]).map(toQuote), canManage: !!res?.data?.can_manage };
+  }
+
+  /** The vendors of the requested products with an estimated total each; complete + cheapest first. */
+  async requestVendorOptions(id: string): Promise<VendorOption[]> {
+    const res = await this.send('GET', `${BASE}/requests/${id}/vendor-options`, null, false);
+    return ((res?.data ?? []) as any[]).map(o => ({
+      vendorId: o.vendor.id, name: o.vendor.name, email: o.vendor.email ?? null, phone: o.vendor.phone ?? null,
+      estimate: Number(o.estimate) || 0, covers: o.covers, of: o.of, complete: !!o.complete, quoted: !!o.quoted, lowest: !!o.lowest,
+      lines: ((o.lines ?? []) as any[]).map(l => ({ productId: String(l.product_id), productName: l.product_name, qty: Number(l.qty) || 0, price: Number(l.price) || 0, gstPercent: Number(l.gst_percent) || 0, source: l.source })),
+    }));
+  }
+
+  /** Starting prices for a vendor's quote: its last quoted prices, else the product master prices. */
+  async quoteSuggestions(id: string, vendorId: number): Promise<Record<string, number>> {
+    const res = await this.send('GET', `${BASE}/requests/${id}/quote-suggestions?vendor_id=${vendorId}`, null, false);
+    return Object.fromEntries(Object.entries((res?.data ?? {}) as Record<string, number>).map(([k, v]) => [k, Number(v)]));
+  }
+
+  async addRequestQuote(id: string, form: FormData): Promise<boolean> {
+    return !!(await this.send('POST', `${BASE}/requests/${id}/quotes`, form));
+  }
+
+  async removeRequestQuote(id: string, quoteId: number): Promise<boolean> {
+    try {
+      await firstValueFrom(this.api.Delete(`${BASE}/requests/${id}/quotes/${quoteId}`, {}) as Observable<any>);
+      return true;
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Not removed', html: errorHtml(e), confirmButtonColor: '#6C63FF' });
+      return false;
+    }
+  }
+
+  // ---- vendor price revision after the PO
+  async poRevisions(poId: string): Promise<{ items: PriceRevision[]; lines: RevisionLine[]; canSubmit: boolean; canReview: boolean }> {
+    const res = await this.send('GET', `${BASE}/orders/${poId}/price-revisions`, null, false);
+    const d = res?.data ?? {};
+    return {
+      items: ((d.items ?? []) as any[]).map(toRevision),
+      lines: ((d.lines ?? []) as any[]).map(l => ({ productId: str(l.product_id), productName: l.product_name, productCode: l.product_code, unitPrice: num(l.unit_price), gstPercent: num(l.gst_percent) })),
+      canSubmit: !!d.can_submit, canReview: !!d.can_review,
+    };
+  }
+
+  async addPoRevision(poId: string, form: FormData): Promise<boolean> {
+    return !!(await this.send('POST', `${BASE}/orders/${poId}/price-revisions`, form));
+  }
+
+  async acceptRevision(id: number): Promise<boolean> {
+    const res = await this.send('POST', `${BASE}/price-revisions/${id}/accept`, {});
+    if (res) await this.refresh('orders');
+    return !!res;
+  }
+
+  async rejectRevision(id: number, remarks: string): Promise<boolean> {
+    return !!(await this.send('POST', `${BASE}/price-revisions/${id}/reject`, { remarks }));
+  }
+
+  /** Send (or re-send) the PO invoice to the vendor by e-mail and WhatsApp. */
+  async sendOrderToVendor(poId: string): Promise<VendorDelivery[] | null> {
+    const res = await this.send('POST', `${BASE}/orders/${poId}/send-to-vendor`, {}, false);
+    if (!res) return null;
+    await this.refresh('orders');
+    return ((res.data ?? []) as any[]).map(toDelivery);
+  }
+
+  /** Opens a stored proforma in a new tab, streamed with the signed-in session (never a public link). */
+  openProforma(path: string): void {
+    const tab = window.open('', '_blank');
+    (this.api.GET_BLOB(`${BASE}/${path}`) as Observable<Blob>).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+      },
+      error: () => { tab?.close(); Swal.fire({ icon: 'error', title: 'Could not open the file', confirmButtonColor: '#6C63FF' }); },
+    });
+  }
+
+  /** "Invoice sent to the vendor" summary after an approval / re-send. */
+  announceDeliveries(poNo: string, vendor: string, deliveries: VendorDelivery[]): void {
+    if (!deliveries.length) return;
+    const line = (d: VendorDelivery) => `${d.channel === 'mail' ? 'E-mail' : 'WhatsApp'}: ${d.status === 'sent' ? `sent to ${d.recipient}` : `not sent (${d.error ?? 'failed'})`}`;
+    const ok = deliveries.every(d => d.status === 'sent');
+    Swal.fire({ icon: ok ? 'success' : 'warning', title: ok ? `${poNo} sent to ${vendor}` : `${poNo} raised - check the vendor delivery`, html: deliveries.map(line).join('<br>'), confirmButtonColor: '#6C63FF' });
   }
 
   async rejectRequest(id: string, remarks: string): Promise<boolean> {
@@ -465,6 +569,15 @@ export class PurchaseService {
   // ---- Documents ------------------------------------------------------------------------------
 
   /** Opens the server-rendered PDF (tax-invoice layout) in a new tab. */
+  /** The server-built PDF of a purchase document as a Blob (null when it could not be loaded) - used by the in-app preview. */
+  async pdfBlob(type: PurchaseDocument, id: string): Promise<Blob | null> {
+    try {
+      return await firstValueFrom(this.api.GET_BLOB(`${BASE}/documents/${type}/${id}/pdf`) as Observable<Blob>);
+    } catch {
+      return null;
+    }
+  }
+
   async openPdf(type: PurchaseDocument, id: string): Promise<void> {
     const tab = window.open('', '_blank');
     try {
@@ -504,7 +617,7 @@ export class PurchaseService {
       priorities: d.priorities ?? DEFAULT_META.priorities, returnReasons: d.return_reasons ?? [],
       returnTypes: d.return_types ?? DEFAULT_META.returnTypes, transferRejectReasons: d.transfer_reject_reasons ?? [],
       lowStockThreshold: Number(d.low_stock_threshold) || LOW_STOCK_THRESHOLD, roundOffLimit: Number(d.round_off_limit) || 0,
-      centralStore: d.central_store || CENTRAL_STORE, canApprove: !!d.can_approve, userStoreKey: d.user_store_key ?? null,
+      centralStore: d.central_store || CENTRAL_STORE, canApprove: !!d.can_approve, canApproveRequests: !!d.can_approve_requests, userStoreKey: d.user_store_key ?? null,
     });
   }
 
@@ -602,6 +715,27 @@ function toRequest(r: any): PurchaseRequest {
   };
 }
 
+function toDelivery(d: any): VendorDelivery {
+  return { id: d.id, channel: d.channel, recipient: d.recipient, status: d.status, error: d.error ?? null, sentAt: d.sent_at ?? null };
+}
+
+function toQuote(q: any): VendorQuote {
+  return {
+    id: q.id, vendorId: q.vendor?.id, vendorName: q.vendor?.name ?? '-', vendorEmail: q.vendor?.email ?? null, vendorPhone: q.vendor?.phone ?? null,
+    quoteNo: q.quote_no, quoteDate: q.quote_date, validTill: q.valid_till ?? null, total: num(q.total), status: q.status,
+    complete: !!q.complete, expired: !!q.expired, lowest: !!q.lowest, hasFile: !!q.has_file, remarks: q.remarks ?? null, addedBy: q.added_by ?? null,
+    items: ((q.items ?? []) as any[]).map(i => ({ productId: str(i.product_id), productName: i.product_name, qty: num(i.qty), quotedPrice: num(i.quoted_price), gstPercent: num(i.gst_percent), amount: num(i.amount) })),
+  };
+}
+
+function toRevision(r: any): PriceRevision {
+  return {
+    id: r.id, vendorName: r.vendor_name ?? null, quoteNo: r.quote_no, quoteDate: r.quote_date, remarks: r.remarks ?? null, status: r.status, hasFile: !!r.has_file,
+    submittedBy: r.submitted_by ?? null, submittedAt: r.submitted_at, reviewedBy: r.reviewed_by ?? null, reviewedAt: r.reviewed_at ?? null, reviewRemarks: r.review_remarks ?? null,
+    items: ((r.items ?? []) as any[]).map(i => ({ productId: str(i.product_id), productName: i.product_name, productCode: i.product_code, oldPrice: num(i.old_price), newPrice: num(i.new_price), gstPercent: i.gst_percent == null ? null : num(i.gst_percent) })),
+  };
+}
+
 function toOrder(o: any): PurchaseOrder {
   return {
     id: str(o.id), poNo: o.po_no, invoiceNo: o.invoice_no, requestId: str(o.request_id), requestNo: o.request_no ?? '-',
@@ -609,6 +743,7 @@ function toOrder(o: any): PurchaseOrder {
     approvedBy: o.approved_by ?? '-', expectedAt: o.expected_at ?? null, status: o.status as PurchaseOrderStatus,
     closeReason: o.close_reason ?? null, closedBy: o.closed_by ?? null, closedAt: o.closed_at ?? null,
     canEdit: !!o.can_edit, canEditQty: !!o.can_edit_qty, canInward: !!o.can_inward, canCancel: !!o.can_cancel, canClose: !!o.can_close,
+    deliveries: ((o.deliveries ?? []) as any[]).map(toDelivery),
     items: ((o.items ?? []) as any[]).map((i): PurchaseLineItem => ({
       id: str(i.id), productId: str(i.product_id), productCode: i.product_code, hsnCode: i.hsn_code ?? null, productName: i.product_name,
       unitPrice: num(i.unit_price), gstPercent: num(i.gst_percent), requestedQty: num(i.requested_qty), receivedQty: num(i.received_qty),
