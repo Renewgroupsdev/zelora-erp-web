@@ -1,10 +1,10 @@
 import { Injectable, NgZone, computed, inject, signal } from '@angular/core';
-import Swal from 'sweetalert2';
 import { AuthService } from '../../core/auth/auth.service';
 import { isAdmin, isTelecallerRole } from '../../core/auth/auth.model';
 import { Employee } from '../models/hr.model';
 import { uid } from '../utils/format.util';
 import { HrService } from './hr.service';
+import { AlertStackService } from './alert-stack.service';
 import { NotificationService } from './notification.service';
 
 const STORAGE_KEY = 'zelora_branch_chat_v1';
@@ -70,6 +70,7 @@ export class BranchChatService {
   private readonly auth = inject(AuthService);
   private readonly hr = inject(HrService);
   private readonly notifications = inject(NotificationService);
+  private readonly alertStack = inject(AlertStackService);
   private readonly zone = inject(NgZone);
 
   private readonly state = signal<ChatState>(this.load());
@@ -238,11 +239,7 @@ export class BranchChatService {
       return;
     }
     this.notifications.add({ type: 'chat', title: `${m.branch} group · ${m.senderName}`, message: m.text });
-    Swal.fire({
-      toast: true, position: 'top-end', showConfirmButton: false, timer: 4000, timerProgressBar: true,
-      iconHtml: '<i class="bi bi-chat-dots-fill"></i>', customClass: { icon: 'border-0' },
-      title: `${m.senderName} · ${m.branch}`, text: m.text,
-    });
+    this.alertStack.show({ tone: 'success', icon: 'bi-chat-dots-fill', title: `${m.senderName} · ${m.branch}`, text: m.text, duration: 6000 });
   }
 
   private patch(partial: Partial<ChatState>): void {

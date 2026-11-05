@@ -26,6 +26,8 @@ interface TimelineRow {
   bad?: string;
   description: string;
   changes: AuditChange[];
+  /** Created / deleted: the record as it was, listed as plain "field: value" (no before -> after). */
+  snapshot?: boolean;
   fields: string[];
   actor: string;
   role: string | null;
@@ -105,7 +107,16 @@ const LEAD_ACTIONS: Record<string, { icon: string; tone: string; label: string }
 
                     <p class="ra-desc">{{ e.description }}</p>
 
-                    @if (e.changes.length) {
+                    @if (e.changes.length && e.snapshot) {
+                      <dl class="ra-kv">
+                        @for (c of e.changes; track c.field) {
+                          <div>
+                            <dt>{{ c.label }}</dt>
+                            <dd>@if (c.masked) { <span class="ra-hidden"><i class="bi bi-eye-slash"></i> Hidden</span> } @else { {{ c.new || c.old }} }</dd>
+                          </div>
+                        }
+                      </dl>
+                    } @else if (e.changes.length) {
                       <ul class="ra-changes">
                         @for (c of e.changes; track c.field) {
                           <li>
@@ -127,6 +138,7 @@ const LEAD_ACTIONS: Record<string, { icon: string; tone: string; label: string }
                     <footer class="ra-meta">
                       <span class="ra-actor">
                         <b>{{ initials(e.actor) }}</b>
+                        <small>{{ byLabel(e.tag) }}</small>
                         {{ e.actor }}@if (e.role) { <em>· {{ e.role }}</em> }
                       </span>
                       @if (e.branch) { <span><i class="bi bi-geo-alt"></i> {{ e.branch }}</span> }
@@ -210,6 +222,12 @@ const LEAD_ACTIONS: Record<string, { icon: string; tone: string; label: string }
     .ra-old.none, .ra-new.none { font-style: italic; opacity: .75; text-decoration: none; }
     .ra-changes .bi-arrow-right { color: var(--text-muted); font-size: 11px; }
     .ra-hidden { color: var(--text-muted); font-style: italic; }
+    .ra-kv { margin: 8px 0 2px; padding: 8px 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px 18px;
+      border-radius: 10px; background: var(--app-surface-soft); border: 1px dashed var(--border-soft); }
+    .ra-kv > div { min-width: 0; }
+    .ra-kv dt { margin: 0; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+    .ra-kv dd { margin: 1px 0 0; font-size: 12.5px; font-weight: 600; color: var(--text-dark); word-break: break-word; }
+    .ra-actor small { font-size: 11px; font-weight: 500; color: var(--text-muted); }
 
     .ra-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; padding-top: 8px;
       border-top: 1px solid var(--border-soft); font-size: 11.5px; color: var(--text-muted); }
@@ -310,8 +328,24 @@ export class RecordAuditDialog {
     });
   }
 
+  /** "Created" -> "Created by", "Approved" -> "Approved by"; a tag that already ends in "by" is left alone. */
+  protected byLabel(tag: string): string {
+    const t = (tag || 'Changed').trim();
+    return /\bby$/i.test(t) ? t : `${t} by`;
+  }
+
+  /** Row ids, the *_type half of a *_id pair and "empty -> empty" rows say nothing (older entries still hold them). */
+  private readable(changes: AuditChange[]): AuditChange[] {
+    const fields = new Set(changes.map(c => c.field));
+    return changes.filter(c =>
+      !['id', 'uuid'].includes(c.field)
+      && !(c.field.endsWith('_type') && fields.has(c.field.slice(0, -5) + '_id'))
+      && (c.masked || c.old || c.new));
+  }
+
   private fromEvent(e: AuditEvent): TimelineRow {
     const m = eventMeta(e.event);
+    const changes = this.readable(e.changes ?? []);
     return {
       id: 'a' + e.id,
       at: e.occurred_at,
@@ -321,7 +355,8 @@ export class RecordAuditDialog {
       tag: e.event_label,
       bad: e.outcome !== 'success' ? OUTCOME_LABEL[e.outcome] : undefined,
       description: e.description,
-      changes: e.changes ?? [],
+      changes,
+      snapshot: changes.length > 0 && ['created', 'deleted', 'force_deleted', 'restored'].includes(e.event),
       fields: e.changed_field_labels ?? [],
       actor: e.actor.name || 'System',
       role: e.actor.role,

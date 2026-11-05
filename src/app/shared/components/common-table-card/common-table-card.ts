@@ -87,7 +87,7 @@ export class CommonTableCard {
   /**
    * Columns are sized to their content (table-layout: auto), so no column carries dead whitespace and adding
    * a column just widens the table - the scroll area then scrolls horizontally. This only supplies a floor:
-   * the explicit `minWidth`, or enough room for the buttons of an action column (26px each + gaps + padding).
+   * the explicit `minWidth`, or enough room for the buttons of an action column (30px each + 6px gaps + padding).
    */
   colMinWidth(col: TableColumn): number | null {
     if (col.minWidth) return col.minWidth;
@@ -96,7 +96,7 @@ export class CommonTableCard {
       : col.type === 'rowActions' ? 2
       : col.type === 'action' ? 3
       : 0;
-    return buttons ? buttons * 30 + 24 : null;
+    return buttons ? buttons * 36 + 24 : null;
   }
   @Input() rows: TableRow[] = [];
   /** Shows a heartbeat loader over the rows while a page of data is (re)loading - the

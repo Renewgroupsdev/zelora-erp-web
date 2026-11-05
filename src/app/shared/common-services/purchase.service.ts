@@ -10,6 +10,8 @@ import {
   GoodsInward,
   InwardLine,
   LOW_STOCK_THRESHOLD,
+  LowStockRow,
+  NearbyStockItem,
   Priority,
   PurchaseLineItem,
   PurchaseMeta,
@@ -133,7 +135,7 @@ const DEFAULT_META: PurchaseMeta = {
   stores: [{ key: CENTRAL_STORE_KEY, type: null, id: null, name: CENTRAL_STORE }],
   branches: [],
   vendors: [],
-  priorities: ['Low', 'Normal', 'Urgent'],
+  priorities: ['Low', 'Normal', 'High', 'Urgent'],
   returnReasons: [],
   returnTypes: ['Debit Note', 'Replacement'],
   transferRejectReasons: [],
@@ -270,12 +272,14 @@ export class PurchaseService {
   // ---- Lookups ---------------------------------------------------------------------------------
 
   /** Active products (price + GST from the product master); only the vendor's products when one is given. */
-  productOptions(vendorId?: number | null): Observable<PurchaseOption[]> {
-    const query = vendorId ? `?vendor_id=${vendorId}` : '';
+  productOptions(vendorId?: number | null, lowForStore?: string | null): Observable<PurchaseOption[]> {
+    const params = [vendorId ? `vendor_id=${vendorId}` : '', lowForStore ? `low_for_store=${encodeURIComponent(lowForStore)}` : ''].filter(Boolean);
+    const query = params.length ? `?${params.join('&')}` : '';
     return (this.api.GET(`${BASE}/products${query}`) as Observable<any>).pipe(
       map(res => ((res?.data ?? []) as any[]).map(p => ({
         id: String(p.id), code: p.code, name: p.name, hsnCode: p.hsn_code ?? null, vendorId: p.vendor_id ?? null,
         unitPrice: Number(p.unit_price) || 0, gstPercent: Number(p.gst_percent) || 0,
+        stockQty: p.stock_qty === null || p.stock_qty === undefined ? null : Number(p.stock_qty),
       }))),
     );
   }
@@ -309,7 +313,7 @@ export class PurchaseService {
 
   async createRequest(input: NewRequestInput): Promise<PurchaseRequest | null> {
     const res = await this.send('POST', `${BASE}/requests`, {
-      ...unitPair(input.branchKey), required_by: input.requiredBy || null,
+      ...unitPair(input.branchKey), required_by: input.requiredBy || null, priority: input.priority,
       remarks: input.remarks || null,
       items: input.items.map(i => ({ product_id: Number(i.productId), qty: i.qty })),
     });
@@ -331,6 +335,53 @@ export class PurchaseService {
     this.notifications.add({ type: 'manager', title: 'Purchase order confirmed', message: `${order.poNo} raised to ${order.vendorName}.`, link: '/app/inventory/purchase-orders' });
     this.announceDeliveries(order.poNo, order.vendorName, ((res.data.deliveries ?? []) as any[]).map(toDelivery));
     return this.orders().find(o => o.id === order.id) ?? order;
+  }
+
+  // ---- low stock replenishment (Central Store under the threshold -> vendor PO; Super Admin / Admin)
+  async lowStockOrders(): Promise<{ rows: LowStockRow[]; vendors: { id: number; name: string }[]; threshold: number }> {
+    const res = await this.send('GET', `${BASE}/low-stock-orders`, null, false);
+    return {
+      threshold: Number(res?.threshold) || this.threshold(),
+      vendors: ((res?.vendors ?? []) as any[]).map(v => ({ id: Number(v.id), name: v.name })),
+      rows: ((res?.data ?? []) as any[]).map(r => ({
+        productId: String(r.product_id), productCode: r.product_code ?? '', productName: r.product_name, hsnCode: r.hsn_code ?? '',
+        qty: Number(r.qty) || 0, onOrder: Number(r.on_order) || 0, suggestedQty: Number(r.suggested_qty) || 1,
+        unitPrice: Number(r.unit_price) || 0, gstPercent: Number(r.gst_percent) || 0,
+        vendorId: r.vendor_id ? Number(r.vendor_id) : null, vendorName: r.vendor_name ?? null, out: r.severity === 'out',
+      })),
+    };
+  }
+
+  /** One purchase order to one vendor for the chosen low-stock products; the invoice goes to the vendor by e-mail / WhatsApp. */
+  async createLowStockOrder(vendorId: number, items: { productId: string; qty: number }[], expectedAt: string | null, remarks: string): Promise<PurchaseOrder | null> {
+    const res = await this.send('POST', `${BASE}/low-stock-orders`, {
+      vendor_id: vendorId, items: items.map(i => ({ product_id: Number(i.productId), qty: i.qty })), expected_at: expectedAt || null, remarks: remarks || null,
+    });
+    if (!res) return null;
+    await this.refresh('requests', 'orders');
+    const order = toOrder(res.data.order);
+    this.notifications.add({ type: 'manager', title: 'Low-stock purchase order raised', message: `${order.poNo} raised to ${order.vendorName} for the Central Store.`, link: '/app/inventory/purchase-orders' });
+    this.announceDeliveries(order.poNo, order.vendorName, ((res.data.deliveries ?? []) as any[]).map(toDelivery));
+    return order;
+  }
+
+  // ---- nearby branch / franchise stock (head office: transfer instead of ordering from a vendor)
+  async nearbyStock(id: string): Promise<NearbyStockItem[]> {
+    const res = await this.send('GET', `${BASE}/requests/${id}/nearby-stock`, null, false);
+    return ((res?.data?.items ?? []) as any[]).map(i => ({
+      productId: String(i.product_id), productName: i.product_name, productCode: i.product_code ?? null, needed: Number(i.needed) || 0,
+      options: ((i.options ?? []) as any[]).map(o => ({ storeKey: o.store_key, name: o.name, city: o.city, state: o.state, sameCity: !!o.same_city, available: Number(o.available) || 0, distanceKm: o.distance_km === null || o.distance_km === undefined ? null : Number(o.distance_km), zone: o.zone ?? 'unknown' })),
+    }));
+  }
+
+  /** Sends the chosen quantities from nearby stores to the requesting unit; a fully covered request is approved. */
+  async fulfilFromStock(id: string, transfers: { storeKey: string; productId: string; qty: number }[], remarks: string): Promise<{ approved: boolean; remaining: number } | null> {
+    const res = await this.send('POST', `${BASE}/requests/${id}/fulfil-from-stock`, {
+      transfers: transfers.map(t => ({ store_key: t.storeKey, product_id: Number(t.productId), qty: t.qty })), remarks: remarks || null,
+    });
+    if (!res) return null;
+    await this.refresh('requests', 'stock');
+    return { approved: !!res.data.approved, remaining: Number(res.data.remaining) || 0 };
   }
 
   // ---- vendor proforma quotes of a request

@@ -27,14 +27,46 @@
             </select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
+          @if (invalid('branchKey')) { <small class="error-text">Select the requesting branch.</small> }
         </div>
 
         <div class="form-field">
-          <label for="pr-required">PO Date</label>
-          <div class="input-wrap">
+          <label for="pr-required">PO Date <span>*</span></label>
+          <div class="input-wrap po-cal-wrap">
             <i class="bi bi-calendar-event"></i>
-            <input id="pr-required" type="date" [min]="today" formControlName="requiredBy" />
+            <input id="pr-required" type="text" inputmode="numeric" maxlength="10" placeholder="dd-mm-yyyy" autocomplete="off"
+                   formControlName="requiredBy" (input)="onPoDateInput($event)" [class.is-invalid]="invalid('requiredBy')" />
+            <button type="button" class="date-pick-btn" (click)="toggleCal()" aria-label="Choose date" [attr.aria-expanded]="calOpen()"><i class="bi bi-calendar3"></i></button>
+            @if (calOpen()) {
+              <div class="po-cal" role="dialog" aria-label="Choose the PO date">
+                <div class="po-cal-head">
+                  <button type="button" (click)="shiftMonth(-1)" [disabled]="!calCanPrev()" aria-label="Previous month">&laquo;</button>
+                  <strong>{{ calTitle() }}</strong>
+                  <button type="button" (click)="shiftMonth(1)" [disabled]="!calCanNext()" aria-label="Next month">&raquo;</button>
+                </div>
+                <div class="po-cal-grid">
+                  @for (w of weekdays; track w) { <span class="po-cal-wd">{{ w }}</span> }
+                  @for (c of calDays(); track c.iso) {
+                    <button type="button" class="po-cal-day" [class.other]="c.other" [class.today]="c.today" [class.sel]="c.selected" [disabled]="c.blocked" (click)="pickDay(c)">{{ c.day }}</button>
+                  }
+                </div>
+              </div>
+            }
           </div>
+          @if (invalid('requiredBy')) { <small class="error-text">{{ poDateError(form.controls.requiredBy.value) }}</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="pr-priority">Priority <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-flag"></i>
+            <select id="pr-priority" formControlName="priority" [class.is-invalid]="invalid('priority')">
+              <option [ngValue]="null">Select priority</option>
+              @for (p of priorities; track p) { <option [ngValue]="p">{{ p }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+          @if (invalid('priority')) { <small class="error-text">Select the priority.</small> }
         </div>
       </div>
 
@@ -44,6 +76,7 @@
         <button type="button" class="link-btn" (click)="addItem()"><i class="bi bi-plus-lg"></i> Add Product</button>
       </div>
 
+      <p class="muted" style="margin: 0 0 6px; font-size: 12px"><i class="bi bi-info-circle"></i> Only products running low at the requesting branch (under {{ threshold() }} units) can be requested.</p>
       <div class="items-table-wrap" formArrayName="items">
         <table class="items-table">
           <thead>
@@ -62,13 +95,17 @@
               <tr [formGroupName]="i">
                 <td>
                   <select class="cell-input" formControlName="productId" [class.is-invalid]="invalid('items.' + i + '.productId')">
-                    <option [ngValue]="null">Select product</option>
+                    <option [ngValue]="null">{{ productsLoading() ? 'Loading products...' : products().length ? 'Select product' : 'No low-stock product at this branch' }}</option>
                     @for (p of products(); track p.id) {
-                      <option [ngValue]="p.id" [disabled]="isTaken(p.id, i)">{{ p.code }} - {{ p.name }}</option>
+                      <option [ngValue]="p.id" [disabled]="isTaken(p.id, i)">{{ p.code }} - {{ p.name }} (stock {{ p.stockQty ?? 0 }})</option>
                     }
                   </select>
+                  @if (invalid('items.' + i + '.productId')) { <small class="error-text">Select the product.</small> }
                 </td>
-                <td><input class="cell-input" type="number" min="1" formControlName="qty" [class.is-invalid]="invalid('items.' + i + '.qty')" /></td>
+                <td>
+                  <input class="cell-input" type="number" min="1" formControlName="qty" [class.is-invalid]="invalid('items.' + i + '.qty')" />
+                  @if (invalid('items.' + i + '.qty')) { <small class="error-text">Enter qty (min 1).</small> }
+                </td>
                 <td>{{ product(i)?.hsnCode || '-' }}</td>
                 <td class="num">₹{{ (product(i)?.unitPrice ?? 0) | number:'1.2-2' }}</td>
                 <td class="num">{{ product(i)?.gstPercent ?? 0 }}%</td>
@@ -89,11 +126,12 @@
       </div>
 
       <div class="form-field full-width">
-        <label for="pr-remarks">Remarks</label>
+        <label for="pr-remarks">Notes</label>
         <div class="input-wrap textarea-wrap">
           <i class="bi bi-card-text"></i>
           <textarea id="pr-remarks" rows="2" maxlength="255" formControlName="remarks" placeholder="Why is this stock needed?"></textarea>
         </div>
+        @if (invalid('remarks')) { <small class="error-text">Notes can be at most 255 characters.</small> }
       </div>
     </div>
 

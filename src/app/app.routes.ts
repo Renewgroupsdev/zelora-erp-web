@@ -60,6 +60,7 @@ export const routes: Routes = [
       { path: 'inventory/purchase-returns', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/purchase-returns/purchase-returns').then(m => m.PurchaseReturns) },
       { path: 'inventory/vendor-notes', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/vendor-notes/vendor-notes').then(m => m.VendorNotes) },
       { path: 'inventory/stock', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/stock/stock-overview').then(m => m.StockOverview) },
+      { path: 'inventory/low-stock-replenishment', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/low-stock-replenishment/low-stock-replenishment').then(m => m.LowStockReplenishment) },
       // HR Management
       { path: 'hr-management', pathMatch: 'full', redirectTo: 'hr/employees' },
       { path: 'hr', pathMatch: 'full', redirectTo: 'hr/employees' },

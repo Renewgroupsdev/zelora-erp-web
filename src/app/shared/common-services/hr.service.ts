@@ -4,6 +4,7 @@ import { Observable, forkJoin, map, of, switchMap, tap } from 'rxjs';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from './api-route-constants';
 import { FileUploadService } from './file-upload.service';
+import { AlertStackService } from './alert-stack.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { isTelecallerRole } from '../../core/auth/auth.model';
 import {
@@ -101,6 +102,7 @@ export type NewAppraisalInput = Omit<Appraisal, 'id' | 'status' | 'createdAt' | 
 export class HrService {
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
+  private readonly alertStack = inject(AlertStackService);
   private readonly api = inject(ApiDataService);
   private readonly uploads = inject(FileUploadService);
   private readonly branchList = inject(BranchOptionsService);
@@ -1144,7 +1146,7 @@ export class HrService {
 
   private alert(title: string, message: string, link: string): void {
     this.notifications.add({ type: 'hr', title, message, link });
-    Swal.fire({ toast: true, position: 'top-end', icon: 'info', title, text: message, showConfirmButton: false, timer: 4500, timerProgressBar: true });
+    this.alertStack.show({ tone: 'info', icon: 'bi-person-lines-fill', title, text: message, duration: 6000 });
   }
 
   /** Moves the row with `id` to the front (newly added / just edited rows lead every list). */

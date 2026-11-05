@@ -10,7 +10,6 @@ import { FileUploadService, UploadDraft, uploadError } from '../../common-servic
 import { shrinkPhoto } from '../../models/branch-franchise.model';
 import { CallerLogEntry } from '../../models/common-components.model';
 import { CallLogHistoryDialog } from '../call-log-history-dialog/call-log-history-dialog';
-import { DatePickerDirective } from '../../directives/date-picker.directive';
 import { TimePickerDirective } from '../../directives/time-picker.directive';
 import { ApiDataService } from '../../../core/http/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -93,7 +92,7 @@ export interface LeadProfileDialogResult {
 @Component({
   selector: 'app-lead-profile-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, DatePickerDirective, TimePickerDirective, RecordHistory],
+  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, TimePickerDirective, RecordHistory],
   templateUrl: './lead-profile-dialog.html',
   styleUrl: './lead-profile-dialog.scss',
 })

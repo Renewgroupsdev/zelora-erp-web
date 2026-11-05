@@ -436,7 +436,8 @@
 }
 
 .call-log-btn {
-  color: var(--primary);
+  --tone: var(--primary);
+  --tone-bg: var(--primary-soft);
 }
 
 .call-log-count {
@@ -699,102 +700,169 @@
   color: var(--primary);
 }
 
+/* ==========================================================================
+   Row action buttons (shared by every table: action / rowActions / quickActions / callLog)
+   Each button is a "tinted glass" chip: soft tone gradient + hairline ring at rest,
+   a solid tone-gradient fill that pops in from the centre on hover, with lift + glow,
+   a playful icon tilt and a press-down on click. Colour comes from two variables
+   (--tone / --tone-bg) so a new action only needs one tiny class.
+   ========================================================================== */
 .action-cell {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
   white-space: nowrap;
 }
 
 .row-action-btn {
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
+  --tone: var(--primary);
+  --tone-bg: var(--primary-soft);
+  --tone-on: #fff;
+
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
   padding: 0;
   border: 0;
-  border-radius: 8px;
-  background: var(--primary-soft);
-  color: var(--primary);
+  border-radius: 10px;
+  color: var(--tone);
+  background: linear-gradient(145deg, var(--tone-bg), color-mix(in srgb, var(--tone) 13%, var(--tone-bg)));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--tone) 24%, transparent),
+    0 1px 2px color-mix(in srgb, var(--tone) 14%, transparent);
 
   display: inline-flex;
   align-items: center;
   justify-content: center;
 
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition:
+    transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.22s ease,
+    color 0.18s ease;
+
+  /* solid fill that grows from the centre on hover */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background:
+      radial-gradient(120% 90% at 25% 0%, rgba(255, 255, 255, 0.38), transparent 55%),
+      linear-gradient(145deg, color-mix(in srgb, var(--tone) 80%, #fff), var(--tone) 55%, color-mix(in srgb, var(--tone) 85%, #000));
+    opacity: 0;
+    transform: scale(0.35);
+    transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
 
   i {
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 14px;
+    line-height: 1;
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
-  &:hover {
-    background: var(--primary);
-    color: #fff;
-    box-shadow: 0 4px 10px -4px var(--primary-shadow);
-    transform: translateY(-1px);
+  &:hover:not(:disabled) {
+    color: var(--tone-on);
+    transform: translateY(-2px);
+    box-shadow:
+      0 9px 16px -7px color-mix(in srgb, var(--tone) 75%, transparent),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+
+    &::before {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    i {
+      transform: scale(1.14) rotate(-8deg);
+    }
   }
 
-  &:active {
-    transform: scale(0.92);
-    box-shadow: none;
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.9);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--tone);
+    outline-offset: 2px;
   }
 }
 
-.action-edit {
-  background: var(--status-blue-bg, #e3edff);
-  color: var(--status-blue-text, #2f6fed);
+/* In dark mode the tone colours are light, so the filled hover state takes a dark icon. */
+:host-context(:root[data-theme='dark']) .row-action-btn {
+  --tone-on: #0d1b19;
 }
 
-.action-appointment {
-  background: var(--status-orange-bg, #fef0e0);
-  color: var(--status-orange-text, #e07a1f);
+/* ---- tones: one class per action ---- */
+.action-edit        { --tone: var(--status-blue-text, #1868b0);   --tone-bg: var(--status-blue-bg, #e5f0fb); }
+.action-appointment { --tone: var(--status-orange-text, #c47c14); --tone-bg: var(--status-orange-bg, #fdf1e0); }
+.action-assign      { --tone: var(--status-orange-text, #c47c14); --tone-bg: var(--status-orange-bg, #fdf1e0); }
+.action-followup    { --tone: var(--status-purple-text, #7c3aed); --tone-bg: var(--status-purple-bg, #f0e9fd); }
+.action-audit       { --tone: var(--status-purple-text, #7c3aed); --tone-bg: var(--status-purple-bg, #f0e9fd); }
+.action-branch      { --tone: var(--status-green-text, #0f9d58);  --tone-bg: var(--status-green-bg, #e2f6ec); }
+.action-call        { --tone: var(--status-green-text, #0f9d58);  --tone-bg: var(--status-green-bg, #e2f6ec); }
+.action-valid       { --tone: var(--status-green-text, #0f9d58);  --tone-bg: var(--status-green-bg, #e2f6ec); }
+.action-invalid     { --tone: var(--status-red-text, #d0392c);    --tone-bg: var(--status-red-bg, #fce9e8); }
+.action-delete      { --tone: var(--status-red-text, #d0392c);    --tone-bg: var(--status-red-bg, #fce9e8); }
+
+/* The call button breathes softly so the primary telecaller action stands out in a dense row. */
+.row-action-btn.action-call:not(:disabled):not(:hover) {
+  animation: row-call-ring 2.8s ease-out infinite;
 }
 
-.action-followup {
-  background: var(--status-purple-bg, #ede3ff);
-  color: var(--status-purple-text, #7c4fe0);
+@keyframes row-call-ring {
+  0%   { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 24%, transparent), 0 0 0 0 color-mix(in srgb, var(--tone) 40%, transparent); }
+  70%  { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 24%, transparent), 0 0 0 6px color-mix(in srgb, var(--tone) 0%, transparent); }
+  100% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 24%, transparent), 0 0 0 0 color-mix(in srgb, var(--tone) 0%, transparent); }
 }
 
-.action-branch {
-  background: var(--status-green-bg, #e1f7ea);
-  color: var(--status-green-text, #1f9d55);
-}
+/* The audit-history button (<app-record-history variant="icon">) is a child component, so reach in to give it the same chip. */
+.row-history {
+  display: inline-flex;
 
-.action-call {
-  background: var(--status-green-bg, #e3f9ee);
-  color: var(--status-green-text, #1f9d55);
-}
+  ::ng-deep .rh-btn.icon {
+    --tone: var(--status-purple-text, #7c3aed);
+    --tone-bg: var(--status-purple-bg, #f0e9fd);
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    justify-content: center;
+    border: 0;
+    border-radius: 10px;
+    color: var(--tone);
+    background: linear-gradient(145deg, var(--tone-bg), color-mix(in srgb, var(--tone) 13%, var(--tone-bg)));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 24%, transparent), 0 1px 2px color-mix(in srgb, var(--tone) 14%, transparent);
+    transition: transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease, background 0.2s ease, color 0.18s ease;
 
-.action-valid {
-  background: var(--status-green-bg, #e3f9ee);
-  color: var(--status-green-text, #1f9d55);
-}
+    i { font-size: 14px; line-height: 1; }
 
-.action-invalid {
-  background: var(--status-red-bg, #fde6e6);
-  color: var(--status-red-text, #e0392f);
+    &:hover {
+      color: #fff;
+      background: linear-gradient(145deg, color-mix(in srgb, var(--tone) 80%, #fff), var(--tone) 55%, color-mix(in srgb, var(--tone) 85%, #000));
+      transform: translateY(-2px);
+      box-shadow: 0 9px 16px -7px color-mix(in srgb, var(--tone) 75%, transparent), inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+    }
+
+    &:active { transform: translateY(0) scale(0.9); }
+  }
 }
 
 .quick-actions-cell {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 4px;
+  gap: 6px;
   white-space: nowrap;
 }
 
-.row-action-btn.qa-primary { background: var(--primary-soft); color: var(--primary-dark); }
-.row-action-btn.qa-primary:hover { background: var(--primary); color: #fff; box-shadow: 0 4px 10px -4px var(--primary-shadow); }
-
-.row-action-btn.qa-danger { background: var(--status-red-bg); color: var(--status-red-text); }
-.row-action-btn.qa-danger:hover { background: var(--status-red-text); color: #fff; box-shadow: 0 4px 10px -4px rgba(208, 57, 44, .4); }
-
-.action-delete {
-  background: var(--status-red-bg, #fde6e6);
-  color: var(--status-red-text, #e0392f);
-}
+.row-action-btn.qa-primary { --tone: var(--primary-dark, var(--primary)); --tone-bg: var(--primary-soft); }
+.row-action-btn.qa-danger  { --tone: var(--status-red-text, #d0392c);     --tone-bg: var(--status-red-bg, #fce9e8); }
 
 @media (max-width: 480px) {
   .page-info{
@@ -862,22 +930,13 @@
   .row-followup-urgent .avatar { animation: none !important; }
 }
 
-.action-assign {
-  background: var(--status-orange-bg, #fef0e0);
-  color: var(--status-orange-text, #e07a1f);
-}
-
-.action-audit {
-  background: var(--status-purple-bg, #ede3ff);
-  color: var(--status-purple-text, #7c4fe0);
-}
-
 .row-action-btn:disabled {
   opacity: .4;
   cursor: not-allowed;
   filter: grayscale(1);
   transform: none;
   box-shadow: none;
+  animation: none;
 }
 
 /* A lead another telecaller is on a call with: greyed out, its buttons disabled (audit log stays open). */

@@ -796,8 +796,76 @@
 @media (max-width: 640px) { .pl-row { grid-template-columns: 1fr 1fr; } .pl-hd { display: none; } }
 
 /* editable name of a picked upload */
-.file-rename { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 4px 10px; border: 1px solid var(--border-soft-strong, #d1d5db); border-radius: 10px; background: #fff; }
-.file-rename > i { color: var(--primary, #0a6c55); }
-.file-rename input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 13px; padding: 5px 0; }
-.file-rename span { color: var(--text-muted, #6b7280); font-size: 12px; font-weight: 700; }
+.nearby-card { display: grid; gap: 10px; }
+.nearby-product { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--border-soft, #e5ebe8); border-radius: 12px; background: #fff; }
+.nearby-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+.nearby-row { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.nearby-row .nearby-store { flex: 1; min-width: 0; }
+.nearby-row .nearby-qty { width: 84px; }
+.input-wrap { position: relative; }
+.input-wrap .date-pick-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--text-muted, #6b7280); cursor: pointer; padding: 4px; }
+.input-wrap .date-pick-hidden { position: absolute; right: 8px; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.file-rename { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 7px 10px; border: 1px dashed var(--border-soft-strong, #cfd8d3); border-radius: 10px; background: #fff; }
+.file-rename > i { color: var(--primary, #0a6c55); font-size: 16px; }
+.file-rename input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 13px; padding: 3px 0; }
+.file-rename .ext, .file-rename .tag { color: var(--text-muted, #6b7280); font-size: 12px; }
+.file-rename .ext { font-weight: 700; }
+.file-rename .file-remove { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: var(--status-red-bg, #fde8e6); color: var(--status-red-text, #e0392f); cursor: pointer; }
+.file-rename .file-remove > i { font-size: 13px; }
 .file-rename:focus-within { border-color: var(--primary, #0a6c55); box-shadow: 0 0 0 3px rgba(10, 108, 85, .12); }
+
+.urgent-queue { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 8px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 600;
+  background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+
+/* Nearby-stock route card: sending store --- km --- requesting branch */
+.route-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(70px, .6fr) minmax(0, 1fr); align-items: center; gap: 8px; margin-top: 8px; padding: 10px 12px; position: relative;
+  border-radius: 12px; border: 1px solid var(--border-soft, #e5ebe8); background: var(--app-surface-soft, #f4f8f6); }
+.route-card.near { border-color: #86efac; background: #f0fdf4; }
+.route-card.far { border-color: #fcd34d; background: #fffbeb; }
+.route-node { display: grid; gap: 1px; min-width: 0; font-size: 12.5px; }
+.route-node i { font-size: 16px; color: var(--primary, #0a6c55); }
+.route-node b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route-node small { color: var(--text-muted, #6b7280); font-size: 11px; }
+.route-node:last-of-type { text-align: right; justify-items: end; }
+.route-line { position: relative; height: 2px; background: repeating-linear-gradient(90deg, var(--primary, #0a6c55) 0 6px, transparent 6px 11px); background-size: 22px 2px; animation: route-flow 1.2s linear infinite; }
+.route-line em { position: absolute; left: 50%; top: -25px; transform: translateX(-50%); padding: 1px 8px; font-style: normal; font-size: 11px; font-weight: 800; white-space: nowrap;
+  border-radius: 999px; background: #fff; border: 1px solid var(--border-soft, #e5ebe8); color: var(--primary-dark, #0b4533); }
+.route-card.far .route-line { background-image: repeating-linear-gradient(90deg, #d97706 0 6px, transparent 6px 11px); }
+.route-card.far .route-node i { color: #d97706; }
+.route-tag { position: absolute; top: -9px; right: 12px; padding: 1px 9px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+  background: #dcfce7; color: #166534; }
+.route-card.far .route-tag { background: #fef3c7; color: #92400e; }
+@keyframes route-flow { to { background-position: 22px 0; } }
+@media (prefers-reduced-motion: reduce) { .route-line { animation: none; } }
+
+/* the truck drives from the sending store to the requesting branch along the dotted line */
+.route-line { overflow: visible; }
+.route-truck { position: absolute; top: -17px; left: 0; font-size: 20px; line-height: 1; color: var(--primary, #0a6c55); animation: route-drive 2.6s ease-in-out infinite; }
+.route-card.far .route-truck { color: #d97706; }
+@keyframes route-drive {
+  0% { left: 0; opacity: 0; }
+  10% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { left: calc(100% - 20px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .route-truck { animation: none; left: calc(50% - 10px); opacity: 1; } }
+
+/* PO date calendar popup */
+.po-cal { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; width: 290px; padding: 10px 12px 12px; border-radius: 6px; background: #fff;
+  border: 1px solid #d1d5db; box-shadow: 0 6px 18px rgba(16, 24, 40, .2); }
+.po-cal-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 8px; font-size: 14px; color: #1f2937; }
+.po-cal-head button { border: 0; background: transparent; font-size: 18px; line-height: 1; padding: 2px 8px; color: #1f2937; cursor: pointer; }
+.po-cal-head button:disabled { opacity: .3; cursor: default; }
+.po-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.po-cal-wd { padding: 6px 0; font-size: 12.5px; font-weight: 700; color: #1f2937; }
+.po-cal-day { height: 32px; border: 0; border-radius: 4px; background: transparent; font-size: 13px; color: #1f2937; cursor: pointer; }
+.po-cal-day:hover:not(:disabled) { background: #e5e7eb; }
+.po-cal-day.other { color: #9ca3af; }
+.po-cal-day.today { font-weight: 800; box-shadow: inset 0 0 0 1px var(--primary, #0a6c55); }
+.po-cal-day.sel { background: var(--primary, #0a6c55); color: #fff; font-weight: 700; }
+.po-cal-day:disabled { color: #d1d5db; cursor: not-allowed; }
+.po-cal-day.sel:disabled { color: #fff; }
+
+/* PO date calendar button: the grid calendar icon of the project's date fields */
+.input-wrap .date-pick-btn { width: 24px; height: 24px; right: 8px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Crect x='1.5' y='2.5' width='13' height='12' rx='1.5' fill='none' stroke='%23475569' stroke-width='1.3'/%3E%3Crect x='1.5' y='2.5' width='13' height='3.2' fill='%23475569'/%3E%3Cg fill='%23475569'%3E%3Crect x='4' y='7.4' width='1.8' height='1.6'/%3E%3Crect x='7.1' y='7.4' width='1.8' height='1.6'/%3E%3Crect x='10.2' y='7.4' width='1.8' height='1.6'/%3E%3Crect x='4' y='10.6' width='1.8' height='1.6'/%3E%3Crect x='7.1' y='10.6' width='1.8' height='1.6'/%3E%3Crect x='10.2' y='10.6' width='1.8' height='1.6'/%3E%3C/g%3E%3C/svg%3E") center / 16px no-repeat; }
+.input-wrap .date-pick-btn i { display: none; }

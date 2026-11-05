@@ -11,7 +11,7 @@ export type DocumentStatus = 'Posted' | 'Cancelled';
 export type TransferStatus = 'In Transit' | 'Partially Received' | 'Received' | 'Cancelled';
 export type VendorNoteType = 'Credit Note' | 'Debit Note';
 export type VendorNoteStatus = 'Open' | 'Adjusted' | 'Cancelled';
-export type Priority = 'Low' | 'Normal' | 'Urgent';
+export type Priority = 'Low' | 'Normal' | 'High' | 'Urgent';
 export type PurchaseReturnType = 'Debit Note' | 'Replacement';
 
 /** Fallback until /purchase/meta loads; the server value wins. */
@@ -288,6 +288,8 @@ export interface PurchaseOption {
   vendorId: number | null;
   unitPrice: number;
   gstPercent: number;
+  /** Stock at the branch the list was filtered for (low-stock request form), else undefined. */
+  stockQty?: number | null;
 }
 
 export interface LineTotals {
@@ -369,3 +371,19 @@ export interface PriceRevision {
   items: PriceRevisionItem[];
 }
 export interface RevisionLine { productId: string; productName: string; productCode: string; unitPrice: number; gstPercent: number }
+
+/** A nearby branch / franchise (same state as the requesting unit) holding a requested product. */
+export interface NearbyStoreOption {
+  storeKey: string; name: string; city: string; state: string; sameCity: boolean; available: number;
+  /** Straight-line km from the requesting unit (null = a unit has no coordinates) and the zone it falls in. */
+  distanceKm: number | null; zone: 'near' | 'far' | 'unknown';
+}
+/** One requested product with what is needed and the nearby stores that could send it. */
+export interface NearbyStockItem { productId: string; productName: string; productCode: string | null; needed: number; options: NearbyStoreOption[] }
+
+/** A Central Store product under the low-stock level (Low Stock Replenishment tab). */
+export interface LowStockRow {
+  productId: string; productCode: string; productName: string; hsnCode: string;
+  qty: number; onOrder: number; suggestedQty: number; unitPrice: number; gstPercent: number;
+  vendorId: number | null; vendorName: string | null; out: boolean;
+}

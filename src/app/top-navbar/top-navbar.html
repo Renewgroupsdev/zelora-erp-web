@@ -183,7 +183,7 @@
             }
 
             @for (item of notifications.notifications(); track item.id) {
-              <button type="button" class="notification-item" [class.unread]="!item.read" (click)="onNotificationClick(item)">
+              <button type="button" class="notification-item" [class.unread]="!item.read" [style.--i]="$index < 10 ? $index : 10" (click)="onNotificationClick(item)">
                 @if (!item.read) {
                   <span class="unread-dot"></span>
                 }

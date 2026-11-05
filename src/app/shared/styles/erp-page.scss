@@ -262,3 +262,26 @@ app-common-table-card {
   font-size: 10px;
   font-weight: 700;
 }
+
+/* Low Stock Replenishment */
+.ls-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.ls-stat { padding: 10px 14px; border-radius: 14px; background: var(--app-surface-solid, #fff); border: 1px solid var(--border-soft, #e5ebe8); }
+.ls-stat small { display: block; color: var(--text-muted, #6b7280); font-size: 11.5px; }
+.ls-stat strong { font-size: 18px; color: var(--text-dark, #1f2937); }
+.ls-stat strong.red { color: var(--status-red-text, #e0392f); }
+.ls-wrap { overflow-x: auto; border: 1px solid var(--border-soft, #e5ebe8); border-radius: 14px; background: var(--app-surface-solid, #fff); }
+.ls-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ls-table th { padding: 10px 12px; text-align: left; font-size: 12px; color: var(--text-muted, #6b7280); background: var(--app-surface-soft, #f4f8f6); white-space: nowrap; }
+.ls-table td { padding: 9px 12px; border-top: 1px solid var(--border-soft, #e5ebe8); vertical-align: middle; }
+.ls-table .num { text-align: right; }
+.ls-table tr.sel td { background: var(--primary-soft, #eaf5f1); }
+.ls-table .muted { color: var(--text-muted, #6b7280); font-size: 11.5px; }
+.ls-qty { width: 84px; padding: 5px 8px; text-align: right; border: 1px solid var(--border-soft-strong, #d1d5db); border-radius: 8px; }
+.ls-order { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--app-surface-soft, #f4f8f6); border: 1px solid var(--border-soft, #e5ebe8); }
+.ls-field { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
+.ls-field.ls-grow { flex: 1; min-width: 220px; }
+.ls-field label { font-size: 12px; font-weight: 700; color: var(--text-muted, #6b7280); }
+.ls-field label span { color: var(--status-red-text, #e0392f); }
+.ls-field select, .ls-field input { padding: 8px 10px; border: 1px solid var(--border-soft-strong, #d1d5db); border-radius: 10px; background: #fff; font-size: 13px; }
+.ls-empty { padding: 36px 12px; text-align: center; color: var(--text-muted, #6b7280); font-size: 13px; }
+.ls-empty i { margin-right: 6px; }
