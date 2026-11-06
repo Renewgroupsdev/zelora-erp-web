@@ -272,8 +272,8 @@ export class PurchaseService {
   // ---- Lookups ---------------------------------------------------------------------------------
 
   /** Active products (price + GST from the product master); only the vendor's products when one is given. */
-  productOptions(vendorId?: number | null, lowForStore?: string | null): Observable<PurchaseOption[]> {
-    const params = [vendorId ? `vendor_id=${vendorId}` : '', lowForStore ? `low_for_store=${encodeURIComponent(lowForStore)}` : ''].filter(Boolean);
+  productOptions(vendorId?: number | null, lowForStore?: string | null, all = false): Observable<PurchaseOption[]> {
+    const params = [vendorId ? `vendor_id=${vendorId}` : '', lowForStore ? `low_for_store=${encodeURIComponent(lowForStore)}` : '', lowForStore && all ? 'all=1' : ''].filter(Boolean);
     const query = params.length ? `?${params.join('&')}` : '';
     return (this.api.GET(`${BASE}/products${query}`) as Observable<any>).pipe(
       map(res => ((res?.data ?? []) as any[]).map(p => ({

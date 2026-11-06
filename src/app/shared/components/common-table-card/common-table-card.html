@@ -125,9 +125,12 @@
             }
 
             @else if (col.type === 'badge') {
-              <span class="status-badge" [ngClass]="badgeClass(row[col.key] + '')">
-                {{ row[col.key] }}
-              </span>
+                            @if (row[col.key] !== null && row[col.key] !== undefined && row[col.key] !== '') {
+                <span class="status-badge" [ngClass]="badgeClass(row[col.key] + '')" [title]="row[col.key]">
+                  <span class="sb-ico"><i class="bi" [ngClass]="statusIcon(row[col.key] + '')"></i></span>
+                  <span class="sb-text">{{ row[col.key] }}</span>
+                </span>
+              }
             }
 
             @else if (col.type === 'avatarGroup') {
@@ -345,6 +348,7 @@
                   <button
                     type="button"
                     class="row-action-btn"
+                    [ngClass]="'qa-key-' + action.key"
                     [class.qa-primary]="action.variant === 'primary'"
                     [class.qa-danger]="action.variant === 'danger'"
                     [disabled]="!!row['locked'] && !action.keepOnLock"

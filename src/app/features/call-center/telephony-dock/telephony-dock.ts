@@ -99,14 +99,8 @@ export class TelephonyDock implements OnDestroy {
       untracked(() => (ringing ? this.startRingtone() : this.stopRingtone()));
     });
 
-    // Outgoing call picked up by the customer: open the outcome popup at once, with the lead's enquiry and earlier
-    // follow-up notes, so the telecaller talks with the context in front of them and notes the conversation live.
-    effect(() => {
-      const call = this.active();
-      const picked = call?.direction === 'outbound' && (call.status === 'connected' || !!call.answered_at || !!call.connected_at);
-      if (picked && call!.employee_id === this.auth.currentUser()?.id) untracked(() => this.openOutcome(call!, true));
-    });
-
+    // A connected call (outgoing or incoming) shows only the call card. The outcome popup - lead enquiry, earlier follow-up notes,
+    // the outcome buttons and "End call & save" - opens from the card's Note button, and the call can only be ended from there.
     effect(() => {
       const pending = this.telephony.pendingDisposition();
       if (pending && !this.telephony.onCall()) untracked(() => this.openOutcome(pending, true));
@@ -180,10 +174,7 @@ export class TelephonyDock implements OnDestroy {
     if (this.busy()) return;
     this.busy.set(true);
     this.telephony.answer(call.id).subscribe({
-      next: fresh => {
-        this.busy.set(false);
-        this.openOutcome(fresh, true);
-      },
+      next: () => this.busy.set(false), // the call card appears; the outcome popup opens from its Note button
       error: err => {
         this.busy.set(false);
         this.fail(err, 'Could not answer the call.');
@@ -216,10 +207,9 @@ export class TelephonyDock implements OnDestroy {
     this.run(this.telephony.transfer(call.id, target.id), 'Could not transfer the call.');
   }
 
-  saveNote(call: CallLog, note: string): void {
-    this.telephony.addNote(call.id, note).subscribe({
-      error: err => this.fail(err, 'Could not save the note.'),
-    });
+  /** The card's Note button: the outcome popup for the live call (closable - the call stays up until "End call & save"). */
+  openOutcomeFor(call: CallLog): void {
+    this.openOutcome(call, false);
   }
 
   /* ---------------- outcome ---------------- */

@@ -39,7 +39,7 @@
         <div class="form-field">
           <label for="br-phone">Phone <span>*</span></label>
           <div class="input-wrap"><i class="bi bi-telephone"></i>
-            <input id="br-phone" name="phone" required maxlength="20" [(ngModel)]="model.phone" #phone="ngModel" [class.is-invalid]="submitted() && phone.invalid" placeholder="+91 98765 43210" />
+            <input appPhone id="br-phone" name="phone" required [(ngModel)]="model.phone" #phone="ngModel" [class.is-invalid]="submitted() && phone.invalid" placeholder="+91 98765 43210" />
           </div>
           @if (submitted() && phone.invalid) { <small class="error-text">Phone is required.</small> }
         </div>
@@ -98,7 +98,7 @@
         </div>
         <div class="form-field">
           <label for="br-headphone">Phone</label>
-          <div class="input-wrap"><i class="bi bi-telephone"></i><input id="br-headphone" name="headPhone" maxlength="20" [(ngModel)]="model.headPhone" /></div>
+          <div class="input-wrap"><i class="bi bi-telephone"></i><input appPhone id="br-headphone" name="headPhone" [(ngModel)]="model.headPhone" /></div>
         </div>
         <div class="form-field">
           <label for="br-heademail">Email</label>

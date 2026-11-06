@@ -76,7 +76,7 @@
         <button type="button" class="link-btn" (click)="addItem()"><i class="bi bi-plus-lg"></i> Add Product</button>
       </div>
 
-      <p class="muted" style="margin: 0 0 6px; font-size: 12px"><i class="bi bi-info-circle"></i> Only products running low at the requesting branch (under {{ threshold() }} units) can be requested.</p>
+      <p class="muted" style="margin: 0 0 6px; font-size: 12px"><i class="bi bi-info-circle"></i> Pick from all products. Stock shown is what the requesting branch holds (low = under {{ threshold() }} units). A product already added is greyed out.</p>
       <div class="items-table-wrap" formArrayName="items">
         <table class="items-table">
           <thead>
@@ -95,9 +95,9 @@
               <tr [formGroupName]="i">
                 <td>
                   <select class="cell-input" formControlName="productId" [class.is-invalid]="invalid('items.' + i + '.productId')">
-                    <option [ngValue]="null">{{ productsLoading() ? 'Loading products...' : products().length ? 'Select product' : 'No low-stock product at this branch' }}</option>
+                    <option [ngValue]="null">{{ productsLoading() ? 'Loading products...' : products().length ? 'Select product' : 'No products available' }}</option>
                     @for (p of products(); track p.id) {
-                      <option [ngValue]="p.id" [disabled]="isTaken(p.id, i)">{{ p.code }} - {{ p.name }} (stock {{ p.stockQty ?? 0 }})</option>
+                      <option class="opt" [class.opt-taken]="isTaken(p.id, i)" [ngValue]="p.id" [disabled]="isTaken(p.id, i)">{{ p.code }} - {{ p.name }} (stock {{ p.stockQty ?? 0 }}){{ isTaken(p.id, i) ? ' - already added' : '' }}</option>
                     }
                   </select>
                   @if (invalid('items.' + i + '.productId')) { <small class="error-text">Select the product.</small> }

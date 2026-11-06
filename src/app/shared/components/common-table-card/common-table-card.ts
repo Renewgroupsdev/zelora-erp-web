@@ -31,7 +31,23 @@ const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue'> =
   // Appointments
   'in consultation': 'orange', 'awaiting terms': 'orange', invoiced: 'blue', 'consultation only': 'gray', 'consultation fee': 'blue',
   receipt: 'green', payment: 'red', sales: 'blue', purchase: 'orange', contra: 'gray', journal: 'gray',
+  // Leads / follow-ups
+  'new lead': 'blue', lead: 'gray', valid: 'green', invalid: 'red', customer: 'green', schedule: 'blue', appointment: 'blue',
+  'follow-ups': 'orange', 'follow-up': 'orange', 'cool-follow-ups': 'blue', 'hot-leads': 'red',
 };
+
+/** A small icon for the status chip: the status's own where we know it, else one for its colour. */
+const STATUS_ICONS: Record<string, string> = {
+  'hot-leads': 'bi-fire', 'cool-follow-ups': 'bi-snow2', 'follow-ups': 'bi-arrow-repeat', 'follow-up': 'bi-arrow-repeat',
+  'new lead': 'bi-stars', customer: 'bi-person-check-fill', schedule: 'bi-calendar-check', appointment: 'bi-calendar-check',
+  invalid: 'bi-x-lg', valid: 'bi-check-lg', contacted: 'bi-telephone-fill', pending: 'bi-hourglass-split',
+  urgent: 'bi-exclamation-lg', overdue: 'bi-exclamation-lg', rejected: 'bi-x-lg', cancelled: 'bi-x-lg', failed: 'bi-x-lg',
+  paid: 'bi-check-lg', approved: 'bi-check-lg', completed: 'bi-check-lg', converted: 'bi-check-lg', active: 'bi-lightning-charge-fill',
+  draft: 'bi-pencil', inactive: 'bi-pause-fill', 'on hold': 'bi-pause-fill', closed: 'bi-lock-fill', open: 'bi-unlock-fill',
+  'in progress': 'bi-arrow-repeat', ordered: 'bi-bag-check-fill', received: 'bi-box-seam-fill', 'in stock': 'bi-box-seam-fill',
+  'low stock': 'bi-exclamation-lg', 'out of stock': 'bi-x-lg', present: 'bi-check-lg', absent: 'bi-x-lg', 'on leave': 'bi-airplane-fill',
+};
+const TONE_ICONS: Record<string, string> = { green: 'bi-check-lg', orange: 'bi-hourglass-split', red: 'bi-exclamation-lg', blue: 'bi-info-lg', gray: 'bi-dash-lg' };
 
 const AVATAR_PALETTE_SIZE = 5;
 
@@ -259,6 +275,12 @@ export class CommonTableCard {
   badgeClass(status: string | number): string {
     const key = String(status).trim().toLowerCase();
     return `badge-${STATUS_MAP[key] ?? 'gray'}`;
+  }
+
+  /** Icon inside the status chip (see STATUS_ICONS / TONE_ICONS). */
+  statusIcon(status: string | number): string {
+    const key = String(status).trim().toLowerCase();
+    return STATUS_ICONS[key] ?? TONE_ICONS[STATUS_MAP[key] ?? 'gray'];
   }
 
   isSortable(column: TableColumn): boolean {

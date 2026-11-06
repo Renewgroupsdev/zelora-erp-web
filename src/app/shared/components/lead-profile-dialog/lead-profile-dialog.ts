@@ -1,3 +1,4 @@
+import { splitCallNote } from '../../utils/call-note.util';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, HostListener, Inject, computed, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -9,14 +10,12 @@ import { FlowAppointment, FlowLead, FollowUpEntry } from '../../common-services/
 import { FileUploadService, UploadDraft, uploadError } from '../../common-services/file-upload.service';
 import { shrinkPhoto } from '../../models/branch-franchise.model';
 import { CallerLogEntry } from '../../models/common-components.model';
-import { CallLogHistoryDialog } from '../call-log-history-dialog/call-log-history-dialog';
 import { TimePickerDirective } from '../../directives/time-picker.directive';
 import { ApiDataService } from '../../../core/http/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ApiRoutesConstants } from '../../common-services/api-route-constants';
 import { ToastService } from '../../common-services/toast.service';
 import { to12Hour } from '../../utils/format.util';
-import { RecordHistory } from '../record-history/record-history';
 import {
   BaldnessType,
   ComboOffer,
@@ -92,7 +91,7 @@ export interface LeadProfileDialogResult {
 @Component({
   selector: 'app-lead-profile-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, TimePickerDirective, RecordHistory],
+  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, TimePickerDirective],
   templateUrl: './lead-profile-dialog.html',
   styleUrl: './lead-profile-dialog.scss',
 })
@@ -356,25 +355,14 @@ export class LeadProfileDialog {
     this.followupMode = mode;
   }
 
-  get canViewCallHistory(): boolean {
-    return !!(this.data.callLogEntries?.length || this.history.length);
-  }
-
-  openCallHistory(): void {
-    this.dialog.open(CallLogHistoryDialog, {
-      width: '440px',
-      maxWidth: 'calc(100vw - 32px)',
-      maxHeight: '86vh',
-      autoFocus: false,
-      restoreFocus: true,
-      panelClass: 'call-log-history-dialog-panel',
-      data: {
-        leadName: this.data.lead.name,
-        subtitle: this.data.lead.phone,
-        entries: this.data.callLogEntries ?? [],
-        followUps: this.history,
-      },
-    });
+  /** Calls and follow-up notes already recorded for the lead, shown as one timeline above the follow-up form. */
+  get records(): { kind: 'call' | 'followup'; who: string; when: string; notes: string; next: string; head: string; reminder: string }[] {
+    const calls = (this.data.callLogEntries ?? []).map(c => ({ kind: 'call' as const, who: c.telecallerName || 'Unknown', when: c.dateTime, notes: c.notes, next: '', ...splitCallNote(c.notes) }));
+    const notes = this.history.map(h => ({
+      kind: 'followup' as const, who: h.telecaller || 'Unknown', when: h.date, notes: h.notes, ...splitCallNote(h.notes),
+      next: h.nextFollowUpDate ? `${this.formatDateDisplay(h.nextFollowUpDate)}${h.nextFollowUpTime ? ', ' + this.formatTime(h.nextFollowUpTime) : ''}` : '',
+    }));
+    return [...calls, ...notes];
   }
 
   private composeEntryDate(): string {

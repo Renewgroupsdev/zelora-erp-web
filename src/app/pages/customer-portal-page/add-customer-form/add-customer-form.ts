@@ -1,3 +1,4 @@
+import { PhoneInput } from '../../../shared/directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
 import { Component, Inject, computed, inject } from '@angular/core';
 import { BranchOptionsService } from '../../../shared/common-services/branch-options.service';
@@ -24,7 +25,7 @@ export interface AddCustomerFormResult {
 @Component({
   selector: 'app-add-customer-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule],
+  imports: [PhoneInput, CommonModule, ReactiveFormsModule, MatDialogModule],
   templateUrl: './add-customer-form.html',
   styleUrl: './add-customer-form.scss',
 })
@@ -49,7 +50,7 @@ export class AddCustomerForm {
     this.branchOptions.ensure();
     this.customerForm = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(100)]],
-      phone: ['', [Validators.required, Validators.pattern(/^[0-9+\-\s()]{8,20}$/)]],
+      phone: ['', [Validators.required, Validators.pattern(/^[0-9]{10}$/)]],
       email: ['', [Validators.email]],
       gender: ['', Validators.required],
       branch: ['', Validators.required],

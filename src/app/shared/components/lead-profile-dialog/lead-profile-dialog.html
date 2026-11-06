@@ -5,9 +5,7 @@
       <i class="bi bi-x-lg"></i>
     </button>
 
-    <app-record-history class="profile-history" type="CustomerLead" [recordId]="data.lead.id" [title]="data.lead.name" />
-
-    <span class="profile-avatar">{{ initials(data.lead.name) }}</span>
+    <span class="profile-avatar"><span class="profile-avatar-ring"></span>{{ initials(data.lead.name) }}</span>
 
     <div class="profile-header-info">
       <div class="profile-name-row">
@@ -69,31 +67,48 @@
 
     @if (isFollowUp) {
       <div class="profile-section">
-        <div class="section-title-row">
-          <div class="section-title"><i class="bi bi-person-check"></i> Follow-Up</div>
-          @if (canViewCallHistory) {
-            <button type="button" class="call-history-btn" (click)="openCallHistory()" title="View call history">
-              <i class="bi bi-clock-history"></i> Call History
-            </button>
-          }
-        </div>
+        <div class="section-title"><i class="bi bi-person-check"></i> Follow-Up</div>
 
         <div class="field-grid">
           <label>Assigned telecaller<select formControlName="telecaller" (change)="onTelecallerChange()" [class.is-invalid]="isInvalid('telecaller')"><option value="">Select telecaller</option>@for (caller of data.telecallers; track caller) { <option [value]="caller">{{ caller }}</option> }</select></label>
           <label>Branch / Franchise<select formControlName="branch" [class.is-invalid]="isInvalid('branch')"><option value="">Select branch / franchise</option>@for (branch of branches(); track branch) { <option [value]="branch">{{ branch }}</option> }</select></label>
         </div>
 
-        <div class="followup-mode-toggle">
-          <button type="button" [class.selected]="followupMode === 'schedule'" (click)="setFollowupMode('schedule')">
+        <!-- Everything recorded for this lead so far: calls and follow-up notes, newest first -->
+        <div class="records-card">
+          <div class="records-head"><span><i class="bi bi-clock-history"></i> Call history &amp; follow-up records</span><em>{{ records.length }}</em></div>
+          @if (records.length) {
+            <ol class="records-timeline">
+              @for (r of records; track $index; let i = $index) {
+                <li [style.animation-delay.ms]="i * 60">
+                  <span class="rec-dot" [class.is-followup]="r.kind === 'followup'">{{ initials(r.who) }}</span>
+                  <div class="rec-body">
+                    <div class="rec-top"><strong>{{ r.who }}</strong><time><i class="bi bi-clock"></i> {{ r.when }}</time></div>
+                    @if (r.head) { <p class="rec-slot">{{ r.head }}</p> }
+                    <p [class.rec-reminder]="r.head">@if (r.head) { <b>Reminder:</b> }{{ r.reminder || (r.head ? '-' : 'No note') }}</p>
+                    @if (r.next) { <span class="next-followup-chip"><i class="bi bi-calendar2-week"></i> Next follow-up: {{ r.next }}</span> }
+                  </div>
+                </li>
+              }
+            </ol>
+          } @else {
+            <p class="records-empty"><i class="bi bi-telephone-x"></i> No calls or follow-ups recorded yet.</p>
+          }
+        </div>
+
+        <!-- Switch between booking an appointment and setting the next follow-up call-back -->
+        <div class="mode-switch" [class.is-right]="followupMode === 'notes'" role="group" aria-label="Next step">
+          <span class="mode-thumb" aria-hidden="true"></span>
+          <button type="button" [class.active]="followupMode === 'schedule'" [attr.aria-pressed]="followupMode === 'schedule'" (click)="setFollowupMode('schedule')">
             <i class="bi bi-calendar2-check"></i> Schedule Appointment
           </button>
-          <button type="button" [class.selected]="followupMode === 'notes'" (click)="setFollowupMode('notes')">
-            <i class="bi bi-chat-left-text"></i> Follow-up Notes
+          <button type="button" [class.active]="followupMode === 'notes'" [attr.aria-pressed]="followupMode === 'notes'" (click)="setFollowupMode('notes')">
+            <i class="bi bi-arrow-repeat"></i> Next Follow-up
           </button>
         </div>
 
         @if (followupMode === 'schedule') {
-          <div class="field-grid">
+          <div class="field-grid mode-panel">
             <label>Appointment date<input type="date" [min]="today" formControlName="scheduleDate" [class.is-invalid]="isInvalid('scheduleDate')"></label>
             <label>Appointment time<input type="text" appTimePicker formControlName="scheduleTime" placeholder="Select time" [class.is-invalid]="isInvalid('scheduleTime')"></label>
             <label class="full">Doctor
@@ -111,47 +126,12 @@
               </p>
             }
           </div>
-        } @else {
-          @if (history.length) {
-            <div class="followup-history">
-              @for (entry of history; track $index) {
-                <div class="followup-entry">
-                  <div class="followup-entry-meta"><strong>{{ entry.telecaller }}</strong><span>{{ entry.date }}</span></div>
-                  <p>{{ entry.notes }}</p>
-                  @if (entry.nextFollowUpDate) {
-                    <span class="next-followup-chip">
-                      <i class="bi bi-calendar2-week"></i> Next follow-up: {{ formatDateDisplay(entry.nextFollowUpDate) }}{{ entry.nextFollowUpTime ? ', ' + formatTime(entry.nextFollowUpTime) : '' }}
-                    </span>
-                  }
-                </div>
-              }
-            </div>
-          }
 
-          <div class="field-grid">
+        } @else {
+          <div class="field-grid mode-panel">
             <label>Next follow-up date<input type="date" [min]="today" formControlName="nextFollowUpDate"></label>
             <label>Next follow-up time<input type="text" appTimePicker formControlName="nextFollowUpTime" placeholder="Select time"></label>
             <label class="full">Follow-up note<textarea rows="3" formControlName="notes" [class.is-invalid]="isInvalid('notes')" placeholder="Record the call outcome, needs, and next action"></textarea></label>
-            @if (pendingEntries.length) {
-              <div class="full pending-entries">
-                @for (entry of pendingEntries; track $index) {
-                  <div class="pending-entry">
-                    <div class="pending-entry-text">
-                      <p>{{ entry.notes }}</p>
-                      <span class="next-followup-chip">
-                        <i class="bi bi-calendar2-week"></i> Next follow-up: {{ formatDateDisplay(entry.date) }}{{ entry.time ? ', ' + formatTime(entry.time) : '' }}
-                      </span>
-                    </div>
-                    <button type="button" class="pending-entry-delete" (click)="removePendingEntry($index)" aria-label="Remove this follow-up note" title="Remove">
-                      <i class="bi bi-trash3-fill"></i>
-                    </button>
-                  </div>
-                }
-              </div>
-            }
-            <div class="full add-followup-row">
-              <a href="#add-follow-up-note" class="secondary add-note-link" role="button" [class.disabled]="saving" (click)="$event.preventDefault(); !saving && addFollowUpEntry()"><i class="bi bi-plus-lg"></i> Add follow-up note</a>
-            </div>
           </div>
         }
       </div>

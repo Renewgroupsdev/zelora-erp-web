@@ -1,3 +1,4 @@
+import { PhoneInput } from '../../../../shared/directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -12,7 +13,7 @@ import { addDays, isoDate } from '../../../../shared/utils/format.util';
 @Component({
   selector: 'app-bill-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [PhoneInput, CommonModule, FormsModule, MatDialogModule],
   templateUrl: './bill-form.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', './bill-form.scss'],
 })

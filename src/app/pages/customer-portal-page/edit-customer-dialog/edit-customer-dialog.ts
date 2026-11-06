@@ -1,3 +1,4 @@
+import { PhoneInput } from '../../../shared/directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
 import { Component, Inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -16,7 +17,7 @@ export interface EditCustomerData {
 @Component({
   selector: 'app-edit-customer-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, ImagePicker],
+  imports: [PhoneInput, CommonModule, ReactiveFormsModule, MatDialogModule, ImagePicker],
   templateUrl: './edit-customer-dialog.html',
   styleUrl: '../add-customer-form/add-customer-form.scss',
 })

@@ -81,7 +81,6 @@ export class TelephonyService {
 
   /** Emits a call of mine that just left the live state, so the dock can ask for its outcome. */
   readonly callFinished$ = new Subject<CallLog>();
-
   /** Emits after an outcome is saved (lead status / follow-up changed), so lists can reload. */
   readonly outcomeSaved$ = new Subject<CallLog>();
 
@@ -130,10 +129,12 @@ export class TelephonyService {
   /* ---------------- calls ---------------- */
 
   dial(target: { lead_id?: number; phone_number?: string }): Observable<CallLog> {
-    return this.post(ApiRoutesConstants.CALL_OUTBOUND, target);
+    return this.post(ApiRoutesConstants.CALL_OUTBOUND, target, true);
   }
 
-  answer(callId: number): Observable<CallLog> { return this.control(callId, 'answer'); }
+  answer(callId: number): Observable<CallLog> {
+    return this.post(`${ApiRoutesConstants.CALL_LIST}/${callId}/answer`, {}, true);
+  }
   reject(callId: number): Observable<CallLog> { return this.control(callId, 'reject'); }
   hangup(callId: number): Observable<CallLog> { return this.control(callId, 'hangup'); }
   hold(callId: number): Observable<CallLog> { return this.control(callId, 'hold'); }
@@ -232,10 +233,15 @@ export class TelephonyService {
     return this.post(`${ApiRoutesConstants.CALL_LIST}/${callId}/${action}`, body);
   }
 
-  /** POST, unwrap `data`, then refresh the agent state so the UI reflects the change at once. */
-  private post(path: string, body: object): Observable<CallLog> {
+  /**
+   * POST, unwrap `data`, then refresh the agent state so the UI reflects the change at once.
+   * `userStarted`: the user placed (outgoing) or answered (incoming) this call just now - only such a call may raise the
+   * "call recording is unavailable" warning, not a call that was already live when the page was opened.
+   */
+  private post(path: string, body: object, userStarted = false): Observable<CallLog> {
     return this.api.POST(path, body).pipe(
       map((res: any) => res.data as CallLog),
+      tap((call: CallLog) => { if (userStarted && call?.id) this.userStartedCalls.add(call.id); }),
       tap(() => this.refresh())
     );
   }
@@ -329,6 +335,14 @@ export class TelephonyService {
   /** True once we've detected the browser can't record here (insecure origin). Read by the dock UI. */
   readonly recordingUnavailable = signal(false);
 
+  /** Calls this browser tab placed or answered (see post()). The recording warning is raised only for these. */
+  private readonly userStartedCalls = new Set<number>();
+
+  /** Flags recording as unavailable - and so shows the warning - only when the user just started / answered this call. */
+  private markRecordingUnavailable(callId: number): void {
+    if (this.userStartedCalls.has(callId)) this.recordingUnavailable.set(true);
+  }
+
   private syncRecording(call: CallLog | null): void {
     const isLive = !!call && (call.status === 'connected' || call.status === 'answered' || call.status === 'hold');
     if (isLive && this.recordingCallId !== call!.id) {
@@ -348,11 +362,11 @@ export class TelephonyService {
         `context (https, or http://localhost). This page is served over ${window.location.origin}, ` +
         `so this call will not be recorded.`
       );
-      this.recordingUnavailable.set(true);
+      this.markRecordingUnavailable(callId);
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      this.recordingUnavailable.set(true);
+      this.markRecordingUnavailable(callId);
       return;
     }
 
@@ -380,7 +394,7 @@ export class TelephonyService {
       this.mediaRecorder.start();
     }).catch((err) => {
       console.warn('[telephony] Microphone permission denied or unavailable:', err?.message ?? err);
-      this.recordingUnavailable.set(true);
+      this.markRecordingUnavailable(callId);
     });
   }
 

@@ -20,4 +20,19 @@ export class IncomingCallComponent {
   @Output() reject = new EventEmitter<CallLog>();
 
   readonly customerNumber = customerNumber;
+
+  /** Initials of the lead name for the avatar (a hash sign stands in for an unknown caller). */
+  initials(): string {
+    const name = this.call.lead?.name?.trim();
+    if (!name) return '#';
+    return name.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+  }
+
+  /** "10:45:00" -> "10:45 AM". */
+  time12(value: string | null | undefined): string {
+    const m = /^(\d{1,2}):(\d{2})/.exec(value ?? '');
+    if (!m) return value ?? '';
+    const h = Number(m[1]);
+    return `${h % 12 === 0 ? 12 : h % 12}:${m[2]} ${h >= 12 ? 'PM' : 'AM'}`;
+  }
 }

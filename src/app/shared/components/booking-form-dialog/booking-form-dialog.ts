@@ -1,3 +1,4 @@
+import { PhoneInput } from '../../directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
 import { Component, Inject, computed, inject } from '@angular/core';
 import { BranchOptionsService } from '../../common-services/branch-options.service';
@@ -51,7 +52,7 @@ export interface BookingFormResult {
 @Component({
   selector: 'app-booking-form-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, TimePickerDirective],
+  imports: [PhoneInput, CommonModule, ReactiveFormsModule, MatDialogModule, TimePickerDirective],
   templateUrl: './booking-form-dialog.html',
   styleUrl: './booking-form-dialog.scss',
 })
@@ -83,7 +84,7 @@ export class BookingFormDialog {
 
     this.form = this.fb.group({
       customerName: [initial?.customerName ?? '', [Validators.required, Validators.maxLength(100)]],
-      phone: [initial?.phone ?? '', [Validators.required, Validators.pattern(/^[0-9+\-\s()]{8,20}$/)]],
+      phone: [initial?.phone ?? '', [Validators.required, Validators.pattern(/^[0-9]{10}$/)]],
       gender: [initial?.gender ?? ''],
       branch: [initial?.branch ?? '', Validators.required],
       staff: [initial?.staff ?? '', Validators.required],

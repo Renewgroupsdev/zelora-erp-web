@@ -1,3 +1,4 @@
+import { PhoneInput } from '../../../../shared/directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
@@ -14,7 +15,7 @@ import { isoDate, uid } from '../../../../shared/utils/format.util';
 @Component({
   selector: 'app-employee-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [PhoneInput, CommonModule, FormsModule, MatDialogModule],
   templateUrl: './employee-form.html',
   styleUrl: '../../../../shared/styles/erp-dialog.scss',
 })

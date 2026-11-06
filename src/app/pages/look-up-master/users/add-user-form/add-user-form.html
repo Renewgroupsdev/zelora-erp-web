@@ -92,7 +92,7 @@
           <label for="user-phone">Phone</label>
           <div class="input-wrap">
             <i class="bi bi-telephone"></i>
-            <input id="user-phone" type="text" formControlName="phone_no" placeholder="Mobile number" [class.is-invalid]="isInvalid('phone_no')" />
+            <input appPhone id="user-phone" type="text" formControlName="phone_no" placeholder="Mobile number" [class.is-invalid]="isInvalid('phone_no')" />
           </div>
           @if (isInvalid('phone_no')) { <small class="error-text">Phone number is too long.</small> }
         </div>

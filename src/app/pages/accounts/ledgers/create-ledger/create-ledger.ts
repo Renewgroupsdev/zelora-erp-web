@@ -1,3 +1,4 @@
+import { PhoneInput } from '../../../../shared/directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -9,7 +10,7 @@ import { LEDGER_GROUPS, Ledger, LedgerGroup } from '../../../../shared/models/ac
 @Component({
   selector: 'app-create-ledger',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [PhoneInput, CommonModule, FormsModule, MatDialogModule],
   templateUrl: './create-ledger.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss'],
 })

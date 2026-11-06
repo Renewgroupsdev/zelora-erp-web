@@ -69,7 +69,7 @@
         <div class="form-field">
           <label for="em-phone">Mobile <span>*</span></label>
           <div class="input-wrap"><i class="bi bi-telephone"></i>
-            <input id="em-phone" name="phone" required pattern="[6-9][0-9]{9}" maxlength="10" [(ngModel)]="model.phone" #phone="ngModel" [class.is-invalid]="submitted() && phone.invalid" placeholder="10-digit mobile" />
+            <input appPhone id="em-phone" name="phone" required pattern="[6-9][0-9]{9}" [(ngModel)]="model.phone" #phone="ngModel" [class.is-invalid]="submitted() && phone.invalid" placeholder="10-digit mobile" />
           </div>
           @if (submitted() && phone.invalid) { <small class="error-text">Enter a valid 10-digit mobile.</small> }
         </div>
@@ -93,7 +93,7 @@
         <div class="form-field">
           <label for="em-phone2">Secondary Mobile</label>
           <div class="input-wrap"><i class="bi bi-telephone-plus"></i>
-            <input id="em-phone2" name="secondaryPhone" pattern="[6-9][0-9]{9}" maxlength="10" [(ngModel)]="model.secondaryPhone" #phone2="ngModel" [class.is-invalid]="submitted() && (phone2.invalid || sameAsPrimary())" placeholder="Alternate 10-digit mobile" />
+            <input appPhone id="em-phone2" name="secondaryPhone" pattern="[6-9][0-9]{9}" [(ngModel)]="model.secondaryPhone" #phone2="ngModel" [class.is-invalid]="submitted() && (phone2.invalid || sameAsPrimary())" placeholder="Alternate 10-digit mobile" />
           </div>
           @if (submitted() && phone2.invalid) { <small class="error-text">Enter a valid 10-digit mobile.</small> }
           @else if (submitted() && sameAsPrimary()) { <small class="error-text">Must differ from the primary mobile.</small> }
@@ -267,7 +267,7 @@
         <div class="form-field">
           <label for="em-refphone">Referrer Mobile</label>
           <div class="input-wrap"><i class="bi bi-telephone"></i>
-            <input id="em-refphone" name="referralPhone" pattern="[6-9][0-9]{9}" maxlength="10" [(ngModel)]="model.referralPhone" #refphone="ngModel" [class.is-invalid]="submitted() && refphone.invalid" placeholder="10-digit mobile" />
+            <input appPhone id="em-refphone" name="referralPhone" pattern="[6-9][0-9]{9}" [(ngModel)]="model.referralPhone" #refphone="ngModel" [class.is-invalid]="submitted() && refphone.invalid" placeholder="10-digit mobile" />
           </div>
           @if (submitted() && refphone.invalid) { <small class="error-text">Enter a valid 10-digit mobile.</small> }
         </div>

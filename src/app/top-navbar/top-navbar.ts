@@ -16,6 +16,7 @@ import { BranchChat } from '../shared/components/branch-chat/branch-chat';
 import { DiscountRequestsService } from '../shared/common-services/discount-requests.service';
 import { AbsentTelecallersService } from '../shared/common-services/absent-telecallers.service';
 import { PurchaseApprovalAlertsService } from '../shared/common-services/purchase-approval-alerts.service';
+import { FollowUpReminderService } from '../shared/common-services/follow-up-reminder.service';
 import { openAssignCaller } from '../shared/components/lead-dialogs/assign-caller-dialog';
 import { DiscountReviewDialog } from '../shared/components/discount-review-dialog/discount-review-dialog';
 
@@ -160,6 +161,7 @@ export class TopNavbar {
     private discounts: DiscountRequestsService,
     private absentTelecallers: AbsentTelecallersService,
     private purchaseAlerts: PurchaseApprovalAlertsService,
+    private followUpReminder: FollowUpReminderService,
   ) {
     // Branch managers / approvers: discount requests of their branch show up here as notifications.
     this.discounts.start();
@@ -167,6 +169,8 @@ export class TopNavbar {
     this.absentTelecallers.start();
     // Head office / admin: purchase requests sent by the branches wait for approval here.
     this.purchaseAlerts.start();
+    // Telecallers: 5 minutes before a follow-up call-back is due, a card offers "Call back" / "Later" (45 s).
+    this.followUpReminder.start();
   }
 
   onNotificationClick(notification: AppNotification): void {

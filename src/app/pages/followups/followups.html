@@ -45,12 +45,11 @@
       [pageInfoText]="pageInfoText"
       [sortActive]="sortActive"
       [sortDirection]="sortDirection"
-      [actionPermissions]="{ profile: 'update-follow-up' }"
       (pageChange)="onPageChange($event)"
       (sortChange)="onSortChange($event)"
       (rowActionClick)="onRowAction($event)"
       (quickActionClick)="onQuickAction($event)"
-      (profileClick)="openFollowUpProfile($event)"
+      (profileClick)="viewLead($event)"
     ></app-common-table-card>
   </div>
 

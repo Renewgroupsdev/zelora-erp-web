@@ -23,7 +23,7 @@ export class PurchaseRequestForm {
   /** Requesting branch options (GET /branches/options). */
   readonly branches = this.branchOptions.options;
 
-  /** Only the products that are low (under the threshold) at the chosen requesting branch, with the stock it has. */
+  /** Every active product, with the stock the chosen requesting branch has (a product already picked in another row is greyed out). */
   readonly products = signal<PurchaseOption[]>([]);
   readonly productsLoading = signal(false);
   readonly threshold = computed(() => this.purchase.meta().lowStockThreshold);
@@ -51,10 +51,10 @@ export class PurchaseRequestForm {
     if (!key) return void this.products.set([]);
     this.productsLoading.set(true);
     try {
-      const list = await firstValueFrom(this.purchase.productOptions(null, key));
+      const list = await firstValueFrom(this.purchase.productOptions(null, key, true));
       if (key !== this.form.controls.branchKey.value) return; // the branch changed while loading
       this.products.set(list);
-      // a product picked for another branch that is not low here is cleared
+      // a product that no longer exists in the list is cleared
       for (const row of this.items.controls) {
         const id = row.get('productId')?.value;
         if (id && !list.some(p => p.id === id)) row.get('productId')?.setValue(null);

@@ -40,14 +40,14 @@
           <div class="form-field">
             <label for="ec-mobile">Mobile no <span class="required-asterisk">*</span></label>
             <div class="input-wrap"><i class="bi bi-telephone"></i>
-              <input id="ec-mobile" type="tel" formControlName="mobile_no" maxlength="10" [class.is-invalid]="isInvalid('mobile_no')" /></div>
+              <input appPhone id="ec-mobile" type="tel" formControlName="mobile_no" [class.is-invalid]="isInvalid('mobile_no')" /></div>
             @if (isInvalid('mobile_no')) { <small class="error-text">{{ error('mobile_no', 'Enter a valid 10-digit mobile number.') }}</small> }
           </div>
 
           <div class="form-field">
             <label for="ec-alt">Alternate mobile no</label>
             <div class="input-wrap"><i class="bi bi-telephone-plus"></i>
-              <input id="ec-alt" type="tel" formControlName="alternate_mobile_no" maxlength="10" [class.is-invalid]="isInvalid('alternate_mobile_no')" /></div>
+              <input appPhone id="ec-alt" type="tel" formControlName="alternate_mobile_no" [class.is-invalid]="isInvalid('alternate_mobile_no')" /></div>
             @if (isInvalid('alternate_mobile_no')) { <small class="error-text">{{ error('alternate_mobile_no', 'Enter a valid 10-digit number.') }}</small> }
           </div>
 

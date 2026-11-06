@@ -49,13 +49,12 @@
           <label for="cust-phone">Phone No <span class="required-asterisk">*</span></label>
           <div class="input-wrap">
             <i class="bi bi-telephone"></i>
-            <input
+            <input appPhone
               id="cust-phone"
               type="tel"
               formControlName="phone"
               placeholder="Enter phone number"
               autocomplete="tel"
-              maxlength="15"
               [class.is-invalid]="isInvalid('phone')" />
           </div>
           @if (isInvalid('phone')) {
