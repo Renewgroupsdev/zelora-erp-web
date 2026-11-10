@@ -2,6 +2,11 @@
 
 /** "Consultation Only": the treatment was not taken, only the consultation fee was collected (Nill Card, view only). */
 export type FlowStatus = 'Scheduled' | 'In Consultation' | 'Awaiting Terms' | 'Invoiced' | 'Converted' | 'Consultation Only' | 'Cancelled';
+/** The status as people read it everywhere in the app: the stored "In Consultation" is shown as "Consultation". */
+export function statusLabel(status: string | null | undefined): string {
+  return status === 'In Consultation' ? 'Consultation' : status ?? '';
+}
+
 /** treatment = the customer takes the treatment; consultation = only the consultation fee is paid. */
 export type PaymentType = 'treatment' | 'consultation';
 export type FlowCategory = 'Hair' | 'Skin';
@@ -30,9 +35,34 @@ export interface Sitting {
   actual_date: string | null;
   status: 'scheduled' | 'completed';
   notes: string | null;
+  /** Set when the sitting was moved to another branch / franchise than the treatment plan's own. */
+  branch_type?: 'branch' | 'franchise' | null;
+  branch_id?: number | null;
   doctor?: { id: number; name: string } | null;
   photos: SittingPhoto[];
   requirements?: SittingRequirements;
+  /** A move to another branch that is still waiting for a doctor there to accept. */
+  transfer_request?: SittingTransfer | null;
+}
+
+/** A request to hold one sitting at another branch / franchise (decided by that branch's doctor). */
+export interface SittingTransfer {
+  id: number;
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled';
+  sitting_id: number;
+  sitting_no: number | null;
+  sittings_count: number | null;
+  customer: string | null;
+  treatment: string | null;
+  from_branch: string;
+  to_branch: string;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  reason: string | null;
+  requested_by: string | null;
+  requested_at: string | null;
+  doctor: string | null;
+  decision_note: string | null;
 }
 
 /** What a sitting still needs before it can be completed (computed by the API). */
@@ -47,6 +77,9 @@ export interface SittingRequirements {
   amount_due: number;
   balance: number;
   materials: { product_id: number; name: string; needed: number; available: number }[];
+  /** Name of the branch / franchise holding the sitting, and whether it is not the plan's own. */
+  held_at?: string;
+  held_elsewhere?: boolean;
 }
 
 export interface FlowCustomer {

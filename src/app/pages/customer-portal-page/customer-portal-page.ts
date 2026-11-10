@@ -24,6 +24,7 @@ import { ApiRoutesConstants } from '../../shared/common-services/api-route-const
 import { CustomerDetailsDialog } from '../appointment-page/customer-details-dialog/customer-details-dialog';
 import { SittingsDialog } from '../appointment-page/sittings-dialog/sittings-dialog';
 import { EditCustomerDialog } from './edit-customer-dialog/edit-customer-dialog';
+import { AddTreatmentDialog } from './add-treatment-dialog/add-treatment-dialog';
 import { Customer, CustomerSegment, CustomerStats } from './customer.model';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
@@ -333,6 +334,17 @@ export class CustomerPortalPage implements OnInit {
       data: { id: customer.id, name: customer.name },
     }).afterClosed().subscribe((saved) => {
       if (!saved) return;
+      this.currentPage = 1;
+      this.loadCustomers();
+    });
+  }
+
+  /** Add Treatment: find a customer / Nill Card person by ID or mobile, add another treatment or confirm the consultation. */
+  openAddTreatment(): void {
+    this.dialog.open(AddTreatmentDialog, {
+      width: '820px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, restoreFocus: true,
+    }).afterClosed().subscribe((changed) => {
+      if (!changed) return;
       this.currentPage = 1;
       this.loadCustomers();
     });

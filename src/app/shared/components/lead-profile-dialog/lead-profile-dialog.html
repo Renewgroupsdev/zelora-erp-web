@@ -110,7 +110,52 @@
         @if (followupMode === 'schedule') {
           <div class="field-grid mode-panel">
             <label>Appointment date<input type="date" [min]="today" formControlName="scheduleDate" [class.is-invalid]="isInvalid('scheduleDate')"></label>
-            <label>Appointment time<input type="text" appTimePicker formControlName="scheduleTime" placeholder="Select time" [class.is-invalid]="isInvalid('scheduleTime')"></label>
+            <div class="full slot-field">
+              <span class="slot-label">Appointment time</span>
+              @if (!form.get('scheduleDate')?.value) {
+                <p class="slot-hint"><i class="bi bi-info-circle"></i> Pick a date to see the free slots.</p>
+              } @else if (slotsLoading) {
+                <p class="slot-hint"><i class="bi bi-arrow-repeat spin"></i> Checking free slots…</p>
+              } @else {
+                <div class="slot-legend">
+                  <span><i class="dot free"></i> Available</span>
+                  <span><i class="dot picked"></i> Selected</span>
+                  <span><i class="dot booked"></i> Unavailable</span>
+                </div>
+                <div class="slot-panel" [class.is-invalid]="isInvalid('scheduleTime')">
+                  @for (group of slotGroups; track group.key) {
+                    <div class="slot-group">
+                      <div class="slot-group-head">
+                        <span><i class="bi" [ngClass]="group.icon"></i> {{ group.label }}</span>
+                        <small>{{ group.free }} free</small>
+                      </div>
+                      <div class="slot-grid" role="listbox" [attr.aria-label]="group.label + ' slots'">
+                        @for (slot of group.slots; track slot.time) {
+                          <button type="button" class="slot-chip" role="option"
+                                  [class.selected]="form.get('scheduleTime')?.value === slot.time"
+                                  [class.booked]="!slot.available"
+                                  [disabled]="!slot.available"
+                                  [attr.aria-selected]="form.get('scheduleTime')?.value === slot.time"
+                                  [title]="slot.reason || 'Available'"
+                                  (click)="selectSlot(slot)">
+                            <span class="slot-time">{{ slotLabel(slot.time) }}</span>
+                            @if (!slot.available) { <span class="slot-note">{{ slot.reason }}</span> }
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+                @if (selectedSlotRange) {
+                  <div class="slot-selected"><i class="bi bi-check-circle-fill"></i> Selected: <strong>{{ selectedSlotRange }}</strong></div>
+                }
+                @if (slotHint) {
+                  <p class="slot-hint" [class.warn]="!!slotsError || !!bookedSlotCount">
+                    <i class="bi" [ngClass]="slotsError ? 'bi-exclamation-circle' : 'bi-info-circle'"></i> {{ slotHint }}
+                  </p>
+                }
+              }
+            </div>
             <label class="full">Doctor
               <select formControlName="scheduleDoctor" [class.is-invalid]="showDoctorError" [attr.aria-busy]="doctorsLoading" (change)="showDoctorError = false">
                 <option value="">{{ doctorPlaceholder }}</option>

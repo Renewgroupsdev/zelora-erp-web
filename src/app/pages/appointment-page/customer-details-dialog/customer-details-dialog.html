@@ -9,7 +9,7 @@
       <div class="title-content">
         <h2>{{ appt()?.name ?? 'Customer details' }}</h2>
         @if (appt(); as a) {
-          <p>{{ a.customer?.customer_code ?? 'Not a customer yet' }} · {{ a.mobile_no }} · <span class="cd-status">{{ a.status }}</span></p>
+          <p>{{ a.customer?.customer_code ?? 'Not a customer yet' }} · {{ a.mobile_no }} · <span class="cd-status">{{ statusLabel(a.status) }}</span></p>
         }
       </div>
     </div>

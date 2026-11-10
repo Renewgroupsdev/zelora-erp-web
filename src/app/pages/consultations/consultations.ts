@@ -20,20 +20,19 @@ import { ToastService } from '../../shared/common-services/toast.service';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { AuthService } from '../../core/auth/auth.service';
-import { FlowAppointmentRecord, inr, treatmentNames } from '../../shared/models/appointment-flow.model';
+import { FlowAppointmentRecord, inr, statusLabel, treatmentNames } from '../../shared/models/appointment-flow.model';
 import { AppointmentWizard } from '../appointment-page/appointment-wizard/appointment-wizard';
 import { NillCardView } from './nill-card-view/nill-card-view';
 
-/** Consultation started, payment not saved yet: reopens the consultation form. */
-const CONSULTATION_STATUS = 'In Consultation';
-/** The treatment was too costly - only the consultation fee was collected: view only. */
+/** The customer did not take the treatment: only a paid (or free) consultation happened. */
 const CONSULTATION_ONLY = 'Consultation Only';
-const LISTED_STATUSES: string[] = [CONSULTATION_STATUS, CONSULTATION_ONLY];
+const LISTED_STATUSES: string[] = [CONSULTATION_ONLY];
 
 /**
- * Lead Management -> Nill Card. Lists the appointments still In Consultation (payment pending - the consultation
- * form reopens to finish them) and the Consultation Only ones (only the consultation fee was paid - view only, with
- * the last visit, the fee and the treatment that was suggested).
+ * Lead Management -> Nill Card. Lists only the Consultation Only appointments: the consultation fee was paid, or the
+ * consultation was free, and no treatment was taken. Each row can be viewed (last visit, fee, treatment suggested);
+ * when the customer comes back for the treatment, "Start treatment" reopens the consultation at its Payment step, and
+ * the usual payment -> terms -> invoice -> customer conversion takes it from there.
  */
 @Component({
   selector: 'app-consultations',
@@ -116,16 +115,15 @@ export class Consultations implements OnInit {
 
   get stats(): DetailCardData[] {
     const today = this.toIso(new Date());
-    const open = this.appointments.filter(a => a.status === CONSULTATION_STATUS);
-    const feeOnly = this.appointments.filter(a => a.status === CONSULTATION_ONLY);
-    const pending = open.reduce((sum, a) => sum + Math.max(0, Number(a.total_amount || 0) - Number(a.paid_amount || 0)), 0);
-    const fees = feeOnly.reduce((sum, a) => sum + Number(a.consultation_fee || 0), 0);
+    const free = this.appointments.filter(a => this.isFree(a));
+    const paid = this.appointments.filter(a => !this.isFree(a));
+    const fees = paid.reduce((sum, a) => sum + Number(a.consultation_fee || 0), 0);
     return [
-      { label: 'In Consultation', value: open.length, trendText: 'Payment pending', trendDirection: 'neutral', icon: 'bi-clipboard2-pulse', iconVariant: 'orange' },
-      { label: 'Consultation Only', value: feeOnly.length, trendText: 'Treatment not taken', trendDirection: 'neutral', icon: 'bi-person-check', iconVariant: 'primary' },
-      { label: 'Consultation Fees', value: inr(fees), trendText: 'Collected', trendDirection: 'neutral', icon: 'bi-cash-coin', iconVariant: 'green' },
+      { label: 'Consultation Only', value: this.appointments.length, trendText: 'Treatment not taken', trendDirection: 'neutral', icon: 'bi-person-check', iconVariant: 'primary' },
+      { label: 'Paid Consultations', value: paid.length, trendText: 'Fee collected', trendDirection: 'neutral', icon: 'bi-cash-coin', iconVariant: 'green' },
+      { label: 'Free Consultations', value: free.length, trendText: 'No fee', trendDirection: 'neutral', icon: 'bi-gift', iconVariant: 'orange' },
+      { label: 'Consultation Fees', value: inr(fees), trendText: 'Collected', trendDirection: 'neutral', icon: 'bi-wallet2', iconVariant: 'blue' },
       { label: "Today's Visits", value: this.appointments.filter(a => a.appointment_date === today).length, trendText: 'On this list', trendDirection: 'neutral', icon: 'bi-calendar-check', iconVariant: 'primary' },
-      { label: 'Pending Amount', value: inr(pending), trendText: 'To be collected', trendDirection: 'neutral', icon: 'bi-cash-stack', iconVariant: 'blue' },
     ];
   }
 
@@ -176,6 +174,11 @@ export class Consultations implements OnInit {
     if (action === 'view') this.openView(appt);
   }
 
+  /** Free consultation: nothing was charged (fee 0). */
+  private isFree(a: FlowAppointmentRecord): boolean {
+    return a.status === CONSULTATION_ONLY && Number(a.consultation_fee || 0) === 0;
+  }
+
   /** Consultation Only: read-only view (last visit, fee paid, basic details, the treatment suggested). */
   openView(appt: FlowAppointmentRecord): void {
     this.dialog.open(NillCardView, {
@@ -214,8 +217,11 @@ export class Consultations implements OnInit {
 
   private mapRow(a: FlowAppointmentRecord): TableRow {
     const feeOnly = a.status === CONSULTATION_ONLY;
+    const free = this.isFree(a);
     const actions: QuickAction[] = feeOnly
-      ? [{ key: 'view', icon: 'bi-eye', label: 'View', variant: 'primary' }]
+      ? [
+          { key: 'view', icon: 'bi-eye', label: 'View', variant: 'default' },
+        ]
       : this.can('continue-consultation-form')
         ? [{ key: 'wizard', icon: 'bi-clipboard2-pulse', label: 'Consultation form', variant: 'primary' }]
         : [];
@@ -227,11 +233,11 @@ export class Consultations implements OnInit {
       branch: a.branch_name ?? a.branch?.name ?? '',
       schedule: `${this.displayDate(a.appointment_date)}, ${this.displayTime(a.appointment_time)}`,
       scheduleSort: `${a.appointment_date} ${a.appointment_time ?? ''}`,
-      status: a.status,
+      status: statusLabel(a.status),
       // Consultation Only: the fee collected (the treatment quoted is in the view).
-      total: feeOnly ? inr(a.consultation_fee) : Number(a.total_amount) ? inr(a.total_amount) : '-',
+      total: free ? 'Free' : feeOnly ? inr(a.consultation_fee) : Number(a.total_amount) ? inr(a.total_amount) : '-',
       totalSort: feeOnly ? Number(a.consultation_fee) : Number(a.total_amount),
-      paymentStatus: feeOnly ? 'Consultation fee' : a.payment_status ?? 'Pending',
+      paymentStatus: free ? 'Free consultation' : feeOnly ? 'Consultation fee' : a.payment_status ?? 'Pending',
       actions,
     };
   }

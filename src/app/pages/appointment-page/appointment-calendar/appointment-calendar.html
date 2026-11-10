@@ -101,7 +101,7 @@
                       · <i class="bi bi-geo-alt-fill"></i> {{ a.branch_name || a.branch?.name || '-' }}
                       · <i class="bi bi-telephone"></i> {{ a.mobile_no }}
                     </span>
-                    <span class="ev-status">{{ a.status }}</span>
+                    <span class="ev-status">{{ statusLabel(a.status) }}</span>
                   }
                 </button>
               }

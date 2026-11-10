@@ -14,6 +14,7 @@ import { BranchContextService, ScopeType } from '../shared/common-services/branc
 import { BranchOptionsService } from '../shared/common-services/branch-options.service';
 import { BranchChat } from '../shared/components/branch-chat/branch-chat';
 import { DiscountRequestsService } from '../shared/common-services/discount-requests.service';
+import { SittingTransfersService } from '../shared/common-services/sitting-transfers.service';
 import { AbsentTelecallersService } from '../shared/common-services/absent-telecallers.service';
 import { PurchaseApprovalAlertsService } from '../shared/common-services/purchase-approval-alerts.service';
 import { FollowUpReminderService } from '../shared/common-services/follow-up-reminder.service';
@@ -159,12 +160,15 @@ export class TopNavbar {
     private router: Router,
     private dialog: MatDialog,
     private discounts: DiscountRequestsService,
+    private sittingTransfers: SittingTransfersService,
     private absentTelecallers: AbsentTelecallersService,
     private purchaseAlerts: PurchaseApprovalAlertsService,
     private followUpReminder: FollowUpReminderService,
   ) {
     // Branch managers / approvers: discount requests of their branch show up here as notifications.
     this.discounts.start();
+    // Doctors: a sitting another branch wants to move here waits for their acceptance.
+    this.sittingTransfers.start();
     // Branch managers: telecallers absent today with leads to follow up (click to reassign).
     this.absentTelecallers.start();
     // Head office / admin: purchase requests sent by the branches wait for approval here.
@@ -182,6 +186,12 @@ export class TopNavbar {
         .open(DiscountReviewDialog, { width: '640px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, restoreFocus: true, data: { id: notification.action.id } })
         .afterClosed()
         .subscribe(() => this.discounts.refresh(true)); // a decided request leaves the bell at once
+      return;
+    }
+
+    if (notification.action?.kind === 'sitting-transfer') {
+      this.navLayout.closeNotifications();
+      this.sittingTransfers.review(notification.action.transfer);
       return;
     }
 

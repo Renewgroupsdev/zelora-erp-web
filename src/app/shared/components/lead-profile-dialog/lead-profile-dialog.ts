@@ -32,6 +32,13 @@ import {
 
 export type LeadProfileStage = 'lead' | 'followup' | 'appointment';
 
+/** One slot of the appointment grid (GET .../appointment-slots); `reason` says why a slot can't be picked. */
+export interface AppointmentSlot {
+  time: string;
+  available: boolean;
+  reason: string | null;
+}
+
 /** A doctor of the lead's branch / franchise who is free at the chosen appointment date and time. */
 export interface AvailableDoctor {
   id: number;
@@ -174,6 +181,7 @@ export class LeadProfileDialog {
       this.form.get('telecaller')?.disable();
       this.form.get('branch')?.disable();
       this.watchDoctorAvailability();
+      this.watchSlots();
     }
 
     this.beforeImages = [...(appointment?.beforeImages ?? [])];
@@ -268,6 +276,92 @@ export class LeadProfileDialog {
 
   retryDoctors(): void {
     this.doctorLookup.next();
+  }
+
+  // ---------------------------------------------------------------------
+  // Schedule Appointment - 45-minute slot grid (booked slots are disabled)
+  // ---------------------------------------------------------------------
+
+  slots: AppointmentSlot[] = [];
+  slotsLoading = false;
+  slotsError = '';
+  slotMinutes = 45;
+
+  /** Loads the slot grid whenever the appointment date changes; a picked time that is no longer free is cleared. */
+  private watchSlots(): void {
+    const date = this.form.get('scheduleDate')!;
+    const time = this.form.get('scheduleTime')!;
+
+    date.valueChanges.pipe(
+      startWith(date.value),
+      map(d => String(d ?? '')),
+      distinctUntilChanged(),
+      switchMap(d => {
+        this.slots = [];
+        this.slotsError = '';
+        if (!d || this.isPast(d)) { this.slotsLoading = false; return EMPTY; }
+        this.slotsLoading = true;
+        return (this.api.GET(`${ApiRoutesConstants.LEAD_VALIDATE}/${this.data.lead.id}/appointment-slots?date=${d}`) as Observable<any>).pipe(
+          map(res => ({ res, error: '' })),
+          catchError(err => of({ res: null, error: err?.error?.message || 'Could not load the appointment slots.' })),
+        );
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(({ res, error }) => {
+      this.slots = (res?.data ?? []) as AppointmentSlot[];
+      this.slotMinutes = Number(res?.meta?.slot_minutes ?? this.slotMinutes);
+      this.slotsError = error;
+      this.slotsLoading = false;
+      const picked = String(time.value ?? '');
+      if (picked && !this.slots.some(s => s.time === picked && s.available)) time.setValue('');
+    });
+  }
+
+  selectSlot(slot: AppointmentSlot): void {
+    if (!slot.available) return;
+    const time = this.form.get('scheduleTime')!;
+    time.setValue(time.value === slot.time ? '' : slot.time);
+    time.markAsTouched();
+  }
+
+  get bookedSlotCount(): number {
+    return this.slots.filter(s => !s.available && s.reason !== 'Time has passed').length;
+  }
+
+  get slotHint(): string {
+    if (this.slotsError) return this.slotsError;
+    if (!this.slots.length) return '';
+    if (!this.slots.some(s => s.available)) return 'Every slot on this date is taken. Pick another date.';
+    return `Each visit takes ${this.slotMinutes} minutes. Greyed slots are already booked or have no doctor free.`;
+  }
+
+  /** Slots grouped Morning / Afternoon / Evening, each with how many are still free. */
+  get slotGroups(): { key: string; label: string; icon: string; slots: AppointmentSlot[]; free: number }[] {
+    const defs = [
+      { key: 'morning', label: 'Morning', icon: 'bi-sunrise', from: 0, to: 12 },
+      { key: 'afternoon', label: 'Afternoon', icon: 'bi-sun', from: 12, to: 16 },
+      { key: 'evening', label: 'Evening', icon: 'bi-moon-stars', from: 16, to: 24 },
+    ];
+    return defs
+      .map(d => {
+        const slots = this.slots.filter(s => { const h = Number(s.time.slice(0, 2)); return h >= d.from && h < d.to; });
+        return { key: d.key, label: d.label, icon: d.icon, slots, free: slots.filter(s => s.available).length };
+      })
+      .filter(g => g.slots.length);
+  }
+
+  /** "11:15 AM - 12:00 PM" for the picked slot, or '' when none is picked. */
+  get selectedSlotRange(): string {
+    const picked = String(this.form.get('scheduleTime')?.value ?? '');
+    if (!picked) return '';
+    const [h, m] = picked.split(':').map(Number);
+    const end = new Date(2000, 0, 1, h, m + this.slotMinutes);
+    const endText = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
+    return `${this.slotLabel(picked)} - ${this.slotLabel(endText)}`;
+  }
+
+  slotLabel(time: string): string {
+    return to12Hour(time) ?? time;
   }
 
   get hasSlot(): boolean {

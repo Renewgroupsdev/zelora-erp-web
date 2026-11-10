@@ -83,7 +83,9 @@
 }
 
 app-appointment-calendar {
+  flex: 1 1 0;
   min-width: 0;
+  min-height: 0;
 }
 
 .add-appointment-btn {
@@ -424,4 +426,18 @@ img.ap-avatar { object-fit: cover; }
   }
 
   &.icon-only { margin-left: auto; width: 30px; padding: 0; justify-content: center; }
+
+  // Cancel: its own full-width row under the other actions, soft red so it reads as a careful action
+  &.danger {
+    flex: 1 0 100%;
+    justify-content: center;
+    height: 32px;
+    border-color: transparent;
+    background: var(--status-red-bg);
+    color: var(--status-red-text);
+    font-weight: 700;
+
+    i { color: var(--status-red-text); }
+    &:hover { background: var(--status-red-text); color: #fff; i { color: #fff; } }
+  }
 }

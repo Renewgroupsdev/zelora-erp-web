@@ -9,15 +9,54 @@
         }
       </div>
     </div>
+    <div class="st-pct" role="img" [attr.aria-label]="percent() + ' percent of the sittings completed'" [style.--pct]="percent()">
+      <span class="st-pct-ring"><b>{{ percent() }}%</b></span>
+      <span class="st-pct-text"><strong>Completed</strong><small>{{ completed() }} of {{ sittings().length }} sittings</small></span>
+    </div>
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 
   <div class="modal-body-custom">
     @if (appt(); as a) {
-      <div class="st-progress">
-        <div class="bar"><span [style.width.%]="sittings().length ? (completed() / sittings().length) * 100 : 0"></span></div>
-        <small>{{ completed() }} / {{ sittings().length }} sittings · Invoice {{ a.invoice_no }} · Paid {{ inr(a.paid_amount) }} of {{ inr(a.total_amount) }}</small>
-      </div>
+      @if (activePlan(); as plan) {
+        <div class="st-top">
+          <small class="st-progress-text">{{ sittings().length }} sittings · Invoice {{ a.invoice_no }} · Paid {{ inr(a.paid_amount) }} of {{ inr(a.total_amount) }}</small>
+
+          @if (plan.status === 'active') {
+            <ng-container *appCan="'add-appointment'">
+              <button type="button" class="st-add-btn" [class.open]="extra.open" [attr.aria-expanded]="extra.open" (click)="extra.open = !extra.open">
+                <i class="bi" [ngClass]="extra.open ? 'bi-dash-circle' : 'bi-plus-circle'"></i> Add sittings
+              </button>
+            </ng-container>
+          }
+        </div>
+
+        @if (plan.status === 'active' && extra.open) {
+          <ng-container *appCan="'add-appointment'">
+            <section class="st-add-card" aria-label="Add sittings">
+              <header>
+                <span class="st-add-icon"><i class="bi bi-collection"></i></span>
+                <div><strong>Add more sittings</strong><small>Added after sitting {{ plan.sittings_count }} at the same price per sitting.</small></div>
+              </header>
+              <div class="st-add-fields">
+                <div class="form-field">
+                  <label for="st-extra-count">Number of sittings</label>
+                  <div class="input-wrap"><i class="bi bi-collection"></i><input id="st-extra-count" type="number" min="1" max="50" name="extraCount" [(ngModel)]="extra.count" /></div>
+                </div>
+                <div class="form-field">
+                  <label for="st-extra-gap">Gap between sittings (days)</label>
+                  <div class="input-wrap"><i class="bi bi-arrow-repeat"></i><input id="st-extra-gap" type="number" min="1" max="365" name="extraGap" [(ngModel)]="extra.interval" /></div>
+                </div>
+              </div>
+              <footer>
+                <span class="st-add-summary"><i class="bi bi-info-circle"></i> {{ extra.count || 0 }} more sitting(s), one every {{ extra.interval || 0 }} days.</span>
+                <button type="button" class="cancel-btn" (click)="extra.open = false">Cancel</button>
+                <button type="button" class="save-btn" [disabled]="busy() === -1" (click)="addSittings()"><i class="bi bi-plus-lg"></i> Add {{ extra.count || 0 }} sitting(s)</button>
+              </footer>
+            </section>
+          </ng-container>
+        }
+      }
 
       @if (plans().length > 1) {
         <div class="st-plans" role="tablist" aria-label="Treatments">
@@ -39,6 +78,7 @@
               <small>
                 @if (s.status === 'completed') { Completed {{ formatDate(s.actual_date) }} }
                 @else { {{ formatDate(s.scheduled_date) }} {{ formatTime(s.scheduled_time) }} }
+                @if (s.status !== 'completed' && s.requirements?.held_elsewhere) { · <i class="bi bi-geo-alt-fill"></i> At {{ s.requirements?.held_at }} }
               </small>
             </div>
             <span class="st-status" [class.done]="s.status === 'completed'" [class.locked]="isLocked(s)">
@@ -55,11 +95,28 @@
             <p class="st-locked-note"><i class="bi bi-lock"></i> Complete sitting {{ waitingFor(s) }} first - this sitting opens after that.</p>
           }
 
+          @if (s.transfer_request; as tr) {
+            <div class="st-transfer" role="status">
+              <i class="bi bi-hourglass-split"></i>
+              <span>Waiting for <strong>{{ tr.to_branch }}</strong> to accept - asked {{ formatDate(tr.scheduled_date) }} {{ formatTime(tr.scheduled_time) }}. The sitting stays at {{ s.requirements?.held_at || tr.from_branch }} until then.</span>
+              <button *appCan="'sitting-reschedule'" type="button" class="st-link" [disabled]="busy() === s.id" (click)="cancelTransfer(s)">Withdraw</button>
+            </div>
+          }
+
           @if (drafts[s.id].rescheduling) {
             <div class="st-reschedule">
               <div class="input-wrap"><i class="bi bi-calendar3"></i><input type="date" [min]="today" [(ngModel)]="drafts[s.id].date" [name]="'d' + s.id" /></div>
               <div class="input-wrap"><i class="bi bi-clock"></i><input type="time" [(ngModel)]="drafts[s.id].time" [name]="'t' + s.id" /></div>
-              <button type="button" class="save-btn" [disabled]="busy() === s.id" (click)="reschedule(s)">Save new slot</button>
+              @if (branches().length) {
+                <div class="input-wrap st-branch-pick"><i class="bi bi-building"></i>
+                  <select [(ngModel)]="drafts[s.id].branchKey" [name]="'b' + s.id" aria-label="Branch / franchise for this sitting">
+                    <option value="">{{ s.requirements?.held_at ? 'Stay at ' + s.requirements?.held_at : 'Same branch' }}</option>
+                    @for (b of branches(); track b.key) { <option [value]="b.key">Transfer to {{ b.name }}</option> }
+                  </select>
+                  <i class="bi bi-chevron-down select-arrow"></i>
+                </div>
+              }
+              <button type="button" class="save-btn" [disabled]="busy() === s.id" (click)="reschedule(s)">{{ drafts[s.id].branchKey ? 'Request transfer' : 'Save new slot' }}</button>
               <button type="button" class="cancel-btn" (click)="drafts[s.id].rescheduling = false">Cancel</button>
             </div>
           }

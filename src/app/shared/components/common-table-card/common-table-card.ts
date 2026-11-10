@@ -29,11 +29,13 @@ const STATUS_MAP: Record<string, 'green' | 'orange' | 'red' | 'gray' | 'blue'> =
   // Accounts
   unpaid: 'red', 'partially paid': 'orange', sent: 'blue',
   // Appointments
-  'in consultation': 'orange', 'awaiting terms': 'orange', invoiced: 'blue', 'consultation only': 'gray', 'consultation fee': 'blue',
+  'in consultation': 'orange', consultation: 'orange', 'awaiting terms': 'orange', invoiced: 'blue', 'consultation only': 'gray', 'consultation fee': 'blue', 'free consultation': 'green',
   receipt: 'green', payment: 'red', sales: 'blue', purchase: 'orange', contra: 'gray', journal: 'gray',
   // Leads / follow-ups
   'new lead': 'blue', lead: 'gray', valid: 'green', invalid: 'red', customer: 'green', schedule: 'blue', appointment: 'blue',
   'follow-ups': 'orange', 'follow-up': 'orange', 'cool-follow-ups': 'blue', 'hot-leads': 'red',
+  // Follow-up type
+  general: 'orange', cool: 'blue', hot: 'red',
 };
 
 /** A small icon for the status chip: the status's own where we know it, else one for its colour. */

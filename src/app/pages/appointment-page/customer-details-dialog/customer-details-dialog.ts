@@ -4,7 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
-import { FlowAppointmentRecord, FlowDocument, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
+import { FlowAppointmentRecord, FlowDocument, Sitting, SittingPhoto, inr, statusLabel } from '../../../shared/models/appointment-flow.model';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { HairGradeIcon } from '../../../shared/components/hair-grade-icon/hair-grade-icon';
 import { RecordHistory } from '../../../shared/components/record-history/record-history';
@@ -34,6 +34,7 @@ export class CustomerDetailsDialog implements OnInit {
   protected readonly appointmentId = this.data.appointmentId;
 
   readonly inr = inr;
+  readonly statusLabel = statusLabel;
   readonly appt = signal<FlowAppointmentRecord | null>(null);
   readonly viewer = signal<{ photos: SittingPhoto[]; index: number } | null>(null);
 

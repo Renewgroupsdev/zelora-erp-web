@@ -2,7 +2,8 @@
  * Project-wide date fields. Every `<input type="date">` is shown as a text box that takes `dd-mm-yyyy` (digits only, the dashes are added
  * as you type) and opens one shared calendar popup (the PO Date design) from the box. The original input stays in the page, hidden, and
  * keeps holding the ISO `yyyy-mm-dd` value - so ngModel / formControl / [value] / (change) bindings, `min` / `max`, and code that reads
- * the input all keep working unchanged. Add `data-native-date` to an input to leave it as the browser's own date field.
+ * the input all keep working unchanged. Unless a field sets its own `min` / `max`, the calendar is limited to the current financial year
+ * (1 Apr - 31 Mar); date-of-birth and PO date fields keep the full calendar. Add `data-native-date` to an input to leave it as the browser's own date field.
  */
 
 interface Ui {
@@ -31,6 +32,39 @@ function parseText(text: string): string {
   return y >= 1000 && date.getFullYear() === y && date.getMonth() === mo - 1 && date.getDate() === d ? `${m[3]}-${m[2]}-${m[1]}` : '';
 }
 
+
+// ------------------------------------------------------------------ financial year
+
+/** First month of the financial year (1 = January ... 4 = April: the Indian financial year, 1 Apr - 31 Mar). */
+const FY_START_MONTH = 4;
+
+/** Fields that keep the full calendar: dates of birth and the PO date. Anything else is limited to the current financial year. */
+const FULL_CALENDAR = /dob|birth|pr-required|requiredby|po[-_ ]?date/i;
+
+/** `data-any-date` on an input also opts it out of the financial-year range. */
+function financialYearOnly(el: HTMLInputElement): boolean {
+  if (el.hasAttribute('data-any-date')) return false;
+  const hints = [el.id, el.name, el.getAttribute('formcontrolname'), el.getAttribute('aria-label')].filter(Boolean).join(' ');
+  return !FULL_CALENDAR.test(hints);
+}
+
+/** [first day, last day] of the financial year that today falls in, as yyyy-mm-dd. */
+function financialYear(): [string, string] {
+  const now = new Date();
+  const startYear = now.getMonth() + 1 >= FY_START_MONTH ? now.getFullYear() : now.getFullYear() - 1;
+  const start = new Date(startYear, FY_START_MONTH - 1, 1);
+  const end = new Date(startYear + 1, FY_START_MONTH - 1, 0);
+  return [toIso(start), toIso(end)];
+}
+
+/** The field's own min / max when it has one, else the financial year's first / last day (DOB and PO date: none). */
+function minOf(ui: Ui): string {
+  return ui.el.min || (financialYearOnly(ui.el) ? financialYear()[0] : '');
+}
+function maxOf(ui: Ui): string {
+  return ui.el.max || (financialYearOnly(ui.el) ? financialYear()[1] : '');
+}
+
 const rawValue = (ui: Ui): string => nativeValue.get!.call(ui.el) as string;
 
 /** Writes the hidden input and tells Angular (and any listener) the way a user edit would. */
@@ -50,7 +84,7 @@ function sync(ui: Ui): void {
 }
 
 function inRange(ui: Ui, iso: string): boolean {
-  return (!ui.el.min || iso >= ui.el.min) && (!ui.el.max || iso <= ui.el.max);
+  return (!minOf(ui) || iso >= minOf(ui)) && (!maxOf(ui) || iso <= maxOf(ui));
 }
 
 function mirrorAttributes(ui: Ui): void {
@@ -105,8 +139,8 @@ function ensurePopup(): HTMLDivElement {
 /** Keeps a shown month inside the field's min / max. */
 function clampMonth(ui: Ui, d: Date): Date {
   const key = (x: Date): string => `${x.getFullYear()}-${pad(x.getMonth() + 1)}`;
-  if (ui.el.min && key(d) < ui.el.min.slice(0, 7)) return new Date(`${ui.el.min.slice(0, 7)}-01T00:00:00`);
-  if (ui.el.max && key(d) > ui.el.max.slice(0, 7)) return new Date(`${ui.el.max.slice(0, 7)}-01T00:00:00`);
+  if (minOf(ui) && key(d) < minOf(ui).slice(0, 7)) return new Date(`${minOf(ui).slice(0, 7)}-01T00:00:00`);
+  if (maxOf(ui) && key(d) > maxOf(ui).slice(0, 7)) return new Date(`${maxOf(ui).slice(0, 7)}-01T00:00:00`);
   return d;
 }
 
@@ -125,13 +159,13 @@ function render(): void {
   }
   const year = month.getFullYear();
   const thisYear = new Date().getFullYear();
-  const minYear = ui.el.min ? Number(ui.el.min.slice(0, 4)) : Math.min(thisYear - 100, year);
-  const maxYear = ui.el.max ? Number(ui.el.max.slice(0, 4)) : Math.max(thisYear + 20, year);
+  const minYear = minOf(ui) ? Number(minOf(ui).slice(0, 4)) : Math.min(thisYear - 100, year);
+  const maxYear = maxOf(ui) ? Number(maxOf(ui).slice(0, 4)) : Math.max(thisYear + 20, year);
   let years = '';
   for (let y = Math.max(1, minYear); y <= Math.max(maxYear, minYear); y++) years += `<option value="${y}"${y === year ? ' selected' : ''}>${y}</option>`;
   const monthKey = (m: number): string => `${year}-${pad(m + 1)}`;
   const months = MONTHS.map((n, m) => {
-    const off = (ui.el.min && monthKey(m) < ui.el.min.slice(0, 7)) || (ui.el.max && monthKey(m) > ui.el.max.slice(0, 7));
+    const off = (minOf(ui) && monthKey(m) < minOf(ui).slice(0, 7)) || (maxOf(ui) && monthKey(m) > maxOf(ui).slice(0, 7));
     return `<option value="${m}"${m === month.getMonth() ? ' selected' : ''}${off ? ' disabled' : ''}>${n}</option>`;
   }).join('');
   pop.innerHTML = `
@@ -162,8 +196,8 @@ function open(ui: Ui): void {
   // open on the month of the chosen date, else this month (kept inside min / max)
   const value = rawValue(ui);
   let basis = value ? new Date(`${value}T00:00:00`) : new Date();
-  if (!value && ui.el.min && toIso(basis) < ui.el.min) basis = new Date(`${ui.el.min}T00:00:00`);
-  if (!value && ui.el.max && toIso(basis) > ui.el.max) basis = new Date(`${ui.el.max}T00:00:00`);
+  if (!value && minOf(ui) && toIso(basis) < minOf(ui)) basis = new Date(`${minOf(ui)}T00:00:00`);
+  if (!value && maxOf(ui) && toIso(basis) > maxOf(ui)) basis = new Date(`${maxOf(ui)}T00:00:00`);
   month = new Date(basis.getFullYear(), basis.getMonth(), 1);
   const el = ensurePopup();
   el.hidden = false;

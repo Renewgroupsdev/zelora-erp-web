@@ -120,10 +120,9 @@ export class Followups implements OnInit, OnDestroy {
     { key: 'service_request', header: 'Service Request', type: 'text'},
     { key: 'followup_count', header: 'Follow-Up Count', type: 'text' },
     { key: 'follow_up_date', header: 'Follow-Up Date', type: 'text' },
-    { key: 'follow_up_type_label', header: 'Type', type: 'badge' },
     { key: 'branch', header: 'Branch', type: 'branch' },
     { key: 'telecaller', header: 'Telecaller Assigned', type: 'avatarGroup', sortable: false, width: '140px' },
-    { key: 'status', header: 'Status', type: 'badge' },
+    { key: 'follow_up_type_label', header: 'Status', type: 'badge' },
     { key: 'action', header: 'Action', type: 'quickActions', sortable: false, width: '120px' },
   ];
 
