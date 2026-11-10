@@ -10,6 +10,7 @@ import { GoodsInwardForm } from '../goods-inward/goods-inward-form/goods-inward-
 import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { PurchaseOrderEdit } from './purchase-order-edit/purchase-order-edit';
+import { PurchaseOrderRevision } from './purchase-order-revision/purchase-order-revision';
 
 @Component({
   selector: 'app-purchase-orders',
@@ -63,6 +64,8 @@ export class PurchaseOrders extends PurchaseListBase {
       const actions: QuickAction[] = [
         { key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Tax invoice (PDF)' },
       ];
+      // vendor side: where the invoice went, and a revised proforma when the vendor changes a price
+      if (o.status !== 'Cancelled') actions.push({ key: 'revision', icon: 'bi-currency-exchange', label: 'Vendor invoice & price revision' });
       if (o.canInward) actions.push({ key: 'inward', icon: 'bi-box-arrow-in-down', label: 'Add PO Inward Entries', variant: 'primary' });
       if (o.canEdit) actions.push({ key: 'edit', icon: 'bi-pencil-square', label: o.canEditQty ? 'Edit PO' : 'Change expected date' });
       if (o.canClose) actions.push({ key: 'close', icon: 'bi-slash-circle', label: 'Close PO (write off pending)', variant: 'danger' });
@@ -97,6 +100,7 @@ export class PurchaseOrders extends PurchaseListBase {
       case 'pdf': void this.purchase.openPdf('purchase-order', orderId); break;
       case 'inward': this.openDialog(GoodsInwardForm, { orderId }, '1240px'); break;
       case 'edit': this.openDialog(PurchaseOrderEdit, { orderId }, '820px'); break;
+      case 'revision': this.openDialog(PurchaseOrderRevision, { orderId }, '860px'); break;
       case 'cancel': {
         const reason = await this.purchase.askReason(`Cancel ${order.poNo}?`, 'Nothing has been received against this PO. It will be cancelled and cannot be received any more.', 'Cancel PO');
         if (reason) await this.purchase.cancelOrder(orderId, reason);

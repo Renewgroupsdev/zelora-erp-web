@@ -2,11 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { AuthBackground } from '../shared/components/auth-background/auth-background';
+import { AuthBrandPanel } from '../shared/components/auth-brand-panel/auth-brand-panel';
+import { AuthFeaturePanel } from '../shared/components/auth-feature-panel/auth-feature-panel';
 
 @Component({
   selector: 'app-splash-page',
   standalone: true,
-  imports: [RouterLink, AuthBackground],
+  imports: [RouterLink, AuthBackground, AuthBrandPanel, AuthFeaturePanel],
   templateUrl: './splash-page.html',
   styleUrl: './splash-page.scss',
 })

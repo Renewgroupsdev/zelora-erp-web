@@ -6,21 +6,25 @@
       <div class="title-icon"><i class="bi bi-clipboard-check-fill"></i></div>
       <div class="title-content">
         <h2>{{ r.requestNo }} <span class="pill" [ngClass]="statusClass()">{{ r.status }}</span></h2>
-        <p>{{ canReview() ? 'Check the request and confirm the purchase order' : 'Purchase request details' }}</p>
+        <p>{{ canReview() ? 'Choose the nearby branch that sends the stock and approve' : 'Purchase request details' }}</p>
       </div>
     </div>
-    <app-record-history type="PurchaseRequest" [recordId]="r.id" [title]="r.requestNo" />
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 
   <div class="modal-body-custom">
+    @if (queue) {
+      <div class="urgent-queue"><i class="bi bi-exclamation-triangle-fill"></i> Urgent request {{ queue.index }} of {{ queue.total }} - approve or reject to continue with the next one.</div>
+    }
     <div class="info-grid">
       <div><small>Branch</small><strong>{{ r.branch }}</strong></div>
-      <div><small>Vendor</small><strong>{{ r.vendorName }}</strong></div>
+      @if (r.vendorName && r.vendorName !== '-') { <div><small>Vendor</small><strong>{{ r.vendorName }}</strong></div> }
       <div><small>Requested By</small><strong>{{ r.requestedBy }}</strong></div>
       <div><small>Requested On</small><strong>{{ displayDate(r.requestedAt) }}</strong></div>
-      <div><small>Required By</small><strong>{{ displayDate(r.requiredBy) }}</strong></div>
-      <div><small>Priority</small><strong><span class="pill" [class.red]="r.priority === 'Urgent'" [class.blue]="r.priority !== 'Urgent'">{{ r.priority }}</span></strong></div>
+      <div><small>PO Date</small><strong>{{ displayDate(r.requiredBy) }}</strong></div>
+      @if (r.priority !== 'Normal') {
+        <div><small>Priority</small><strong><span class="pill" [class.red]="r.priority === 'Urgent'" [class.orange]="r.priority === 'High'" [class.blue]="r.priority === 'Low'">{{ r.priority }}</span></strong></div>
+      }
     </div>
 
     @if (r.remarks) {
@@ -46,7 +50,7 @@
         <tbody>
           @for (item of r.items; track item.productId) {
             <tr>
-              <td><strong>{{ item.productName }}</strong><div class="muted">{{ item.productCode }}</div></td>
+              <td><strong>{{ item.productName }}</strong><div class="muted">{{ item.productCode }}</div>              </td>
               <td>{{ item.hsnCode || '-' }}</td>
               <td class="num"><span class="pill" [class.red]="centralQty(item.productId) < 10" [class.green]="centralQty(item.productId) >= 10">{{ centralQty(item.productId) }}</span></td>
               <td class="num"><span class="pill" [class.red]="branchQty(item.productId) < 10" [class.green]="branchQty(item.productId) >= 10">{{ branchQty(item.productId) }}</span></td>
@@ -67,15 +71,73 @@
     </div>
 
     @if (canReview()) {
-      <div class="section-title"><i class="bi bi-person-check"></i> Branch Head Decision</div>
-      <div class="form-grid">
-        <div class="form-field">
-          <label for="rv-expected">Expected Delivery</label>
-          <div class="input-wrap">
-            <i class="bi bi-calendar-event"></i>
-            <input id="rv-expected" type="date" [min]="today" [(ngModel)]="expectedAt" />
+      <div class="section-title"><i class="bi bi-diagram-3"></i> Transfer from a nearby branch / franchise</div>
+      <div class="pl-card nearby-card">
+        <p class="muted" style="margin: 0 0 8px; font-size: 12px">Choose, for each product, the branch or franchise that sends it: those within 50 km of {{ r.branch }} are listed first, nearest first, then the farther ones. Approving transfers the stock to {{ r.branch }}.</p>
+        @if (!nearbyLoaded()) {
+          <div class="pl-hint"><i class="bi bi-arrow-repeat"></i> Checking nearby stock...</div>
+        }
+        @for (item of nearby(); track item.productId) {
+          <div class="nearby-product">
+            <div class="nearby-head">
+              <strong>{{ item.productName }}</strong><span class="muted">{{ item.productCode }}</span>
+              <span class="pill blue">Need {{ item.needed }}</span>
+              @if (sourceKey()[item.productId]) { <span class="pill green"><i class="bi bi-check2"></i> {{ item.needed }} will be sent</span> }
+            </div>
+            @if (item.options.length) {
+              <div class="input-wrap">
+                <i class="bi bi-geo-alt"></i>
+                <select [ngModel]="sourceKey()[item.productId] ?? null" (ngModelChange)="onSource(item.productId, $event)" [attr.aria-label]="'Branch to send ' + item.productName">
+                  <option [ngValue]="null">Select the branch / franchise to send it</option>
+                  @if (zone(item, 'near').length) {
+                    <optgroup label="Within 50 km - nearest first">
+                      @for (o of zone(item, 'near'); track o.storeKey) {
+                        <option [ngValue]="o.storeKey" [disabled]="o.available < item.needed">{{ o.name }} - {{ km(o) }} ({{ o.available }} in stock{{ o.available < item.needed ? ', not enough' : '' }})</option>
+                      }
+                    </optgroup>
+                  }
+                  @if (zone(item, 'far').length) {
+                    <optgroup label="Farther than 50 km">
+                      @for (o of zone(item, 'far'); track o.storeKey) {
+                        <option [ngValue]="o.storeKey" [disabled]="o.available < item.needed">{{ o.name }} - {{ km(o) }} ({{ o.available }} in stock{{ o.available < item.needed ? ', not enough' : '' }})</option>
+                      }
+                    </optgroup>
+                  }
+                  @if (zone(item, 'unknown').length) {
+                    <optgroup label="Location not set">
+                      @for (o of zone(item, 'unknown'); track o.storeKey) {
+                        <option [ngValue]="o.storeKey" [disabled]="o.available < item.needed">{{ o.name }} - {{ o.city }} ({{ o.available }} in stock{{ o.available < item.needed ? ', not enough' : '' }})</option>
+                      }
+                    </optgroup>
+                  }
+                </select>
+                <i class="bi bi-chevron-down select-arrow"></i>
+              </div>
+              @if (picked(item); as p) {
+                <div class="route-card" [class.near]="p.zone === 'near'" [class.far]="p.zone === 'far'">
+                  <span class="route-node"><i class="bi bi-shop"></i><b>{{ p.name }}</b><small>{{ p.city }}</small></span>
+                  <span class="route-line"><em>{{ km(p) }}</em><i class="bi bi-truck route-truck" aria-hidden="true"></i></span>
+                  <span class="route-node"><i class="bi bi-geo-alt-fill"></i><b>{{ r.branch }}</b><small>{{ item.needed }} unit{{ item.needed === 1 ? '' : 's' }} will be sent</small></span>
+                  <span class="route-tag">{{ p.zone === 'near' ? 'Within 50 km' : p.zone === 'far' ? 'Beyond 50 km' : 'Distance unknown' }}</span>
+                </div>
+              }
+            } @else if (nearbyLoaded()) {
+              <div class="pl-hint warn"><i class="bi bi-exclamation-triangle"></i> No nearby branch or franchise has this product. Reject the request, or order it from the Low Stock Replenishment tab.</div>
+            }
           </div>
-        </div>
+        }
+        @if (nearbyError()) { <small class="error-text">{{ nearbyError() }}</small> }
+      </div>
+    }
+
+    @if (canReview()) {
+      <div class="section-title"><i class="bi bi-person-check"></i> Head Office Decision</div>
+      @if (canApproveNow()) {
+        <div class="chosen-vendor"><i class="bi bi-truck"></i><div><small>Approve and transfer</small><strong>{{ transferSummary() }}</strong><small>The stock leaves those stores now and {{ r.branch }} receives it through Stock &amp; Transfer.</small></div></div>
+      } @else {
+        <div class="chosen-vendor warn"><i class="bi bi-info-circle"></i><div><strong>Choose the sending branch</strong><small>Pick a nearby branch or franchise with enough stock for every product, then approve to transfer it.</small></div></div>
+      }
+      <div class="form-grid">
         <div class="form-field">
           <label for="rv-remarks">Remarks <span>(required to reject)</span></label>
           <div class="input-wrap">
@@ -93,7 +155,7 @@
         <div class="full-width"><small>Remarks</small><strong>{{ r.reviewRemarks || '-' }}</strong></div>
       </div>
     } @else if (r.status === 'Pending') {
-      <div class="section-title" style="color: var(--status-orange-text)"><i class="bi bi-hourglass-split"></i> Waiting for branch head approval</div>
+      <div class="section-title" style="color: var(--status-orange-text)"><i class="bi bi-hourglass-split"></i> Waiting for head office approval</div>
     }
   </div>
 
@@ -101,7 +163,7 @@
     <button type="button" class="cancel-btn" (click)="close()">Close</button>
     @if (canReview()) {
       <button *appCan="'reject-purchase-request'; let action" type="button" class="danger-btn" [disabled]="saving()" (click)="reject()"><i [class]="'bi ' + (action.logo || 'bi-x-circle')"></i> {{ action.action_name || 'Reject' }}</button>
-      <button *appCan="'approve-purchase-request'; let action" type="button" class="save-btn" [disabled]="saving()" (click)="approve()"><i [class]="'bi ' + (action.logo || 'bi-check2-circle')"></i> {{ action.action_name || 'Approve &amp; Generate PO' }}</button>
+      <button *appCan="'approve-purchase-request'; let action" type="button" class="save-btn" [disabled]="saving() || !canApproveNow()" [title]="canApproveNow() ? 'Approve and transfer the stock from the chosen branches' : 'Choose a nearby branch with enough stock for every product first'" (click)="approve()"><i [class]="'bi ' + (action.logo || 'bi-check2-circle')"></i> {{ saving() ? 'Transferring...' : 'Approve &amp; transfer stock' }}</button>
     }
   </div>
 </div>

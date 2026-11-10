@@ -1,3 +1,4 @@
+import { PhoneInput } from '../../../shared/directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
@@ -13,7 +14,7 @@ interface Line { name: string; qty: number; unitPrice: number; }
 @Component({
   selector: 'app-franchise-invoice-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [PhoneInput, CommonModule, FormsModule, MatDialogModule],
   templateUrl: './franchise-invoice-form.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', '../../../shared/styles/branch-franchise-dialog.scss'],
 })

@@ -179,59 +179,54 @@
     background: var(--table-row-hover-bg);
   }
 
-  /* Follow-ups: amber within 30 minutes of the call-back time, crimson within 5 minutes (and once overdue).
-     The row gets a soft tinted wash and a left accent bar; the name carries the full tone while the other
-     cells use a softer shade so the row reads as highlighted rather than as an error. Status badges and
-     action buttons keep their own colours. */
+  /* Follow-ups: the row itself stays neutral. A call-back that is close is flagged on the name cell only: a rounded
+     accent bar with a soft glow on the left edge, a warning badge on the avatar and a tinted name. Soft gold within
+     30 minutes of the call-back time, vivid orange within 5 minutes (and once overdue, where the badge pulses). */
   .mat-mdc-row.row-followup-soon,
   .mat-mdc-row.row-followup-urgent {
-    --fu-tone: #b45309;
-    --fu-text: #92400e;
-    --fu-soft: #fbbf24;
-
-    .mat-mdc-cell {
-      background: color-mix(in srgb, var(--fu-soft) 7%, var(--app-surface-solid)) !important;
-      border-bottom-color: color-mix(in srgb, var(--fu-soft) 22%, var(--table-border));
-      transition: background 0.18s ease;
-    }
+    --fu-tone: #b7791f;
+    --fu-soft: #f6c344;
 
     .mat-mdc-cell:first-child {
-      box-shadow: inset 3px 0 0 var(--fu-tone);
-      background:
-        linear-gradient(90deg, color-mix(in srgb, var(--fu-soft) 16%, transparent), transparent 85%),
-        color-mix(in srgb, var(--fu-soft) 7%, var(--app-surface-solid)) !important;
-    }
-
-    .mat-mdc-cell :is(.text-cell, .lead-subtitle, span, small, p):not(.status-badge, .status-badge *, .avatar, .avatar *) {
-      color: var(--fu-text) !important;
-      opacity: 1;
+      position: relative;
     }
 
     .lead-name {
       color: var(--fu-tone) !important;
-      letter-spacing: 0.005em;
     }
 
-    .lead-subtitle {
-      color: color-mix(in srgb, var(--fu-text) 70%, var(--text-muted)) !important;
-      font-weight: var(--fw-semibold);
-    }
-
-    .avatar {
+    .lead-cell .avatar {
+      position: relative;
+      overflow: visible;
       box-shadow: 0 0 0 2px var(--app-surface-solid), 0 0 0 3.5px color-mix(in srgb, var(--fu-tone) 55%, transparent);
-    }
 
-    &:hover .mat-mdc-cell {
-      background: color-mix(in srgb, var(--fu-soft) 13%, var(--app-surface-solid)) !important;
+      /* warning badge */
+      &::after {
+        content: '!';
+        position: absolute;
+        right: -5px;
+        bottom: -5px;
+        width: 14px;
+        height: 14px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--fu-soft), var(--fu-tone));
+        color: #fff;
+        font-size: 9px;
+        font-weight: 800;
+        line-height: 1;
+        border: 1.5px solid var(--app-surface-solid);
+        box-shadow: 0 2px 5px color-mix(in srgb, var(--fu-tone) 50%, transparent);
+      }
     }
   }
 
   .mat-mdc-row.row-followup-urgent {
-    --fu-tone: #be123c;
-    --fu-text: #9f1239;
-    --fu-soft: #fb7185;
+    --fu-tone: #c2410c;
+    --fu-soft: #fb923c;
 
-    .avatar {
+    .lead-cell .avatar {
       animation: fu-urgent-pulse 2s ease-out infinite;
     }
   }
@@ -441,7 +436,8 @@
 }
 
 .call-log-btn {
-  color: var(--primary);
+  --tone: var(--primary);
+  --tone-bg: var(--primary-soft);
 }
 
 .call-log-count {
@@ -458,28 +454,95 @@
   justify-content: center;
 }
 
+/* ==========================================================================
+   Status chip: an icon medallion + the status, tinted by its colour. Each colour has its own little motion:
+   green ticks pop, orange hourglass flips, red alerts pulse, blue arrows turn; grey stays calm.
+   ========================================================================== */
 .status-badge {
+  --t: var(--status-gray-text);
+  --tb: var(--status-gray-bg);
+
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   max-width: 100%;
-  min-height: 20px;
-  padding: 0 8px;
+  height: 24px;
+  padding: 0 11px 0 3px;
   border-radius: var(--radius-pill);
-  font-size: 10px;
-  font-weight: var(--fw-semibold);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--t);
+  background: linear-gradient(135deg, var(--tb), color-mix(in srgb, var(--t) 13%, var(--tb)));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--t) 24%, transparent), 0 2px 4px -2px color-mix(in srgb, var(--t) 40%, transparent);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+
+  /* a band of light that crosses the chip on hover */
+  &::after {
+    content: '';
+    position: absolute;
+    top: -30%;
+    bottom: -30%;
+    left: -60%;
+    width: 40%;
+    z-index: 1;
+    pointer-events: none;
+    transform: skewX(-20deg);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+    transition: left 0.5s ease;
+  }
+
+  &:hover { transform: translateY(-1px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--t) 40%, transparent), 0 6px 10px -5px color-mix(in srgb, var(--t) 60%, transparent); }
+  &:hover::after { left: 130%; }
 }
 
-.status-badge::before {
-  content: '';
-  width: 5px;
-  height: 5px;
+.sb-ico {
+  position: relative;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
   border-radius: 50%;
-  background: currentColor;
-  flex: 0 0 5px;
+  font-size: 9.5px;
+  color: #fff;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--t) 70%, #fff), var(--t));
+  box-shadow: 0 2px 4px -1px color-mix(in srgb, var(--t) 65%, transparent);
+
+  i { line-height: 1; transform-origin: center; }
+}
+
+.sb-text { overflow: hidden; text-overflow: ellipsis; }
+
+.badge-green  { --t: var(--status-green-text);  --tb: var(--status-green-bg); }
+.badge-orange { --t: var(--status-orange-text); --tb: var(--status-orange-bg); }
+.badge-red    { --t: var(--status-red-text);    --tb: var(--status-red-bg); }
+.badge-gray   { --t: var(--status-gray-text);   --tb: var(--status-gray-bg); }
+.badge-blue   { --t: var(--status-blue-text);   --tb: var(--status-blue-bg); }
+
+/* ---- motion ---- */
+.badge-green .sb-ico i { animation: sb-pop 3.2s ease-in-out infinite; }
+.badge-orange .sb-ico i { animation: sb-flip 2.4s ease-in-out infinite; }
+.badge-red .sb-ico::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--t); animation: sb-ping 1.8s ease-out infinite; z-index: -1; }
+.badge-red .sb-ico i { animation: sb-alert 1.8s ease-in-out infinite; }
+.badge-orange .sb-ico i.bi-arrow-repeat, .badge-blue .sb-ico i.bi-arrow-repeat { animation: sb-spin 3s linear infinite; }
+.badge-blue .sb-ico i.bi-snow2 { animation: sb-spin 6s linear infinite; }
+.badge-red .sb-ico i.bi-fire { animation: sb-flicker 1.2s ease-in-out infinite; }
+
+@keyframes sb-pop { 0%, 70%, 100% { transform: scale(1); } 82% { transform: scale(1.35); } 92% { transform: scale(0.95); } }
+@keyframes sb-flip { 0%, 55% { transform: rotate(0); } 85%, 100% { transform: rotate(180deg); } }
+@keyframes sb-ping { 0% { transform: scale(1); opacity: 0.55; } 100% { transform: scale(2); opacity: 0; } }
+@keyframes sb-alert { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@keyframes sb-spin { to { transform: rotate(360deg); } }
+@keyframes sb-flicker { 0%, 100% { transform: scale(1) rotate(0); } 25% { transform: scale(1.15) rotate(-6deg); } 60% { transform: scale(0.95) rotate(5deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .status-badge .sb-ico i, .status-badge .sb-ico::before { animation: none !important; }
+  .status-badge::after { display: none; }
 }
 
 .location-cell {
@@ -507,11 +570,6 @@
   color: var(--text-dark);
 }
 
-.badge-green { background: var(--status-green-bg); color: var(--status-green-text); }
-.badge-orange { background: var(--status-orange-bg); color: var(--status-orange-text); }
-.badge-red { background: var(--status-red-bg); color: var(--status-red-text); }
-.badge-gray { background: var(--status-gray-bg); color: var(--status-gray-text); }
-.badge-blue { background: var(--status-blue-bg); color: var(--status-blue-text); }
 
 .empty-material-row {
   height: 120px !important;
@@ -704,102 +762,282 @@
   color: var(--primary);
 }
 
+/* ==========================================================================
+   Row action buttons (shared by every table: action / rowActions / quickActions / callLog)
+   Realistic "glass keycap" buttons: a glossy tone gradient with a bright top edge and a solid
+   lower lip, so each one looks like a real key you can press.
+     rest   - soft tinted keycap + coloured under-lip
+     hover  - lifts, the tone fills in from the centre, a light sweep glides across and the icon
+              plays its own little animation (phone rings, eye blinks, pencil writes, bin wiggles ...)
+     press  - the key sinks onto its lip
+   Colour comes from two variables (--tone / --tone-bg); the icon animation from --fx. A new action
+   only needs its key added to one of the groups below.
+   ========================================================================== */
+@mixin tone($c, $bg) { --tone: #{$c}; --tone-bg: #{$bg}; }
+
+$blue: var(--status-blue-text, #1868b0), var(--status-blue-bg, #e5f0fb);
+$green: var(--status-green-text, #0f9d58), var(--status-green-bg, #e2f6ec);
+$orange: var(--status-orange-text, #c47c14), var(--status-orange-bg, #fdf1e0);
+$red: var(--status-red-text, #d0392c), var(--status-red-bg, #fce9e8);
+$purple: var(--status-purple-text, #7c3aed), var(--status-purple-bg, #f0e9fd);
+
 .action-cell {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 7px;
   white-space: nowrap;
 }
 
 .row-action-btn {
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
+  --tone: var(--primary);
+  --tone-bg: var(--primary-soft);
+  --tone-on: #fff;
+  --fx: row-fx-pop;
+
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  margin-bottom: 2px; /* room for the under-lip */
   padding: 0;
   border: 0;
-  border-radius: 8px;
-  background: var(--primary-soft);
-  color: var(--primary);
+  border-radius: 11px;
+  color: var(--tone);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--tone-bg) 55%, #fff) 0%,
+    var(--tone-bg) 52%,
+    color-mix(in srgb, var(--tone) 17%, var(--tone-bg)) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -2px 3px color-mix(in srgb, var(--tone) 14%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--tone) 24%, transparent),
+    0 2px 0 color-mix(in srgb, var(--tone) 34%, transparent),
+    0 6px 9px -6px color-mix(in srgb, var(--tone) 65%, transparent);
 
   display: inline-flex;
   align-items: center;
   justify-content: center;
 
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease,
+    color 0.18s ease;
+
+  /* the solid tone that grows out of the centre on hover */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background:
+      radial-gradient(120% 90% at 25% 0%, rgba(255, 255, 255, 0.42), transparent 55%),
+      linear-gradient(160deg, color-mix(in srgb, var(--tone) 78%, #fff), var(--tone) 55%, color-mix(in srgb, var(--tone) 82%, #000));
+    opacity: 0;
+    transform: scale(0.35);
+    transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* a band of light that glides across on hover */
+  &::after {
+    content: '';
+    position: absolute;
+    top: -30%;
+    bottom: -30%;
+    left: -70%;
+    width: 45%;
+    z-index: 1;
+    pointer-events: none;
+    transform: skewX(-20deg);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+    transition: left 0.55s ease;
+  }
 
   i {
-    font-size: 13px;
-    font-weight: 700;
+    position: relative;
+    z-index: 0;
+    font-size: 15px;
+    line-height: 1;
+    transform-origin: center;
+    filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.5));
   }
 
-  &:hover {
-    background: var(--primary);
-    color: #fff;
-    box-shadow: 0 4px 10px -4px var(--primary-shadow);
-    transform: translateY(-1px);
+  &:hover:not(:disabled) {
+    color: var(--tone-on);
+    transform: translateY(-3px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.45),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+      0 4px 0 color-mix(in srgb, var(--tone) 62%, #000),
+      0 12px 16px -8px color-mix(in srgb, var(--tone) 80%, transparent);
+
+    &::before { opacity: 1; transform: scale(1); }
+    &::after { left: 135%; }
+
+    i {
+      filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+      animation: var(--fx) 0.9s ease-in-out infinite;
+    }
   }
 
-  &:active {
-    transform: scale(0.92);
-    box-shadow: none;
+  /* pressed: the key sinks onto its lip */
+  &:active:not(:disabled) {
+    transform: translateY(1px) scale(0.95);
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.28),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+      0 0 0 color-mix(in srgb, var(--tone) 62%, #000);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--tone);
+    outline-offset: 2px;
   }
 }
 
-.action-edit {
-  background: var(--status-blue-bg, #e3edff);
-  color: var(--status-blue-text, #2f6fed);
+/* In dark mode the tone colours are light, so the filled hover state takes a dark icon. */
+:host-context(:root[data-theme='dark']) .row-action-btn {
+  --tone-on: #0d1b19;
+
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 22%, transparent), color-mix(in srgb, var(--tone) 12%, transparent));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px color-mix(in srgb, var(--tone) 34%, transparent),
+    0 2px 0 color-mix(in srgb, var(--tone) 30%, transparent),
+    0 6px 9px -6px rgba(0, 0, 0, 0.6);
 }
 
-.action-appointment {
-  background: var(--status-orange-bg, #fef0e0);
-  color: var(--status-orange-text, #e07a1f);
+/* ---- tone + icon animation per action; quick actions get `qa-key-<key>` from their key ---- */
+.row-action-btn.qa-primary { --tone: var(--primary-dark, var(--primary)); --tone-bg: var(--primary-soft); }
+.row-action-btn.qa-danger  { @include tone($red...); }
+
+/* phone: rings */
+.action-call, .qa-key-call, .qa-key-callback { @include tone($green...); --fx: row-fx-ring; }
+/* eye: blinks */
+.qa-key-view, .qa-key-open, .qa-key-review, .qa-key-resume, .qa-key-statement, .qa-key-sittings, .qa-key-letter, .call-log-btn { @include tone($blue...); --fx: row-fx-blink; }
+/* pencil: writes */
+.action-edit, .qa-key-edit, .qa-key-adjust, .qa-key-revision, .qa-key-process, .qa-key-wizard { @include tone($blue...); --fx: row-fx-write; }
+/* bin / cross: wiggles */
+.action-delete, .action-invalid, .qa-key-delete, .qa-key-cancel, .qa-key-close, .qa-key-cancel-transfer, .qa-key-hold { @include tone($red...); --fx: row-fx-wiggle; }
+/* documents: bob down like a download */
+.qa-key-pdf, .qa-key-print, .qa-key-invoice { @include tone($orange...); --fx: row-fx-bob; }
+/* approvals: the tick pops */
+.action-valid, .qa-key-approve, .qa-key-paid, .qa-key-receive, .qa-key-inward, .qa-key-release, .qa-key-acknowledge, .qa-key-addEmployee { @include tone($green...); --fx: row-fx-pop; }
+/* people / transfers: the gear turns */
+.action-assign, .qa-key-reassign, .qa-key-transfer, .qa-key-employees, .qa-key-reopen { @include tone($orange...); --fx: row-fx-spin; }
+/* calendar: hops */
+.action-appointment, .qa-key-appointment { @include tone($orange...); --fx: row-fx-hop; }
+/* follow-up arrows turn; audit clipboard swings; send-to-branch takes off */
+.action-followup { @include tone($purple...); --fx: row-fx-spin; }
+.action-audit { @include tone($purple...); --fx: row-fx-swing; }
+.action-branch { @include tone($green...); --fx: row-fx-fly; }
+
+/* The call button breathes softly so the primary telecaller action stands out in a dense row. */
+.row-action-btn.action-call:not(:disabled):not(:hover),
+.row-action-btn.qa-key-call:not(:disabled):not(:hover) {
+  animation: row-call-ring 2.8s ease-out infinite;
 }
 
-.action-followup {
-  background: var(--status-purple-bg, #ede3ff);
-  color: var(--status-purple-text, #7c4fe0);
+@keyframes row-call-ring {
+  0%   { box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 0 0 1px color-mix(in srgb, var(--tone) 24%, transparent), 0 2px 0 color-mix(in srgb, var(--tone) 34%, transparent), 0 0 0 0 color-mix(in srgb, var(--tone) 42%, transparent); }
+  70%  { box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 0 0 1px color-mix(in srgb, var(--tone) 24%, transparent), 0 2px 0 color-mix(in srgb, var(--tone) 34%, transparent), 0 0 0 7px color-mix(in srgb, var(--tone) 0%, transparent); }
+  100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 0 0 1px color-mix(in srgb, var(--tone) 24%, transparent), 0 2px 0 color-mix(in srgb, var(--tone) 34%, transparent), 0 0 0 0 color-mix(in srgb, var(--tone) 0%, transparent); }
 }
 
-.action-branch {
-  background: var(--status-green-bg, #e1f7ea);
-  color: var(--status-green-text, #1f9d55);
+/* ---- icon animations (played while the button is hovered) ---- */
+@keyframes row-fx-ring {
+  0%, 60%, 100% { transform: rotate(0); }
+  10% { transform: rotate(-20deg); } 20% { transform: rotate(18deg); } 30% { transform: rotate(-16deg); }
+  40% { transform: rotate(14deg); } 50% { transform: rotate(-8deg); }
+}
+@keyframes row-fx-blink {
+  0%, 38%, 62%, 100% { transform: scale(1.12, 1.12); }
+  50% { transform: scale(1.12, 0.12); }
+}
+@keyframes row-fx-write {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  25% { transform: translate(-2px, 1px) rotate(-14deg); }
+  50% { transform: translate(2px, -1px) rotate(8deg); }
+  75% { transform: translate(-1px, 1px) rotate(-10deg); }
+}
+@keyframes row-fx-wiggle {
+  0%, 100% { transform: rotate(0) scale(1.1); }
+  20% { transform: rotate(-14deg) scale(1.1); } 40% { transform: rotate(12deg) scale(1.1); }
+  60% { transform: rotate(-9deg) scale(1.1); } 80% { transform: rotate(6deg) scale(1.1); }
+}
+@keyframes row-fx-bob {
+  0%, 100% { transform: translateY(0); } 35% { transform: translateY(3px); } 70% { transform: translateY(-2px); }
+}
+@keyframes row-fx-pop {
+  0%, 100% { transform: scale(1); } 40% { transform: scale(1.38); } 65% { transform: scale(0.92); }
+}
+@keyframes row-fx-spin {
+  0% { transform: rotate(0); } 70%, 100% { transform: rotate(360deg); }
+}
+@keyframes row-fx-hop {
+  0%, 100% { transform: translateY(0) scale(1); } 30% { transform: translateY(-4px) scale(1.12); } 55% { transform: translateY(0) scale(0.94, 1.08); }
+}
+@keyframes row-fx-swing {
+  0%, 100% { transform: rotate(0); } 25% { transform: rotate(16deg); } 75% { transform: rotate(-16deg); }
+}
+@keyframes row-fx-fly {
+  0% { transform: translate(0, 0); opacity: 1; }
+  40% { transform: translate(7px, -7px); opacity: 0; }
+  41% { transform: translate(-7px, 7px); opacity: 0; }
+  100% { transform: translate(0, 0); opacity: 1; }
 }
 
-.action-call {
-  background: var(--status-green-bg, #e3f9ee);
-  color: var(--status-green-text, #1f9d55);
-}
+/* The audit-history button (<app-record-history variant="icon">) is a child component, so reach in to give it the same keycap. */
+.row-history {
+  display: inline-flex;
 
-.action-valid {
-  background: var(--status-green-bg, #e3f9ee);
-  color: var(--status-green-text, #1f9d55);
-}
+  ::ng-deep .rh-btn.icon {
+    --tone: var(--status-purple-text, #7c3aed);
+    --tone-bg: var(--status-purple-bg, #f0e9fd);
+    width: 32px;
+    height: 32px;
+    margin-bottom: 2px;
+    padding: 0;
+    justify-content: center;
+    border: 0;
+    border-radius: 11px;
+    color: var(--tone);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--tone-bg) 55%, #fff) 0%, var(--tone-bg) 52%, color-mix(in srgb, var(--tone) 17%, var(--tone-bg)) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -2px 3px color-mix(in srgb, var(--tone) 14%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--tone) 24%, transparent), 0 2px 0 color-mix(in srgb, var(--tone) 34%, transparent), 0 6px 9px -6px color-mix(in srgb, var(--tone) 65%, transparent);
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background 0.2s ease, color 0.18s ease;
 
-.action-invalid {
-  background: var(--status-red-bg, #fde6e6);
-  color: var(--status-red-text, #e0392f);
+    i { font-size: 15px; line-height: 1; transform-origin: 50% 20%; }
+
+    &:hover {
+      color: #fff;
+      background: linear-gradient(160deg, color-mix(in srgb, var(--tone) 78%, #fff), var(--tone) 55%, color-mix(in srgb, var(--tone) 82%, #000));
+      transform: translateY(-3px);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 4px 0 color-mix(in srgb, var(--tone) 62%, #000), 0 12px 16px -8px color-mix(in srgb, var(--tone) 80%, transparent);
+
+      i { animation: row-fx-swing 0.9s ease-in-out infinite; }
+    }
+
+    &:active { transform: translateY(1px) scale(0.95); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.28); }
+  }
 }
 
 .quick-actions-cell {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 4px;
+  gap: 7px;
   white-space: nowrap;
 }
 
-.row-action-btn.qa-primary { background: var(--primary-soft); color: var(--primary-dark); }
-.row-action-btn.qa-primary:hover { background: var(--primary); color: #fff; box-shadow: 0 4px 10px -4px var(--primary-shadow); }
-
-.row-action-btn.qa-danger { background: var(--status-red-bg); color: var(--status-red-text); }
-.row-action-btn.qa-danger:hover { background: var(--status-red-text); color: #fff; box-shadow: 0 4px 10px -4px rgba(208, 57, 44, .4); }
-
-.action-delete {
-  background: var(--status-red-bg, #fde6e6);
-  color: var(--status-red-text, #e0392f);
+@media (prefers-reduced-motion: reduce) {
+  .row-action-btn i, .row-history ::ng-deep .rh-btn.icon i, .row-action-btn.action-call, .row-action-btn.qa-key-call { animation: none !important; }
+  .row-action-btn::after { display: none; }
 }
+
 
 @media (max-width: 480px) {
   .page-info{
@@ -858,23 +1096,13 @@
   transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
 }
 @keyframes fu-urgent-pulse {
-  0%   { box-shadow: 0 0 0 2px var(--app-surface-solid), 0 0 0 3.5px rgba(190, 18, 60, 0.55); }
-  70%  { box-shadow: 0 0 0 2px var(--app-surface-solid), 0 0 0 7px rgba(190, 18, 60, 0); }
-  100% { box-shadow: 0 0 0 2px var(--app-surface-solid), 0 0 0 3.5px rgba(190, 18, 60, 0); }
+  0%   { box-shadow: 0 0 0 2px var(--app-surface-solid), 0 0 0 3.5px rgba(234, 88, 12, 0.55); }
+  70%  { box-shadow: 0 0 0 2px var(--app-surface-solid), 0 0 0 7px rgba(234, 88, 12, 0); }
+  100% { box-shadow: 0 0 0 2px var(--app-surface-solid), 0 0 0 3.5px rgba(234, 88, 12, 0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .row-followup-urgent .avatar { animation: none !important; }
-}
-
-.action-assign {
-  background: var(--status-orange-bg, #fef0e0);
-  color: var(--status-orange-text, #e07a1f);
-}
-
-.action-audit {
-  background: var(--status-purple-bg, #ede3ff);
-  color: var(--status-purple-text, #7c4fe0);
 }
 
 .row-action-btn:disabled {
@@ -883,6 +1111,7 @@
   filter: grayscale(1);
   transform: none;
   box-shadow: none;
+  animation: none;
 }
 
 /* A lead another telecaller is on a call with: greyed out, its buttons disabled (audit log stays open). */

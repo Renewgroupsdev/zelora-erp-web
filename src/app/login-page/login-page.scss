@@ -53,16 +53,18 @@
   width: 100%;
   max-width: 392px;
   box-sizing: border-box;
-  padding: 74px 26px 18px;
-  background: rgba(255, 255, 255, .84);
-  border: 1px solid rgba(255, 255, 255, .95);
-  border-radius: 26px;
+  padding: 70px 24px 16px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .42) 0%, rgba(255, 255, 255, .14) 55%, rgba(236, 247, 241, .22) 100%);
+  border: 1px solid rgba(255, 255, 255, .85);
+  border-radius: 30px;
   box-shadow:
     0 24px 60px rgba(13, 74, 58, .14),
-    0 4px 14px rgba(13, 74, 58, .06);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  animation: card-in .45s cubic-bezier(.22, 1, .36, 1);
+    0 4px 14px rgba(13, 74, 58, .06),
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    inset 0 0 28px rgba(255, 255, 255, .35);
+  backdrop-filter: blur(9px) saturate(1.35);
+  -webkit-backdrop-filter: blur(9px) saturate(1.35);
+    animation: card-in .45s cubic-bezier(.22, 1, .36, 1);
 }
 
 @keyframes card-in {
@@ -80,16 +82,19 @@
 }
 
 .logo-circle {
+  position: relative;
   width: 128px;
   height: 128px;
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  background: #ffffff;
+  background: radial-gradient(circle at 50% 30%, #ffffff 0%, #f4f8f6 100%);
   border-radius: 50%;
   box-shadow:
-    0 14px 34px rgba(13, 74, 58, .16),
-    0 0 0 6px rgba(255, 255, 255, .55);
+    inset 0 -8px 16px rgba(15, 90, 69, .07),
+    0 18px 38px rgba(13, 74, 58, .2),
+    0 3px 8px rgba(13, 74, 58, .1);
+  border: 3px solid rgba(255, 255, 255, .95);
 }
 
 .auth-logo {
@@ -102,11 +107,11 @@
 .welcome-text {
   margin: 4px 0 6px;
   text-align: center;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 32px;
+  font-family: var(--font-family-base, 'Rubik', sans-serif);
+  font-size: 36px;
   line-height: 1.15;
-  font-weight: 600;
-  color: var(--auth-ink);
+  font-weight: 700;
+  color: #0a3d31;
 }
 
 .welcome-subtext {
@@ -124,9 +129,9 @@
   gap: 10px;
   margin-bottom: 12px;
   padding: 9px 12px;
-  background: #fdecee;
-  border: 1px solid #f8d3d8;
-  border-radius: 10px;
+  background: #fde8ea;
+  border: 1px solid #f8c9cf;
+  border-radius: 24px;
   color: #c8384a;
   font-size: 13px;
   animation: alert-in .2s ease-out;
@@ -181,11 +186,13 @@
 }
 
 .form-group {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .form-label {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 7px;
   font-size: 13.5px;
   font-weight: 600;
@@ -211,12 +218,12 @@
 
 .form-control {
   width: 100%;
-  height: 44px;
+  height: 42px;
   padding: 0 44px 0 44px;
   box-sizing: border-box;
   border: 1px solid #d4e2dc;
   border-radius: 24px;
-  background: rgba(255, 255, 255, .8);
+  background: rgba(255, 255, 255, .9);
   color: var(--auth-text);
   font-size: 14.5px;
   transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
@@ -328,14 +335,14 @@
 
 .btn-primary {
   width: 100%;
-  height: 48px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   border: none;
   border-radius: 26px;
-  background: linear-gradient(90deg, #237f62 0%, #0f5a45 55%, #0a4436 100%);
+  background: linear-gradient(180deg, #14803f 0%, #0b6433 55%, #08502a 100%);
   color: #fff;
   font-size: 16px;
   font-weight: 600;
@@ -343,10 +350,20 @@
   cursor: pointer;
   box-shadow:
     0 10px 24px rgba(15, 90, 69, .32),
+    0 0 0 2px #d9b567,
     inset 0 1px 0 rgba(255, 255, 255, .18);
   transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
 
-  .btn-arrow { font-size: 18px; transition: transform .15s ease; }
+  .btn-arrow {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border: 1.5px solid rgba(255, 255, 255, .9);
+    border-radius: 50%;
+    font-size: 16px;
+    transition: transform .15s ease;
+  }
 
   &:hover:not(:disabled) {
     transform: translateY(-1px);
@@ -412,6 +429,32 @@
   height: 56px;
   margin-top: 4px;
   background: #cfe0d9;
+}
+
+
+/* ---------- Three-column layout: brand | card | benefits ---------- */
+@media (min-width: 900px) {
+  .auth-card { zoom: var(--auth-zoom); }
+
+  .auth-wrapper {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(16px, 2.6vw, 56px);
+    padding: 80px clamp(16px, 2.6vw, 56px) 24px;
+  }
+
+  .page-features { display: none; }
+}
+
+.label-icon { font-size: 14px; color: #2c6a57; }
+
+/* Tablet: compact centred card with the benefit row underneath */
+@media (min-width: 600px) and (max-width: 899px) {
+  .auth-card { max-width: 400px; }
+  .auth-wrapper { gap: 22px; }
+  .page-features { gap: 34px; }
+  .page-feature-item { width: 112px; }
 }
 
 /* ---------- Responsive ---------- */

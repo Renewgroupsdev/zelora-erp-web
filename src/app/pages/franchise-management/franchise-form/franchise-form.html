@@ -99,7 +99,7 @@
         </div>
         <div class="form-field">
           <label for="fr-ophone">Phone</label>
-          <div class="input-wrap"><i class="bi bi-telephone"></i><input id="fr-ophone" name="ownerPhone" maxlength="20" [(ngModel)]="model.ownerPhone" /></div>
+          <div class="input-wrap"><i class="bi bi-telephone"></i><input appPhone id="fr-ophone" name="ownerPhone" [(ngModel)]="model.ownerPhone" /></div>
         </div>
         <div class="form-field">
           <label for="fr-oemail">Email</label>
@@ -133,7 +133,7 @@
           </div>
           <div class="form-field">
             <label [for]="'fr-ophone-' + i">Phone</label>
-            <div class="input-wrap"><i class="bi bi-telephone"></i><input [id]="'fr-ophone-' + i" [name]="'ownerPhone' + i" maxlength="20" [(ngModel)]="o.phone" /></div>
+            <div class="input-wrap"><i class="bi bi-telephone"></i><input appPhone [id]="'fr-ophone-' + i" [name]="'ownerPhone' + i" [(ngModel)]="o.phone" /></div>
           </div>
           <div class="form-field">
             <label [for]="'fr-oemail-' + i">Email</label>

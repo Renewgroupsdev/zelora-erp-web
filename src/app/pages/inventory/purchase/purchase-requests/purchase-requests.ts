@@ -56,7 +56,7 @@ export class PurchaseRequests extends PurchaseListBase {
   });
 
   protected allRows(): TableRow[] {
-    const canApprove = this.purchase.canApprove();
+    const canApprove = this.purchase.canApproveRequests();
     return this.purchase.requests().map(r => {
       const total = lineTotals(r.items).grandTotal;
       const actions: QuickAction[] = [{ key: 'view', icon: 'bi-eye-fill', label: 'View details' }];

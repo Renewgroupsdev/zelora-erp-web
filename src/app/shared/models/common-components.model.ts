@@ -70,6 +70,8 @@ export interface TableColumn {
 
 export interface LeadCell {
   name: string;
+  /** Hide the avatar / thumbnail and show the name only. */
+  noAvatar?: boolean;
   subtitle?: string;
   /** Optional thumbnail shown in place of the initials avatar. */
   photo?: string;

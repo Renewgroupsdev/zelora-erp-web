@@ -1,35 +1,199 @@
 @use '../call-card' as *;
 
-.dock-card.incoming { border: 2px solid var(--dock-green); }
+/* Incoming: a green banner with the caller avatar inside a draining ring, then the CRM details and two big buttons. */
+.dock-card.incoming {
+  --dock-accent: var(--dock-green);
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--dock-green);
+  animation: dock-in-side 0.5s cubic-bezier(0.2, 1.15, 0.3, 1) both, incoming-glow 1.6s ease-in-out 0.5s infinite;
 
-.pulse { animation: ring-pulse 1.2s ease-out infinite; }
-
-.caller-card {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--bg-light-green-soft, #f6fbf9);
+  &::before { display: none; }
 }
 
-.btn-answer {
-  background: var(--dock-green);
+.inc-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 16px 18px;
   color: #fff;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, 0.22), transparent 55%),
+    linear-gradient(135deg, #0d5c4b 0%, #14917a 100%);
 
-  &:hover:not(:disabled) { background: var(--dock-green-dark); }
+  /* a soft wave rolling along the bottom of the banner */
+  &::after {
+    content: '';
+    position: absolute;
+    left: -20%;
+    right: -20%;
+    bottom: -60px;
+    height: 90px;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(255, 255, 255, 0.16), transparent);
+    animation: inc-wave 2.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+}
+
+.avatar-wrap { position: relative; flex: 0 0 auto; width: 74px; height: 74px; }
+
+.count-ring {
+  position: absolute;
+  inset: -3px;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
+  transform: rotate(-90deg);
+
+  circle { fill: none; stroke-width: 3.5; }
+  .track { stroke: rgba(255, 255, 255, 0.25); }
+  .progress {
+    stroke: #fff;
+    stroke-linecap: round;
+    stroke-dasharray: 226.2;
+    stroke-dashoffset: 0;
+    animation-name: ring-drain;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+}
+
+.avatar {
+  position: absolute;
+  inset: 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--dock-green);
+  font-size: 22px;
+  font-weight: 800;
+  box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.5);
+
+  &::before, &::after { border-color: #fff; }
+}
+
+.phone-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 12px;
+  color: #fff;
+  background: #19b875;
+  border: 2px solid #fff;
+  animation: handset-shake 1.4s ease-in-out infinite;
+  transform-origin: 50% 60%;
+}
+
+.who { position: relative; z-index: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+
+.pill {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #7dffc8; animation: live-dot 1.2s ease-in-out infinite; }
+
+.caller-name { color: #fff; font-size: 20px; font-weight: 800; }
+.caller-number { color: rgba(255, 255, 255, 0.88); font-size: 13.5px; font-variant-numeric: tabular-nums; i { margin-right: 4px; } }
+
+.inc-body { padding: 14px 16px 16px; }
+
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bg-light-green, #e6f4ee);
+  color: var(--brand-teal-dark, #0f7666);
+  transition: transform 0.15s ease;
+
+  &:hover { transform: translateY(-1px); }
+  i { font-size: 11px; }
+}
+.tag-service { background: #fff1de; color: #a05a00; }
+.tag-owner { background: #eaf2fb; color: var(--brand-blue-dark, #075b87); }
+
+.unknown { margin: 0; padding: 9px 12px; border-radius: 12px; font-size: 12.5px; background: #fff7e6; color: #8a5a00; i { margin-right: 6px; } }
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 7px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--dock-border);
+  background: var(--bg-light-green-soft, #f6fbf9);
+  animation: dock-fade-up 0.4s ease-out both;
+}
+.info-icon { flex: 0 0 auto; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; background: #dff2ea; color: var(--dock-green); font-size: 14px; }
+.info-text { display: flex; flex-direction: column; min-width: 0; small { font-size: 11px; color: var(--dock-muted); } b { font-size: 13px; font-weight: 700; overflow-wrap: anywhere; } }
+
+.actions { margin-top: 14px; gap: 10px; }
+
+.btn-answer {
+  position: relative;
+  overflow: hidden;
+  flex: 1.35 !important;
+  padding: 13px 14px !important;
+  font-size: 15px !important;
+  color: #fff;
+  background: linear-gradient(135deg, #19b875, var(--dock-green));
+  box-shadow: 0 10px 20px -10px #19b875;
+  animation: answer-breathe 1.4s ease-in-out infinite;
+
+  i { font-size: 17px; animation: handset-shake 1.4s ease-in-out infinite; }
+  /* a band of light slides across to draw the eye */
+  &::after { content: ''; position: absolute; top: -30%; bottom: -30%; left: -60%; width: 40%; transform: skewX(-20deg); background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent); animation: answer-shine 2.4s ease-in-out infinite; }
+  &:hover:not(:disabled) { transform: translateY(-2px); animation: none; }
 }
 
 .btn-reject {
-  background: #fde6e6;
+  background: #fff;
   color: var(--dock-red);
+  border: 1.5px solid #f3c2bf !important;
 
-  &:hover:not(:disabled) { background: var(--dock-red); color: #fff; }
+  &:hover:not(:disabled) { background: var(--dock-red); color: #fff; border-color: var(--dock-red) !important; transform: translateY(-2px); }
 }
 
-@keyframes ring-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(25, 184, 117, 0.55); }
-  100% { box-shadow: 0 0 0 16px rgba(25, 184, 117, 0); }
+@keyframes dock-in-side { 0% { opacity: 0; transform: translateX(46px) scale(0.94); } 100% { opacity: 1; transform: none; } }
+@keyframes incoming-glow {
+  0%, 100% { box-shadow: 0 22px 54px -20px rgba(15, 60, 50, 0.55), 0 0 0 0 rgba(25, 184, 117, 0.45); }
+  50% { box-shadow: 0 22px 54px -20px rgba(15, 60, 50, 0.55), 0 0 0 10px rgba(25, 184, 117, 0); }
 }
+@keyframes handset-shake {
+  0%, 55%, 100% { transform: rotate(0); }
+  10% { transform: rotate(-18deg); } 20% { transform: rotate(16deg); } 30% { transform: rotate(-14deg); } 40% { transform: rotate(12deg); } 50% { transform: rotate(-6deg); }
+}
+@keyframes answer-breathe { 0%, 100% { box-shadow: 0 10px 20px -10px #19b875, 0 0 0 0 rgba(25, 184, 117, 0.5); } 50% { box-shadow: 0 10px 20px -10px #19b875, 0 0 0 8px rgba(25, 184, 117, 0); } }
+@keyframes answer-shine { 0%, 55% { left: -60%; } 100% { left: 140%; } }
+@keyframes ring-drain { to { stroke-dashoffset: 226.2; } }
+@keyframes live-dot { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: 0.5; } }
+@keyframes inc-wave { 0%, 100% { transform: translateY(0) scale(1); opacity: 0.8; } 50% { transform: translateY(-14px) scale(1.1); opacity: 1; } }
+@keyframes dock-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .pulse { animation: none; }
+  .dock-card.incoming, .inc-banner::after, .phone-badge, .live-dot, .btn-answer, .btn-answer i, .btn-answer::after, .info-row, .count-ring .progress { animation: none !important; }
 }

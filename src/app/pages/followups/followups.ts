@@ -31,8 +31,8 @@ import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { AuthService } from '../../core/auth/auth.service';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
-import { openLeadAudit } from '../../shared/components/lead-dialogs/lead-audit-dialog';
 import { openLeadView } from '../../shared/components/lead-dialogs/lead-view-dialog';
+import { openAssignCaller } from '../../shared/components/lead-dialogs/assign-caller-dialog';
 
 /** While the WebSocket is down, the list re-reads this often so call locks still show. */
 const FALLBACK_REFRESH_MS = 20_000;
@@ -41,7 +41,8 @@ const QUICK_ACTIONS: QuickAction[] = [
   { key: 'call', icon: 'bi-telephone-outbound', label: 'Call Lead', variant: 'primary', permission: 'call-follow-up-lead' },
   { key: 'view', icon: 'bi-eye', label: 'View Lead', variant: 'default', keepOnLock: true },
   { key: 'appointment', icon: 'bi-calendar2-check', label: 'Book Appointment', variant: 'default', permission: 'book-follow-up-appointment' },
-  { key: 'audit', icon: 'bi-clipboard-data', label: 'Audit Log', variant: 'default', permission: 'view-lead-audit', keepOnLock: true },
+  // Hand the lead to another telecaller (e.g. the assigned one is absent today). Super Admin / Admin / Branch Manager by default.
+  { key: 'reassign', icon: 'bi-person-gear', label: 'Reassign Caller', variant: 'default', permission: 'reassign-follow-up-caller', keepOnLock: true },
 ];
 
 @Component({
@@ -123,7 +124,7 @@ export class Followups implements OnInit, OnDestroy {
     { key: 'branch', header: 'Branch', type: 'branch' },
     { key: 'telecaller', header: 'Telecaller Assigned', type: 'avatarGroup', sortable: false, width: '140px' },
     { key: 'status', header: 'Status', type: 'badge' },
-    { key: 'action', header: 'Action', type: 'quickActions', sortable: false, width: '90px' },
+    { key: 'action', header: 'Action', type: 'quickActions', sortable: false, width: '120px' },
   ];
 
   readonly pageSizeOptions = [10, 30, 50, 100];
@@ -142,8 +143,6 @@ export class Followups implements OnInit, OnDestroy {
 
   /** Real lead_status name -> id, so the Status filter can be sent server-side as `status_id`. */
   private statusIdByName = new Map<string, number>();
-
-  private urgencyTimer?: ReturnType<typeof setInterval>;
 
   /** Source / Branch / Telecaller filter options come from the API instead of a fixed list. */
   private loadFilterOptions(): void {
@@ -168,18 +167,13 @@ export class Followups implements OnInit, OnDestroy {
     this.loadFilterOptions();
     this.loadStatusOptions();
 
-    // Row colours change as the call-back time approaches, so re-evaluate them every 30 seconds.
-    this.urgencyTimer = setInterval(() => {
-      this.allRows.forEach(row => (row['_urgency'] = this.urgencyOf(row['follow_up_at'])));
-      this.refreshRows();
-    }, 30_000);
   }
 
   ngOnDestroy(): void {
-    clearInterval(this.urgencyTimer);
+    // nothing to release: the call-back reminder is app-wide (FollowUpReminderService)
   }
 
-  /** red = due in 5 minutes or less (or overdue), orange = due within 30 minutes. */
+  /** Used only by the 'priority' sort: urgent = due in 5 minutes or less (or overdue), soon = due within 30 minutes. Rows are not coloured. */
   private urgencyOf(value: unknown): '' | 'soon' | 'urgent' {
     const at = value ? new Date(String(value)).getTime() : NaN;
     if (Number.isNaN(at)) return '';
@@ -258,12 +252,13 @@ export class Followups implements OnInit, OnDestroy {
       service_request: lead.service_request_name ?? '',
       followup_count: lead.follow_ups_count,
       follow_up_at: lead.next_follow_up_at ?? '',
-      _urgency: this.urgencyOf(lead.next_follow_up_at),
       follow_up_date: lead.next_follow_up_at
         ? this.formatDateTime(lead.next_follow_up_at)
         : (callLog.length ? callLog[callLog.length - 1].dateTime : ''),
       branch: lead.branch_name ?? '',
       telecaller: callers,
+      assignedToId: lead.assigned_to ?? 0,
+      branchKey: lead.branch_type && lead.branch_id ? `${lead.branch_type}:${lead.branch_id}` : '',
       status: lead.status_name ?? '',
       follow_up_type_label: this.FOLLOW_UP_TYPE_LABELS[lead.follow_up_type ?? 0] ?? '',
       action: QUICK_ACTIONS,
@@ -370,7 +365,7 @@ export class Followups implements OnInit, OnDestroy {
 
   onQuickAction({ row, action }: { row: TableRow; action: string }): void {
     if (action === 'view') this.viewLead(row);
-    else if (action === 'audit') this.viewAudit(row);
+    else if (action === 'reassign') this.reassignCaller(row);
     else if (row['locked']) this.toast.warning(String(row['lockedLabel'] ?? 'Another telecaller is on this lead.'));
     else if (action === 'appointment') this.openFollowUpProfile(row);
     else if (action === 'call') this.callLead(row);
@@ -396,6 +391,26 @@ export class Followups implements OnInit, OnDestroy {
     });
   }
 
+  /** Hands the lead to another telecaller. The dialog lists today's attendance and blocks absent telecallers, so a lead whose
+   *  telecaller is absent can be moved to one who is in. It then appears in the new telecaller's Follow-ups. */
+  private reassignCaller(row: TableRow): void {
+    if (row['locked']) {
+      this.toast.warning(String(row['lockedLabel'] ?? 'Another telecaller is on this lead.'));
+      return;
+    }
+    const lead = row['lead'] as LeadCell;
+    const current = ((row['telecaller'] as CallerAvatar[]) ?? [])[0]?.name ?? null;
+    openAssignCaller(this.dialog, {
+      leadIds: [Number(row['id'])],
+      subject: `${lead?.name ?? 'Lead'} · ${lead?.subtitle ?? ''}`,
+      currentId: Number(row['assignedToId']) || null,
+      currentName: current,
+      branchKey: String(row['branchKey'] ?? '') || null,
+    }).afterClosed().subscribe(saved => {
+      if (saved) this.loadFollowUps();
+    });
+  }
+
   /** Read-only lead details - open even while another telecaller holds the lead. */
   viewLead(row: TableRow): void {
     const lead = row['lead'] as LeadCell;
@@ -404,26 +419,34 @@ export class Followups implements OnInit, OnDestroy {
       id: Number(row['id']),
       name: lead.name,
       lockedLabel: row['locked'] ? String(row['lockedLabel'] ?? '') : undefined,
-      fields: [
-        { label: 'Contact', value: String(row['contact'] ?? ''), icon: 'bi-telephone' },
-        { label: 'Gender', value: String(row['gender'] ?? ''), icon: 'bi-gender-ambiguous' },
-        { label: 'Source', value: String(row['source'] ?? ''), icon: 'bi-megaphone' },
-        { label: 'Branch', value: String(row['branch'] ?? ''), icon: 'bi-geo-alt' },
-        { label: 'Service Category', value: String(row['service_category'] ?? ''), icon: 'bi-grid' },
-        { label: 'Service Request', value: String(row['service_request'] ?? ''), icon: 'bi-clipboard' },
-        { label: 'Telecaller', value: callers.map(c => c.name).join(', '), icon: 'bi-headset' },
-        { label: 'Status', value: String(row['status'] ?? ''), icon: 'bi-flag' },
-        { label: 'Follow-Up Date', value: String(row['follow_up_date'] ?? ''), icon: 'bi-calendar-event' },
-        { label: 'Follow-Ups / Type', value: `${row['followup_count'] ?? 0} · ${row['follow_up_type_label'] ?? ''}`, icon: 'bi-arrow-repeat' },
+      status: String(row['status'] ?? '') || undefined,
+      phone: String(row['contact'] ?? '') || undefined,
+      stats: [
+        { label: 'Follow-ups', value: Number(row['followup_count'] ?? 0), icon: 'bi-arrow-repeat' },
+        { label: 'Next call-back', value: String(row['follow_up_date'] ?? ''), icon: 'bi-calendar-event' },
+        { label: 'Type', value: String(row['follow_up_type_label'] ?? ''), icon: 'bi-fire' },
       ],
+      sections: [
+        {
+          title: 'Contact & source', icon: 'bi-person-lines-fill', fields: [
+            { label: 'Gender', value: String(row['gender'] ?? ''), icon: 'bi-gender-ambiguous' },
+            { label: 'Source', value: String(row['source'] ?? ''), icon: 'bi-megaphone' },
+            { label: 'Branch', value: String(row['branch'] ?? ''), icon: 'bi-geo-alt' },
+            { label: 'Telecaller', value: callers.map(c => c.name).join(', '), icon: 'bi-headset' },
+          ],
+        },
+        {
+          title: 'Service interest', icon: 'bi-clipboard2-pulse', fields: [
+            { label: 'Service category', value: String(row['service_category'] ?? ''), icon: 'bi-grid' },
+            { label: 'Service request', value: String(row['service_request'] ?? ''), icon: 'bi-clipboard' },
+          ],
+        },
+      ],
+      fields: [],
       callLog: (row['callLogEntries'] as CallerLogEntry[]) ?? [],
     });
   }
 
-  viewAudit(row: TableRow): void {
-    const lead = row['lead'] as LeadCell;
-    openLeadAudit(this.dialog, { id: Number(row['id']), name: lead.name });
-  }
 
   /** Opens the lead's follow-up card. The telecaller and branch come from the lead itself (shown, not editable),
    *  and the next call-back / appointment is saved to the database by the dialog. */
@@ -532,7 +555,7 @@ export class Followups implements OnInit, OnDestroy {
     }
 
     if (this.sortActive === 'priority') {
-      const rank = (row: TableRow) => ({ urgent: 0, soon: 1 } as Record<string, number>)[String(row['_urgency'])] ?? 2;
+      const rank = (row: TableRow) => ({ urgent: 0, soon: 1 } as Record<string, number>)[this.urgencyOf(row['follow_up_at'])] ?? 2;
       const time = (row: TableRow) => (row['follow_up_at'] ? new Date(String(row['follow_up_at'])).getTime() : Infinity);
       return [...rows].sort((a, b) => rank(a) - rank(b) || time(a) - time(b));
     }

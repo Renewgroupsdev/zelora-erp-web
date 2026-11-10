@@ -4,12 +4,14 @@ import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { Router } from '@angular/router';
 import { Preloader } from '../preloader/preloader';
 import { AuthBackground } from '../shared/components/auth-background/auth-background';
+import { AuthBrandPanel } from '../shared/components/auth-brand-panel/auth-brand-panel';
+import { AuthFeaturePanel } from '../shared/components/auth-feature-panel/auth-feature-panel';
 import { AuthService } from '../core/auth/auth.service';
 
 @Component({
   selector: 'app-forgot-password',
   standalone: true,
-  imports: [Preloader, CommonModule, ReactiveFormsModule, FormsModule, AuthBackground],
+  imports: [Preloader, CommonModule, ReactiveFormsModule, FormsModule, AuthBackground, AuthBrandPanel, AuthFeaturePanel],
   templateUrl: './forgot-password.html',
   // Same card, logo badge and fields as the login page; only page-specific extras live in forgot-password.scss.
   styleUrls: ['../login-page/login-page.scss', './forgot-password.scss'],

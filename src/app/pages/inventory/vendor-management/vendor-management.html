@@ -39,6 +39,7 @@
         (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
         [actionPermissions]="{ edit: 'edit-vendor', delete: 'delete-vendor' }"
+        (profileClick)="onViewVendor($event)"
         (editClick)="onEditVendor($event)"
         (deleteClick)="onDeleteVendor($event)"
       ></app-common-table-card>

@@ -1,6 +1,9 @@
-<div class="auth-wrapper">
+<div class="auth-wrapper stage-host">
 
   <app-auth-background></app-auth-background>
+
+  <div class="auth-stage">
+  <app-auth-brand-panel></app-auth-brand-panel>
 
   <!-- Login panel -->
   <div class="form-panel">
@@ -8,7 +11,7 @@
 
       <div class="auth-logo-block">
         <div class="logo-circle">
-          <img src="assets/02_Renew%20Group%20-Logo%20png.png" alt="Renew Group logo" class="auth-logo">
+          <img src="assets/02_Renew%20Group%20-Logo%20only%20png.png" alt="Renew Group logo" class="auth-logo">
         </div>
       </div>
 
@@ -32,7 +35,7 @@
 
         @if (!(mode === 'customer' && otpSent)) {
         <div class="form-group">
-          <label for="user_name" class="form-label">User name / Employee ID / Mobile number</label>
+          <label for="user_name" class="form-label"><i class="bi bi-person label-icon" aria-hidden="true"></i>User name / Employee ID / Mobile number</label>
           <div class="input-group">
             <span class="input-icon"><i class="bi" [ngClass]="identifierIcon"></i></span>
             <input
@@ -139,9 +142,12 @@
     </div>
   </div>
 
+  <app-auth-feature-panel></app-auth-feature-panel>
+  </div>
+
   <div class="page-features" aria-hidden="true">
     <div class="page-feature-item">
-      <span class="page-feature-icon"><i class="bi bi-leaf"></i></span>
+      <span class="page-feature-icon"><i class="bi bi-stars"></i></span>
       <span class="page-feature-label">Better Care<br>For You</span>
     </div>
     <span class="page-feature-divider"></span>

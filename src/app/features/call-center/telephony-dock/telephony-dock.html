@@ -22,7 +22,7 @@
         (toggleHold)="toggleHold($event)"
         (transferOpened)="loadTransferTargets()"
         (transfer)="transfer(call, $event)"
-        (note)="saveNote(call, $event)"></app-active-call>
+        (openOutcome)="openOutcomeFor(call)"></app-active-call>
     }
 
     @if (waiting(); as call) {

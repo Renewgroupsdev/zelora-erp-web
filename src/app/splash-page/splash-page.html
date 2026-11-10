@@ -1,10 +1,12 @@
-<main class="splash-wrapper">
-  <app-auth-background></app-auth-background>
+<main class="splash-wrapper stage-host">
+  <app-auth-background variant="splash"></app-auth-background>
+  <div class="auth-stage is-compact is-splash">
+  <app-auth-brand-panel></app-auth-brand-panel>
 
   <div class="splash-stack">
     <section class="splash-card" aria-label="Renew Plus welcome">
       <div class="logo-shell">
-        <img src="assets/02_Renew%20Group%20-Logo%20png.png" alt="Renew Plus Hair and Skin Care" class="splash-logo" />
+        <img src="assets/02_Renew%20Group%20-Logo%20only%20png.png" alt="Renew Plus Hair and Skin Care" class="splash-logo" />
       </div>
 
       <h1 class="splash-title">Welcome</h1>
@@ -24,7 +26,7 @@
 
     <div class="page-features" aria-hidden="true">
       <div class="page-feature-item">
-        <span class="page-feature-icon"><i class="bi bi-leaf"></i></span>
+        <span class="page-feature-icon"><i class="bi bi-stars"></i></span>
         <span class="page-feature-label">Better Care<br />For You</span>
       </div>
       <span class="page-feature-divider"></span>
@@ -38,5 +40,8 @@
         <span class="page-feature-label">Healthy<br />Tomorrow</span>
       </div>
     </div>
+  </div>
+
+  <app-auth-feature-panel></app-auth-feature-panel>
   </div>
 </main>

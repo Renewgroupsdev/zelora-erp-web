@@ -53,13 +53,13 @@
           <label for="lead-phone">Phone No <span class="required-asterisk">*</span></label>
           <div class="input-wrap">
             <i class="bi bi-telephone"></i>
-            <input
+            <input appPhone
               id="lead-phone"
               type="tel"
               formControlName="mobile_no"
               placeholder="Enter phone number"
               autocomplete="tel"
-              [class.is-invalid]="isInvalid('mobile_no')"  maxlength="12"/>
+              [class.is-invalid]="isInvalid('mobile_no')"/>
           </div>
           @if (isInvalid('mobile_no')) {
             <small class="error-text">Enter a valid phone number.</small>

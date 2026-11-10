@@ -1,3 +1,4 @@
+import { PhoneInput } from '../../../../shared/directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
 import { Component, Inject, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -14,7 +15,7 @@ const GST_PATTERN = /^\d{2}[A-Za-z]{5}\d{4}[A-Za-z][0-9A-Za-z]Z[0-9A-Za-z]$/;
 @Component({
   selector: 'app-add-vendor-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule],
+  imports: [PhoneInput, CommonModule, ReactiveFormsModule, MatDialogModule],
   templateUrl: './add-vendor-form.html',
   styleUrl: './add-vendor-form.scss',
 })
@@ -32,7 +33,7 @@ export class AddVendorForm {
     name: ['', [Validators.required, Validators.maxLength(150)]],
     address: ['', [Validators.required]],
     gstNo: ['', [Validators.required, Validators.pattern(GST_PATTERN)]],
-    phone: ['', [Validators.required, Validators.pattern(/^[0-9]{10,15}$/)]],
+    phone: ['', [Validators.required, Validators.pattern(/^[0-9]{10}$/)]],
     email: ['', [Validators.required, Validators.email, Validators.maxLength(150)]],
     status: ['Active' as 'Active' | 'Inactive'],
   });

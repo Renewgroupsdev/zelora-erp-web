@@ -16,13 +16,14 @@ import {
 import { InventoryService, VendorRecord } from '../../../shared/common-services/inventory.service';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AddVendorForm } from './add-vendor-form/add-vendor-form';
+import { VendorView } from './vendor-view/vendor-view';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 /** Table column key -> vendors API `sort_by` value. */
 const SORT_FIELDS: Record<string, string> = {
   code: 'code',
-  name: 'name',
+  vendor: 'name',
   gstNo: 'gst_no',
   status: 'status',
 };
@@ -58,7 +59,7 @@ export class VendorManagement implements OnInit {
 
   columns: TableColumn[] = [
     { key: 'code', header: 'Code', type: 'text', width: '8%' },
-    { key: 'name', header: 'Vendor Name', type: 'text', width: '22%' },
+    { key: 'vendor', header: 'Vendor Name', type: 'lead', width: '22%' },
     { key: 'phone', header: 'Phone', type: 'text', width: '10%', sortable: false },
     { key: 'email', header: 'Email', type: 'text', width: '22%', sortable: false },
     { key: 'gstNo', header: 'GST No', type: 'text', width: '16%' },
@@ -156,6 +157,22 @@ export class VendorManagement implements OnInit {
     if (vendor) this.openAddPopup(vendor);
   }
 
+  onViewVendor(row: TableRow): void {
+    const vendor = this.records.find(v => v.id === row['id']);
+    if (!vendor) return;
+
+    this.dialog.open(VendorView, {
+      width: '860px',
+      maxWidth: 'calc(100vw - 24px)',
+      maxHeight: '92vh',
+      autoFocus: false,
+      restoreFocus: true,
+      data: { vendor },
+    }).afterClosed().subscribe(action => {
+      if (action === 'edit') this.openAddPopup(vendor);
+    });
+  }
+
   async onDeleteVendor(row: TableRow): Promise<void> {
     const confirmed = await this.toast.confirm('Delete this vendor?', `${row['name'] ?? 'This vendor'} will be removed from Vendor Management.`);
     if (!confirmed) return;
@@ -198,6 +215,7 @@ export class VendorManagement implements OnInit {
       id: v.id,
       code: v.code,
       name: v.name,
+      vendor: { name: v.name, noAvatar: true },
       phone: v.phone || '-',
       email: v.email || '-',
       gstNo: v.gst_no || '-',

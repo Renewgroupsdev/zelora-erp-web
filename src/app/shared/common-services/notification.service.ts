@@ -77,7 +77,51 @@ export class NotificationService {
    * request has one notification (id DISC-<id>) that keeps its read state while it stays pending and disappears once it
    * is decided. Returns how many requests are new since the last sync (the caller may alert on them).
    */
-  syncDiscountRequests(requests: { id: number; customer: string; treatments: string; subtotal: number; asked: string; requestedBy: string; at: Date }[]): number {
+  /** Vendor price revisions waiting for the admin (id REV-<id>); they leave the bell once accepted or rejected. Returns how many are new. */
+  syncPriceRevisions(revisions: { id: number; poNo: string; vendor: string; items: number; by: string; at: Date }[]): number {
+    const known = new Set(this._notifications().filter(n => n.id.startsWith('REV-')).map(n => n.id));
+    const keep = new Set(revisions.map(r => `REV-${r.id}`));
+    const fresh = revisions.filter(r => !known.has(`REV-${r.id}`));
+
+    this._notifications.update(list => [
+      ...fresh.map((r): AppNotification => ({
+        id: `REV-${r.id}`,
+        type: 'purchase',
+        title: `Vendor price revision on ${r.poNo}`,
+        message: `${r.vendor} sent a revised proforma (${r.items} product${r.items === 1 ? '' : 's'}) via ${r.by}. Accept it to update the product prices.`,
+        timestamp: r.at,
+        read: false,
+        link: '/app/inventory/purchase-orders',
+      })),
+      ...list.filter(n => !n.id.startsWith('REV-') || keep.has(n.id)),
+    ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+
+    return fresh.length;
+  }
+
+  /** Purchase requests waiting for the head office (one notification each, id PRQ-<id>); it leaves the bell once the request is decided. Returns how many are new. */
+  syncPurchaseApprovals(requests: { id: string; requestNo: string; branch: string; items: number; by: string; at: Date; urgent?: boolean }[]): { fresh: number; urgent: number } {
+    const known = new Set(this._notifications().filter(n => n.id.startsWith('PRQ-')).map(n => n.id));
+    const keep = new Set(requests.map(r => `PRQ-${r.id}`));
+    const fresh = requests.filter(r => !known.has(`PRQ-${r.id}`));
+
+    this._notifications.update(list => [
+      ...fresh.map((r): AppNotification => ({
+        id: `PRQ-${r.id}`,
+        type: 'purchase',
+        title: `Purchase request ${r.requestNo} needs approval`,
+        message: `${r.by} (${r.branch}) requested ${r.items} product${r.items === 1 ? '' : 's'}. Compare the vendor quotes and approve.`,
+        timestamp: r.at,
+        read: false,
+        link: '/app/inventory/purchase-requests',
+      })),
+      ...list.filter(n => !n.id.startsWith('PRQ-') || keep.has(n.id)),
+    ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+
+    return { fresh: fresh.length, urgent: fresh.filter(r => r.urgent).length };
+  }
+
+  syncDiscountRequests<T extends { id: number; customer: string; treatments: string; subtotal: number; asked: string; requestedBy: string; at: Date }>(requests: T[]): T[] {
     const known = new Set(this._notifications().filter(n => n.id.startsWith('DISC-')).map(n => n.id));
     const keep = new Map(requests.map(r => [`DISC-${r.id}`, r]));
     const fresh = requests.filter(r => !known.has(`DISC-${r.id}`));
@@ -95,7 +139,7 @@ export class NotificationService {
       ...list.filter(n => !n.id.startsWith('DISC-') || keep.has(n.id)),
     ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
 
-    return fresh.length;
+    return fresh;
   }
 
   /**
@@ -103,7 +147,7 @@ export class NotificationService {
    * (id ABS-<telecaller>-<date>) asking the branch manager to reassign them. It keeps its read state while the
    * telecaller stays absent with leads and disappears once the leads are reassigned. Returns how many are new.
    */
-  syncAbsentTelecallers(alerts: { telecaller_id: number; telecaller_name: string; state: string; date: string; leads_count: number; due_today: number; lead_ids: number[] }[]): number {
+  syncAbsentTelecallers<T extends { telecaller_id: number; telecaller_name: string; state: string; date: string; leads_count: number; due_today: number; lead_ids: number[] }>(alerts: T[]): T[] {
     const known = new Set(this._notifications().filter(n => n.id.startsWith('ABS-')).map(n => n.id));
     const byId = new Map(alerts.map(a => [`ABS-${a.telecaller_id}-${a.date}`, a]));
     const fresh = alerts.filter(a => !known.has(`ABS-${a.telecaller_id}-${a.date}`));
@@ -125,7 +169,7 @@ export class NotificationService {
         .map(n => (n.id.startsWith('ABS-') ? { ...toNotification(byId.get(n.id)!, n.read), timestamp: n.timestamp } : n)),
     ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
 
-    return fresh.length;
+    return fresh;
   }
 
   markRead(id: string): void {

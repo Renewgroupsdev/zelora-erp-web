@@ -217,18 +217,20 @@
 .ev-time { font-weight: 700; opacity: .85; margin-right: 5px; }
 
 /* ---------- Week / Day time grid ---------- */
-// No height cap: the grid grows to its full day and the page's own scrollbar is the only vertical one. With no
-// scrolling box here the sticky day header sticks to the page while scrolling. Narrow screens, where the week can't
-// fit, scroll the grid sideways only.
+// The time grid scrolls inside its own box (the page stays put). The sticky day header sticks to this box while the
+// hours scroll. Height = the viewport minus the page header, stat cards, filters and calendar toolbar above it.
 .tg-scroll {
-  overflow: visible;
+  overflow: auto;
+  max-height: clamp(360px, calc(100vh - 362px), 1400px);
+  overscroll-behavior: contain;
   border: 1px solid var(--border-soft);
   border-radius: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-border-strong, #9bbfb3) transparent;
 
-  @media (max-width: 1100px) {
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
+  &::-webkit-scrollbar { width: 10px; height: 10px; }
+  &::-webkit-scrollbar-thumb { background: var(--border-soft-strong, #cbd5d1); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+  &::-webkit-scrollbar-thumb:hover { background: var(--primary-border-strong, #9bbfb3); background-clip: padding-box; }
 }
 
 .tg {

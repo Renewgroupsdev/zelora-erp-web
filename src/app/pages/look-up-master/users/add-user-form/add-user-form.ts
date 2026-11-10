@@ -1,3 +1,4 @@
+import { PhoneInput } from '../../../../shared/directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
 import { Component, Inject } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
@@ -26,7 +27,7 @@ export interface AddUserFormData {
 @Component({
   selector: 'app-add-user-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule],
+  imports: [PhoneInput, CommonModule, ReactiveFormsModule, MatDialogModule],
   templateUrl: './add-user-form.html',
   styleUrl: './add-user-form.scss',
 })
@@ -76,7 +77,7 @@ export class AddUserForm {
       // Branch or franchise first; the second dropdown then lists only units of that type.
       branch_or_franchise_type: [unitType, Validators.required],
       branch_or_franchise_id: [unitId, Validators.required],
-      phone_no: [user?.phone_no ?? '', Validators.maxLength(20)],
+      phone_no: [user?.phone_no ?? '', Validators.pattern(/^$|^[0-9]{10}$/)],
       // Telephony extension - only used (and required) for the telecaller role.
       extension: [user?.telephony_extension?.extension ?? '', [Validators.maxLength(30), Validators.pattern(/^[A-Za-z0-9*#_-]+$/)]],
       device_type: [user?.telephony_extension?.device_type ?? 'sip'],

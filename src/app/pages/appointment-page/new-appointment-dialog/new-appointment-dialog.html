@@ -17,7 +17,7 @@
           <label for="na-mobile">Mobile No <span>*</span></label>
           <div class="input-wrap">
             <i class="bi bi-telephone"></i>
-            <input id="na-mobile" name="mobile" inputmode="numeric" maxlength="10" placeholder="10 digit mobile number" autocomplete="off"
+            <input appPhone id="na-mobile" name="mobile" inputmode="numeric" placeholder="10 digit mobile number" autocomplete="off"
                    [ngModel]="mobile" (ngModelChange)="onMobileChange($event)" (blur)="lookup()" />
             @if (looking()) { <i class="bi bi-arrow-repeat spin na-lookup-icon" aria-label="Looking up"></i> }
           </div>

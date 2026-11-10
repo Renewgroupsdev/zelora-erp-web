@@ -2,12 +2,14 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { AuthBackground } from '../shared/components/auth-background/auth-background';
+import { AuthBrandPanel } from '../shared/components/auth-brand-panel/auth-brand-panel';
+import { AuthFeaturePanel } from '../shared/components/auth-feature-panel/auth-feature-panel';
 import { firstModulePath } from '../shared/models/permission.model';
 
 @Component({
   selector: 'app-not-found-page',
   standalone: true,
-  imports: [AuthBackground],
+  imports: [AuthBackground, AuthBrandPanel, AuthFeaturePanel],
   templateUrl: './not-found-page.html',
   styleUrl: './not-found-page.scss',
 })

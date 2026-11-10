@@ -1,9 +1,11 @@
 import { Injectable, inject, signal } from '@angular/core';
-import Swal from 'sweetalert2';
+import { MatDialog } from '@angular/material/dialog';
 import { ApiDataService } from '../../core/http/api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { FlowDiscountRequest, inr } from '../models/appointment-flow.model';
 import { ApiRoutesConstants } from './api-route-constants';
+import { DiscountReviewDialog } from '../components/discount-review-dialog/discount-review-dialog';
+import { AlertStackItem, AlertStackService } from './alert-stack.service';
 import { NotificationService } from './notification.service';
 
 /** Roles & Permissions -> Appointment module action: who may decide a discount request (the API checks the same). */
@@ -21,6 +23,8 @@ export class DiscountRequestsService {
   private readonly api = inject(ApiDataService);
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
+  private readonly alertStack = inject(AlertStackService);
+  private readonly dialog = inject(MatDialog);
 
   readonly pending = signal<FlowDiscountRequest[]>([]);
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -62,12 +66,22 @@ export class DiscountRequestsService {
           requestedBy: r.requested_by ?? 'Staff',
           at: r.requested_at ? new Date(r.requested_at) : new Date(),
         })));
-        if (fresh > 0) {
-          Swal.fire({
-            toast: true, position: 'top-end', icon: 'info', title: fresh === 1 ? 'Discount approval needed' : `${fresh} discount requests need approval`,
-            text: 'Open the notification bell to review.', showConfirmButton: false, timer: 6000, timerProgressBar: true,
-          });
+        // one card per request, sliding in one below the other (a big batch shows the first few + one summary card)
+        const MAX_CARDS = 4;
+        const cards: AlertStackItem[] = fresh.slice(0, MAX_CARDS).map(r => ({
+          tone: 'info', icon: 'bi-percent',
+          title: 'Discount approval needed',
+          text: `${r.requestedBy} asked for a discount on ${r.customer}'s ${r.treatments}.`,
+          chips: [`${r.asked} off`, `Total ${inr(r.subtotal)}`],
+          duration: 9000, actionLabel: 'Review',
+          onAction: () => this.dialog
+            .open(DiscountReviewDialog, { width: '640px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, restoreFocus: true, data: { id: r.id } })
+            .afterClosed().subscribe(() => this.refresh(true)),
+        }));
+        if (fresh.length > MAX_CARDS) {
+          cards.push({ tone: 'info', icon: 'bi-collection-fill', title: `+ ${fresh.length - MAX_CARDS} more discount requests`, text: 'Open the notification bell to review them.', duration: 9000 });
         }
+        this.alertStack.show(...cards);
       },
       error: () => undefined, // the next tick simply tries again
     });

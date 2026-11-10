@@ -141,12 +141,12 @@
     <!-- Branch group chat & posts - only the signed-in user's own branch -->
     <app-branch-chat></app-branch-chat>
 
-    @if (activityModule(); as mod) {
+    <!-- @if (activityModule(); as mod) {
       <button type="button" class="activity-btn" (click)="activityOpen.set(true)" [attr.aria-label]="'Show ' + mod.name + ' activity'" [title]="'Who handled ' + mod.name + ' data'">
         <i class="bi bi-activity" aria-hidden="true"></i><span class="activity-label">Activity</span>
       </button>
       @if (activityOpen()) { <app-module-activity [slug]="mod.slug" (closed)="activityOpen.set(false)" /> }
-    }
+    } -->
 
     <div class="notification-menu-wrapper">
       <button
@@ -183,7 +183,7 @@
             }
 
             @for (item of notifications.notifications(); track item.id) {
-              <button type="button" class="notification-item" [class.unread]="!item.read" (click)="onNotificationClick(item)">
+              <button type="button" class="notification-item" [class.unread]="!item.read" [style.--i]="$index < 10 ? $index : 10" (click)="onNotificationClick(item)">
                 @if (!item.read) {
                   <span class="unread-dot"></span>
                 }

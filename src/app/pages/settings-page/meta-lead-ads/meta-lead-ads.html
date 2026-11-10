@@ -21,7 +21,7 @@
   @if (overview(); as o) {
     <!-- Setup / environment -->
     <section class="card">
-      <h2 class="card-title">Connection status <small>Meta Graph API {{ o.graph_version }}</small></h2>
+      <h2 class="card-title"><span class="title-main"><i class="bi bi-hdd-network"></i> Connection status</span> <small class="api-badge">Meta Graph API {{ o.graph_version }}</small></h2>
 
       @if (!o.configured) {
         <div class="notice warn">
@@ -35,27 +35,27 @@
       }
 
       @if (o.queue.runs_inline) {
-        <div class="notice warn" style="margin-top: 8px">
+        <div class="notice warn">
           <i class="bi bi-exclamation-triangle-fill"></i>
           <span>The queue is set to <strong>sync</strong>: leads are imported inside the webhook request and are not retried by a worker. Use the <strong>database</strong> or <strong>redis</strong> queue with a running <span class="mono">queue:work</span> in production.</span>
         </div>
       }
       @if ((o.queue.failed_jobs ?? 0) > 0) {
-        <div class="notice bad" style="margin-top: 8px">
+        <div class="notice bad">
           <i class="bi bi-x-octagon-fill"></i>
           <span>{{ o.queue.failed_jobs }} job(s) are in the queue's failed-jobs table. Check the worker log.</span>
         </div>
       }
 
-      <div class="setup-grid" style="margin-top: 10px">
+      <div class="setup-grid">
         <div class="kv">
           <span>Webhook callback URL</span>
-          <div class="row"><span class="mono">{{ o.webhook_url }}</span><button type="button" class="btn-secondary" (click)="copy(o.webhook_url)"><i class="bi bi-clipboard"></i> Copy</button></div>
+          <div class="url-box"><span class="mono">{{ o.webhook_url }}</span><button type="button" class="copy-btn" (click)="copy(o.webhook_url)"><i class="bi bi-clipboard"></i> Copy</button></div>
           <span class="muted">Paste in Meta App → Webhooks → Page → Callback URL. The verify token is the server's <span class="mono">META_WEBHOOK_VERIFY_TOKEN</span>.</span>
         </div>
         <div class="kv">
           <span>OAuth redirect URI</span>
-          <div class="row"><span class="mono">{{ o.oauth_redirect_uri || 'Not set' }}</span>@if (o.oauth_redirect_uri) {<button type="button" class="btn-secondary" (click)="copy(o.oauth_redirect_uri)"><i class="bi bi-clipboard"></i> Copy</button>}</div>
+          <div class="url-box"><span class="mono">{{ o.oauth_redirect_uri || 'Not set' }}</span>@if (o.oauth_redirect_uri) {<button type="button" class="copy-btn" (click)="copy(o.oauth_redirect_uri)"><i class="bi bi-clipboard"></i> Copy</button>}</div>
           <span class="muted">Must be listed under Facebook Login → Valid OAuth Redirect URIs.</span>
         </div>
         <div class="kv">
@@ -65,7 +65,7 @@
         </div>
         <div class="kv">
           <span>Queue</span>
-          <div class="row"><span class="chip" [class.ok]="!o.queue.runs_inline" [class.warn]="o.queue.runs_inline">{{ o.queue.connection }}</span></div>
+          <div class="row"><span class="chip queue-chip" [class.ok]="!o.queue.runs_inline" [class.warn]="o.queue.runs_inline">{{ o.queue.connection }}</span></div>
         </div>
       </div>
     </section>

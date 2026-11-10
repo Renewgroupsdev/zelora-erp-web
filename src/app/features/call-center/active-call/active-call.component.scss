@@ -1,37 +1,176 @@
 @use '../call-card' as *;
 
-.call-icon.on-hold { background: var(--dock-amber); }
+/* Live call: a banner (avatar, status, big timer) over round, labelled controls. Green while talking, amber on hold. */
+.dock-card.live {
+  --dock-accent: var(--dock-green);
+  padding: 0;
+  overflow: hidden;
 
-.timer { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  &::before { display: none; }
+  &.is-hold { --dock-accent: var(--dock-amber); }
+}
+
+.live-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 12px 14px 14px;
+  color: #fff;
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, 0.22), transparent 55%),
+    linear-gradient(135deg, #0d5c4b 0%, #14917a 100%);
+  transition: background 0.4s ease;
+}
+.dock-card.is-hold .live-banner {
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, 0.25), transparent 55%),
+    linear-gradient(135deg, #b9771c 0%, #e6a23c 100%);
+}
+
+.avatar-wrap { position: relative; flex: 0 0 auto; width: 52px; height: 52px; }
+
+.avatar {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--dock-green);
+  font-size: 17px;
+  font-weight: 800;
+  box-shadow: 0 10px 22px -10px rgba(0, 0, 0, 0.5);
+
+  &::before, &::after { border-color: #fff; }
+  &.dialing { animation: dial-bounce 1.2s ease-in-out infinite; }
+}
+.dock-card.is-hold .avatar { color: #b9771c; }
+
+.dir-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 10px;
+  color: #fff;
+  background: #19b875;
+  border: 2px solid #fff;
+
+  &.is-hold { background: #e6a23c; }
+}
+
+.who { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+
+.status-pill {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.2);
+}
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #7dffc8; animation: live-dot 1.2s ease-in-out infinite; }
+.dock-card.is-hold .live-dot { background: #fff; animation: none; }
+
+.caller-name { color: #fff; font-size: 16.5px; font-weight: 800; }
+.caller-number { color: rgba(255, 255, 255, 0.88); font-size: 12.5px; font-variant-numeric: tabular-nums; i { margin-right: 3px; } }
+
+.clock { display: flex; align-items: center; gap: 8px; }
+.timer { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.eq i { background: #fff; }
 
 .icon-btn {
+  flex: 0 0 auto;
+  border: 0;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover { background: rgba(255, 255, 255, 0.3); }
+}
+
+.live-body { padding: 12px 14px 14px; animation: body-in 0.3s ease-out both; }
+
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bg-light-green, #e6f4ee);
+  color: var(--brand-teal-dark, #0f7666);
+
+  i { font-size: 11px; }
+}
+.tag-service { background: #fff1de; color: #a05a00; }
+
+/* ---- round controls ---- */
+.controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+
+.ctl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
   border: 0;
   background: transparent;
-  color: var(--dock-muted);
-  padding: 4px;
-  border-radius: 8px;
-  cursor: pointer;
-
-  &:hover { background: var(--bg-light-green-soft, #f6fbf9); }
-}
-
-.ctrl {
-  flex: 1;
-  background: var(--bg-light-green-soft, #f6fbf9);
   color: var(--dock-ink);
-  border: 1px solid var(--dock-border) !important;
+  cursor: pointer;
+  font-family: inherit;
 
-  &.active, &:hover:not(:disabled) { background: var(--bg-light-green, #e6f4ee); }
+  .ctl-icon {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    font-size: 18px;
+    color: var(--dock-green);
+    background: linear-gradient(180deg, #fff, #e3f4ec);
+    box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(13, 92, 75, 0.14), 0 3px 0 rgba(13, 92, 75, 0.18), 0 8px 12px -8px rgba(13, 92, 75, 0.5);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+  }
+  .ctl-label { font-size: 11.5px; font-weight: 700; color: var(--dock-muted); transition: color 0.2s ease; }
+
+  &:hover:not(:disabled) .ctl-icon { transform: translateY(-3px); color: #fff; background: linear-gradient(145deg, #19b875, var(--dock-green)); box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 5px 0 #0a4538, 0 12px 16px -8px rgba(13, 92, 75, 0.7); }
+  &:hover:not(:disabled) .ctl-label { color: var(--dock-green); }
+  &:active:not(:disabled) .ctl-icon { transform: translateY(1px) scale(0.94); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3); }
+  &:focus-visible { outline: 2px solid var(--dock-green); outline-offset: 3px; border-radius: 12px; }
+  &:disabled { cursor: not-allowed; opacity: 0.55; }
+
+  &.is-on .ctl-icon { color: #fff; background: linear-gradient(145deg, #e6a23c, #b9771c); }
 }
 
-.btn-hangup {
-  flex: 0 0 46px;
-  background: var(--dock-red);
-  color: #fff;
-  font-size: 16px;
+/* Note is the one way forward on a talking call: it glows to say so */
+.ctl-note.attention .ctl-icon { color: #fff; background: linear-gradient(145deg, #19b875, var(--dock-green)); animation: note-nudge 1.8s ease-in-out infinite; }
+.ctl-note.attention .ctl-label { color: var(--dock-green); }
 
-  &:hover:not(:disabled) { background: var(--dock-red-dark); }
-}
+/* hang-up: red and ready, or greyed with a lock until the outcome is recorded */
+.ctl-end .ctl-icon { color: #fff; background: linear-gradient(145deg, #ef5b50, var(--dock-red-dark)); box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 3px 0 #8f2019, 0 8px 12px -8px var(--dock-red); }
+.ctl-end:hover:not(:disabled) .ctl-icon { transform: translateY(-3px) rotate(-10deg); background: linear-gradient(145deg, #ef5b50, var(--dock-red-dark)); box-shadow: 0 5px 0 #8f2019, 0 12px 16px -8px var(--dock-red); }
+.ctl-end.is-locked .ctl-icon { color: #8a8f8d; background: linear-gradient(180deg, #eceeed, #d9dcdb); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
+.ctl-end:disabled { opacity: 1; .ctl-label { color: #9aa3a0; } }
+
+.end-hint { margin: 12px 2px 0; padding: 8px 10px; border-radius: 12px; font-size: 12px; color: var(--dock-muted); background: var(--bg-light-green-soft, #f6fbf9); i { margin-right: 4px; color: var(--dock-green); } b { color: var(--dock-ink); } }
 
 .drawer {
   margin-top: 12px;
@@ -40,19 +179,10 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-
-  textarea {
-    width: 100%;
-    resize: vertical;
-    border-radius: 10px;
-    border: 1px solid var(--dock-border);
-    padding: 8px 10px;
-    font: inherit;
-    font-size: 13px;
-  }
+  animation: drawer-in 0.25s ease-out;
 }
 
-.drawer-title { font-size: 12px; font-weight: 600; color: var(--dock-muted); }
+.drawer-title { font-size: 12px; font-weight: 700; color: var(--dock-muted); }
 
 .drawer-row {
   display: flex;
@@ -70,19 +200,6 @@
   &:hover { background: var(--bg-light-green-soft, #f6fbf9); }
 }
 
-.btn-save {
-  align-self: flex-end;
-  border: 0;
-  border-radius: 10px;
-  padding: 7px 14px;
-  background: var(--dock-green);
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-}
-
 .dot {
   width: 9px;
   height: 9px;
@@ -91,4 +208,14 @@
   background: #9aa9a5;
 
   &.status-available { background: var(--dock-green); }
+}
+
+@keyframes dial-bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+@keyframes live-dot { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: 0.5; } }
+@keyframes note-nudge { 0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 3px 0 #0a4538, 0 0 0 0 rgba(25, 184, 117, 0.5); } 50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 3px 0 #0a4538, 0 0 0 8px rgba(25, 184, 117, 0); } }
+@keyframes drawer-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes body-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar.dialing, .live-dot, .ctl-note.attention .ctl-icon, .drawer, .live-body { animation: none !important; }
 }

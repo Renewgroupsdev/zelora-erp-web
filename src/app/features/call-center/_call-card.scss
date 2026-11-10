@@ -15,14 +15,86 @@
 }
 
 .dock-card {
+  position: relative;
   width: 100%;
-  padding: 16px;
-  border-radius: 18px;
-  background: var(--app-surface-solid, #fff);
-  border: 1px solid var(--dock-border);
-  box-shadow: 0 18px 48px -18px rgba(15, 60, 50, 0.45);
+  padding: 18px 16px 16px;
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--dock-accent, var(--dock-green)) 9%, transparent), transparent 60%),
+    var(--app-surface-solid, #fff);
+  border: 1px solid color-mix(in srgb, var(--dock-accent, var(--dock-green)) 22%, var(--dock-border));
+  box-shadow: 0 22px 54px -20px rgba(15, 60, 50, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
   color: var(--dock-ink);
-  animation: dock-in 0.2s ease-out;
+  animation: dock-in 0.45s cubic-bezier(0.2, 1.1, 0.3, 1) both;
+
+  /* accent line along the top edge that slowly travels, so a live call looks alive */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 22px;
+    right: 22px;
+    height: 3px;
+    border-radius: 0 0 6px 6px;
+    background: linear-gradient(90deg, transparent, var(--dock-accent, var(--dock-green)), transparent);
+    background-size: 200% 100%;
+    animation: dock-sheen 2.8s linear infinite;
+  }
+}
+
+/* ---- the round icon: expanding rings (ringing / live) ---- */
+.pulse,
+.call-icon {
+  position: relative;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--dock-accent, var(--dock-green)) 78%, #fff), var(--dock-accent, var(--dock-green)));
+  box-shadow: 0 8px 18px -8px var(--dock-accent, var(--dock-green));
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--dock-accent, var(--dock-green));
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  > i { position: relative; z-index: 1; }
+}
+
+.rippling::before { animation: dock-ripple 1.8s ease-out infinite; }
+.rippling::after { animation: dock-ripple 1.8s ease-out 0.9s infinite; }
+
+/* ---- live sound bars next to the timer ---- */
+.eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+  margin-right: 8px;
+
+  i {
+    width: 3px;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--dock-accent, var(--dock-green));
+    transform-origin: bottom;
+    animation: dock-eq 0.9s ease-in-out infinite;
+
+    &:nth-child(2) { animation-delay: 0.15s; }
+    &:nth-child(3) { animation-delay: 0.3s; }
+    &:nth-child(4) { animation-delay: 0.45s; }
+  }
+}
+
+/* "Dialing…" / "Ringing…" with travelling dots */
+.dots span {
+  display: inline-block;
+  animation: dock-dot 1.2s infinite;
+
+  &:nth-child(2) { animation-delay: 0.2s; }
+  &:nth-child(3) { animation-delay: 0.4s; }
 }
 
 .card-head { display: flex; align-items: center; gap: 12px; }
@@ -114,11 +186,30 @@
   }
 }
 
+.chip { transition: transform 0.15s ease; &:hover { transform: translateY(-1px); } }
+
 @keyframes dock-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: none; }
+  0% { opacity: 0; transform: translateY(26px) scale(0.92); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes dock-sheen {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@keyframes dock-ripple {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.75); opacity: 0; }
+}
+@keyframes dock-eq {
+  0%, 100% { transform: scaleY(0.25); }
+  50% { transform: scaleY(1); }
+}
+@keyframes dock-dot {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-2px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dock-card { animation: none; }
+  .dock-card, .dock-card::before, .rippling::before, .rippling::after, .eq i, .dots span { animation: none !important; }
+  .eq i { transform: scaleY(0.6); }
 }

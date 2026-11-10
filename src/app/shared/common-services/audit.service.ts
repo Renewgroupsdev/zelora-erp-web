@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { ApiDataService } from '../../core/http/api.service';
-import { AuditRecordLife, AuditActivityReport, AuditMeSummary, AuditModuleRow, ModuleActivityPage, AuditCall, AuditCallDetail, AuditCallQuery, AuditCallStats, AuditEvent, AuditFilterOptions, AuditPage, AuditQuery, AuditSummary, AuditUserProfile, AuditUserRow } from '../models/audit.model';
+import { AuditRecordLife, AuditActivityReport, AuditMeSummary, AuditModuleRow, AuditOrigin, ModuleActivityPage, AuditCall, AuditCallDetail, AuditCallQuery, AuditCallStats, AuditEvent, AuditFilterOptions, AuditPage, AuditQuery, AuditSummary, AuditUserProfile, AuditUserRow } from '../models/audit.model';
 import { ApiRoutesConstants } from './api-route-constants';
 
 type ListKind = 'events' | 'changes' | 'security' | 'me';
@@ -18,6 +18,11 @@ export class AuditService {
 
   list(kind: ListKind, query: AuditQuery): Observable<AuditPage<AuditEvent>> {
     return this.page(`${this.base}/${kind === 'me' ? 'me/events' : kind}${this.qs(query)}`);
+  }
+
+  /** When / by whom a record was created, read from the record itself (null when unknown). */
+  origin(type: string, id: string | number): Observable<AuditOrigin | null> {
+    return this.api.GET(`${this.base}/origin/${encodeURIComponent(type)}/${encodeURIComponent(String(id))}`).pipe(map((r: any) => (r?.data ?? null) as AuditOrigin | null));
   }
 
   history(type: string, id: string | number, query: AuditQuery = {}): Observable<AuditPage<AuditEvent>> {

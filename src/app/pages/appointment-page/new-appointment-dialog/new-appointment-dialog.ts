@@ -1,3 +1,4 @@
+import { PhoneInput } from '../../../shared/directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { BranchOptionsService, parseUnitKey, unitKey } from '../../../shared/common-services/branch-options.service';
@@ -66,7 +67,7 @@ const emptyForm = () => ({
 @Component({
   selector: 'app-new-appointment-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, CanActionDirective],
+  imports: [PhoneInput, CommonModule, FormsModule, MatDialogModule, CanActionDirective],
   templateUrl: './new-appointment-dialog.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', './new-appointment-dialog.scss'],
 })

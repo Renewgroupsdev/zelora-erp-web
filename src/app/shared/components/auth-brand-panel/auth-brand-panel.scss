@@ -1,0 +1,195 @@
+:host {
+  display: none;
+  position: relative;
+  z-index: 1;
+  justify-self: center;
+}
+
+@media (min-width: 900px) {
+  :host { display: block; zoom: var(--auth-brand-zoom); }
+}
+
+.brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 340px;
+  padding-bottom: 0;
+  text-align: center;
+  color: #0b4637;
+}
+
+.brand__mark-wrap {
+  position: relative;
+  display: block;
+  animation: brand-float 5s ease-in-out infinite;
+
+  /* breathing glow behind the mark */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -18%;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(63, 154, 31, .22) 0%, rgba(227, 201, 143, .12) 45%, transparent 70%);
+    animation: brand-glow 4.5s ease-in-out infinite;
+  }
+
+  /* soft light sweep across the mark */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, .85) 50%, transparent 65%);
+    background-size: 250% 100%;
+    background-position: 150% 0;
+    -webkit-mask: var(--mark) center / contain no-repeat;
+    mask: var(--mark) center / contain no-repeat;
+    animation: brand-shine 4.5s ease-in-out 1.2s infinite;
+  }
+}
+
+.brand__mark {
+  display: block;
+  width: 170px;
+  height: auto;
+  filter: drop-shadow(0 10px 16px rgba(11, 68, 52, .22));
+}
+
+.brand__name {
+  margin-top: 6px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #0a3d31;
+}
+
+.brand__group {
+  margin-top: 6px;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: .5em;
+  padding-left: .5em;
+  text-transform: uppercase;
+}
+
+.brand__of {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  width: 100%;
+  font-size: 13px;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+
+  i { flex: 1; height: 1.5px; background: linear-gradient(90deg, transparent, #b98a3e); }
+  i:last-child { background: linear-gradient(270deg, transparent, #b98a3e); }
+}
+
+.brand__tagline {
+  display: flex;
+  flex-direction: column;
+  margin: 24px 0 0;
+  line-height: 1.1;
+}
+
+.brand__tagline-top {
+  font-family: var(--font-family-base, 'Rubik', sans-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 40px;
+  color: #0b4637;
+}
+
+.brand__tagline-main {
+  font-size: 46px;
+  font-weight: 700;
+  font-style: italic;
+  background: linear-gradient(90deg, #0b4637 0%, #3f9a1f 35%, #8fd14f 50%, #3f9a1f 65%, #0b4637 100%);
+  background-size: 200% 100%;
+  animation: brand-shimmer 6s linear infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.brand__sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0;
+  font-size: 16px;
+  color: #3e665b;
+
+  b { width: 4px; height: 4px; border-radius: 50%; background: #3e665b; }
+}
+
+@keyframes brand-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes brand-shine {
+  0%, 45% { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+
+@keyframes brand-glow {
+  0%, 100% { opacity: .6; transform: scale(.96); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+@keyframes brand-track {
+  from { opacity: 0; letter-spacing: .34em; }
+  to { opacity: 1; letter-spacing: .12em; }
+}
+
+@keyframes brand-draw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes brand-shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes brand-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.brand__mark-wrap,
+.brand__name,
+.brand__group,
+.brand__of,
+.brand__tagline,
+.brand__sub {
+  animation-fill-mode: both;
+}
+
+.brand__name { animation: brand-track 1.2s .15s cubic-bezier(.22, 1, .36, 1) both; }
+.brand__group { animation: brand-rise .8s .3s cubic-bezier(.22, 1, .36, 1) both; }
+.brand__of { animation: brand-rise .8s .42s cubic-bezier(.22, 1, .36, 1) both; }
+.brand__of i { transform-origin: right center; animation: brand-draw 1s .7s cubic-bezier(.22, 1, .36, 1) both; }
+.brand__of i:last-child { transform-origin: left center; }
+.brand__tagline { animation: brand-rise .8s .6s cubic-bezier(.22, 1, .36, 1) both; }
+.brand__sub { animation: brand-rise .8s .75s cubic-bezier(.22, 1, .36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .brand__mark-wrap,
+  .brand__mark-wrap::after,
+  .brand__name,
+  .brand__group,
+  .brand__of,
+  .brand__tagline,
+  .brand__sub,
+  .brand__tagline-main,
+  .brand__mark-wrap::before,
+  .brand__of i { animation: none; }
+}

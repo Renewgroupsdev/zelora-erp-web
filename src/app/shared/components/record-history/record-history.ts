@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, afterNextRender, computed, forwardRef, inject, input, output, signal } from '@angular/core';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { finalize } from 'rxjs';
+import { RecordAuditData, RecordAuditDialog } from './record-audit-dialog';
 import { AuthService } from '../../../core/auth/auth.service';
 import { AuditService } from '../../common-services/audit.service';
 import { historyModuleSlug } from '../../constants/history-modules';
@@ -164,14 +166,13 @@ export class RecordHistoryDrawer implements OnInit, OnDestroy {
 @Component({
   selector: 'app-record-history',
   standalone: true,
-  imports: [CommonModule, RecordHistoryDrawer],
+  imports: [CommonModule, MatDialogModule],
   styleUrls: ['./record-history.scss'],
   template: `
     @if (allowed() && recordId() != null && recordId() !== '') {
-      <button type="button" class="rh-btn" [class.icon]="variant() === 'icon'" (click)="open.set(true)" [attr.aria-label]="'View full history of ' + (title() || 'this record')" title="View full history">
-        <i class="bi bi-clock-history" aria-hidden="true"></i>@if (variant() === 'button') { <span>History</span> }
+      <button type="button" class="rh-btn" [class.icon]="variant() === 'icon'" (click)="openAudit()" [attr.aria-label]="'View audit log of ' + (title() || 'this record')" title="View audit log">
+        <i class="bi bi-clipboard-data" aria-hidden="true"></i>@if (variant() === 'button') { <span>Audit log</span> }
       </button>
-      @if (open()) { <app-record-history-drawer [type]="type()" [recordId]="recordId()!" [title]="title()" (closed)="open.set(false)" /> }
     }
   `,
 })
@@ -190,5 +191,19 @@ export class RecordHistory {
 
     return !!module && this.auth.hasActionAccess(`history-${module}`);
   });
-  protected readonly open = signal(false);
+
+  private readonly dialog = inject(MatDialog);
+
+  /** Opens the record's audit log (every module shares this one dialog). */
+  protected openAudit(): void {
+    this.dialog.open(RecordAuditDialog, {
+      width: '720px',
+      maxWidth: 'calc(100vw - 24px)',
+      maxHeight: '92vh',
+      autoFocus: false,
+      restoreFocus: true,
+      panelClass: 'record-audit-dialog',
+      data: { type: this.type(), recordId: this.recordId()!, title: this.title() } satisfies RecordAuditData,
+    });
+  }
 }

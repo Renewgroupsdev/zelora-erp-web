@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { DevToolsGuardService } from './services/devtools-guard.service';
+import { startDateFieldEnhancer } from './shared/utils/date-field-enhancer';
 
 @Component({
   selector: 'app-root',
@@ -14,6 +15,7 @@ export class App {
   constructor(private readonly devToolsGuard: DevToolsGuardService) { }
 
   ngOnInit(): void {
+    startDateFieldEnhancer(); // every date field in the project: dd-mm-yyyy + the shared calendar popup
     this.devToolsGuard.init();
   }
 

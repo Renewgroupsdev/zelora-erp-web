@@ -1,3 +1,4 @@
+import { PhoneInput } from '../../../shared/directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
 import { Component, Inject, OnInit, inject } from '@angular/core';
 import {
@@ -25,7 +26,7 @@ import { Observable } from 'rxjs';
 @Component({
   selector: 'app-add-lead-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule],
+  imports: [PhoneInput, CommonModule, ReactiveFormsModule, MatDialogModule],
   templateUrl: './add-lead-form.html',
   styleUrl: './add-lead-form.scss',
 })
@@ -72,7 +73,7 @@ export class AddLeadForm implements OnInit{
 
     this.leadForm = this.fb.group({
       name: [data?.name ?? '', [Validators.required, Validators.maxLength(100)]],
-      mobile_no: [data?.mobile_no ?? '',[Validators.required, Validators.maxLength(12), Validators.pattern(/^[0-9]{10}$/)],],
+      mobile_no: [data?.mobile_no ?? '',[Validators.required, Validators.pattern(/^[0-9]{10}$/)],],
       location: [data?.location ?? '', Validators.maxLength(250)],
       pincode: [data?.pincode ?? '', Validators.maxLength(100)],
       source: [data?.source_id ?? '', Validators.required],

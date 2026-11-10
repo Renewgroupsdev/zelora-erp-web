@@ -60,7 +60,7 @@
           <label for="vendor-phone">Phone Number <span>*</span></label>
           <div class="input-wrap">
             <i class="bi bi-telephone"></i>
-            <input id="vendor-phone" type="text" formControlName="phone" placeholder="Mobile number" [class.is-invalid]="isInvalid('phone')" />
+            <input appPhone id="vendor-phone" type="text" formControlName="phone" placeholder="Mobile number" [class.is-invalid]="isInvalid('phone')" />
           </div>
           @if (isInvalid('phone')) { <small class="error-text">Enter a valid phone number (10-15 digits).</small> }
         </div>

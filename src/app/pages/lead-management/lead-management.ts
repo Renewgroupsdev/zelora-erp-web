@@ -2,8 +2,6 @@ import { CommonModule } from '@angular/common';
 import Swal from 'sweetalert2';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Component, OnInit, inject } from '@angular/core';
-import { openAssignCaller } from '../../shared/components/lead-dialogs/assign-caller-dialog';
-import { openLeadAudit } from '../../shared/components/lead-dialogs/lead-audit-dialog';
 import { BranchOption, BranchOptionsService } from '../../shared/common-services/branch-options.service';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { CommonDetailCard } from '../../shared/components/common-detail-card/common-detail-card';
@@ -431,8 +429,8 @@ export class LeadManagement implements OnInit {
     bulkActions: 'bulk-assign-leads',
   };
 
-  /** Row buttons on this page: outgoing call, edit, assign caller, audit log, delete. */
-  readonly leadActions = ['call', 'edit', 'assign', 'audit', 'delete'];
+  /** Row buttons on this page: outgoing call, edit, delete. (Assign / reassign caller lives on the Follow-ups page.) */
+  readonly leadActions = ['call', 'edit', 'delete'];
 
   /** Whether the signed-in role is ticked on this action slug. */
   can(slug: string): boolean {
@@ -489,28 +487,6 @@ export class LeadManagement implements OnInit {
    onRowReorder(event: TableReorderEvent) {
     // Rows were only reordered within one table (see (rowTransfer) below for cross-table
     // moves); `event.rows` is already the reordered array, nothing else to sync here.
-  }
-
-  /** Assign / reassign the telecaller who follows this lead up (it then moves to their Follow-ups). */
-  onAssignCaller(row: TableRow): void {
-    if (row['locked']) return;
-    const lead = row['lead'] as LeadCell;
-    openAssignCaller(this.dialog, {
-      leadIds: [Number(row['id'])],
-      subject: `${lead?.name ?? 'Lead'} · ${lead?.subtitle ?? ''}`,
-      currentId: Number(row['assignedToId']) || null,
-      currentName: row['telecaller'] && row['telecaller'] !== 'Unassigned' ? String(row['telecaller']) : null,
-      branchKey: String(row['branchKey'] ?? '') || null,
-    }).afterClosed().subscribe(saved => {
-      if (!saved) return;
-      this.loadLeadData();
-      this.loadFilterList();
-    });
-  }
-
-  onAuditLead(row: TableRow): void {
-    const lead = row['lead'] as LeadCell;
-    openLeadAudit(this.dialog, { id: Number(row['id']), name: lead?.name ?? 'Lead' });
   }
 
   onCallLead(row: TableRow): void {

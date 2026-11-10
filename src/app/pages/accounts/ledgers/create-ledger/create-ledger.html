@@ -58,7 +58,7 @@
         <label for="lg-phone">Mobile</label>
         <div class="input-wrap">
           <i class="bi bi-telephone"></i>
-          <input id="lg-phone" type="tel" maxlength="10" placeholder="Optional" [(ngModel)]="phone"
+          <input appPhone id="lg-phone" type="tel" placeholder="Optional" [(ngModel)]="phone"
             [class.is-invalid]="submitted() && phoneInvalid()" />
         </div>
         @if (submitted() && phoneInvalid()) { <small class="error-text">Enter a 10 digit mobile number.</small> }
