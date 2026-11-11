@@ -29,10 +29,14 @@ interface PlanLine {
   treatment_id: number | null;
   sittings_count: number;
   sitting_interval_days: number;
+  /** Day of the first sitting of this treatment (YYYY-MM-DD). */
+  start_date: string;
 }
 
 const MAX_TREATMENTS = 10;
-const blankLine = (): PlanLine => ({ treatment_id: null, sittings_count: 1, sitting_interval_days: 30 });
+/** Today as YYYY-MM-DD in the browser's own time zone. */
+const todayIso = (): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const blankLine = (): PlanLine => ({ treatment_id: null, sittings_count: 1, sitting_interval_days: 30, start_date: todayIso() });
 
 /** Which clinical examination sections a service category needs. */
 type ExamKind = 'Hair' | 'Skin' | 'Combo' | 'Other';
@@ -258,10 +262,10 @@ export class AppointmentWizard implements OnInit {
     // Saved treatments; an older appointment only has its single treatment on the appointment itself.
     const saved = a.treatment_lines?.length
       ? a.treatment_lines
-      : a.treatment_id ? [{ treatment_id: a.treatment_id, sittings_count: a.sittings_count, sitting_interval_days: a.sitting_interval_days }] : [];
+      : a.treatment_id ? [{ treatment_id: a.treatment_id, sittings_count: a.sittings_count, sitting_interval_days: a.sitting_interval_days, start_date: null }] : [];
     this.plan = {
       lines: saved.length
-        ? saved.map(l => ({ treatment_id: Number(l.treatment_id), sittings_count: Number(l.sittings_count) || 1, sitting_interval_days: Number(l.sitting_interval_days) || 30 }))
+        ? saved.map(l => ({ treatment_id: Number(l.treatment_id), sittings_count: Number(l.sittings_count) || 1, sitting_interval_days: Number(l.sitting_interval_days) || 30, start_date: this.keepOrToday((l as { start_date?: string | null }).start_date) }))
         : [blankLine()],
       doctor_suggestion: a.doctor_suggestion ?? '',
     };
@@ -533,6 +537,14 @@ export class AppointmentWizard implements OnInit {
     if (this.plan.lines.length > 1) this.plan.lines.splice(index, 1);
   }
 
+  /** A saved start date is kept while it is today or later; an empty / past one becomes today. */
+  private keepOrToday(date: string | null | undefined): string {
+    const d = (date ?? '').slice(0, 10);
+    return d && d >= todayIso() ? d : todayIso();
+  }
+
+  readonly minStartDate = todayIso();
+
   /** A row's treatment changed: start from that treatment's usual number of sittings. */
   onLineTreatmentChange(index: number): void {
     const t = this.treatmentOf(this.plan.lines[index]);
@@ -543,6 +555,7 @@ export class AppointmentWizard implements OnInit {
     const lines = this.plan.lines;
     if (lines.some(l => !l.treatment_id)) return void this.error.set(lines.length > 1 ? 'Choose the treatment for every row.' : 'Choose the treatment.');
     if (lines.some(l => !(Number(l.sittings_count) >= 1))) return void this.error.set('Sittings must be at least 1 for every treatment.');
+    if (lines.some(l => !l.start_date || l.start_date < todayIso())) return void this.error.set('Pick today or a later start date for every treatment.');
     if (new Set(lines.map(l => Number(l.treatment_id))).size !== lines.length) return void this.error.set('A treatment can only be added once - change its sittings instead.');
 
     this.send(this.api.PUT(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/treatment`, {
@@ -550,6 +563,7 @@ export class AppointmentWizard implements OnInit {
         treatment_id: Number(l.treatment_id),
         sittings_count: Number(l.sittings_count),
         sitting_interval_days: Number(l.sitting_interval_days) || 30,
+        start_date: l.start_date,
       })),
       doctor_suggestion: this.plan.doctor_suggestion || null,
     }), () => {
@@ -565,13 +579,13 @@ export class AppointmentWizard implements OnInit {
   }
 
   /** Price details of the Payment step: one row per treatment (price per sitting x sittings), as saved by the API. */
-  get priceLines(): { name: string; price: number; sittings: number; gap: number; amount: number }[] {
+  get priceLines(): { name: string; price: number; sittings: number; gap: number; amount: number; start?: string | null }[] {
     const a = this.appt();
     if (!a) return [];
     if (a.treatment_lines?.length) {
       return a.treatment_lines.map(l => ({
         name: l.treatment?.name ?? 'Treatment', price: Number(l.price_per_sitting), sittings: Number(l.sittings_count),
-        gap: Number(l.sitting_interval_days), amount: Number(l.total_amount),
+        gap: Number(l.sitting_interval_days), amount: Number(l.total_amount), start: l.start_date ?? null,
       }));
     }
     return a.treatment_id

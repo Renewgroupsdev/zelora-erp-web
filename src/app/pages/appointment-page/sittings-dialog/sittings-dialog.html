@@ -9,10 +9,6 @@
         }
       </div>
     </div>
-    <div class="st-pct" role="img" [attr.aria-label]="percent() + ' percent of the sittings completed'" [style.--pct]="percent()">
-      <span class="st-pct-ring"><b>{{ percent() }}%</b></span>
-      <span class="st-pct-text"><strong>Completed</strong><small>{{ completed() }} of {{ sittings().length }} sittings</small></span>
-    </div>
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 
@@ -24,7 +20,7 @@
 
           @if (plan.status === 'active') {
             <ng-container *appCan="'add-appointment'">
-              <button type="button" class="st-add-btn" [class.open]="extra.open" [attr.aria-expanded]="extra.open" (click)="extra.open = !extra.open">
+              <button type="button" class="st-add-btn" [class.open]="extra.open" [attr.aria-expanded]="extra.open" (click)="toggleExtra()">
                 <i class="bi" [ngClass]="extra.open ? 'bi-dash-circle' : 'bi-plus-circle'"></i> Add sittings
               </button>
             </ng-container>
@@ -40,13 +36,18 @@
               </header>
               <div class="st-add-fields">
                 <div class="form-field">
-                  <label for="st-extra-count">Number of sittings</label>
+                  <label for="st-extra-count">Extra sittings <span>*</span></label>
                   <div class="input-wrap"><i class="bi bi-collection"></i><input id="st-extra-count" type="number" min="1" max="50" name="extraCount" [(ngModel)]="extra.count" /></div>
                 </div>
                 <div class="form-field">
-                  <label for="st-extra-gap">Gap between sittings (days)</label>
+                  <label for="st-extra-gap">Every (days)</label>
                   <div class="input-wrap"><i class="bi bi-arrow-repeat"></i><input id="st-extra-gap" type="number" min="1" max="365" name="extraGap" [(ngModel)]="extra.interval" /></div>
                 </div>
+                <div class="form-field full-width">
+                  <label for="st-extra-date">First extra sitting date <span>*</span></label>
+                  <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="st-extra-date" type="date" name="extraDate" [min]="today" [(ngModel)]="extra.start_date" (ngModelChange)="onExtraDateChange()" /></div>
+                </div>
+                <ng-container *ngTemplateOutlet="slotPick; context: { sp: extraSlots, id: 'st-extra', title: 'First extra sitting time' }"></ng-container>
               </div>
               <footer>
                 <span class="st-add-summary"><i class="bi bi-info-circle"></i> {{ extra.count || 0 }} more sitting(s), one every {{ extra.interval || 0 }} days.</span>
@@ -78,18 +79,30 @@
               <small>
                 @if (s.status === 'completed') { Completed {{ formatDate(s.actual_date) }} }
                 @else { {{ formatDate(s.scheduled_date) }} {{ formatTime(s.scheduled_time) }} }
-                @if (s.status !== 'completed' && s.requirements?.held_elsewhere) { · <i class="bi bi-geo-alt-fill"></i> At {{ s.requirements?.held_at }} }
+                @if (s.transfer_info?.transferred) { · <i class="bi bi-geo-alt-fill"></i> At {{ s.transfer_info?.branch }} }
+                @else if (s.status !== 'completed' && s.requirements?.held_elsewhere) { · <i class="bi bi-geo-alt-fill"></i> At {{ s.requirements?.held_at }} }
               </small>
             </div>
+            @if (s.transfer_info?.transferred) { <span class="st-moved-chip" [title]="'Moved from ' + s.transfer_info?.from"><i class="bi bi-arrow-left-right"></i> Transferred</span> }
             <span class="st-status" [class.done]="s.status === 'completed'" [class.locked]="isLocked(s)">
               @if (s.status === 'completed') { Completed } @else if (isLocked(s)) { <i class="bi bi-lock-fill"></i> Locked } @else { Next }
             </span>
 
             @if (s.status !== 'completed') {
-              <button *appCan="'sitting-reschedule'" type="button" class="st-link" [disabled]="busy() === s.id" (click)="drafts[s.id].rescheduling = !drafts[s.id].rescheduling"><i class="bi bi-calendar2-week"></i> Reschedule</button>
+              <button *appCan="'sitting-reschedule'" type="button" class="st-link" [disabled]="busy() === s.id" (click)="toggleReschedule(s)"><i class="bi bi-calendar2-week"></i> Reschedule</button>
               <button *appCan="'sitting-complete'" type="button" class="st-complete" [disabled]="busy() === s.id || blockers(s).length > 0" [title]="blockers(s).join(' · ')" (click)="complete(s)"><i class="bi bi-check2-circle"></i> Mark completed</button>
             }
           </header>
+
+          @if (s.transfer_info?.transferred; as _t) {
+            <div class="st-moved" role="status">
+              <i class="bi bi-arrow-left-right"></i>
+              <span>
+                <strong>Treatment transferred</strong> - this sitting was moved from <b>{{ s.transfer_info?.from }}</b> to <b>{{ s.transfer_info?.branch }}</b>@if (s.transfer_info?.at) { on {{ formatDate(s.transfer_info?.at) }} }@if (s.transfer_info?.by) { (accepted by {{ s.transfer_info?.by }}) }.
+                It is worked and billed at {{ s.transfer_info?.branch }}.
+              </span>
+            </div>
+          }
 
           @if (isLocked(s)) {
             <p class="st-locked-note"><i class="bi bi-lock"></i> Complete sitting {{ waitingFor(s) }} first - this sitting opens after that.</p>
@@ -104,21 +117,39 @@
           }
 
           @if (drafts[s.id].rescheduling) {
-            <div class="st-reschedule">
-              <div class="input-wrap"><i class="bi bi-calendar3"></i><input type="date" [min]="today" [(ngModel)]="drafts[s.id].date" [name]="'d' + s.id" /></div>
-              <div class="input-wrap"><i class="bi bi-clock"></i><input type="time" [(ngModel)]="drafts[s.id].time" [name]="'t' + s.id" /></div>
-              @if (branches().length) {
-                <div class="input-wrap st-branch-pick"><i class="bi bi-building"></i>
-                  <select [(ngModel)]="drafts[s.id].branchKey" [name]="'b' + s.id" aria-label="Branch / franchise for this sitting">
-                    <option value="">{{ s.requirements?.held_at ? 'Stay at ' + s.requirements?.held_at : 'Same branch' }}</option>
-                    @for (b of branches(); track b.key) { <option [value]="b.key">Transfer to {{ b.name }}</option> }
-                  </select>
-                  <i class="bi bi-chevron-down select-arrow"></i>
+            <section class="st-add-card st-resched" aria-label="Reschedule sitting">
+              <header>
+                <span class="st-add-icon"><i class="bi bi-calendar2-week"></i></span>
+                <div><strong>Reschedule sitting {{ s.sitting_no }}</strong><small>Pick the new date and time, and the doctor. Choose another branch to ask its manager to take the sitting.</small></div>
+              </header>
+              <div class="st-add-fields">
+                <div class="form-field full-width">
+                  <label [attr.for]="'st-rd' + s.id">New date <span>*</span></label>
+                  <div class="input-wrap"><i class="bi bi-calendar3"></i><input [id]="'st-rd' + s.id" type="date" [min]="today" [(ngModel)]="drafts[s.id].date" [name]="'d' + s.id" (ngModelChange)="onRescheduleChange(s)" /></div>
                 </div>
-              }
-              <button type="button" class="save-btn" [disabled]="busy() === s.id" (click)="reschedule(s)">{{ drafts[s.id].branchKey ? 'Request transfer' : 'Save new slot' }}</button>
-              <button type="button" class="cancel-btn" (click)="drafts[s.id].rescheduling = false">Cancel</button>
-            </div>
+                @if (branches().length) {
+                  <div class="form-field full-width">
+                    <label [attr.for]="'st-rb' + s.id">Branch / franchise</label>
+                    <div class="input-wrap"><i class="bi bi-building"></i>
+                      <select [id]="'st-rb' + s.id" [(ngModel)]="drafts[s.id].branchKey" [name]="'b' + s.id" (ngModelChange)="onRescheduleChange(s)">
+                        <option value="">{{ s.requirements?.held_at ? 'Stay at ' + s.requirements?.held_at : 'Same branch' }}</option>
+                        @for (b of branches(); track b.key) { <option [value]="b.key">Transfer to {{ b.name }}</option> }
+                      </select>
+                      <i class="bi bi-chevron-down select-arrow"></i>
+                    </div>
+                    @if (drafts[s.id].branchKey) {
+                      <p class="slot-hint"><i class="bi bi-info-circle"></i> The manager of that branch gets a request and must accept it. The sitting moves there only when accepted, and if it is rejected the reason is shown to you.</p>
+                    }
+                  </div>
+                }
+                <ng-container *ngTemplateOutlet="slotPick; context: { sp: picker(s), id: 'st-r' + s.id, title: 'New time', showDoctor: !drafts[s.id].branchKey }"></ng-container>
+              </div>
+              <footer>
+                <span class="st-add-summary"><i class="bi bi-info-circle"></i> {{ picker(s).range ? 'New slot ' + picker(s).range : 'No time picked - the sitting keeps its time of day.' }}</span>
+                <button type="button" class="cancel-btn" (click)="drafts[s.id].rescheduling = false">Cancel</button>
+                <button type="button" class="save-btn" [disabled]="busy() === s.id" (click)="reschedule(s)"><i class="bi" [ngClass]="drafts[s.id].branchKey ? 'bi-send' : 'bi-check2'"></i> {{ drafts[s.id].branchKey ? 'Request transfer' : 'Save new slot' }}</button>
+              </footer>
+            </section>
           }
 
           <div class="st-photos">
@@ -224,3 +255,66 @@
     }
   </div>
 }
+
+<!-- Appointment-style time picker (Morning / Afternoon / Evening slots) + the doctors free at the picked slot -->
+<ng-template #slotPick let-sp="sp" let-id="id" let-title="title" let-showDoctor="showDoctor">
+  <div class="form-field full-width slot-field">
+    <label>{{ title }}</label>
+    @if (!sp.date) {
+      <p class="slot-hint"><i class="bi bi-info-circle"></i> Pick a date to see the free slots.</p>
+    } @else if (sp.loading) {
+      <p class="slot-hint"><i class="bi bi-arrow-repeat spin"></i> Checking free slots…</p>
+    } @else {
+      <div class="part-tabs" role="tablist" aria-label="Part of the day">
+        @for (group of sp.groups; track group.key) {
+          <button type="button" class="part-tab" role="tab"
+                  [class.active]="sp.activeGroup?.key === group.key" [class.empty]="!group.free"
+                  [attr.aria-selected]="sp.activeGroup?.key === group.key" (click)="sp.activePart = group.key">
+            <i class="bi" [ngClass]="group.icon"></i>
+            <span class="part-name">{{ group.label }}</span>
+            <span class="part-range">{{ group.range }}</span>
+            <span class="part-free">{{ group.free ? group.free + ' free' : 'Full' }}</span>
+          </button>
+        }
+      </div>
+      @if (sp.activeGroup; as group) {
+        <div class="slot-panel" role="listbox" [attr.aria-label]="group.label + ' slots'">
+          @for (slot of group.slots; track slot.time) {
+            <button type="button" class="slot-chip" role="option"
+                    [class.selected]="sp.time === slot.time" [class.booked]="!slot.available" [disabled]="!slot.available"
+                    [attr.aria-selected]="sp.time === slot.time" [title]="slot.reason || 'Available'" (click)="sp.select(slot)">
+              <span class="slot-time">{{ sp.label(slot.time) }}</span>
+              @if (!slot.available) { <span class="slot-note">{{ slot.reason }}</span> }
+            </button>
+          }
+        </div>
+      }
+      @if (sp.passedCount) {
+        <p class="slot-hint"><i class="bi bi-clock-history"></i> {{ sp.passedCount }} earlier slot{{ sp.passedCount === 1 ? '' : 's' }} today {{ sp.passedCount === 1 ? 'has' : 'have' }} passed.</p>
+      }
+      @if (sp.range) {
+        <div class="slot-selected">
+          <span class="slot-selected-icon"><i class="bi bi-calendar2-check"></i></span>
+          <span class="slot-selected-text"><small>Your slot</small><strong>{{ sp.range }}</strong></span>
+          <button type="button" class="slot-clear" (click)="sp.clear()" aria-label="Clear the selected time"><i class="bi bi-x-lg"></i></button>
+        </div>
+      }
+      @if (sp.hint) {
+        <p class="slot-hint" [class.warn]="!!sp.error || !!sp.bookedCount"><i class="bi" [ngClass]="sp.error ? 'bi-exclamation-circle' : 'bi-info-circle'"></i> {{ sp.hint }}</p>
+      }
+    }
+  </div>
+  @if (showDoctor !== false) {
+  <div class="form-field full-width">
+    <label [attr.for]="id + '-doctor'">Doctor <small>(checked for availability at every sitting)</small></label>
+    <div class="input-wrap"><i class="bi bi-person-badge"></i>
+      <select [id]="id + '-doctor'" [name]="id + 'Doctor'" [(ngModel)]="sp.doctorId" [disabled]="!sp.doctors.length" [attr.aria-busy]="sp.doctorsLoading">
+        <option [ngValue]="null">{{ sp.doctorPlaceholder }}</option>
+        @for (d of sp.doctors; track d.id) { <option [ngValue]="d.id">{{ d.name }}</option> }
+      </select>
+      <i class="bi bi-chevron-down select-arrow"></i>
+    </div>
+    @if (sp.doctorHint) { <p class="slot-hint" [class.warn]="!sp.doctors.length"><i class="bi bi-info-circle"></i> {{ sp.doctorHint }}</p> }
+  </div>
+  }
+</ng-template>

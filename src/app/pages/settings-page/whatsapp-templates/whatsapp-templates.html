@@ -1,0 +1,194 @@
+<div class="meta-page">
+  <div class="page-heading">
+    <h1><i class="bi bi-whatsapp"></i> WhatsApp Templates</h1>
+    <div class="heading-actions">
+      <a class="btn-secondary" routerLink="/app/settings"><i class="bi bi-arrow-left"></i> Settings</a>
+      <button type="button" class="btn-secondary" (click)="checkAll()" [disabled]="isBusy('sync-all') || !templates().length">
+        <i class="bi bi-arrow-clockwise" [class.spin]="isBusy('sync-all')"></i> {{ isBusy('sync-all') ? 'Checking…' : 'Check review status' }}
+      </button>
+      <button type="button" class="btn-primary" (click)="openForm()" [disabled]="!configured()" [title]="configured() ? '' : 'Connect the WhatsApp Business account first'"><i class="bi bi-plus-lg"></i> New template</button>
+    </div>
+  </div>
+
+  <app-auto-module-tabs></app-auto-module-tabs>
+
+  <!-- WhatsApp Business account -->
+  <section class="card wt-conn">
+    <h2 class="card-title"><span class="title-main"><i class="bi bi-link-45deg"></i> WhatsApp Business account</span>
+      @if (connection(); as c) {
+        <span class="chip" [ngClass]="c.connected ? 'ok' : (c.source === 'env' ? 'info' : 'warn')">{{ c.connected ? 'Connected' : (c.source === 'env' ? 'Using the .env settings' : 'Not connected') }}</span>
+      }
+    </h2>
+
+    @if (editingConnection()) {
+      <p class="muted wt-lead">Find these in <strong>Meta Business Suite -> Settings -> WhatsApp accounts</strong> (Business Account ID), <strong>WhatsApp Manager -> Phone numbers</strong> (Phone Number ID), and a <strong>System User</strong> token with the <code>whatsapp_business_management</code> and <code>whatsapp_business_messaging</code> permissions. The details are checked with Meta before they are saved.</p>
+      <div class="field-grid">
+        <label class="field">WhatsApp Business Account ID
+          <input class="input" [(ngModel)]="conn.business_account_id" name="wc-waba" inputmode="numeric" placeholder="e.g. 104857392016473" autocomplete="off" />
+        </label>
+        <label class="field">Phone Number ID
+          <input class="input" [(ngModel)]="conn.phone_number_id" name="wc-phone" inputmode="numeric" placeholder="e.g. 109283746519283" autocomplete="off" />
+        </label>
+        <label class="field">Access token
+          <span class="wt-token">
+            <input class="input" [type]="showToken() ? 'text' : 'password'" [(ngModel)]="conn.access_token" name="wc-token" autocomplete="new-password"
+                   [placeholder]="connection()?.connected ? 'Leave empty to keep the saved token (' + connection()?.token_hint + ')' : 'Permanent access token'" />
+            <button type="button" class="btn-secondary" (click)="showToken.set(!showToken())" [attr.aria-label]="showToken() ? 'Hide token' : 'Show token'"><i class="bi" [ngClass]="showToken() ? 'bi-eye-slash' : 'bi-eye'"></i></button>
+          </span>
+        </label>
+      </div>
+      @if (connError(); as e) { <div class="notice bad"><i class="bi bi-exclamation-octagon-fill"></i><span>{{ e }}</span></div> }
+      <div class="wt-actions">
+        <span class="muted">The token is stored encrypted and is never shown again.</span>
+        <span class="wt-buttons">
+          @if (connection()?.connected) { <button type="button" class="btn-secondary" (click)="editingConnection.set(false)">Cancel</button> }
+          <button type="button" class="btn-primary" (click)="saveConnection()"
+                  [disabled]="connSaving() || !conn.business_account_id.trim() || !conn.phone_number_id.trim() || (!connection()?.connected && !conn.access_token.trim())">
+            <i class="bi bi-plug"></i> {{ connSaving() ? 'Checking with Meta…' : 'Connect account' }}
+          </button>
+        </span>
+      </div>
+    } @else if (connection(); as c) {
+      <dl class="wt-conn-grid">
+        <div><dt>Business</dt><dd>{{ c.business_name || '-' }}</dd></div>
+        <div><dt>WhatsApp number</dt><dd>{{ c.display_phone_number || '-' }}@if (c.verified_name) { <small class="muted"> · {{ c.verified_name }}</small> }</dd></div>
+        <div><dt>Business Account ID</dt><dd class="mono">{{ c.business_account_id }}</dd></div>
+        <div><dt>Phone Number ID</dt><dd class="mono">{{ c.phone_number_id }}</dd></div>
+        <div><dt>Quality</dt><dd>{{ c.quality_rating || '-' }}</dd></div>
+        <div><dt>Last verified</dt><dd>{{ formatDateTime(c.verified_at) }}</dd></div>
+      </dl>
+      <div class="wt-actions">
+        <span class="muted">Connected from {{ c.source === 'env' ? 'the .env file' : 'these settings' }}. Save the details here to replace the .env values.</span>
+        <span class="wt-buttons">
+          <button type="button" class="btn-secondary" (click)="testConnection()" [disabled]="isBusy('conn-test') || !c.connected"><i class="bi bi-activity"></i> {{ isBusy('conn-test') ? 'Testing…' : 'Test connection' }}</button>
+          <button type="button" class="btn-secondary" (click)="editConnection()"><i class="bi bi-pencil-square"></i> Edit</button>
+          @if (c.connected) { <button type="button" class="btn-secondary danger" (click)="disconnect()" [disabled]="isBusy('conn-off')"><i class="bi bi-x-circle"></i> Disconnect</button> }
+        </span>
+      </div>
+    }
+  </section>
+
+  @if (!configured() && !editingConnection()) {
+    <div class="notice warn"><i class="bi bi-exclamation-triangle-fill"></i><span>Connect the WhatsApp Business account above to create and review templates.</span></div>
+  }
+
+  <div class="notice" [class.ok]="active()" [class.warn]="!active()">
+    <i class="bi" [ngClass]="active() ? 'bi-check-circle-fill' : 'bi-info-circle-fill'"></i>
+    <span>
+      @if (active(); as a) { New appointments send the WhatsApp message from the active template <strong>{{ a.name }}</strong>. }
+      @else { No template is active, so <strong>no WhatsApp message is sent</strong> for new appointments. Submit a template, wait for Meta to approve it, then switch it on. }
+    </span>
+  </div>
+
+  @if (showForm()) {
+    <section class="card">
+      <h2 class="card-title"><span class="title-main"><i class="bi bi-chat-square-text"></i> New appointment template</span>
+        <button type="button" class="btn-secondary" (click)="showForm.set(false)">Cancel</button></h2>
+
+      <div class="field-grid">
+        <label class="field">Template name
+          <input class="input" [(ngModel)]="form.name" name="wt-name" placeholder="appointment_confirmation" maxlength="100" />
+          <small class="muted">Lowercase letters, numbers and underscores. Meta does not allow renaming later.</small>
+        </label>
+        <label class="field">Language
+          <select class="input" [(ngModel)]="form.language" name="wt-lang">
+            @for (l of languages; track l.code) { <option [value]="l.code">{{ l.label }}</option> }
+          </select>
+        </label>
+        <label class="field">Category
+          <select class="input" [(ngModel)]="form.category" name="wt-cat">
+            <option value="UTILITY">Utility (confirmations, reminders)</option>
+            <option value="MARKETING">Marketing</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="wt-editor">
+        <div class="wt-col">
+          <label class="field">Message
+            <textarea class="input" rows="6" maxlength="1024" [(ngModel)]="form.body" name="wt-body" (ngModelChange)="onBodyChange()"></textarea>
+          </label>
+          <div class="wt-hint">
+            <button type="button" class="btn-secondary" (click)="addPlaceholder()" [disabled]="placeholderCount >= 10"><i class="bi bi-braces"></i> Add placeholder</button>
+            <span class="muted">{{ form.body.length }} / 1024 · write <code>{{ '{{1}}' }}</code>, <code>{{ '{{2}}' }}</code> ... where the data goes. Do not start or end the message with one.</span>
+          </div>
+
+          @if (placeholderCount) {
+            <div class="wt-vars">
+              @for (i of slots; track i) {
+                <label class="field">{{ '{{' + (i + 1) + '}}' }} is filled with
+                  <select class="input" [(ngModel)]="form.variables[i]" [name]="'wt-var-' + i">
+                    @for (f of fields(); track f.key) { <option [value]="f.key">{{ f.label }}</option> }
+                  </select>
+                </label>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="wt-col">
+          <span class="wt-preview-label">Preview</span>
+          <div class="wt-phone"><div class="wt-bubble">{{ preview }}</div></div>
+        </div>
+      </div>
+
+      @if (error(); as e) { <div class="notice bad"><i class="bi bi-exclamation-octagon-fill"></i><span>{{ e }}</span></div> }
+
+      <div class="wt-actions">
+        <span class="muted">Meta reviews the template, usually within minutes (sometimes up to 24 hours).</span>
+        <button type="button" class="btn-primary" (click)="submit()" [disabled]="saving() || !form.name.trim() || !form.body.trim()">
+          <i class="bi bi-send"></i> {{ saving() ? 'Submitting…' : 'Submit to Meta for review' }}
+        </button>
+      </div>
+    </section>
+  }
+
+  <section class="card">
+    <h2 class="card-title"><span class="title-main"><i class="bi bi-collection"></i> Templates</span><small class="muted">{{ templates().length }} total</small></h2>
+
+    @if (loading() && !templates().length) {
+      <div class="empty">Loading templates…</div>
+    } @else if (!templates().length) {
+      <div class="empty">No template yet. Click <strong>New template</strong> to write one and send it to Meta for review.</div>
+    }
+
+    <div class="wt-list">
+      @for (t of templates(); track t.id) {
+        <article class="wt-item" [class.active]="t.is_active">
+          <header>
+            <div class="wt-name">
+              <strong>{{ t.name }}</strong>
+              <small class="muted">{{ t.language }} · {{ t.category === 'UTILITY' ? 'Utility' : 'Marketing' }}</small>
+            </div>
+            <span class="chip" [ngClass]="statusClass(t.status)">{{ statusLabel(t.status) }}</span>
+            @if (t.is_active) { <span class="chip ok"><i class="bi bi-lightning-charge-fill"></i> Active</span> }
+          </header>
+
+          <p class="wt-body">{{ render(t) }}</p>
+
+          @if (t.status === 'REJECTED' && t.rejected_reason) {
+            <div class="notice bad"><i class="bi bi-x-octagon-fill"></i><span>Rejected by Meta: {{ t.rejected_reason }}. Delete it and submit a corrected template.</span></div>
+          } @else if (t.status === 'PENDING') {
+            <div class="notice warn"><i class="bi bi-hourglass-split"></i><span>Meta is reviewing this template. Click <strong>Check status</strong> in a few minutes.</span></div>
+          }
+
+          <footer>
+            <span class="muted">Checked {{ formatDateTime(t.last_synced_at) }}</span>
+            <div class="wt-buttons">
+              <button type="button" class="btn-secondary" (click)="checkStatus(t)" [disabled]="isBusy('sync-' + t.id)">
+                <i class="bi bi-arrow-clockwise" [class.spin]="isBusy('sync-' + t.id)"></i> Check status
+              </button>
+              <button type="button" class="btn-secondary danger" (click)="remove(t)" [disabled]="t.is_active || isBusy('del-' + t.id)" [title]="t.is_active ? 'Switch it off before deleting' : 'Delete'">
+                <i class="bi bi-trash3"></i> Delete
+              </button>
+              <label class="wt-toggle" [class.off]="t.status !== 'APPROVED'" [title]="t.status === 'APPROVED' ? 'Use this template for new appointments' : 'Only an approved template can be switched on'">
+                <button type="button" class="switch" [class.on]="t.is_active" (click)="toggleActive(t)" [disabled]="(t.status !== 'APPROVED' && !t.is_active) || isBusy('act-' + t.id)" role="switch" [attr.aria-checked]="t.is_active"><span></span></button>
+                <em>{{ t.is_active ? 'Active' : 'Set active' }}</em>
+              </label>
+            </div>
+          </footer>
+        </article>
+      }
+    </div>
+  </section>
+</div>

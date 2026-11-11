@@ -13,137 +13,177 @@
         }
       </div>
     </div>
-    <app-record-history type="Appointment" [recordId]="appointmentId" [title]="appt()?.name ?? ''" />
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 
-  <div class="modal-body-custom">
+  <div class="modal-body-custom cp">
     @if (appt(); as a) {
-      <section class="cd-section">
-        <h3><i class="bi bi-person-vcard"></i> Personal details</h3>
-        <dl class="cd-grid">
-          @for (item of personal(); track item.label) { <div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div> }
-        </dl>
+      <!-- Hero: who, and the numbers that matter at a glance -->
+      <section class="cp-hero">
+        <div class="cp-hero-id">
+          @if (a.photo_url) { <img class="cp-hero-avatar" [src]="a.photo_url" alt="Customer photo" /> }
+          @else { <div class="cp-hero-avatar initials">{{ initials() || '?' }}</div> }
+          <div>
+            <h3>{{ a.name }}</h3>
+            <div class="cp-tags">
+              @if (a.customer?.customer_code) { <span><i class="bi bi-hash"></i>{{ a.customer?.customer_code }}</span> }
+              <span><i class="bi bi-telephone"></i>{{ a.mobile_no }}</span>
+              @if (a.gender) { <span><i class="bi bi-gender-ambiguous"></i>{{ a.gender }}</span> }
+              @if (a.age) { <span><i class="bi bi-cake2"></i>{{ a.age }} yrs</span> }
+              <span class="state">{{ statusLabel(a.status) }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="cp-hero-stats">
+          <div><strong>{{ treatments().length }}</strong><small>Treatment{{ treatments().length === 1 ? '' : 's' }}</small></div>
+          <div><strong>{{ inr(a.paid_amount) }}</strong><small>Paid of {{ inr(a.total_amount) }}</small></div>
+          <div [class.warn]="balance() > 0"><strong>{{ inr(balance()) }}</strong><small>Balance due</small></div>
+          <div><strong>{{ totalPhotos() }}</strong><small>Before / after photos</small></div>
+        </div>
       </section>
 
-      <section class="cd-section">
-        <h3><i class="bi bi-calendar2-check"></i> Appointment &amp; treatment</h3>
-        <dl class="cd-grid">
-          @for (item of visit(); track item.label) { <div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div> }
-        </dl>
-        @if (a.doctor_suggestion) {
-          <p class="cd-note"><strong>Doctor suggestion:</strong> {{ a.doctor_suggestion }}</p>
-        }
-      </section>
+      <div class="cp-columns">
+        <section class="cp-card">
+          <h4><span class="cp-badge b-green"><i class="bi bi-person-vcard"></i></span> Personal details</h4>
+          <dl class="cp-grid">
+            @for (item of personal(); track item.label) { <div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div> }
+          </dl>
+        </section>
+
+        <section class="cp-card">
+          <h4><span class="cp-badge b-blue"><i class="bi bi-calendar2-check"></i></span> Appointment &amp; treatment</h4>
+          <dl class="cp-grid">
+            @for (item of visit(); track item.label) { <div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div> }
+          </dl>
+          @if (a.doctor_suggestion) {
+            <p class="cp-quote"><i class="bi bi-chat-quote"></i><span><strong>Doctor suggestion</strong>{{ a.doctor_suggestion }}</span></p>
+          }
+        </section>
+      </div>
 
       @if (clinical().length) {
-        <section class="cd-section">
-          <h3><i class="bi bi-clipboard2-pulse"></i> Clinical examination</h3>
-          <dl class="cd-grid">
+        <section class="cp-card">
+          <h4><span class="cp-badge b-rose"><i class="bi bi-clipboard2-pulse"></i></span> Clinical examination</h4>
+          <div class="cp-chips">
             @for (item of clinical(); track item.label) {
-              <div>
-                <dt>{{ item.label }}</dt>
+              <div class="cp-chip">
+                <small>{{ item.label }}</small>
                 @if (item.label === 'Grade') {
-                  <dd class="cd-grade"><app-hair-grade-icon [grade]="item.value" /><span>{{ item.value }}</span></dd>
+                  <span class="cp-grade"><app-hair-grade-icon [grade]="item.value" /><strong>{{ item.value }}</strong></span>
                 } @else {
-                  <dd>{{ item.value }}</dd>
+                  <strong>{{ item.value }}</strong>
                 }
               </div>
             }
-          </dl>
+          </div>
         </section>
       }
 
       @if (a.documents?.length) {
-        <section class="cd-section">
-          <h3><i class="bi bi-folder2-open"></i> Patient history documents</h3>
-          <div class="cd-docs">
+        <section class="cp-card">
+          <h4><span class="cp-badge b-amber"><i class="bi bi-folder2-open"></i></span> Patient history documents <small>{{ a.documents!.length }}</small></h4>
+          <div class="cp-docs">
             @for (doc of a.documents; track doc.id) {
-              <a href="#" (click)="viewDocument(doc, $event)"><i class="bi bi-file-earmark-text"></i> {{ doc.title }}</a>
+              <a href="#" (click)="viewDocument(doc, $event)"><i class="bi bi-file-earmark-text"></i><span>{{ doc.title }}</span><i class="bi bi-box-arrow-up-right go"></i></a>
             }
           </div>
         </section>
       }
 
-      <section class="cd-section">
-        <h3><i class="bi bi-receipt"></i> Billing &amp; payments</h3>
-        <div class="cd-money">
-          <div><small>Total</small><strong>{{ inr(a.total_amount) }}</strong></div>
-          <div><small>Paid</small><strong class="ok">{{ inr(a.paid_amount) }}</strong></div>
-          <div><small>Balance</small><strong [class.due]="balance() > 0">{{ inr(balance()) }}</strong></div>
-          <div><small>Invoice</small><strong>{{ a.invoice_no || '-' }}</strong></div>
-          <div><small>Terms accepted</small><strong>{{ a.terms_accepted_at ? formatDateTime(a.terms_accepted_at) : 'Not yet' }}</strong></div>
+      <section class="cp-card">
+        <h4><span class="cp-badge b-violet"><i class="bi bi-receipt"></i></span> Billing &amp; payments
+          @if (a.invoice_no) {
+            @if (canInvoice) {
+              <button type="button" class="cp-invoice" (click)="viewInvoice()" title="Click to view the invoice"><i class="bi bi-file-earmark-pdf"></i> {{ a.invoice_no }}</button>
+            } @else { <small>{{ a.invoice_no }}</small> }
+          }</h4>
+        <div class="cp-table-wrap">
+          <table class="cp-table">
+            <thead><tr><th>Date</th><th>Mode</th><th>Transaction no.</th><th>Remarks</th><th class="num">Amount</th></tr></thead>
+            <tbody>
+              @for (p of a.payments ?? []; track p.id) {
+                <tr>
+                  <td>{{ formatDateTime(p.payment_date) }}</td>
+                  <td><span class="mode"><i class="bi bi-credit-card-2-front"></i>{{ p.payment_mode }}</span></td>
+                  <td>{{ p.transaction_no || '-' }}</td>
+                  <td>{{ p.remarks || '-' }}</td>
+                  <td class="num paid">{{ inr(p.paid_amount) }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5" class="empty">No payments recorded yet.</td></tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr><td colspan="4">Total</td><td class="num">{{ inr(a.total_amount) }}</td></tr>
+              <tr><td colspan="4">Paid</td><td class="num paid">{{ inr(a.paid_amount) }}</td></tr>
+              <tr [class.due]="balance() > 0"><td colspan="4">Balance</td><td class="num">{{ inr(balance()) }}</td></tr>
+            </tfoot>
+          </table>
         </div>
-        @if (a.payments?.length) {
-          <div class="cd-table-wrap">
-            <table class="cd-table">
-              <thead><tr><th>Date</th><th>Mode</th><th>Amount</th><th>Transaction no.</th><th>Remarks</th></tr></thead>
-              <tbody>
-                @for (p of a.payments; track p.id) {
-                  <tr>
-                    <td>{{ formatDateTime(p.payment_date) }}</td>
-                    <td>{{ p.payment_mode }}</td>
-                    <td>{{ inr(p.paid_amount) }}</td>
-                    <td>{{ p.transaction_no || '-' }}</td>
-                    <td>{{ p.remarks || '-' }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        } @else {
-          <p class="muted">No payments recorded yet.</p>
-        }
+        <p class="cp-terms"><i class="bi bi-shield-check"></i> Terms {{ a.terms_accepted_at ? 'accepted ' + formatDateTime(a.terms_accepted_at) : 'not accepted yet' }}</p>
       </section>
 
-      @if (sittings().length) {
-        <section class="cd-section">
-          <h3><i class="bi bi-collection"></i> Treatment sittings <small>· {{ completedSittings() }} of {{ sittings().length }} completed</small></h3>
-          @for (s of sittings(); track s.id) {
-            <div class="cd-sitting" [class.done]="s.status === 'completed'">
-              <div class="cd-sitting-head">
-                <strong>Sitting {{ s.sitting_no }}</strong>
-                <span>
-                  @if (s.status === 'completed') { Completed {{ formatDate(s.actual_date) }} }
-                  @else { Scheduled {{ formatDate(s.scheduled_date) }} {{ formatTime(s.scheduled_time) }} }
-                </span>
-                <span class="cd-pill" [class.done]="s.status === 'completed'">{{ s.status === 'completed' ? 'Completed' : 'Scheduled' }}</span>
-              </div>
-              @if (s.photos.length) {
-                <div class="cd-photos">
-                  @for (type of ['before', 'after']; track type) {
-                    @if (photos(s, $any(type)).length) {
-                      <div>
-                        <small>{{ type === 'before' ? 'Before' : 'After' }}</small>
-                        <div class="cd-thumbs">
-                          @for (p of photos(s, $any(type)); track p.id; let i = $index) {
-                            <img [src]="p.url" [alt]="type + ' photo ' + (i + 1)" title="Click to view" (click)="openViewer(photos(s, $any(type)), i)" />
+      @if (treatments().length) {
+        <section class="cp-card">
+          <h4><span class="cp-badge b-teal"><i class="bi bi-collection"></i></span> Treatments &amp; sittings <small>{{ treatments().length }} treatment{{ treatments().length === 1 ? '' : 's' }}</small></h4>
+          @for (t of treatments(); track t.id) {
+            <article class="cp-treat" [class.active]="t.active">
+              <header>
+                <div class="cp-treat-name">
+                  <strong>{{ t.name }}</strong>
+                  <small>{{ t.start_date ? formatDate(t.start_date) : '' }}{{ t.end_date ? ' - ' + formatDate(t.end_date) : '' }}{{ t.start_date ? ' · ' : '' }}{{ inr(t.amount) }}</small>
+                </div>
+                <span class="cp-state" [class.done]="!t.active">{{ t.active ? 'In progress' : 'Completed' }}</span>
+              </header>
+              <ol class="cp-timeline">
+                @for (s of t.sittings; track s.id) {
+                  <li [class.done]="s.status === 'completed'">
+                    <span class="dot">{{ s.sitting_no }}</span>
+                    <div class="cp-sit">
+                      <div class="cp-sit-head">
+                        <strong>Sitting {{ s.sitting_no }}</strong>
+                        <span class="when">
+                          @if (s.status === 'completed') { Completed {{ formatDate(s.actual_date || s.scheduled_date) }} }
+                          @else { Scheduled {{ formatDate(s.scheduled_date) }} {{ formatTime(s.scheduled_time) }} }
+                        </span>
+                        @if (s.transfer_info?.transferred) { <span class="moved" [title]="'Moved from ' + s.transfer_info?.from"><i class="bi bi-arrow-left-right"></i> Transferred to {{ s.transfer_info?.branch }}</span> }
+                        @if (s.doctor) { <span class="doc"><i class="bi bi-person-badge"></i>{{ s.doctor.name }}</span> }
+                      </div>
+                      @if (s.transfer_info?.transferred) {
+                        <p class="cp-moved"><i class="bi bi-info-circle"></i> Treatment transferred: this sitting was moved from <b>{{ s.transfer_info?.from }}</b> to <b>{{ s.transfer_info?.branch }}</b>@if (s.transfer_info?.at) { on {{ formatDate(s.transfer_info?.at) }} }@if (s.transfer_info?.by) { (accepted by {{ s.transfer_info?.by }}) }.</p>
+                      }
+                      @if (s.photos.length) {
+                        <div class="cp-ba">
+                          @for (type of ['before', 'after']; track type) {
+                            <div class="cp-ba-col" [class.after]="type === 'after'">
+                              <span class="cp-ba-label">{{ type === 'before' ? 'Before' : 'After' }}</span>
+                              <div class="cp-ba-grid">
+                                @for (p of photos(s, $any(type)); track p.id; let i = $index) {
+                                  @if (brokenPhotos().has(p.id)) {
+                                    <div class="cp-ph missing" title="Photo not available"><i class="bi bi-image"></i></div>
+                                  } @else {
+                                    <button type="button" class="cp-ph" (click)="openViewer(photos(s, $any(type)), i)" [attr.aria-label]="'View ' + type + ' photo ' + (i + 1)">
+                                      <img [src]="p.url" [alt]="type + ' photo ' + (i + 1)" loading="lazy" (error)="markBroken(p.id)" />
+                                    </button>
+                                  }
+                                } @empty {
+                                  <div class="cp-ph empty"><i class="bi bi-camera"></i><small>None</small></div>
+                                }
+                              </div>
+                            </div>
                           }
                         </div>
-                      </div>
-                    }
-                  }
-                </div>
-              }
-              @if (s.notes) {
-                <p class="cd-note"><strong>Doctor notes{{ s.doctor ? ' (' + s.doctor.name + ')' : '' }}:</strong> {{ s.notes }}</p>
-              }
-            </div>
-          }
-        </section>
-      }
-
-      @if (previousTreatments().length) {
-        <section class="cd-section">
-          <h3><i class="bi bi-clock-history"></i> Previous treatments <small>· view only</small></h3>
-          @for (p of previousTreatments(); track p.id) {
-            <div class="cd-sitting done">
-              <div class="cd-sitting-head">
-                <strong>{{ p.treatment }}</strong>
-                <span>{{ formatDate(p.start_date) }} - {{ formatDate(p.end_date) }} · {{ p.completed_sittings }}/{{ p.sittings_count }} sittings · {{ inr(p.net_amount) }}</span>
-                <span class="cd-pill" [class.done]="p.status === 'completed'">{{ p.status === 'completed' ? 'Completed' : 'In progress' }}</span>
-              </div>
-            </div>
+                      } @else if (s.status === 'completed') {
+                        <p class="cp-nophoto"><i class="bi bi-camera"></i> No photos were added for this sitting.</p>
+                      }
+                      @if (s.notes) {
+                        <p class="cp-notes"><i class="bi bi-journal-medical"></i><span><strong>Doctor notes{{ s.doctor ? ' · ' + s.doctor.name : '' }}</strong>{{ s.notes }}</span></p>
+                      }
+                    </div>
+                  </li>
+                }
+              </ol>
+            </article>
           }
         </section>
       }

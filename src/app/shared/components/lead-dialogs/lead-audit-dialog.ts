@@ -50,6 +50,10 @@ const ACTIONS: Record<string, { icon: string; tone: string; label: string }> = {
   sittings_added: { icon: 'bi-plus-circle', tone: 'green', label: 'Sittings added' },
   sitting_rescheduled: { icon: 'bi-calendar-week', tone: 'orange', label: 'Sitting rescheduled' },
   sitting_photos: { icon: 'bi-images', tone: 'blue', label: 'Sitting photos' },
+  sitting_transfer_requested: { icon: 'bi-send', tone: 'orange', label: 'Transfer requested' },
+  sitting_transfer_accepted: { icon: 'bi-box-arrow-in-right', tone: 'green', label: 'Sitting transferred' },
+  sitting_transfer_declined: { icon: 'bi-x-octagon', tone: 'red', label: 'Transfer rejected' },
+  sitting_transfer_cancelled: { icon: 'bi-arrow-counterclockwise', tone: 'gray', label: 'Transfer withdrawn' },
   sitting_notes: { icon: 'bi-journal-medical', tone: 'purple', label: 'Doctor notes' },
 };
 

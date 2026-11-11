@@ -24,7 +24,7 @@
       <div class="input-wrap"><i class="bi bi-clock"></i><input type="time" name="time" [(ngModel)]="time" (change)="loadDoctors()" aria-label="Time" /></div>
     </div>
 
-    <div class="section-title"><i class="bi bi-person-badge"></i> Doctor <small class="muted">{{ loading() ? 'checking availability…' : freeCount + ' of ' + doctors().length + ' free' }}</small></div>
+    <div class="section-title"><i class="bi bi-person-badge"></i> Doctor <small class="muted">(optional) · {{ loading() ? 'checking availability…' : freeCount + ' of ' + doctors().length + ' free' }}</small></div>
     <div class="stx-doctors" role="radiogroup" aria-label="Doctor">
       @for (d of doctors(); track d.id) {
         <button type="button" role="radio" class="stx-doc" [class.on]="doctorId === d.id" [class.busy]="!d.free" [disabled]="!d.free" [attr.aria-checked]="doctorId === d.id" (click)="doctorId = d.id">
@@ -38,15 +38,16 @@
     </div>
 
     <div class="form-field full-width stx-note">
-      <label for="stx-note">Note <span class="muted">(shown to the requester if you decline)</span></label>
-      <div class="input-wrap"><i class="bi bi-chat-left-dots"></i><input id="stx-note" name="note" maxlength="255" [(ngModel)]="note" /></div>
+      <label for="stx-note">Reason for rejecting <span class="muted">(required to reject - shown to the branch that asked)</span></label>
+      <div class="input-wrap" [class.stx-invalid]="noteMissing()"><i class="bi bi-chat-left-dots"></i><input id="stx-note" name="note" maxlength="255" [(ngModel)]="note" (ngModelChange)="noteMissing.set(false)" placeholder="e.g. No doctor available that day" /></div>
+      @if (noteMissing()) { <small class="stx-error">Write the reason before rejecting.</small> }
     </div>
   </div>
 
   <div class="modal-footer-custom">
-    <span class="footer-note"><i class="bi bi-info-circle"></i> The sitting moves to your branch only when you accept</span>
+    <span class="footer-note"><i class="bi bi-info-circle"></i> The sitting moves to your branch the moment you accept</span>
     <button type="button" class="cancel-btn" (click)="close()">Close</button>
-    <button type="button" class="danger-btn" [disabled]="busy() !== null" (click)="decline()"><i class="bi bi-x-lg"></i> {{ busy() === 'decline' ? 'Declining…' : 'Decline' }}</button>
+    <button type="button" class="danger-btn" [disabled]="busy() !== null" (click)="decline()"><i class="bi bi-x-lg"></i> {{ busy() === 'decline' ? 'Rejecting…' : 'Reject' }}</button>
     <button type="button" class="save-btn" [disabled]="busy() !== null" (click)="accept()"><i class="bi bi-check2"></i> {{ busy() === 'accept' ? 'Accepting…' : 'Accept' }}</button>
   </div>
 </div>

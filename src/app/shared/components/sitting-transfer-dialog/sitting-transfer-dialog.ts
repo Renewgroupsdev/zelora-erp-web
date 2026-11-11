@@ -11,8 +11,8 @@ import { SittingTransfer } from '../../models/appointment-flow.model';
 interface TransferDoctor { id: number; name: string; free: boolean }
 
 /**
- * A doctor of the receiving branch decides a sitting transfer: the date / time asked for, the doctors of this branch
- * with who is free then, accept (the sitting moves here with that doctor) or decline with a note.
+ * The receiving branch's manager decides a sitting transfer: the date / time asked for, the doctors of this branch
+ * with who is free then (optional), accept (the sitting moves here at once) or reject with a required note.
  * Closes with `true` once decided.
  */
 @Component({
@@ -65,12 +65,19 @@ export class SittingTransferDialog implements OnInit {
 
   accept(): void {
     if (!this.date || this.date < this.today) return void this.toast.error('Pick today or a later date.');
-    if (!this.doctorId) return void this.toast.error('Choose the doctor who will take this sitting.');
     this.send('accept', { doctor_id: this.doctorId, scheduled_date: this.date, scheduled_time: this.time || null });
   }
 
+  /** Rejecting needs the reason - it is shown to the branch that asked. */
+  readonly noteMissing = signal(false);
+
   decline(): void {
-    this.send('decline', { note: this.note.trim() || null });
+    const note = this.note.trim();
+    if (note.length < 3) {
+      this.noteMissing.set(true);
+      return void this.toast.error('Write the reason for rejecting the transfer.');
+    }
+    this.send('decline', { note });
   }
 
   private send(kind: 'accept' | 'decline', body: object): void {

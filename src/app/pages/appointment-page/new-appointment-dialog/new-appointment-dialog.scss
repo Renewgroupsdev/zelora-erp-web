@@ -342,3 +342,29 @@
 @media (max-width: 575.98px) {
   .at-choice { grid-template-columns: 1fr; }
 }
+
+
+/* ---------- Layout polish: even rows, equal slot chips, breathing room around the hints ---------- */
+.form-grid { gap: 12px 16px; }
+
+.slot-field { gap: 10px; }
+
+.slot-panel {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  .slot-chip { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 8px; white-space: nowrap; }
+}
+
+.slot-hint {
+  line-height: 1.4;
+  > i { flex: 0 0 auto; font-size: 13px; }
+}
+
+/* A hint under a field: space above it, and the next field keeps its own distance. */
+.form-field > .slot-hint { margin-top: 7px; }
+
+.slot-selected { margin-top: 2px; }
+
+@media (max-width: 560px) {
+  .slot-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

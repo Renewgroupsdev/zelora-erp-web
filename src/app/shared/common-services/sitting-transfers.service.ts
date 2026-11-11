@@ -11,10 +11,10 @@ import { SittingTransferDialog } from '../components/sitting-transfer-dialog/sit
 /** Roles & Permissions -> Appointment module action: who may accept / decline a sitting moved to their branch (the API checks the same). */
 export const DECIDE_TRANSFER_ACTION = 'sitting-transfer-decide';
 
-const POLL_MS = 15_000;
+const POLL_MS = 8_000;
 
 /**
- * Sitting transfer requests waiting for the signed-in doctor's branch. Polled like discount requests: a new one
+ * Sitting transfer requests waiting for the signed-in manager's branch. Polled like discount requests: a new one
  * shows a card ("Review") and a bell notification; accepted / declined by anyone, it drops out on the next poll.
  */
 @Injectable({ providedIn: 'root' })
@@ -65,9 +65,9 @@ export class SittingTransfersService {
         this.alertStack.show(...fresh.slice(0, 4).map(r => ({
           tone: 'info' as const, icon: 'bi-arrow-left-right',
           title: 'Sitting transfer request',
-          text: `${r.from_branch} asks your branch to take sitting ${r.sitting_no} of ${r.customer ?? 'a customer'}.`,
+          text: `${r.from_branch} asks your branch to take sitting ${r.sitting_no} of ${r.customer ?? 'a customer'}. Accept or reject.`,
           chips: [`${r.scheduled_date} ${r.scheduled_time ?? ''}`.trim()],
-          duration: 9000, actionLabel: 'Review',
+          duration: 9000, actionLabel: 'Accept / Reject',
           onAction: () => this.review(r),
         })));
       },

@@ -3,15 +3,42 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
+import { AuthService } from '../../../core/auth/auth.service';
 import { ToastService } from '../../../shared/common-services/toast.service';
-import { FlowAppointmentRecord, FlowDocument, Sitting, SittingPhoto, inr, statusLabel } from '../../../shared/models/appointment-flow.model';
+import { FlowAppointmentRecord, FlowDocument, SittingPhoto, SittingTransferInfo, inr, statusLabel } from '../../../shared/models/appointment-flow.model';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { HairGradeIcon } from '../../../shared/components/hair-grade-icon/hair-grade-icon';
-import { RecordHistory } from '../../../shared/components/record-history/record-history';
 
 interface DetailItem {
   label: string;
   value: string;
+}
+
+/** One sitting as the profile shows it (current or earlier treatment alike). */
+interface SittingView {
+  id: number;
+  sitting_no: number;
+  status: string;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  actual_date: string | null;
+  notes?: string | null;
+  doctor?: { id: number; name: string } | null;
+  photos: SittingPhoto[];
+  transfer_info?: SittingTransferInfo | null;
+}
+
+/** One treatment of the customer with its sittings and their before / after photos. */
+interface TreatmentView {
+  id: number;
+  name: string;
+  active: boolean;
+  start_date: string | null;
+  end_date: string | null;
+  done: number;
+  total: number;
+  amount: number;
+  sittings: SittingView[];
 }
 
 /**
@@ -22,13 +49,14 @@ interface DetailItem {
 @Component({
   selector: 'app-customer-details-dialog',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, PageLoader, HairGradeIcon, RecordHistory],
+  imports: [CommonModule, MatDialogModule, PageLoader, HairGradeIcon],
   templateUrl: './customer-details-dialog.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', './customer-details-dialog.scss'],
 })
 export class CustomerDetailsDialog implements OnInit {
   private readonly api = inject(ApiDataService);
   private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthService);
   private readonly dialogRef = inject(MatDialogRef<CustomerDetailsDialog>);
   private readonly data = inject<{ appointmentId: number }>(MAT_DIALOG_DATA);
   protected readonly appointmentId = this.data.appointmentId;
@@ -38,12 +66,31 @@ export class CustomerDetailsDialog implements OnInit {
   readonly appt = signal<FlowAppointmentRecord | null>(null);
   readonly viewer = signal<{ photos: SittingPhoto[]; index: number } | null>(null);
 
-  readonly sittings = computed<Sitting[]>(() =>
-    [...(this.appt()?.customer_treatment?.sittings ?? [])].sort((a, b) => a.sitting_no - b.sitting_no));
-  readonly completedSittings = computed(() => this.sittings().filter(s => s.status === 'completed').length);
-  /** The customer's other (earlier) treatments - view only. */
-  readonly previousTreatments = computed(() =>
-    (this.appt()?.treatment_history ?? []).filter(t => t.id !== this.appt()?.customer_treatment?.id));
+  /**
+   * Every treatment the customer has had, current first: each with its sittings and their before / after photos.
+   * Falls back to the appointment's own plan when the customer has no treatment history.
+   */
+  readonly treatments = computed<TreatmentView[]>(() => {
+    const a = this.appt();
+    if (!a) return [];
+    const byNo = (x: SittingView, y: SittingView) => x.sitting_no - y.sitting_no;
+    const history = (a.treatment_history ?? []).map(t => ({
+      id: t.id, name: t.treatment ?? 'Treatment', active: t.status === 'active', start_date: t.start_date, end_date: t.end_date,
+      done: t.completed_sittings, total: t.sittings_count, amount: t.net_amount,
+      sittings: t.sittings.map(x => ({ ...x, photos: x.photos ?? [] }) as SittingView).sort(byNo),
+    }));
+    if (history.length) return history.sort((x, y) => Number(y.active) - Number(x.active));
+    const plan = a.customer_treatment;
+    if (!plan) return [];
+    const sittings = [...plan.sittings].sort(byNo);
+    return [{
+      id: plan.id, name: plan.treatment?.name ?? a.treatment?.name ?? 'Treatment', active: plan.completed_sittings < plan.sittings_count,
+      start_date: null, end_date: null, done: plan.completed_sittings, total: plan.sittings_count, amount: Number(a.total_amount ?? 0), sittings,
+    }];
+  });
+  readonly totalPhotos = computed(() => this.treatments().reduce((n, t) => n + t.sittings.reduce((m, s) => m + s.photos.length, 0), 0));
+  /** Photos that failed to load: shown as a neutral placeholder instead of a broken-image icon. */
+  readonly brokenPhotos = signal<ReadonlySet<number>>(new Set());
   readonly balance = computed(() => Math.max(0, Number(this.appt()?.total_amount ?? 0) - Number(this.appt()?.paid_amount ?? 0)));
 
   readonly initials = computed(() =>
@@ -125,7 +172,42 @@ export class CustomerDetailsDialog implements OnInit {
     });
   }
 
-  photos(s: Sitting, type: 'before' | 'after'): SittingPhoto[] {
+  get canInvoice(): boolean {
+    return this.auth.hasActionAccess('download-invoice');
+  }
+
+  /** Loads the tax invoice as a blob and opens it in a new tab. */
+  viewInvoice(): void {
+    const tab = window.open('', '_blank'); // opened before the request so the popup blocker allows it
+    this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/invoice`).subscribe({
+      next: (blob: Blob) => {
+        const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: () => {
+        tab?.close();
+        this.toast.error('Could not open the invoice.');
+      },
+    });
+  }
+
+  markBroken(id: number): void {
+    this.brokenPhotos.update(set => new Set(set).add(id));
+  }
+
+  progress(t: TreatmentView): number {
+    return t.total ? Math.min(100, Math.round((t.done / t.total) * 100)) : 0;
+  }
+
+  paidPercent(): number {
+    const a = this.appt();
+    const total = Number(a?.total_amount ?? 0);
+    return total ? Math.min(100, Math.round((Number(a?.paid_amount ?? 0) / total) * 100)) : 0;
+  }
+
+  photos(s: { photos: SittingPhoto[] }, type: 'before' | 'after'): SittingPhoto[] {
     return s.photos.filter(p => p.type === type);
   }
 

@@ -32,7 +32,7 @@ import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-
 
 /** Converted is left out: a converted appointment is a customer, listed (with its sittings) in Customer Management. */
 /** Shown as "Consultation"; the API still filters on the stored name (see statusLabel). */
-const STATUSES: string[] = ['Scheduled', 'Consultation', 'Awaiting Terms', 'Invoiced', 'Cancelled'];
+const STATUSES: string[] = ['Scheduled', 'Consultation', 'Awaiting Terms', 'Cancelled'];
 
 /**
  * Appointments booked by telecallers (a follow-up turned into a visit), shown as a slot calendar (month / week /
@@ -122,7 +122,8 @@ export class AppointmentPage implements OnInit {
    *  days on screen, the list uses the Date filter. */
   loadAppointments(): void {
     this.loading = true;
-    const params = new URLSearchParams({ per_page: '500' });
+    // open_only: the API leaves out invoiced, converted and consultation-only records.
+    const params = new URLSearchParams({ per_page: '500', open_only: '1' });
     if (this.filterState.status) params.set('status', this.filterState.status === 'Consultation' ? 'In Consultation' : this.filterState.status);
     if (this.mode === 'calendar') {
       const { from, to } = calendarRange(this.calendarView, this.calendarDate);

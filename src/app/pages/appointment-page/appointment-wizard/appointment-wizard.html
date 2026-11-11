@@ -325,6 +325,10 @@
                 <label [attr.for]="'wz-gap-' + i">Gap between sittings (days)</label>
                 <div class="input-wrap"><i class="bi bi-calendar2-range"></i><input [id]="'wz-gap-' + i" type="number" min="1" max="180" [name]="'gap-' + i" [(ngModel)]="line.sitting_interval_days" /></div>
               </div>
+              <div class="form-field">
+                <label [attr.for]="'wz-start-' + i">Start date <span>*</span></label>
+                <div class="input-wrap"><i class="bi bi-calendar3"></i><input [id]="'wz-start-' + i" type="date" [min]="minStartDate" [name]="'start-' + i" [(ngModel)]="line.start_date" /></div>
+              </div>
             </div>
           </div>
         }

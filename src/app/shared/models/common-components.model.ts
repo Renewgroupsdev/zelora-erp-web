@@ -55,6 +55,8 @@ export interface QuickAction {
   permission?: string;
   /** Stays clickable on a row another telecaller has locked (read-only actions: view, audit log). */
   keepOnLock?: boolean;
+  /** Keeps the page's own icon instead of the logo set for the action on Roles & Permissions. */
+  fixedIcon?: boolean;
 }
 
 export interface TableColumn {

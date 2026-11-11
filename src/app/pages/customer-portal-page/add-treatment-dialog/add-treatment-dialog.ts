@@ -8,6 +8,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { TreatmentHistory, inr } from '../../../shared/models/appointment-flow.model';
+import { SlotPicker } from './slot-picker';
 import { AppointmentWizard } from '../../appointment-page/appointment-wizard/appointment-wizard';
 
 /** A Consultation Only (Nill Card) visit that can still be confirmed as a treatment. */
@@ -37,6 +38,8 @@ interface LookupResult {
   location: string | null;
   pincode: string | null;
   base_appointment_id: number | null;
+  branch_type?: string | null;
+  branch_id?: number | null;
   open_appointment_id?: number | null;
   open_status?: string | null;
   active_treatment_id: number | null;
@@ -86,10 +89,24 @@ export class AddTreatmentDialog implements OnInit {
   /** Nill Card with a treatment already suggested: carry on with it, or pick another one. */
   nillMode: 'continue' | 'change' = 'continue';
   query = '';
-  plan = { category_id: null as number | null, treatment_id: null as number | null, sittings_count: 1, interval: 30, start_date: '', start_time: '', remarks: '' };
+  plan = { category_id: null as number | null, treatment_id: null as number | null, sittings_count: 1, interval: 30, start_date: '', remarks: '' };
+
+  /** Slot + doctor pickers (same design as Add Appointment): new treatment, and extra sittings. */
+  readonly planSlots = new SlotPicker(this.api, this.today, () => this.unitQuery());
+  readonly extraSlots = new SlotPicker(this.api, this.today, () => this.unitQuery());
+
+  private unitQuery(): string {
+    const f = this.found();
+    return f && f.branch_type && f.branch_id ? `&branch_type=${encodeURIComponent(f.branch_type)}&branch_id=${f.branch_id}` : '';
+  }
+
+  /** Extra sittings on an earlier treatment: only one plan's form is open at a time. */
+  extraPlanId: number | null = null;
+  extra = { count: 1, interval: 7, start_date: '' };
 
   ngOnInit(): void {
     this.plan.start_date = this.today;
+    this.extra.start_date = this.today;
     this.api.GetAllPages(ApiRoutesConstants.SERVICE_CATEGORY_TREE_LIST).subscribe({
       next: (cats: any[]) => {
         const active = cats.filter(c => c.is_active !== false);
@@ -121,6 +138,8 @@ export class AddTreatmentDialog implements OnInit {
           const r = (res?.data ?? null) as LookupResult | null;
           this.found.set(r ?? false);
           if (r) this.plan = { ...this.plan, interval: r.sitting_interval_days || 30 };
+          this.planSlots.reset();
+          if (r) this.planSlots.setDate(this.plan.start_date);
         },
         error: (err: any) => { this.found.set(false); this.error.set(err?.error?.message || 'Could not search.'); },
       });
@@ -158,6 +177,41 @@ export class AddTreatmentDialog implements OnInit {
     if (!this.plan.category_id) this.plan.category_id = t.category_id;
   }
 
+  onPlanDateChange(): void { this.planSlots.setDate(this.plan.start_date); }
+  onExtraDateChange(): void { this.extraSlots.setDate(this.extra.start_date); }
+
+  // ---------------------------------------------------------------- extra sittings on an earlier treatment
+
+  openExtra(p: TreatmentHistory): void {
+    this.error.set(null);
+    this.extraPlanId = this.extraPlanId === p.id ? null : p.id;
+    this.extra = { count: 1, interval: (this.found() as LookupResult).sitting_interval_days || 7, start_date: this.today };
+    this.extraSlots.reset();
+    if (this.extraPlanId) this.extraSlots.setDate(this.extra.start_date);
+  }
+
+  addExtraSittings(p: TreatmentHistory): void {
+    if (!(Number(this.extra.count) >= 1)) return void this.error.set('Extra sittings must be at least 1.');
+    if (!this.extra.start_date || this.extra.start_date < this.today) return void this.error.set('Pick today or a later date for the first extra sitting.');
+    this.error.set(null);
+    this.saving.set(true);
+    this.api.POST(`customer-treatments/${p.id}/sittings`, {
+      count: Number(this.extra.count),
+      sitting_interval_days: Number(this.extra.interval) || 7,
+      start_date: this.extra.start_date,
+      start_time: this.extraSlots.time || null,
+      doctor_id: this.extraSlots.doctorId,
+    }).pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: (res: any) => {
+        this.changed = true;
+        this.toast.success(res?.message || 'Extra sittings added.');
+        this.extraPlanId = null;
+        this.search(); // reload: the treatment is in progress again
+      },
+      error: (err: any) => this.showError(err, 'Could not add the extra sittings.'),
+    });
+  }
+
   addTreatment(): void {
     const base = this.found() ? (this.found() as LookupResult).base_appointment_id : null;
     if (!base) return;
@@ -171,13 +225,15 @@ export class AddTreatmentDialog implements OnInit {
       sittings_count: Number(this.plan.sittings_count),
       sitting_interval_days: Number(this.plan.interval) || 30,
       start_date: this.plan.start_date,
-      start_time: this.plan.start_time ? this.plan.start_time.slice(0, 5) : null,
+      start_time: this.planSlots.time || null,
+      doctor_id: this.planSlots.doctorId,
       remarks: this.plan.remarks || null,
     }).pipe(finalize(() => this.saving.set(false))).subscribe({
       next: (res: any) => {
         this.changed = true;
         this.toast.success(res?.message || 'Treatment added.');
         this.plan = { ...this.plan, category_id: null, treatment_id: null, sittings_count: 1, remarks: '' };
+        this.planSlots.reset();
         this.search(); // reload: the new treatment is now in progress
       },
       error: (err: any) => this.showError(err, 'Could not add the treatment.'),

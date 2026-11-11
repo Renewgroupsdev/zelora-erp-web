@@ -15,6 +15,7 @@ import {
 } from '../../../shared/common-services/meta-integration.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
 interface SourceOption { id: number; source_name: string; }
 
@@ -29,7 +30,7 @@ interface MappingDraft { branchKey: string; sourceId: number | null; adAccountId
 @Component({
   selector: 'app-meta-lead-ads',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, AutoModuleTabs],
   templateUrl: './meta-lead-ads.html',
   styleUrl: './meta-lead-ads.scss',
 })
