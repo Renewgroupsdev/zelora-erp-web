@@ -1,0 +1,311 @@
+@if (loadingMeta) {
+  <div class="rv-state"><app-page-loader [inline]="true"></app-page-loader></div>
+} @else if (metaError || !meta) {
+  <div class="rv-state rv-error">
+    <i class="bi bi-lock"></i>
+    <p>{{ metaError || 'Report not found.' }}</p>
+  </div>
+} @else {
+<div class="rv">
+
+  <!-- ===== toolbar: period, search, actions ===== -->
+  <section class="rv-card rv-toolbar">
+    <div class="rv-switch" role="tablist" aria-label="Report view">
+      @if (canRecords) {
+      <button type="button" role="tab" [class.active]="view === 'records'" [attr.aria-selected]="view === 'records'" (click)="setView('records')"><i class="bi bi-list-ul"></i> Records</button>
+      }
+      @if (canAnalytics) {
+      <button type="button" role="tab" [class.active]="view === 'analytics'" [attr.aria-selected]="view === 'analytics'" (click)="setView('analytics')"><i class="bi bi-graph-up-arrow"></i> Analytics</button>
+      }
+    </div>
+
+    @if (meta.date_column) {
+      <div class="rv-block">
+        <label class="rv-label">Period <span class="rv-hint">· filters by {{ meta.date_column.label }}</span></label>
+        <div class="rv-chips" role="group" aria-label="Period">
+          <button type="button" class="rv-chip" [class.on]="draft.preset === ''" (click)="setPreset('')">All time</button>
+          @for (p of meta.presets; track p.key) {
+            @if (shownPresets.includes(p.key)) {
+              <button type="button" class="rv-chip" [class.on]="draft.preset === p.key" (click)="setPreset(p.key)">{{ p.label }}</button>
+            }
+          }
+        </div>
+        @if (draft.preset === 'custom') {
+          <div class="rv-custom">
+            <label>From <input type="date" class="rv-input" [(ngModel)]="draft.from" [max]="draft.to || null"></label>
+            <label>To <input type="date" class="rv-input" [(ngModel)]="draft.to" [min]="draft.from || null"></label>
+            <button type="button" class="rv-btn primary" (click)="apply()">Apply</button>
+            <button type="button" class="rv-btn" (click)="clearCustomDates()">Clear</button>
+          </div>
+        }
+      </div>
+    }
+
+    <div class="rv-row">
+      <div class="rv-search">
+        <i class="bi bi-search"></i>
+        <input type="search" class="rv-input" placeholder="Search this report..." [(ngModel)]="draft.search" (ngModelChange)="onSearchInput()" (keydown.enter)="apply()" aria-label="Search">
+      </div>
+
+      <button type="button" class="rv-btn" [class.active]="showFilters" (click)="showFilters = !showFilters" [attr.aria-expanded]="showFilters">
+        <i class="bi bi-funnel"></i> Filters
+        @if (chips.length) { <span class="rv-count">{{ chips.length }}</span> }
+      </button>
+
+      <div class="menu-wrap">
+        <button type="button" class="rv-btn" (click)="showSaved = !showSaved; showColumns = showExport = false" [attr.aria-expanded]="showSaved">
+          <i class="bi bi-bookmark-star"></i> Saved filters
+        </button>
+        @if (showSaved) {
+          <div class="rv-menu wide">
+            <div class="rv-menu-title">Your saved filters</div>
+            @for (p of presets; track p.id) {
+              <div class="rv-menu-item split" role="button" tabindex="0" (click)="usePreset(p)" (keydown.enter)="usePreset(p)">
+                <span>{{ p.name }}</span>
+                <button type="button" class="rv-x" (click)="deletePreset(p, $event)" [attr.aria-label]="'Delete ' + p.name"><i class="bi bi-trash3"></i></button>
+              </div>
+            } @empty {
+              <div class="rv-menu-empty">Nothing saved yet.</div>
+            }
+            <div class="rv-save">
+              <input type="text" class="rv-input" maxlength="80" placeholder="Name the current filters" [(ngModel)]="presetName" (keydown.enter)="savePreset()">
+              <button type="button" class="rv-btn primary" (click)="savePreset()">Save</button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="menu-wrap">
+        <button type="button" class="rv-btn" (click)="showColumns = !showColumns; showExport = showSaved = false" [attr.aria-expanded]="showColumns">
+          <i class="bi bi-layout-three-columns"></i> Columns
+        </button>
+        @if (showColumns) {
+          <div class="rv-menu">
+            <div class="rv-menu-title">Show columns</div>
+            @for (c of meta.columns; track c.key) {
+              <label class="rv-check"><input type="checkbox" [checked]="!hiddenCols.has(c.key)" (change)="toggleColumn(c.key)"> {{ c.label }}</label>
+            }
+          </div>
+        }
+      </div>
+
+      <button type="button" class="rv-btn" (click)="reset()"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+
+      @if (meta.can_export) {
+        <div class="menu-wrap ms-auto">
+          <button type="button" class="rv-btn primary" [disabled]="exporting !== null" (click)="showExport = !showExport; showColumns = showSaved = false" [attr.aria-expanded]="showExport">
+            @if (exporting) { <span class="rv-spin"></span> Preparing {{ exporting.toUpperCase() }}... } @else { <i class="bi bi-download"></i> Export }
+            <i class="bi bi-chevron-down small"></i>
+          </button>
+          @if (showExport) {
+            <div class="rv-menu right">
+              <div class="rv-menu-title">Download all {{ (pagination?.total ?? 0) | number }} matching records</div>
+              <button type="button" class="rv-menu-item" (click)="download('pdf')"><i class="bi bi-file-earmark-pdf text-danger"></i> PDF report</button>
+              <button type="button" class="rv-menu-item" (click)="download('xlsx')"><i class="bi bi-file-earmark-excel text-success"></i> Excel (.xlsx)</button>
+              <button type="button" class="rv-menu-item" (click)="download('csv')"><i class="bi bi-filetype-csv text-primary"></i> CSV</button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    @if (showFilters) {
+      <div class="rv-filters">
+        @for (f of meta.filters; track f.key) {
+          <div class="rv-field">
+            <label class="rv-label" [attr.for]="'f-' + f.key">{{ f.label }}</label>
+            @switch (f.type) {
+              @case ('text') {
+                <input class="rv-input" type="text" [id]="'f-' + f.key" [ngModel]="textVal(f.key)" (ngModelChange)="setText(f.key, $event)" (keydown.enter)="apply()" placeholder="Contains...">
+              }
+              @case ('select') {
+                <select class="rv-input" [id]="'f-' + f.key" [ngModel]="textVal(f.key)" (ngModelChange)="setText(f.key, $event)">
+                  <option value="">All</option>
+                  @for (o of optionsOf(f); track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+                </select>
+              }
+              @case ('boolean') {
+                <select class="rv-input" [id]="'f-' + f.key" [ngModel]="textVal(f.key)" (ngModelChange)="setText(f.key, $event)">
+                  <option value="">Any</option>
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
+              }
+              @case ('multiselect') {
+                <div class="menu-wrap">
+                  <button type="button" class="rv-input rv-select" (click)="openMulti = openMulti === f.key ? null : f.key" [attr.aria-expanded]="openMulti === f.key">
+                    <span>{{ multiSummary(f) }}</span><i class="bi bi-chevron-down small"></i>
+                  </button>
+                  @if (openMulti === f.key) {
+                    <div class="rv-menu full">
+                      @for (o of optionsOf(f); track o.value) {
+                        <label class="rv-check"><input type="checkbox" [checked]="isChecked(f.key, o.value)" (change)="toggle(f.key, o.value)"> {{ o.label }}</label>
+                      } @empty { <div class="rv-menu-empty">No options</div> }
+                    </div>
+                  }
+                </div>
+              }
+              @case ('number') {
+                <div class="rv-pair">
+                  <input class="rv-input" type="number" inputmode="decimal" placeholder="Min" [ngModel]="rangeVal(f.key, 'min')" (ngModelChange)="setRange(f.key, 'min', $event)" [attr.aria-label]="f.label + ' minimum'">
+                  <input class="rv-input" type="number" inputmode="decimal" placeholder="Max" [ngModel]="rangeVal(f.key, 'max')" (ngModelChange)="setRange(f.key, 'max', $event)" [attr.aria-label]="f.label + ' maximum'">
+                </div>
+              }
+              @case ('date') {
+                <div class="rv-pair">
+                  <input class="rv-input" type="date" [ngModel]="rangeVal(f.key, 'min')" (ngModelChange)="setRange(f.key, 'min', $event)" [attr.aria-label]="f.label + ' from'">
+                  <input class="rv-input" type="date" [ngModel]="rangeVal(f.key, 'max')" (ngModelChange)="setRange(f.key, 'max', $event)" [attr.aria-label]="f.label + ' to'">
+                </div>
+              }
+            }
+          </div>
+        }
+        <div class="rv-filter-actions">
+          <button type="button" class="rv-btn primary" (click)="apply()"><i class="bi bi-check2"></i> Apply filters</button>
+          <button type="button" class="rv-btn" (click)="reset()">Reset all</button>
+        </div>
+      </div>
+    }
+
+    @if (formError) { <div class="rv-form-error" role="alert"><i class="bi bi-exclamation-circle"></i> {{ formError }}</div> }
+
+    @if (chips.length) {
+      <div class="rv-active" aria-label="Active filters">
+        @for (c of chips; track c.label) {
+          <span class="rv-tag">{{ c.label }}<button type="button" (click)="c.remove()" [attr.aria-label]="'Remove ' + c.label"><i class="bi bi-x"></i></button></span>
+        }
+        <button type="button" class="rv-link" (click)="reset()">Clear all</button>
+      </div>
+    }
+  </section>
+
+  @if (!canRecords && !canAnalytics) {
+    <div class="rv-state rv-error"><i class="bi bi-lock"></i><p>Your role can open this report but nothing inside it. Ask your administrator to give you Records or Analytics access.</p></div>
+  }
+
+  @if (view === 'analytics' && canAnalytics) {
+    <!-- ===== summary cards ===== -->
+    <section class="rv-cards" aria-label="Summary" [class.is-loading]="loadingSummary">
+      @for (c of cards.length ? cards : meta.summary; track c.key) {
+        <div class="rv-stat" [ngClass]="'tone-' + c.tone">
+          <span class="rv-stat-icon"><i class="bi" [ngClass]="c.icon"></i></span>
+          <span class="rv-stat-body">
+            <span class="rv-stat-value">{{ cards.length ? cardValue($any(c)) : '…' }}</span>
+            <span class="rv-stat-label">{{ c.label }}</span>
+          </span>
+        </div>
+      }
+    </section>
+    @if (summaryError) { <div class="rv-form-error"><i class="bi bi-exclamation-circle"></i> {{ summaryError }}</div> }
+
+    <!-- ===== chart ===== -->
+    @if (chart) {
+      <section class="rv-card rv-chart">
+        <h6 class="rv-chart-title">{{ chart.title }}</h6>
+        @switch (chartKind) {
+          @case ('donut') { <app-bf-donut [data]="donutData" [money]="chart.format === 'money'" centerLabel="Total"></app-bf-donut> }
+          @case ('columns') { <app-bf-columns [data]="columnData" aName="Total" [money]="chart.format === 'money'"></app-bf-columns> }
+          @default { <app-bf-bars [data]="barData" [money]="chart.format === 'money'"></app-bf-bars> }
+        }
+      </section>
+    }
+  }
+
+  @if (view === 'records' && canRecords) {
+    <!-- ===== table ===== -->
+    <section class="rv-card rv-table-card">
+      <div class="rv-table-head">
+        <div>
+          <h6 class="rv-chart-title">{{ meta.title }}</h6>
+          <span class="rv-hint">
+            @if (pagination && pagination.total) { Showing {{ pagination.from | number }}–{{ pagination.to | number }} of {{ pagination.total | number }} records }
+            @else if (!loading && !error) { 0 records }
+          </span>
+        </div>
+        <span class="rv-hint d-none d-md-inline">Click a heading to sort · Shift-click to sort by more than one column</span>
+      </div>
+
+      <div class="rv-scroll" [class.is-loading]="loading">
+        @if (loading) { <app-page-loader [contained]="true"></app-page-loader> }
+        <table class="rv-table">
+          <thead>
+            <tr>
+              <th class="num">#</th>
+              @for (c of columns; track c.key) {
+                <th [class.num]="isNumeric(c)" [class.sortable]="c.sortable" [attr.aria-sort]="sortDir(c.key) === 'asc' ? 'ascending' : sortDir(c.key) === 'desc' ? 'descending' : 'none'">
+                  @if (c.sortable) {
+                    <button type="button" (click)="sortBy(c, $event)">
+                      {{ c.label }}
+                      <span class="rv-sort" [class.on]="sortDir(c.key)">
+                        @if (sortDir(c.key) === 'asc') { <i class="bi bi-arrow-up"></i> } @else if (sortDir(c.key) === 'desc') { <i class="bi bi-arrow-down"></i> } @else { <i class="bi bi-arrow-down-up"></i> }
+                        @if (applied.sort.length > 1 && sortIndex(c.key) >= 0) { <sup>{{ sortIndex(c.key) + 1 }}</sup> }
+                      </span>
+                    </button>
+                  } @else { {{ c.label }} }
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of rows; track $index; let i = $index) {
+              <tr>
+                <td class="num muted">{{ rowNumber(i) }}</td>
+                @for (c of columns; track c.key) {
+                  <td [class.num]="isNumeric(c)">
+                    @if (c.type === 'status' && r[c.key]) { <span class="rv-badge" [ngClass]="'b-' + tone(r[c.key])">{{ r[c.key] }}</span> }
+                    @else { {{ cell(c, r) }} }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        @if (!loading && error) {
+          <div class="rv-empty rv-error" role="alert">
+            <i class="bi bi-exclamation-triangle"></i>
+            <p>{{ error }}</p>
+            <button type="button" class="rv-btn primary" (click)="refresh()">Try again</button>
+          </div>
+        } @else if (!loading && rows.length === 0) {
+          <div class="rv-empty">
+            <i class="bi bi-inbox"></i>
+            <p>No records match these filters.</p>
+            @if (chips.length) { <button type="button" class="rv-btn" (click)="reset()">Reset filters</button> }
+          </div>
+        }
+      </div>
+
+      @if (pagination && pagination.total > 0) {
+        <div class="rv-pager">
+          <div class="rv-pager-info">
+            <span>Page {{ pagination.current_page | number }} of {{ pagination.last_page | number }}</span>
+            <label class="rv-size">Rows
+              <select class="rv-input" [ngModel]="isCustomSize ? 'custom' : applied.perPage" (ngModelChange)="setPageSize($event)" aria-label="Rows per page">
+                @for (s of pageSizes; track s) { <option [value]="s">{{ s }}</option> }
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            @if (isCustomSize) {
+              <span class="rv-size">
+                <input class="rv-input" type="number" min="1" max="200" [(ngModel)]="customPageSize" (keydown.enter)="applyCustomPageSize()" aria-label="Custom rows per page">
+                <button type="button" class="rv-btn" (click)="applyCustomPageSize()">Set</button>
+              </span>
+            }
+          </div>
+          <nav class="rv-pages" aria-label="Pages">
+            <button type="button" [disabled]="pagination.current_page === 1" (click)="goTo(1)" aria-label="First page"><i class="bi bi-chevron-double-left"></i></button>
+            <button type="button" [disabled]="pagination.current_page === 1" (click)="goTo(pagination.current_page - 1)" aria-label="Previous page"><i class="bi bi-chevron-left"></i></button>
+            @for (p of pageList; track $index) {
+              @if (p === '…') { <span class="gap">…</span> }
+              @else { <button type="button" [class.on]="p === pagination.current_page" (click)="goTo(+p)" [attr.aria-current]="p === pagination.current_page ? 'page' : null">{{ p }}</button> }
+            }
+            <button type="button" [disabled]="pagination.current_page === pagination.last_page" (click)="goTo(pagination.current_page + 1)" aria-label="Next page"><i class="bi bi-chevron-right"></i></button>
+            <button type="button" [disabled]="pagination.current_page === pagination.last_page" (click)="goTo(pagination.last_page)" aria-label="Last page"><i class="bi bi-chevron-double-right"></i></button>
+          </nav>
+        </div>
+      }
+    </section>
+  }
+</div>
+}

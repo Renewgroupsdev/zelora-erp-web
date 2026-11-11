@@ -1,5 +1,6 @@
 import { ReportTab } from './reports.model';
 
+/** The four Lead Management reports that have their own page. Every other report comes from the server's /report-center/catalog. */
 export const REPORTS: ReportTab[] = [
   {
     id: 'lead-source',
@@ -32,53 +33,5 @@ export const REPORTS: ReportTab[] = [
     icon: 'bi-arrow-repeat',
     variant: 'purple',
     description: 'Follow-ups completed on time versus overdue, grouped by the assigned caller.',
-  },
-  {
-    id: 'appointment',
-    label: 'Appointment',
-    category: 'Appointments',
-    icon: 'bi-calendar2-check-fill',
-    variant: 'primary',
-    description: 'Appointments scheduled, completed and missed across every branch.',
-  },
-  {
-    id: 'customer',
-    label: 'Customer',
-    category: 'Customer Management',
-    icon: 'bi-person-lines-fill',
-    variant: 'red',
-    description: 'Customer growth, retention and service history at a glance.',
-  },
-  {
-    id: 'team-performance',
-    label: 'Team Performance',
-    category: 'Roles & Team',
-    icon: 'bi-people-fill',
-    variant: 'gray',
-    description: 'Leads handled, conversions closed and average response time per team member.',
-  },
-  {
-    id: 'service-category',
-    label: 'Service Category',
-    category: 'Settings',
-    icon: 'bi-tags-fill',
-    variant: 'blue',
-    description: 'Demand across every service category, ranked by leads and bookings.',
-  },
-  {
-    id: 'revenue',
-    label: 'Revenue',
-    category: 'Customer Management',
-    icon: 'bi-cash-stack',
-    variant: 'green',
-    description: 'Revenue booked from converted leads, broken down by month and branch.',
-  },
-  {
-    id: 'monthly-summary',
-    label: 'Monthly Summary',
-    category: 'Overview',
-    icon: 'bi-bar-chart-fill',
-    variant: 'purple',
-    description: 'A rollup of every key metric across leads, appointments and customers for the month.',
   },
 ];

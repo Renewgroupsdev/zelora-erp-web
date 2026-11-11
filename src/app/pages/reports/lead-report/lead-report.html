@@ -2,12 +2,16 @@
 
   <div class="report-toolbar d-flex flex-wrap align-items-center justify-content-between">
     <div class="view-switch" role="tablist" aria-label="Report view">
-      <button type="button" role="tab" [attr.aria-selected]="viewMode === 'analytics'" [class.active]="viewMode === 'analytics'" (click)="viewMode = 'analytics'">
-        <i class="bi bi-graph-up-arrow"></i> Analytics
-      </button>
+      @if (canRecords) {
       <button type="button" role="tab" [attr.aria-selected]="viewMode === 'records'" [class.active]="viewMode === 'records'" (click)="viewMode = 'records'">
         <i class="bi bi-list-ul"></i> Records
       </button>
+      }
+      @if (canAnalytics) {
+      <button type="button" role="tab" [attr.aria-selected]="viewMode === 'analytics'" [class.active]="viewMode === 'analytics'" (click)="viewMode = 'analytics'">
+        <i class="bi bi-graph-up-arrow"></i> Analytics
+      </button>
+      }
     </div>
 
     <div class="toolbar-actions d-flex flex-wrap align-items-center">
@@ -112,7 +116,11 @@
     </div>
   }
 
-  @if (viewMode === 'analytics') {
+  @if (!canRecords && !canAnalytics) {
+    <p class="page-subtitle" role="alert">Your role can open this report but nothing inside it. Ask your administrator to give you Records or Analytics access.</p>
+  }
+
+  @if (viewMode === 'analytics' && canAnalytics) {
     <div class="analytics-panel d-flex flex-column">
       @if (topSourceInsight) {
         <div class="insight-banner">
@@ -207,7 +215,7 @@
         }
       </div>
     </div>
-  } @else {
+  } @else if (viewMode === 'records' && canRecords) {
     <app-common-table-card
       title="Leads"
       [recordCountText]="recordCountText"

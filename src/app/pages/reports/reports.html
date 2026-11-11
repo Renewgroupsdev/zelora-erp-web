@@ -1,31 +1,106 @@
 <div class="reports-page container-fluid px-0 d-flex flex-column">
 
-  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
-    <div class="page-header-text">
-      <h6 class="page-title">Reports</h6>
-      <p class="page-subtitle">Pick a report to view performance across leads, appointments and teams.</p>
-    </div>
-  </div>
-
   <app-auto-module-tabs></app-auto-module-tabs>
 
-  <div class="report-grid">
-    @for (report of reports; track report.id) {
-      <a
-        class="report-card"
-        [ngClass]="'variant-' + report.variant"
-        [routerLink]="['/app/reports', report.id]">
-        <span class="report-card-icon"><i class="bi" [ngClass]="report.icon"></i></span>
+  <div class="rp-scroll">
 
-        <span class="report-card-body">
-          <span class="report-card-label">{{ report.label }}</span>
-          <span class="report-card-category">{{ report.category }}</span>
-          <span class="report-card-desc">{{ report.description }}</span>
-        </span>
+    <!-- ===== banner ===== -->
+    <section class="rp-hero">
+      <div class="rp-hero-main">
+        <span class="rp-hero-icon"><i class="bi bi-bar-chart-line-fill"></i></span>
+        <div class="rp-hero-text">
+          <h1 class="rp-hero-title">Powerful Reports for Better Insights</h1>
+          <p class="rp-hero-sub">Get detailed insights into your leads, appointments, customers, stock, accounts and team. Open a report to see its records or its charts.</p>
+        </div>
+      </div>
+      <div class="rp-hero-side">
+        @if (canOpenAnalytics) {
+          <button type="button" class="rp-hero-btn" (click)="openAnalytics()"><i class="bi bi-graph-up-arrow"></i> View Analytics</button>
+        }
+        <span class="rp-hero-art" aria-hidden="true"><i class="bi bi-bar-chart-fill"></i><i class="bi bi-pie-chart-fill"></i><i class="bi bi-graph-up"></i></span>
+      </div>
+    </section>
 
-        <span class="report-card-arrow"><i class="bi bi-arrow-right"></i></span>
-      </a>
+    @if (loading) {
+      <div class="rp-state"><i class="bi bi-hourglass-split"></i><p>Loading reports...</p></div>
+    } @else if (error) {
+      <div class="rp-state rp-error" role="alert"><i class="bi bi-exclamation-triangle"></i><p>Reports could not be loaded. Refresh the page to try again.</p></div>
+    } @else if (groups.length === 0) {
+      <div class="rp-state"><i class="bi bi-lock"></i><p>Your role has no reports yet. Ask your administrator to give you "View ... Report" access in Roles &amp; Permissions.</p></div>
+    } @else {
+
+      <div class="rp-layout">
+
+        <!-- ===== sections ===== -->
+        <div class="rp-main">
+          @for (g of groups; track g.name) {
+            <section class="rp-section" [ngClass]="'variant-' + g.variant" [attr.aria-label]="g.name">
+              <header class="rp-section-head">
+                <span class="rp-section-icon"><i class="bi" [ngClass]="g.icon"></i></span>
+                <span class="rp-section-text">
+                  <span class="rp-section-title">{{ g.name }}</span>
+                  @if (g.hint) { <span class="rp-section-hint">{{ g.hint }}</span> }
+                </span>
+                @if (g.items.length > collapsedTiles) {
+                  <button type="button" class="rp-viewall" (click)="toggle(g)" [attr.aria-expanded]="expanded.has(g.name)">
+                    {{ expanded.has(g.name) ? 'Show less' : 'View All (' + g.items.length + ')' }}
+                    <i class="bi" [ngClass]="expanded.has(g.name) ? 'bi-chevron-up' : 'bi-arrow-right'"></i>
+                  </button>
+                }
+              </header>
+
+              <div class="rp-grid">
+                @for (r of visible(g); track r.id) {
+                  <a class="rp-tile" [ngClass]="'variant-' + r.variant" [routerLink]="['/app/reports', r.id]">
+                    <span class="rp-tile-icon"><i class="bi" [ngClass]="r.icon"></i></span>
+                    <span class="rp-tile-body">
+                      <span class="rp-tile-title">{{ r.label }}</span>
+                      <span class="rp-tile-desc">{{ r.description }}</span>
+                    </span>
+                    <span class="rp-tile-go"><i class="bi bi-chevron-right"></i></span>
+                  </a>
+                }
+              </div>
+            </section>
+          }
+        </div>
+
+        <!-- ===== side panel ===== -->
+        <aside class="rp-side">
+          <section class="rp-panel">
+            <h2 class="rp-panel-title">Quick Actions</h2>
+            @if (quickTarget; as target) {
+              <p class="rp-panel-note">Download <b>{{ target.label }}</b> with the filters you last used.</p>
+              <button type="button" class="rp-action pdf" [disabled]="exporting !== null" (click)="download('pdf')">
+                <i class="bi bi-file-earmark-pdf-fill"></i> {{ exporting === 'pdf' ? 'Preparing PDF...' : 'Download PDF' }}
+              </button>
+              <button type="button" class="rp-action xlsx" [disabled]="exporting !== null" (click)="download('xlsx')">
+                <i class="bi bi-file-earmark-excel-fill"></i> {{ exporting === 'xlsx' ? 'Preparing Excel...' : 'Download Excel' }}
+              </button>
+              <button type="button" class="rp-action csv" [disabled]="exporting !== null" (click)="download('csv')">
+                <i class="bi bi-filetype-csv"></i> {{ exporting === 'csv' ? 'Preparing CSV...' : 'Download CSV' }}
+              </button>
+            } @else {
+              <p class="rp-panel-note">Open a report first. Its PDF, Excel and CSV downloads will then be one click away here.</p>
+            }
+          </section>
+
+          <section class="rp-panel">
+            <h2 class="rp-panel-title">Recently Viewed</h2>
+            @for (r of recent; track r.id) {
+              <a class="rp-recent" [ngClass]="'variant-' + r.variant" [routerLink]="['/app/reports', r.id]">
+                <span class="rp-recent-icon"><i class="bi" [ngClass]="r.icon"></i></span>
+                <span class="rp-recent-text">
+                  <span class="rp-recent-title">{{ r.label }}</span>
+                  <span class="rp-recent-sub">{{ r.category }}</span>
+                </span>
+              </a>
+            } @empty {
+              <p class="rp-panel-note">Reports you open will be listed here.</p>
+            }
+          </section>
+        </aside>
+      </div>
     }
   </div>
-
 </div>

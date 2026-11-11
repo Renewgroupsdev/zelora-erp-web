@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
+import { AuthService } from '../../../core/auth/auth.service';
 import { FormsModule } from '@angular/forms';
 import { Sort, SortDirection } from '@angular/material/sort';
 import { forkJoin } from 'rxjs';
@@ -78,10 +79,7 @@ const DATE_PRESETS: DatePreset[] = [
   { key: 'all', label: 'All Time' },
   { key: 'today', label: 'Today' },
   { key: 'yesterday', label: 'Yesterday' },
-  { key: 'this_week', label: 'This Week' },
   { key: 'this_month', label: 'This Month' },
-  { key: 'last_month', label: 'Last Month' },
-  { key: 'this_year', label: 'This Year' },
 ];
 
 @Component({
@@ -109,7 +107,7 @@ export class LeadStatusReport implements OnInit {
   readonly pageSizeOptions = [10, 30, 50, 100];
   readonly datePresets = DATE_PRESETS;
 
-  viewMode: ReportViewMode = 'analytics';
+  viewMode: ReportViewMode = 'records';
 
   // Leads list (Records tab)
   isLoading = false;
@@ -165,7 +163,13 @@ export class LeadStatusReport implements OnInit {
   exportMenuPosition = { top: 0, left: 0 };
   isExporting = false;
 
+  /** What Roles & Permissions gives this role inside the report (the Records tab, the Analytics tab). */
+  private readonly auth = inject(AuthService);
+  readonly canRecords = this.auth.hasActionAccess('view-lead-status-records');
+  readonly canAnalytics = this.auth.hasActionAccess('view-lead-status-analytics');
+
   ngOnInit(): void {
+    if (!this.canRecords && this.canAnalytics) this.viewMode = 'analytics';
     forkJoin({
       sources: this.apiDataService.GET(ApiRoutesConstants.Source_List_Options),
       statuses: this.apiDataService.GET(ApiRoutesConstants.Status_List_Options),
@@ -185,11 +189,13 @@ export class LeadStatusReport implements OnInit {
   /** Every filter-driven panel reloads together so the KPI strip, both charts, the
    *  performance table and the records list always agree on the same filtered slice. */
   refreshAll(): void {
-    this.loadReport(1);
-    this.loadSummary();
-    this.loadPerformance();
-    this.loadTrend();
-    this.loadComparison();
+    if (this.canRecords) this.loadReport(1);
+    if (this.canAnalytics) {
+      this.loadSummary();
+      this.loadPerformance();
+      this.loadTrend();
+      this.loadComparison();
+    }
   }
 
   loadReport(page: number = this.currentPage): void {

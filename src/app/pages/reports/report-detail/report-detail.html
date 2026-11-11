@@ -1,14 +1,14 @@
 <div class="report-detail-page container-fluid px-0 d-flex flex-column">
 
-  @if (report) {
+  @if (ready && !denied && (report || !legacy)) {
     <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
       <div class="page-header-text">
         <button type="button" class="back-btn" (click)="goBack()" aria-label="Back to Reports">
           <i class="bi bi-arrow-left"></i>
         </button>
         <div class="page-header-copy">
-          <span class="page-eyebrow">{{ report.category }}</span>
-          <h6 class="page-title">{{ report.label }} Report</h6>
+          <span class="page-eyebrow">{{ report?.category }}</span>
+          <h6 class="page-title">{{ report ? report.label + ' Report' : 'Report' }}</h6>
         </div>
       </div>
     </div>
@@ -16,30 +16,29 @@
     <app-auto-module-tabs></app-auto-module-tabs>
 
     <div class="report-panel">
-      <div class="report-panel-header" [ngClass]="'variant-' + report.variant">
-        <span class="report-panel-icon"><i class="bi" [ngClass]="report.icon"></i></span>
-        <p class="report-panel-desc">{{ report.description }}</p>
-      </div>
-
-      @if (report.id === 'lead-source') {
-        <app-lead-report></app-lead-report>
-      } @else if (report.id === 'lead-conversion') {
-        <app-lead-conversion-report></app-lead-conversion-report>
-      } @else if (report.id === 'lead-status') {
-        <app-lead-status-report></app-lead-status-report>
-      } @else if (report.id === 'follow-up') {
-        <app-follow-up-report></app-follow-up-report>
-      } @else {
-        <div class="report-panel-body">
-          <i class="bi bi-bar-chart-line report-panel-body-icon" aria-hidden="true"></i>
-          <p>Report data will appear here once this report is connected.</p>
+      @if (report) {
+        <div class="report-panel-header" [ngClass]="'variant-' + report.variant">
+          <span class="report-panel-icon"><i class="bi" [ngClass]="report.icon"></i></span>
+          <p class="report-panel-desc">{{ report.description }}</p>
         </div>
       }
+
+      @if (id === 'lead-source') {
+        <app-lead-report></app-lead-report>
+      } @else if (id === 'lead-conversion') {
+        <app-lead-conversion-report></app-lead-conversion-report>
+      } @else if (id === 'lead-status') {
+        <app-lead-status-report></app-lead-status-report>
+      } @else if (id === 'follow-up') {
+        <app-follow-up-report></app-follow-up-report>
+      } @else {
+        <app-report-viewer [slug]="id"></app-report-viewer>
+      }
     </div>
-  } @else {
+  } @else if (ready) {
     <div class="not-found">
       <i class="bi bi-exclamation-circle"></i>
-      <p>Report not found.</p>
+      <p>{{ denied ? 'Your role does not have access to this report.' : 'Report not found.' }}</p>
       <button type="button" class="back-link" (click)="goBack()">Back to Reports</button>
     </div>
   }
