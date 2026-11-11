@@ -58,6 +58,7 @@
   margin: 0;
   dt { font-size: 11px; font-weight: 600; color: var(--text-muted, #6b7280); }
   dd { margin: 1px 0 0; font-size: 12.5px; font-weight: 600; word-break: break-word; }
+  .na-wide { grid-column: 1 / -1; }
 }
 
 .na-sittings { display: grid; gap: 6px; margin-top: 10px; }
@@ -114,4 +115,230 @@
     cursor: pointer;
     span:first-of-type { flex: 1; color: var(--text-muted, #6b7280); }
   }
+}
+
+// Appointment time slots (Schedule Appointment): one chip per 45-minute slot, booked ones disabled.
+.slot-field { display: flex; flex-direction: column; gap: 8px; }
+
+.slot-label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+
+.slot-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+
+  span { display: inline-flex; align-items: center; gap: 6px; }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    border: 1px solid var(--border-color, #d9e2df);
+    background: var(--app-surface-solid, #fff);
+
+    &.picked { background: var(--status-green-text, #0f6b52); border-color: var(--status-green-text, #0f6b52); }
+    &.booked { background: var(--status-gray-bg, #eef1f0); border-style: dashed; }
+  }
+}
+
+.slot-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border-color, #d9e2df);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--status-green-bg, #e2f6ec) 35%, var(--app-surface-solid, #fff));
+
+  &.is-invalid { border-color: #dc3545; }
+}
+
+.slot-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-color, #1f2d2a);
+
+  i { margin-right: 4px; color: var(--status-green-text, #0f6b52); }
+
+  small { font-weight: 600; color: var(--text-muted); }
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+}
+
+.slot-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 40px;
+  padding: 4px 6px;
+  border: 1px solid var(--border-color, #d9e2df);
+  border-radius: 10px;
+  background: var(--app-surface-solid, #fff);
+  color: var(--text-color, #1f2d2a);
+  cursor: pointer;
+
+  .slot-time { font-size: 12.5px; font-weight: 700; }
+  .slot-note { font-size: 9.5px; font-weight: 600; letter-spacing: .02em; }
+
+  &:hover:not(:disabled) { border-color: var(--status-green-text, #0f6b52); background: var(--status-green-bg, #e2f6ec); }
+
+  &.selected {
+    background: var(--status-green-text, #0f6b52);
+    border-color: var(--status-green-text, #0f6b52);
+    color: #fff;
+  }
+
+  &.booked, &:disabled {
+    background: var(--status-gray-bg, #eef1f0);
+    border-style: dashed;
+    color: var(--status-gray-text, #8a9792);
+    cursor: not-allowed;
+
+    .slot-time { text-decoration: line-through; font-weight: 600; }
+  }
+}
+
+.slot-selected {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: var(--status-green-text, #0f6b52);
+  background: var(--status-green-bg, #e2f6ec);
+}
+
+.slot-hint {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+
+  &.warn { color: var(--status-orange-text, #b86e00); }
+
+  .spin { display: inline-block; animation: na-spin .8s linear infinite; }
+}
+
+
+/* ---------- Slot picker: part-of-day cards + chips ---------- */
+.part-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.part-tab {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: 'icon name free' 'icon range range';
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 1px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-color, #d9e2df);
+  border-radius: 12px;
+  background: var(--app-surface-solid, #fff);
+  color: var(--text-color, #1f2d2a);
+  text-align: left;
+  cursor: pointer;
+
+  > i { grid-area: icon; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px;
+    background: var(--status-green-bg, #e2f6ec); color: var(--status-green-text, #0f6b52); font-size: 15px; }
+  .part-name { grid-area: name; font-size: 13px; font-weight: 700; }
+  .part-range { grid-area: range; font-size: 10.5px; color: var(--text-muted); }
+  .part-free { grid-area: free; font-size: 10.5px; font-weight: 700; color: var(--status-green-text, #0f6b52); }
+
+  &:hover { border-color: var(--status-green-text, #0f6b52); }
+
+  &.active {
+    border-color: var(--status-green-text, #0f6b52);
+    background: var(--status-green-bg, #e2f6ec);
+    box-shadow: inset 0 0 0 1px var(--status-green-text, #0f6b52);
+  }
+
+  &.empty {
+    .part-free { color: var(--status-gray-text, #8a9792); }
+    > i { background: var(--status-gray-bg, #eef1f0); color: var(--status-gray-text, #8a9792); }
+  }
+}
+
+.slot-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.slot-chip {
+  min-height: 38px;
+  border-radius: 999px;
+
+  &.booked, &:disabled { border-radius: 999px; }
+}
+
+.slot-selected {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--status-green-text, #0f6b52);
+  border-radius: 12px;
+  background: var(--status-green-bg, #e2f6ec);
+  color: var(--status-green-text, #0f6b52);
+
+  .slot-selected-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px;
+    background: var(--status-green-text, #0f6b52); color: #fff; font-size: 16px; }
+  .slot-selected-text { display: flex; flex-direction: column; line-height: 1.2; small { font-size: 10.5px; opacity: .8; } strong { font-size: 14px; } }
+  .slot-clear { margin-left: auto; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 50%;
+    background: transparent; color: inherit; cursor: pointer; &:hover { background: rgba(0, 0, 0, .06); } }
+}
+
+@media (max-width: 575.98px) {
+  .part-tabs { grid-template-columns: 1fr; }
+}
+
+// Add Treatment: continue the suggested treatment or pick a new one.
+.at-choice {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0 4px;
+
+  button {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    text-align: left;
+    padding: 10px 12px;
+    border: 1px solid var(--border-soft, #e2e8e5);
+    border-radius: 12px;
+    background: var(--app-surface-solid, #fff);
+    cursor: pointer;
+
+    > i { font-size: 1.2rem; color: #0f766e; }
+    small { display: block; font-size: 11.5px; color: var(--text-muted, #6b7280); font-weight: 500; }
+    &.on { border-color: #0f766e; box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.18); background: #f0fdfa; }
+  }
+}
+
+@media (max-width: 575.98px) {
+  .at-choice { grid-template-columns: 1fr; }
 }

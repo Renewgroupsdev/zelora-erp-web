@@ -1,4 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
+import type { SittingTransfer } from '../models/appointment-flow.model';
 
 export type NotificationType = 'lead' | 'appointment' | 'stock' | 'discount' | 'manager' | 'purchase' | 'hr' | 'accounts' | 'chat';
 
@@ -12,7 +13,7 @@ export interface AppNotification {
   /** Route to navigate to when the notification is clicked, if any. */
   link?: string;
   /** Something other than a route to do when it is clicked (the navbar handles it), e.g. open a discount request to decide it. */
-  action?: { kind: 'discount-review'; id: number } | { kind: 'reassign-leads'; telecallerId: number; telecallerName: string; leadIds: number[] };
+  action?: { kind: 'discount-review'; id: number } | { kind: 'sitting-transfer'; transfer: SittingTransfer } | { kind: 'reassign-leads'; telecallerId: number; telecallerName: string; leadIds: number[] };
 }
 
 const ICONS: Record<NotificationType, string> = {
@@ -119,6 +120,28 @@ export class NotificationService {
     ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
 
     return { fresh: fresh.length, urgent: fresh.filter(r => r.urgent).length };
+  }
+
+  /** Sitting transfers waiting for this branch's doctors (id STX-<id>); each leaves the bell once accepted / declined. Returns the new ones. */
+  syncSittingTransfers(requests: SittingTransfer[]): SittingTransfer[] {
+    const known = new Set(this._notifications().filter(n => n.id.startsWith('STX-')).map(n => n.id));
+    const keep = new Set(requests.map(r => `STX-${r.id}`));
+    const fresh = requests.filter(r => !known.has(`STX-${r.id}`));
+
+    this._notifications.update(list => [
+      ...fresh.map((r): AppNotification => ({
+        id: `STX-${r.id}`,
+        type: 'appointment',
+        title: 'Sitting transfer request',
+        message: `${r.from_branch} asks your branch to take sitting ${r.sitting_no} of ${r.customer ?? 'a customer'}'s ${r.treatment ?? 'treatment'} on ${r.scheduled_date} ${r.scheduled_time ?? ''}. Accept and choose a doctor.`,
+        timestamp: r.requested_at ? new Date(r.requested_at) : new Date(),
+        read: false,
+        action: { kind: 'sitting-transfer', transfer: r },
+      })),
+      ...list.filter(n => !n.id.startsWith('STX-') || keep.has(n.id)),
+    ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+
+    return fresh;
   }
 
   syncDiscountRequests<T extends { id: number; customer: string; treatments: string; subtotal: number; asked: string; requestedBy: string; at: Date }>(requests: T[]): T[] {

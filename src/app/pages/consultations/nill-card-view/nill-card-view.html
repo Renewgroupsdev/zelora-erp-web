@@ -12,6 +12,7 @@
         @if (a) { <p>{{ code() }} · {{ a.mobile_no }} · {{ a.branch_name || a.branch?.name || '-' }}</p> }
       </div>
     </div>
+    @if (a) { <app-record-history type="Appointment" [recordId]="a.id" [title]="a.name" /> }
     <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
   </div>
 

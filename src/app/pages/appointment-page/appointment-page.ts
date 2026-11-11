@@ -19,9 +19,10 @@ import {
 import { ToastService } from '../../shared/common-services/toast.service';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
-import { FlowAppointmentRecord, FlowStatus, inr, treatmentNames } from '../../shared/models/appointment-flow.model';
+import { FlowAppointmentRecord, FlowStatus, inr, statusLabel, treatmentNames } from '../../shared/models/appointment-flow.model';
 import { AppointmentWizard } from './appointment-wizard/appointment-wizard';
 import { CustomerDetailsDialog } from './customer-details-dialog/customer-details-dialog';
+import { CancelAppointmentDialog } from './cancel-appointment-dialog/cancel-appointment-dialog';
 import { NewAppointmentDialog, NewAppointmentPreset, NewAppointmentResult } from './new-appointment-dialog/new-appointment-dialog';
 import { AppointmentCalendar, CalendarSelection, CalendarView, calendarRange, toIsoDate } from './appointment-calendar/appointment-calendar';
 import { openLeadAudit } from '../../shared/components/lead-dialogs/lead-audit-dialog';
@@ -30,7 +31,8 @@ import { CanActionDirective } from '../../shared/directives/can-action.directive
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
 /** Converted is left out: a converted appointment is a customer, listed (with its sittings) in Customer Management. */
-const STATUSES: FlowStatus[] = ['Scheduled', 'In Consultation', 'Awaiting Terms', 'Invoiced', 'Cancelled'];
+/** Shown as "Consultation"; the API still filters on the stored name (see statusLabel). */
+const STATUSES: string[] = ['Scheduled', 'Consultation', 'Awaiting Terms', 'Invoiced', 'Cancelled'];
 
 /**
  * Appointments booked by telecallers (a follow-up turned into a visit), shown as a slot calendar (month / week /
@@ -121,7 +123,7 @@ export class AppointmentPage implements OnInit {
   loadAppointments(): void {
     this.loading = true;
     const params = new URLSearchParams({ per_page: '500' });
-    if (this.filterState.status) params.set('status', this.filterState.status);
+    if (this.filterState.status) params.set('status', this.filterState.status === 'Consultation' ? 'In Consultation' : this.filterState.status);
     if (this.mode === 'calendar') {
       const { from, to } = calendarRange(this.calendarView, this.calendarDate);
       params.set('date_from', toIsoDate(from));
@@ -216,7 +218,27 @@ export class AppointmentPage implements OnInit {
     return a.status !== 'Cancelled' && this.can('consultation-form');
   }
 
-  panelAction(action: 'form' | 'invoice' | 'profile' | 'audit', a: FlowAppointmentRecord): void {
+  /** Only a Scheduled visit (consultation not started, nothing collected) can be cancelled. */
+  canCancel(a: FlowAppointmentRecord): boolean {
+    return a.status === 'Scheduled' && this.paymentStatus(a) === 'Pending' && this.can('consultation-form');
+  }
+
+  /** The status as shown to people: the stored "In Consultation" reads "Consultation". */
+  statusLabel(status: string): string {
+    return statusLabel(status);
+  }
+
+  private cancelAppointment(a: FlowAppointmentRecord): void {
+    this.dialog.open(CancelAppointmentDialog, {
+      width: '480px', maxWidth: 'calc(100vw - 24px)', autoFocus: false,
+      data: { id: a.id, name: a.name, slot: `${this.formatDisplayDate(a.appointment_date)} · ${this.formatTime(a.appointment_time)}` },
+    }).afterClosed().subscribe((done?: boolean) => {
+      if (done) this.loadAppointments();
+    });
+  }
+
+  panelAction(action: 'form' | 'invoice' | 'profile' | 'audit' | 'cancel', a: FlowAppointmentRecord): void {
+    if (action === 'cancel') return this.cancelAppointment(a);
     if (action === 'form') this.openWizardFor(a.id);
     else if (action === 'invoice') this.downloadInvoice(a);
     else if (action === 'audit') openLeadAudit(this.dialog, { id: a.id, name: a.name, kind: 'appointment' });
@@ -412,7 +434,7 @@ export class AppointmentPage implements OnInit {
       branch: a.branch_name ?? a.branch?.name ?? '',
       schedule: `${this.formatDisplayDate(a.appointment_date)}, ${this.formatTime(a.appointment_time)}`,
       scheduleSort: `${a.appointment_date} ${a.appointment_time ?? ''}`,
-      status: a.status,
+      status: this.statusLabel(a.status),
       total: Number(a.total_amount) ? inr(a.total_amount) : '-',
       totalSort: Number(a.total_amount),
       paymentStatus: this.paymentStatus(a),

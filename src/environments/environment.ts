@@ -2,7 +2,8 @@ export const environment = {
   production: false,
   envName: 'local',
 
-  apiBaseUrl: `http://192.168.0.204:8000/api/`,
+  apiBaseUrl: `http://192.168.0.211:8000/api/`,
+  // apiBaseUrl: `https://crm.renewhairandskincare.com/api/`,
   disableDevTools: false,
   rememberMeKey: 'remember_me',
 
@@ -10,7 +11,7 @@ export const environment = {
    *  left empty, the socket stays off and the app keeps polling the API. */
   reverb: {
     key: '',
-    host: '192.168.0.202',
+    host: '192.168.0.211',
     port: 8080,
     scheme: 'http' as 'http' | 'https',
   },

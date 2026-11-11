@@ -1,0 +1,52 @@
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-arrow-left-right"></i></div>
+      <div class="title-content">
+        <h2>Sitting transfer request</h2>
+        <p>{{ t.customer || 'Customer' }} · {{ t.treatment || 'Treatment' }} · Sitting {{ t.sitting_no }}</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <div class="info-grid">
+      <div><small>From</small><strong>{{ t.from_branch }}</strong></div>
+      <div><small>Requested by</small><strong>{{ t.requested_by || '-' }}</strong></div>
+      <div><small>Asked slot</small><strong>{{ t.scheduled_date }} {{ t.scheduled_time }}</strong></div>
+    </div>
+    @if (t.reason) { <p class="stx-reason"><i class="bi bi-quote"></i> {{ t.reason }}</p> }
+
+    <div class="section-title"><i class="bi bi-calendar-check"></i> Slot at your branch</div>
+    <div class="stx-slot">
+      <div class="input-wrap"><i class="bi bi-calendar3"></i><input type="date" name="date" [min]="today" [(ngModel)]="date" (change)="loadDoctors()" aria-label="Date" /></div>
+      <div class="input-wrap"><i class="bi bi-clock"></i><input type="time" name="time" [(ngModel)]="time" (change)="loadDoctors()" aria-label="Time" /></div>
+    </div>
+
+    <div class="section-title"><i class="bi bi-person-badge"></i> Doctor <small class="muted">{{ loading() ? 'checking availability…' : freeCount + ' of ' + doctors().length + ' free' }}</small></div>
+    <div class="stx-doctors" role="radiogroup" aria-label="Doctor">
+      @for (d of doctors(); track d.id) {
+        <button type="button" role="radio" class="stx-doc" [class.on]="doctorId === d.id" [class.busy]="!d.free" [disabled]="!d.free" [attr.aria-checked]="doctorId === d.id" (click)="doctorId = d.id">
+          <i class="bi" [ngClass]="d.free ? 'bi-person-check' : 'bi-person-x'"></i>
+          <span>{{ d.name }}</span>
+          <small>{{ d.free ? 'Free' : 'Busy / on leave' }}</small>
+        </button>
+      } @empty {
+        @if (!loading()) { <p class="muted">No doctor is set up at this branch.</p> }
+      }
+    </div>
+
+    <div class="form-field full-width stx-note">
+      <label for="stx-note">Note <span class="muted">(shown to the requester if you decline)</span></label>
+      <div class="input-wrap"><i class="bi bi-chat-left-dots"></i><input id="stx-note" name="note" maxlength="255" [(ngModel)]="note" /></div>
+    </div>
+  </div>
+
+  <div class="modal-footer-custom">
+    <span class="footer-note"><i class="bi bi-info-circle"></i> The sitting moves to your branch only when you accept</span>
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+    <button type="button" class="danger-btn" [disabled]="busy() !== null" (click)="decline()"><i class="bi bi-x-lg"></i> {{ busy() === 'decline' ? 'Declining…' : 'Decline' }}</button>
+    <button type="button" class="save-btn" [disabled]="busy() !== null" (click)="accept()"><i class="bi bi-check2"></i> {{ busy() === 'accept' ? 'Accepting…' : 'Accept' }}</button>
+  </div>
+</div>

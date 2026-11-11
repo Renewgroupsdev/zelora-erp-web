@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
-import { FlowAppointmentRecord, FlowStatus, treatmentNames } from '../../../shared/models/appointment-flow.model';
+import { FlowAppointmentRecord, FlowStatus, statusLabel, treatmentNames } from '../../../shared/models/appointment-flow.model';
 
 export type CalendarView = 'month' | 'week' | 'day';
 
@@ -107,6 +107,7 @@ export class AppointmentCalendar implements OnInit, OnDestroy {
     return this.view === 'day' ? SLOT_HEIGHT.day : SLOT_HEIGHT.week;
   }
   readonly treatmentNames = treatmentNames;
+  readonly statusLabel = statusLabel;
 
   now = new Date();
   private clock?: ReturnType<typeof setInterval>;
@@ -311,7 +312,7 @@ export class AppointmentCalendar implements OnInit, OnDestroy {
 
   tooltip(a: FlowAppointmentRecord): string {
     const service = treatmentNames(a) || (a.category ? `${a.category} consultation` : 'Consultation');
-    return [`${this.formatTime(a.appointment_time)} · ${a.name}`, a.mobile_no, service, a.branch_name ?? a.branch?.name ?? '', a.status]
+    return [`${this.formatTime(a.appointment_time)} · ${a.name}`, a.mobile_no, service, a.branch_name ?? a.branch?.name ?? '', statusLabel(a.status)]
       .filter(Boolean).join('\n');
   }
 }

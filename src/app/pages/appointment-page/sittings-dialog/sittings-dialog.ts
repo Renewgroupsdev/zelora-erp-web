@@ -7,6 +7,7 @@ import { ApiDataService } from '../../../core/http/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
+import { BranchOptionsService, parseUnitKey } from '../../../shared/common-services/branch-options.service';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { FlowAppointmentRecord, FlowCustomerTreatment, PAYMENT_MODES, PaymentMode, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
@@ -17,6 +18,8 @@ const SITTING_NOTES_ACTION = 'sitting-notes';
 interface SittingDraft {
   date: string;
   time: string;
+  /** "branch:9" / "franchise:7": hold the sitting there; '' = leave it where it is. */
+  branchKey: string;
   notes: string;
   rescheduling: boolean;
   paying: boolean;
@@ -44,6 +47,10 @@ export class SittingsDialog implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly dialogRef = inject(MatDialogRef<SittingsDialog>);
   private readonly data = inject<{ appointmentId: number }>(MAT_DIALOG_DATA);
+  private readonly branchOptions = inject(BranchOptionsService);
+
+  /** Branches / franchises a pending sitting can be moved to. */
+  readonly branches = signal<{ key: string; name: string }[]>([]);
 
   readonly inr = inr;
   readonly paymentModes = PAYMENT_MODES;
@@ -66,8 +73,11 @@ export class SittingsDialog implements OnInit {
   }
 
   readonly completed = computed(() => this.sittings().filter(s => s.status === 'completed').length);
+  /** Share of the shown treatment's sittings that are completed (header ring). */
+  readonly percent = computed(() => (this.sittings().length ? Math.round((this.completed() / this.sittings().length) * 100) : 0));
 
   ngOnInit(): void {
+    this.branchOptions.load().subscribe(list => this.branches.set(list.map(b => ({ key: b.key, name: b.name }))));
     this.load();
   }
 
@@ -111,6 +121,7 @@ export class SittingsDialog implements OnInit {
     return {
       date: s.scheduled_date ?? '',
       time: (s.scheduled_time ?? '').slice(0, 5),
+      branchKey: '',
       notes: s.notes ?? '',
       rescheduling: false,
       paying: false,
@@ -118,6 +129,19 @@ export class SittingsDialog implements OnInit {
       payAmount: s.requirements?.amount_due || null,
       payTxn: '',
     };
+  }
+
+  /** More sittings on the treatment shown (POST customer-treatments/{id}/sittings). */
+  extra = { open: false, count: 1, interval: 30 };
+
+  addSittings(): void {
+    const plan = this.activePlan();
+    if (!plan) return;
+    const count = Number(this.extra.count);
+    if (!(count >= 1 && count <= 50)) return void this.toast.error('Add between 1 and 50 sittings.');
+    if (!(Number(this.extra.interval) >= 1)) return void this.toast.error('The gap between sittings must be at least 1 day.');
+    this.run(-1, this.api.POST(`${ApiRoutesConstants.CUSTOMER_TREATMENTS}/${plan.id}/sittings`, { count, sitting_interval_days: Number(this.extra.interval) }), true);
+    this.extra.open = false;
   }
 
   selectPlan(id: number): void {
@@ -216,7 +240,19 @@ export class SittingsDialog implements OnInit {
   reschedule(s: Sitting): void {
     const d = this.drafts[s.id];
     if (!d.date || d.date < this.today) return void this.toast.error('Pick today or a later date.');
-    this.run(s.id, this.api.PUT(`${ApiRoutesConstants.SITTINGS}/${s.id}/reschedule`, { scheduled_date: d.date, scheduled_time: d.time || null }));
+    // A branch picked here moves the sitting there (its stock is used, its staff work it); '' leaves it where it is.
+    const unit = parseUnitKey(d.branchKey);
+    this.run(s.id, this.api.PUT(`${ApiRoutesConstants.SITTINGS}/${s.id}/reschedule`, {
+      scheduled_date: d.date, scheduled_time: d.time || null,
+      ...(unit ? { branch_type: unit.type, branch_id: unit.id } : {}),
+    }));
+    d.rescheduling = false;
+  }
+
+  /** Withdraws a transfer request the other branch has not answered yet. */
+  cancelTransfer(s: Sitting): void {
+    if (!s.transfer_request) return;
+    this.run(s.id, this.api.POST(`${ApiRoutesConstants.APPOINTMENT_FLOW}/sitting-transfers/${s.transfer_request.id}/cancel`, {}));
   }
 
   collectPayment(s: Sitting): void {

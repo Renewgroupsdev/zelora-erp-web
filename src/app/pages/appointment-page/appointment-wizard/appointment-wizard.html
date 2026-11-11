@@ -369,6 +369,7 @@
           </table>
         </div>
 
+        @if (!consultationFeePaid) {
         <!-- Treatment taken, or only the consultation (treatment too costly -> Nill Card) -->
         <div class="section-title"><i class="bi bi-signpost-split"></i> Customer's decision</div>
         <div class="wz-paytype" role="radiogroup" aria-label="What is the customer paying for">
@@ -381,6 +382,7 @@
             <span><strong>Consultation fee only</strong><small>Treatment not taken now · moves to Nill Card</small></span>
           </button>
         </div>
+        }
 
         <!-- Discount: asked here, decided by the branch manager (the answer shows up here by itself) -->
         @if (showDiscountPanel && !isConsultationOnly) {
@@ -461,6 +463,22 @@
           </div>
         }
 
+        @if (isConsultationOnly) {
+          <!-- Consultation type: charged, or given free (no fee, mode or reference to collect) -->
+          <div class="section-title"><i class="bi bi-tag"></i> Consultation type</div>
+          <div class="wz-discount" [class.on]="freeConsultation">
+            <div class="wz-discount-head">
+              <label class="wz-switch">
+                <input type="checkbox" name="freeConsultation" role="switch" [checked]="freeConsultation" (change)="setConsultationType($any($event.target).checked ? 'free' : 'paid')" />
+                <span class="track"><span class="thumb"></span></span>
+                <strong><i class="bi bi-gift"></i> Free consultation</strong>
+              </label>
+              <small>{{ freeConsultation ? 'On · no fee collected (₹0)' : 'Off · the consultation fee is collected' }}</small>
+            </div>
+          </div>
+        }
+
+        @if (!freeConsultation) {
         <div class="section-title"><i class="bi bi-credit-card"></i> Payment Mode</div>
         <div class="wz-paymodes">
           @for (m of availableModes; track m.value) {
@@ -540,10 +558,12 @@
           }
         }
 
+        }
+
         <div class="wz-summary">
           @if (isConsultationOnly) {
             <div><span>Treatment suggested</span><strong>{{ inr(total) }}</strong></div>
-            <div class="grand"><span>Consultation fee</span><strong>{{ inr(amountNow) }}</strong></div>
+            <div class="grand"><span>{{ freeConsultation ? 'Free consultation' : 'Consultation fee' }}</span><strong>{{ freeConsultation ? 'No charge' : inr(amountNow) }}</strong></div>
           } @else {
             <div><span>{{ discountApplied > 0 ? 'Total payable' : 'Total' }}</span><strong>{{ inr(total) }}</strong></div>
             <div><span>Paying now</span><strong>{{ inr(pay.paid_amount) }}</strong></div>
@@ -552,7 +572,7 @@
           }
         </div>
         @if (isConsultationOnly) {
-          <p class="muted wz-note"><i class="bi bi-info-circle"></i> On "Save consultation fee" the fee is saved and this record moves to <strong>Nill Card</strong> (view only). No terms SMS or invoice is sent.</p>
+          <p class="muted wz-note"><i class="bi bi-info-circle"></i> On "{{ freeConsultation ? 'Save free consultation' : 'Save consultation fee' }}" {{ freeConsultation ? 'no fee is collected and' : 'the fee is saved and' }} this record moves to <strong>Nill Card</strong> (view only). No terms SMS or invoice is sent.</p>
         } @else {
           <p class="muted wz-note"><i class="bi bi-chat-dots"></i> On "Next" the payment is saved and the terms &amp; conditions are sent to {{ a.mobile_no }} by SMS.</p>
         }
@@ -608,7 +628,7 @@
     @if (step() < 4) {
       <button type="button" class="save-btn" [disabled]="saving() || loading() || !steps()[step()].allowed" (click)="next()">
         <i class="bi" [class.bi-arrow-repeat]="saving()" [class.spin]="saving()"></i>
-        {{ saving() ? 'Saving…' : locked() ? 'Next' : step() === 3 ? (isConsultationOnly ? 'Save consultation fee' : 'Save & send terms') : 'Save & next' }}
+        {{ saving() ? 'Saving…' : locked() ? 'Next' : step() === 3 ? (isConsultationOnly ? (freeConsultation ? 'Save free consultation' : 'Save consultation fee') : 'Save & send terms') : 'Save & next' }}
         @if (!saving()) { <i class="bi bi-arrow-right"></i> }
       </button>
     }

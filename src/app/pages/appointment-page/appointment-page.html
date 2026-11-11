@@ -112,7 +112,7 @@
                   }
                 </span>
               </div>
-              <span class="ap-pill" [ngClass]="'pill-' + statusTone(a.status)">{{ a.status }}</span>
+              <span class="ap-pill" [ngClass]="'pill-' + statusTone(a.status)">{{ statusLabel(a.status) }}</span>
             </div>
 
             <dl class="ap-facts">
@@ -143,6 +143,11 @@
               @if (can('appointment-audit')) {
                 <button type="button" class="ap-act" (click)="panelAction('audit', a)" title="Activity audit log">
                   <i class="bi bi-clipboard-data"></i><span>Audit log</span>
+                </button>
+              }
+              @if (canCancel(a)) {
+                <button type="button" class="ap-act danger" (click)="panelAction('cancel', a)" title="Cancel this appointment">
+                  <i class="bi bi-x-circle"></i><span>Cancel</span>
                 </button>
               }
             </div>

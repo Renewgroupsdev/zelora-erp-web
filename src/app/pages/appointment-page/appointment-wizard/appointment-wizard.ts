@@ -180,6 +180,8 @@ export class AppointmentWizard implements OnInit {
     /** treatment = the customer takes the treatment; consultation = treatment too costly, only the consultation fee. */
     payment_type: 'treatment' as PaymentType,
     consultation_fee: null as number | null,
+    /** consultation only: 'paid' collects the fee, 'free' gives the consultation at no charge. */
+    consultation_type: 'paid' as 'paid' | 'free',
     payment_mode: 'UPI' as PaymentMode,
     paid_amount: 0,
     transaction_no: '',
@@ -267,6 +269,8 @@ export class AppointmentWizard implements OnInit {
     this.pay = {
       payment_type: a.payment_type ?? 'treatment',
       consultation_fee: a.consultation_fee != null ? Number(a.consultation_fee) : null,
+      // A saved consultation-only record with fee 0 was given free.
+      consultation_type: a.payment_type === 'consultation' && a.consultation_fee != null && Number(a.consultation_fee) === 0 ? 'free' : 'paid',
       payment_mode: a.payment_mode ?? 'UPI',
       paid_amount: Number(a.paid_amount) || 0,
       transaction_no: a.transaction_no ?? '',
@@ -587,6 +591,21 @@ export class AppointmentWizard implements OnInit {
     return this.pay.payment_type === 'consultation';
   }
 
+  /** A Nill Card member back for the treatment: the consultation fee is already collected, so only the treatment is paid here. */
+  get consultationFeePaid(): boolean {
+    return !!this.appt()?.consultation_paid_at;
+  }
+
+  /** A consultation given free: nothing is collected (no fee, mode or reference). */
+  get freeConsultation(): boolean {
+    return this.isConsultationOnly && this.pay.consultation_type === 'free';
+  }
+
+  setConsultationType(type: 'paid' | 'free'): void {
+    this.pay.consultation_type = type;
+    this.error.set(null);
+  }
+
   /** EMI is for the treatment only; the consultation fee is paid by UPI, cash or internet banking. */
   get availableModes() {
     return this.isConsultationOnly ? this.paymentModes.filter(m => m.value !== 'EMI') : this.paymentModes;
@@ -594,12 +613,13 @@ export class AppointmentWizard implements OnInit {
 
   /** Internet Banking goes through Razorpay Checkout once the keys are set on the server. */
   get usesRazorpay(): boolean {
-    return this.pay.payment_mode === 'Online' && this.payOptions().razorpay.enabled;
+    return this.pay.payment_mode === 'Online' && this.payOptions().razorpay.enabled && !this.freeConsultation;
   }
 
   /** UPI transaction ID, EMI loan / approval no, or a manual bank reference while Razorpay is not set up. */
   get needsReference(): boolean {
     const mode = this.pay.payment_mode;
+    if (this.freeConsultation) return false;
     return mode === 'UPI' || (mode === 'EMI' && !this.isConsultationOnly) || (mode === 'Online' && !this.usesRazorpay);
   }
 
@@ -622,6 +642,7 @@ export class AppointmentWizard implements OnInit {
 
   /** What is collected now: the consultation fee, or the treatment amount paying now. */
   get amountNow(): number {
+    if (this.freeConsultation) return 0;
     return this.isConsultationOnly ? Number(this.pay.consultation_fee) || 0 : Number(this.pay.paid_amount) || 0;
   }
 
@@ -649,6 +670,9 @@ export class AppointmentWizard implements OnInit {
     const consultation = this.isConsultationOnly;
     const mode = this.pay.payment_mode;
     const amount = this.amountNow;
+
+    // Free consultation: nothing to collect or verify - the record just moves to Nill Card.
+    if (this.freeConsultation) return this.submitPayment(null);
 
     if (consultation) {
       if (!(amount > 0)) return void this.error.set('Enter the consultation fee.');
@@ -687,8 +711,10 @@ export class AppointmentWizard implements OnInit {
   private submitPayment(razorpay: RazorpayResult | null): void {
     const consultation = this.isConsultationOnly;
     const mode = this.pay.payment_mode;
-    const body = consultation
-      ? { payment_type: 'consultation', consultation_fee: this.amountNow, payment_mode: mode, transaction_no: this.pay.transaction_no.trim() || null, ...razorpay }
+    const body = this.freeConsultation
+      ? { payment_type: 'consultation', consultation_type: 'free' }
+      : consultation
+      ? { payment_type: 'consultation', consultation_type: 'paid', consultation_fee: this.amountNow, payment_mode: mode, transaction_no: this.pay.transaction_no.trim() || null, ...razorpay }
       : {
           payment_type: 'treatment',
           payment_mode: mode,
