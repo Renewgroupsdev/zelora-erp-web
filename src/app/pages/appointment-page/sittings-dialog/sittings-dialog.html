@@ -157,7 +157,7 @@
               <div class="st-gallery">
                 <div class="st-gallery-head">
                   <span><i class="bi" [class.bi-camera]="type === 'before'" [class.bi-stars]="type === 'after'"></i> {{ type === 'before' ? 'Before' : 'After' }} photos</span>
-                  @if (s.status !== 'completed' && can('sitting-photos')) {
+                  @if (photosEditable(s)) {
                     <label class="st-link" [class.disabled]="busy() === s.id || !canUpload(s, $any(type))">
                       <i class="bi bi-plus-lg"></i> Add
                       <input type="file" accept="image/*" capture="environment" multiple hidden #pick (change)="upload(s, $any(type), pick)" />
@@ -168,15 +168,24 @@
                   @for (p of photos(s, $any(type)); track p.id; let i = $index) {
                     <div class="st-thumb">
                       <img [src]="p.url" [alt]="type + ' photo ' + (i + 1)" title="Click to view" (click)="openViewer(photos(s, $any(type)), i)" />
-                      @if (s.status !== 'completed' && can('sitting-photos')) {
+                      @if (photosEditable(s)) {
                         <button type="button" aria-label="Remove photo" (click)="deletePhoto(s, p)"><i class="bi bi-x"></i></button>
                       }
                     </div>
                   } @empty {
-                    <span class="muted">
-                      @if (type === 'after' && !isLocked(s) && !canUpload(s, 'after') && s.status !== 'completed') { Add the before photos first }
-                      @else { No {{ type }} photos yet }
-                    </span>
+                    @if (photosEditable(s)) {
+                      <label class="st-drop" [class.disabled]="busy() === s.id || !canUpload(s, $any(type))">
+                        <i class="bi bi-camera-fill"></i>
+                        <b>Add {{ type }} photos</b>
+                        @if (type === 'after' && !isLocked(s) && !canUpload(s, 'after')) { <small>Add the before photos first</small> }
+                        <input type="file" accept="image/*" capture="environment" multiple hidden #pickEmpty [disabled]="!canUpload(s, $any(type))" (change)="upload(s, $any(type), pickEmpty)" />
+                      </label>
+                    } @else {
+                      <span class="muted">
+                        @if (type === 'after' && !isLocked(s) && !canUpload(s, 'after') && s.status !== 'completed') { Add the before photos first }
+                        @else { No {{ type }} photos yet }
+                      </span>
+                    }
                   }
                 </div>
               </div>
@@ -189,8 +198,11 @@
             </label>
             @if (isDoctor() && s.status !== 'completed') {
               <textarea [id]="'n' + s.id" rows="2" [(ngModel)]="drafts[s.id].notes" [name]="'n' + s.id" maxlength="3000" [disabled]="!canWriteNotes(s)"
-                [placeholder]="canWriteNotes(s) ? 'How did the session go? Response, side effects, advice for the next sitting' : isLocked(s) ? 'Complete sitting ' + waitingFor(s) + ' first' : 'Add the before and after photos first'"></textarea>
+                [placeholder]="canWriteNotes(s) ? 'How did the session go? Response, side effects, advice for the next sitting' : isLocked(s) ? 'Complete sitting ' + waitingFor(s) + ' first' : notesSaved(s) ? 'Notes saved' : 'Add the before and after photos first'"></textarea>
               <button type="button" class="st-link" [disabled]="busy() === s.id || !canWriteNotes(s)" (click)="saveNotes(s)"><i class="bi bi-floppy"></i> Save notes</button>
+              @if (notesSaved(s)) {
+                <small class="st-lock-note"><i class="bi bi-lock-fill"></i> Notes saved - photos and notes are locked. Once any pending payment is received the sitting completes.</small>
+              }
             } @else {
               <p class="st-notes-text">{{ s.notes || 'The doctor has not written notes for this sitting yet.' }}</p>
             }
@@ -201,36 +213,12 @@
               <span [class.ok]="hasPhotos(s, 'before')"><i class="bi" [class.bi-check-circle-fill]="hasPhotos(s, 'before')" [class.bi-circle]="!hasPhotos(s, 'before')"></i> Before photos</span>
               <span [class.ok]="hasPhotos(s, 'after')"><i class="bi" [class.bi-check-circle-fill]="hasPhotos(s, 'after')" [class.bi-circle]="!hasPhotos(s, 'after')"></i> After photos</span>
               <span [class.ok]="!!s.notes?.trim()"><i class="bi" [class.bi-check-circle-fill]="!!s.notes?.trim()" [class.bi-circle]="!s.notes?.trim()"></i> Doctor notes</span>
-              <span [class.ok]="r.amount_due <= 0" [class.bad]="r.amount_due > 0">
-                <i class="bi" [class.bi-check-circle-fill]="r.amount_due <= 0" [class.bi-exclamation-circle]="r.amount_due > 0"></i>
-                @if (r.amount_due > 0) { {{ inr(r.amount_due) }} due } @else { Payment ({{ inr(r.paid) }} of {{ inr(r.required_paid) }}) }
-              </span>
               @for (m of r.materials; track m.product_id) {
                 <span [class.ok]="m.available >= m.needed" [class.bad]="m.available < m.needed">
                   <i class="bi bi-box-seam"></i> {{ m.name }} {{ m.needed }} ({{ m.available }} in stock)
                 </span>
               }
-              @if (r.amount_due > 0 && !drafts[s.id].paying) {
-                <button *appCan="'sitting-payment'" type="button" class="st-link" [disabled]="busy() === s.id" (click)="drafts[s.id].paying = true"><i class="bi bi-cash-coin"></i> Collect payment</button>
-              }
             </div>
-
-            @if (drafts[s.id].paying) {
-              <div class="st-reschedule">
-                <div class="input-wrap">
-                  <i class="bi bi-wallet2"></i>
-                  <select [(ngModel)]="drafts[s.id].payMode" [name]="'pm' + s.id">
-                    @for (m of paymentModes; track m.value) { <option [value]="m.value">{{ m.label }}</option> }
-                  </select>
-                </div>
-                <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input type="number" min="1" [max]="r.balance" [(ngModel)]="drafts[s.id].payAmount" [name]="'pa' + s.id" placeholder="Amount" /></div>
-                @if (drafts[s.id].payMode !== 'Cash') {
-                  <div class="input-wrap"><i class="bi bi-hash"></i><input type="text" maxlength="100" [(ngModel)]="drafts[s.id].payTxn" [name]="'pt' + s.id" placeholder="Transaction no." /></div>
-                }
-                <button type="button" class="save-btn" [disabled]="busy() === s.id" (click)="collectPayment(s)">Record payment</button>
-                <button type="button" class="cancel-btn" (click)="drafts[s.id].paying = false">Cancel</button>
-              </div>
-            }
           }
         </section>
       }

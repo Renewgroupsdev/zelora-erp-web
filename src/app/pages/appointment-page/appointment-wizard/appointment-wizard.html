@@ -234,7 +234,7 @@
                 @for (g of gradeOptions; track g) {
                   <button type="button" [class.on]="c.grade === g" (click)="c.grade = g" [attr.aria-pressed]="c.grade === g">
                     <app-hair-grade-icon [grade]="g" />
-                    <span><i class="bi" [class.bi-circle-fill]="c.grade === g" [class.bi-circle]="c.grade !== g"></i> {{ g }}</span>
+                    <span><i class="grade-radio" [class.on]="c.grade === g"><i class="bi bi-check-lg"></i></i> {{ g }}</span>
                   </button>
                 }
               </div>

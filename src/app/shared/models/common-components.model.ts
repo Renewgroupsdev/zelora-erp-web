@@ -57,6 +57,8 @@ export interface QuickAction {
   keepOnLock?: boolean;
   /** Keeps the page's own icon instead of the logo set for the action on Roles & Permissions. */
   fixedIcon?: boolean;
+  /** Keep this label as the hover text: it is not replaced by the Roles & Permissions action name (several buttons can share one permission). */
+  fixedLabel?: boolean;
 }
 
 export interface TableColumn {

@@ -962,19 +962,26 @@ export class AppointmentWizard implements OnInit {
     });
   })();
 
+  /** Creates the customer, then opens the payment receipt (the tab is opened in the click so the popup blocker allows it). The tax invoice stays one click away in the customer list. */
   convert(): void {
+    const receiptTab = window.open('', '_blank');
     this.act('convert', res => {
       this.toast.success(res?.message || 'Customer created.');
+      this.openPdf('receipt', receiptTab, 'Could not open the receipt.');
       this.dialogRef.close(true);
-    });
+    }, () => receiptTab?.close());
   }
 
   /** Loads the server-rendered tax invoice as a blob and opens it in a new tab (same as the purchase PDFs). */
   viewInvoice(): void {
+    this.openPdf('invoice', window.open('', '_blank'), 'Could not open the invoice.');
+  }
+
+  /** Streams `appointment-flow/{id}/{kind}` (invoice | receipt) into `tab`; the tab is closed when there is nothing to show. */
+  private openPdf(kind: 'invoice' | 'receipt', tab: Window | null, failMessage: string): void {
     const a = this.appt();
-    if (!a?.invoice_no) return;
-    const tab = window.open('', '_blank'); // opened before the request so the popup blocker allows it
-    this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${a.id}/invoice`).subscribe({
+    if (!a || (kind === 'invoice' && !a.invoice_no)) return void tab?.close();
+    this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${a.id}/${kind}`).subscribe({
       next: (blob: Blob) => {
         const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
         if (tab) tab.location.href = url;
@@ -983,7 +990,7 @@ export class AppointmentWizard implements OnInit {
       },
       error: () => {
         tab?.close();
-        this.toast.error('Could not open the invoice.');
+        this.toast.error(failMessage);
       },
     });
   }
@@ -1004,13 +1011,13 @@ export class AppointmentWizard implements OnInit {
     });
   }
 
-  private act(path: string, done: (res: any) => void): void {
+  private act(path: string, done: (res: any) => void, failed?: () => void): void {
     this.saving.set(true);
     this.api.POST(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/${path}`, {})
       .pipe(finalize(() => this.saving.set(false)))
       .subscribe({
         next: (res: any) => { this.changed = true; this.apply(res.data); done(res); },
-        error: (err: any) => this.showError(err),
+        error: (err: any) => { failed?.(); this.showError(err); },
       });
   }
 

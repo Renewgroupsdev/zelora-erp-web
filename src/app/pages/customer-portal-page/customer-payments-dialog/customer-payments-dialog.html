@@ -1,0 +1,136 @@
+<div class="cpd">
+  <div class="cpd-head">
+    <span class="cpd-logo"><i class="bi bi-cash-coin"></i></span>
+    <div class="cpd-title">
+      <h5>Payments</h5>
+      <small>{{ data.name }}@if (result()) { · {{ result()!.customer.customer_code }} }</small>
+    </div>
+    <button type="button" class="cpd-x" (click)="close()" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="cpd-body">
+    @if (loading()) {
+      <p class="cpd-empty">Loading payments...</p>
+    } @else if (result(); as r) {
+      <section class="cpd-customer">
+        <span class="avatar">
+          @if (r.customer.photo_url) { <img [src]="r.customer.photo_url" [alt]="r.customer.name" /> } @else { {{ initials(r.customer.name) }} }
+        </span>
+        <div class="who">
+          <b>{{ r.customer.name }}</b>
+          <small>{{ r.customer.customer_code }}</small>
+        </div>
+        <span class="state" [class.off]="!r.customer.is_active">{{ r.customer.is_active ? 'Active' : 'Inactive' }}</span>
+        <dl>
+          <div><dt><i class="bi bi-telephone"></i> Mobile</dt><dd>{{ r.customer.mobile_no || '-' }}</dd></div>
+          <div><dt><i class="bi bi-envelope"></i> Email</dt><dd>{{ r.customer.email || '-' }}</dd></div>
+          <div><dt><i class="bi bi-geo-alt"></i> Branch</dt><dd>{{ r.customer.branch_name || '-' }}</dd></div>
+          <div><dt><i class="bi bi-person"></i> Gender</dt><dd>{{ r.customer.gender || '-' }}</dd></div>
+          <div><dt><i class="bi bi-building"></i> City</dt><dd>{{ r.customer.city || '-' }}</dd></div>
+          <div><dt><i class="bi bi-calendar-check"></i> Visits</dt><dd>{{ r.customer.visits }} · last {{ formatDate(r.customer.last_visit) }}</dd></div>
+        </dl>
+      </section>
+
+      <div class="cpd-summary">
+        <div class="card total"><i class="bi bi-receipt"></i><span><small>Total</small><strong>{{ inr(r.total_amount) }}</strong></span></div>
+        <div class="card paid"><i class="bi bi-check-circle"></i><span><small>Paid</small><strong>{{ inr(r.paid_amount) }}</strong></span></div>
+        <div class="card bal" [class.due]="r.balance_amount > 0"><i class="bi bi-hourglass-split"></i><span><small>Balance</small><strong>{{ inr(r.balance_amount) }}</strong></span></div>
+      </div>
+
+      <div class="cpd-progress" [attr.aria-label]="paidPct(r) + '% paid'">
+        <div class="segs">
+          @for (i of segs; track i) { <span [class.on]="i < paidPct(r) / 5"></span> }
+        </div>
+        <div class="meta"><b>{{ paidPct(r) }}%</b><small>of the treatment amount collected · {{ inr(r.balance_amount) }} to go</small></div>
+      </div>
+
+      <h6 class="cpd-sub"><i class="bi bi-calendar2-week"></i> Sittings</h6>
+      @for (g of groups(r); track g.plan.id) {
+        <section class="cpd-group">
+          <header>
+            <span class="ttl"><i class="bi bi-capsule-pill"></i> {{ g.plan.treatment || 'Treatment' }}</span>
+            <span class="cnt">{{ g.plan.completed_count }} of {{ g.plan.sittings_count }} completed</span>
+            <span class="steps" [attr.aria-label]="g.plan.completed_count + ' of ' + g.plan.sittings_count + ' sittings completed'">
+              @for (st of g.sittings; track st.id) { <i [class.done]="st.status === 'completed'" [title]="'Sitting ' + st.sitting_no"></i> }
+            </span>
+          </header>
+          <div class="cpd-plan">
+            <div class="ring" [style.--p]="planPct(g.plan)"><span><b>{{ planPct(g.plan) }}%</b><small>paid</small></span></div>
+            <div class="stats">
+              <div><small>Treatment total</small><b>{{ inr(g.plan.total_amount) }}</b></div>
+              <div class="ok"><small>Paid</small><b>{{ inr(g.plan.paid_amount) }}</b></div>
+              <div [class.bad]="g.plan.balance_amount > 0"><small>Balance</small><b>{{ inr(g.plan.balance_amount) }}</b></div>
+              <div><small>Started</small><b>{{ formatDate(g.plan.start_date) }}</b></div>
+            </div>
+          </div>
+          @for (s of g.sittings; track s.id) {
+            <div class="cpd-sitting" [class.paying]="payingId === s.id">
+              <span class="no">{{ s.sitting_no }}</span>
+              <span class="info"><b>Sitting {{ s.sitting_no }}</b><small>{{ formatDate(s.date) }}</small></span>
+              <span class="pill" [class.done]="s.status === 'completed'">{{ s.status === 'completed' ? 'Completed' : 'Pending' }}</span>
+              <span class="due" [class.owed]="s.amount_due > 0">{{ s.amount_due > 0 ? inr(s.amount_due) + ' due' : 'Paid' }}@if (s.amount_due > 0 && s.required) { <em class="req">required</em> }</span>
+              <span class="act">
+                @if (s.can_pay && payingId !== s.id) {
+                  <button *appCan="'sitting-payment'" type="button" class="cpd-btn pay" (click)="startPay(s)"><i class="bi bi-cash-coin"></i> Collect payment</button>
+                }
+              </span>
+              @if (payingId === s.id) {
+                <div class="cpd-payform">
+                  <div class="field modes">
+                    <small>Payment mode</small>
+                    <div class="chips">
+                      @for (m of paymentModes; track m.value) {
+                        <button type="button" class="chip" [class.on]="payMode === m.value" (click)="setMode(m.value)"><i class="bi" [ngClass]="m.icon"></i> {{ m.label }}</button>
+                      }
+                    </div>
+                  </div>
+                  <div class="field amt">
+                    <small>Amount received</small>
+                    <div class="money"><b>₹</b><input type="number" min="1" [max]="s.balance" [(ngModel)]="payAmount" name="pa" placeholder="0" /></div>
+                    <button type="button" class="link" (click)="payAmount = s.amount_due">Full due {{ inr(s.amount_due) }}</button>
+                  </div>
+                  @if (payMode !== 'Cash' && !usesRazorpay) {
+                    <div class="field txn"><small>Transaction no.</small><input type="text" maxlength="100" [(ngModel)]="payTxn" name="pt" placeholder="Reference number" /></div>
+                  }
+                  @if (usesRazorpay) {
+                    <p class="rzp-note"><i class="bi bi-shield-lock"></i> Razorpay Checkout opens to collect {{ inr(payAmount) }} securely.</p>
+                  }
+                  <span class="btns">
+                    <button type="button" class="cpd-btn pay" [disabled]="saving()" (click)="pay(s)"><i class="bi" [ngClass]="usesRazorpay ? 'bi-shield-lock' : 'bi-check2'"></i> {{ usesRazorpay ? 'Pay with Razorpay' : 'Record payment' }}</button>
+                    <button type="button" class="cpd-btn" (click)="payingId = null">Cancel</button>
+                  </span>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      } @empty {
+        <p class="cpd-empty">No treatment sittings yet.</p>
+      }
+
+      <h6 class="cpd-sub"><i class="bi bi-clock-history"></i> Payment history</h6>
+      <div class="cpd-table-wrap">
+        <table class="cpd-table">
+          <thead><tr><th>Date</th><th>Treatment</th><th>For</th><th>Mode</th><th>Transaction no.</th><th class="num">Amount</th><th class="num">Receipt</th></tr></thead>
+          <tbody>
+            @for (p of r.payments; track p.id) {
+              <tr>
+                <td>{{ formatDateTime(p.payment_date) }}</td>
+                <td>{{ p.treatment || '-' }}</td>
+                <td>{{ p.remarks || '-' }}</td>
+                <td><span class="mode">{{ p.payment_mode }}</span></td>
+                <td>{{ p.transaction_no || '-' }}</td>
+                <td class="num paid">{{ inr(p.paid_amount) }}</td>
+                <td class="num"><button type="button" class="cpd-receipt" (click)="openReceipt(p.id)" title="Open receipt" aria-label="Open receipt"><i class="bi bi-receipt"></i></button></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="cpd-empty">No payments recorded yet.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <div class="cpd-foot"><button type="button" class="cpd-btn" (click)="close()">Close</button></div>
+</div>

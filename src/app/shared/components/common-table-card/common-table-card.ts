@@ -206,7 +206,7 @@ export class CommonTableCard {
         .filter(a => this.allowed(a.key, a.permission))
         .map(a => {
           const slug = a.permission ?? this.actionPermissions[a.key];
-          return { ...a, label: this.actionName(a.key, a.label, slug), icon: a.fixedIcon ? a.icon : this.actionIcon(a.key, a.icon, slug) };
+          return { ...a, label: a.fixedLabel ? a.label : this.actionName(a.key, a.label, slug), icon: a.fixedIcon ? a.icon : this.actionIcon(a.key, a.icon, slug) };
         })
       : [];
   }

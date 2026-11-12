@@ -48,7 +48,7 @@
   dt { font-size: 11px; font-weight: 600; color: var(--text-muted, #6b7280); }
   dd { margin: 1px 0 0; font-size: 12.5px; font-weight: 600; word-break: break-word; }
   .cd-grade { display: flex; align-items: center; gap: 8px; }
-  .cd-grade app-hair-grade-icon { width: 44px; height: 48px; flex-shrink: 0; }
+  .cd-grade app-hair-grade-icon { height: 40px; flex-shrink: 0; }
 }
 
 .cd-note { margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: var(--app-surface-bg, #f4f8f6); font-size: 12.5px; white-space: pre-wrap; }
@@ -207,7 +207,7 @@
   padding: 7px 10px; border-radius: 12px; background: var(--app-surface-bg, #f4f8f6); border: 1px solid var(--border-soft, #e2e8e5);
   small { display: block; font-size: 10.5px; font-weight: 700; color: var(--text-muted, #6b7280); }
   strong { font-size: 12.5px; word-break: break-word; }
-  .cp-grade { display: flex; align-items: center; gap: 8px; app-hair-grade-icon { width: 40px; height: 44px; flex-shrink: 0; } }
+  .cp-grade { display: flex; align-items: center; gap: 8px; app-hair-grade-icon { height: 40px; flex-shrink: 0; } }
 }
 
 .cp-docs { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px;

@@ -81,6 +81,18 @@
 
 .st-thumbs { display: flex; flex-wrap: wrap; gap: 6px; min-height: 64px; align-items: center; .muted { font-size: 11.5px; } }
 
+// Empty gallery: one big click target, centred icon + label (opens the same file picker as "Add").
+.st-drop {
+  flex: 1 1 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  min-height: 74px; padding: 10px; border-radius: 8px; cursor: pointer; text-align: center;
+  color: var(--primary, #0f766e); font-size: 12.5px; transition: background 0.15s ease;
+  i { font-size: 20px; line-height: 1; }
+  &:hover { background: rgba(15, 118, 110, 0.06); }
+  small { font-size: 11px; font-weight: 500; color: var(--text-muted, #6b7280); }
+  &.disabled { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
+}
+
 .st-thumb {
   position: relative;
   width: 64px;
@@ -369,3 +381,5 @@
   display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px;
   background: #fff4e0; color: #9a6700; border: 1px solid #f5d79a; font-size: 11px; font-weight: 800; white-space: nowrap;
 }
+
+.st-lock-note { display: block; margin-top: 6px; font-size: 11.5px; color: var(--text-muted, #6b7280); i { margin-right: 4px; } }

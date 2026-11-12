@@ -85,6 +85,10 @@ export interface SittingRequirements {
   required_paid: number;
   paid: number;
   amount_due: number;
+  /** The sitting's share still to collect (optional unless is_last). */
+  suggested_due?: number;
+  /** The last sitting: completing it needs the whole balance paid. */
+  is_last?: boolean;
   balance: number;
   materials: { product_id: number; name: string; needed: number; available: number }[];
   /** Name of the branch / franchise holding the sitting, and whether it is not the plan's own. */
@@ -122,6 +126,8 @@ export interface FlowPayment {
 
 export interface FlowAppointmentRecord {
   id: number;
+  /** Set once the appointment has become a customer. */
+  customer_id?: number | null;
   lead_id: number | null;
   status: FlowStatus;
   current_step: number;
