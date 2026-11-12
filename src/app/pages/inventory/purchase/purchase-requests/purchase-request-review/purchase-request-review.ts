@@ -47,11 +47,15 @@ export class PurchaseRequestReview {
   /** Approval needs every requested product to have a nearby branch with enough stock chosen. */
   readonly canApproveNow = computed(() => {
     const items = this.nearby();
-    return items.length > 0 && items.every(i => {
-      const key = this.sourceKey()[i.productId];
-      return !!key && (i.options.find(o => o.storeKey === key)?.available ?? 0) >= i.needed;
-    });
+    // at least one product has a sending store; a partial send leaves the rest pending for vendor quotes
+    return items.length > 0 && items.some(i => !!this.sourceKey()[i.productId] && this.sendQty(i) > 0);
   });
+
+  /** Units the chosen store sends: its stock, capped at the quantity needed. */
+  sendQty(i: NearbyStockItem): number {
+    const o = i.options.find(x => x.storeKey === this.sourceKey()[i.productId]);
+    return o ? Math.min(o.available, i.needed) : 0;
+  }
 
   constructor() {
     // On-hand qty shown per line; stock is not part of the Purchase Requests tab load.
@@ -66,7 +70,7 @@ export class PurchaseRequestReview {
     const pick: Record<string, string | null> = {};
     for (const i of items) {
       const enough = i.options.filter(o => o.available >= i.needed);
-      // the nearest store with enough stock is pre-selected (options come nearest first)
+      // the nearest store with enough stock is pre-selected (options come nearest first); none enough -> user picks
       pick[i.productId] = enough[0]?.storeKey ?? null;
     }
     this.sourceKey.set(pick);
@@ -97,7 +101,7 @@ export class PurchaseRequestReview {
   transferSummary(): string {
     return this.nearby().map(i => {
       const o = i.options.find(x => x.storeKey === this.sourceKey()[i.productId]);
-      return o ? `${i.productName} x${i.needed} from ${o.name}` : '';
+      return o ? `${i.productName} x${this.sendQty(i)} from ${o.name}` : '';
     }).filter(Boolean).join(', ');
   }
 
@@ -116,8 +120,10 @@ export class PurchaseRequestReview {
   /** Approving = the stock transfer: each product moves from the chosen branch / franchise to the requesting branch. */
   async approve(): Promise<void> {
     if (this.saving()) return;
-    if (!this.canApproveNow()) return void this.nearbyError.set('Choose a nearby branch with enough stock for every product.');
-    const transfers = this.nearby().map(i => ({ storeKey: this.sourceKey()[i.productId]!, productId: i.productId, qty: i.needed }));
+    if (!this.canApproveNow()) return void this.nearbyError.set('Choose a sending branch for at least one product.');
+    const transfers = this.nearby()
+      .filter(i => this.sourceKey()[i.productId] && this.sendQty(i) > 0)
+      .map(i => ({ storeKey: this.sourceKey()[i.productId]!, productId: i.productId, qty: this.sendQty(i) }));
     this.saving.set(true);
     const result = await this.purchase.fulfilFromStock(this.request().id, transfers, this.remarks.trim());
     this.saving.set(false);

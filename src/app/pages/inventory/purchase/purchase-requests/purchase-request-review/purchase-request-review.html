@@ -82,7 +82,7 @@
             <div class="nearby-head">
               <strong>{{ item.productName }}</strong><span class="muted">{{ item.productCode }}</span>
               <span class="pill blue">Need {{ item.needed }}</span>
-              @if (sourceKey()[item.productId]) { <span class="pill green"><i class="bi bi-check2"></i> {{ item.needed }} will be sent</span> }
+              @if (sourceKey()[item.productId]) { <span class="pill green"><i class="bi bi-check2"></i> {{ sendQty(item) }} will be sent</span> }
             </div>
             @if (item.options.length) {
               <div class="input-wrap">
@@ -92,21 +92,21 @@
                   @if (zone(item, 'near').length) {
                     <optgroup label="Within 50 km - nearest first">
                       @for (o of zone(item, 'near'); track o.storeKey) {
-                        <option [ngValue]="o.storeKey" [disabled]="o.available < item.needed">{{ o.name }} - {{ km(o) }} ({{ o.available }} in stock{{ o.available < item.needed ? ', not enough' : '' }})</option>
+                        <option [ngValue]="o.storeKey">{{ o.name }} - {{ km(o) }} ({{ o.available }} in stock{{ o.available < item.needed ? ', partial: ' + o.available + ' of ' + item.needed : '' }})</option>
                       }
                     </optgroup>
                   }
                   @if (zone(item, 'far').length) {
                     <optgroup label="Farther than 50 km">
                       @for (o of zone(item, 'far'); track o.storeKey) {
-                        <option [ngValue]="o.storeKey" [disabled]="o.available < item.needed">{{ o.name }} - {{ km(o) }} ({{ o.available }} in stock{{ o.available < item.needed ? ', not enough' : '' }})</option>
+                        <option [ngValue]="o.storeKey">{{ o.name }} - {{ km(o) }} ({{ o.available }} in stock{{ o.available < item.needed ? ', partial: ' + o.available + ' of ' + item.needed : '' }})</option>
                       }
                     </optgroup>
                   }
                   @if (zone(item, 'unknown').length) {
                     <optgroup label="Location not set">
                       @for (o of zone(item, 'unknown'); track o.storeKey) {
-                        <option [ngValue]="o.storeKey" [disabled]="o.available < item.needed">{{ o.name }} - {{ o.city }} ({{ o.available }} in stock{{ o.available < item.needed ? ', not enough' : '' }})</option>
+                        <option [ngValue]="o.storeKey">{{ o.name }} - {{ o.city }} ({{ o.available }} in stock{{ o.available < item.needed ? ', partial: ' + o.available + ' of ' + item.needed : '' }})</option>
                       }
                     </optgroup>
                   }
@@ -117,7 +117,7 @@
                 <div class="route-card" [class.near]="p.zone === 'near'" [class.far]="p.zone === 'far'">
                   <span class="route-node"><i class="bi bi-shop"></i><b>{{ p.name }}</b><small>{{ p.city }}</small></span>
                   <span class="route-line"><em>{{ km(p) }}</em><i class="bi bi-truck route-truck" aria-hidden="true"></i></span>
-                  <span class="route-node"><i class="bi bi-geo-alt-fill"></i><b>{{ r.branch }}</b><small>{{ item.needed }} unit{{ item.needed === 1 ? '' : 's' }} will be sent</small></span>
+                  <span class="route-node"><i class="bi bi-geo-alt-fill"></i><b>{{ r.branch }}</b><small>{{ sendQty(item) }} unit{{ sendQty(item) === 1 ? '' : 's' }} will be sent</small></span>
                   <span class="route-tag">{{ p.zone === 'near' ? 'Within 50 km' : p.zone === 'far' ? 'Beyond 50 km' : 'Distance unknown' }}</span>
                 </div>
               }
