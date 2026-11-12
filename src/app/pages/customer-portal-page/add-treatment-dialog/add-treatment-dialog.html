@@ -148,14 +148,11 @@
                 <label for="at-gap">Every (days)</label>
                 <div class="input-wrap"><i class="bi bi-arrow-repeat"></i><input id="at-gap" type="number" min="1" max="365" name="planGap" [(ngModel)]="plan.interval" /></div>
               </div>
-              <div class="form-field">
+              <div class="form-field full-width">
                 <label for="at-date">First sitting date <span>*</span></label>
-                <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="at-date" type="date" name="planDate" [min]="today" [(ngModel)]="plan.start_date" /></div>
+                <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="at-date" type="date" name="planDate" [min]="today" [(ngModel)]="plan.start_date" (ngModelChange)="onPlanDateChange()" /></div>
               </div>
-              <div class="form-field">
-                <label for="at-time">Time</label>
-                <div class="input-wrap"><i class="bi bi-clock"></i><input id="at-time" type="time" name="planTime" [(ngModel)]="plan.start_time" /></div>
-              </div>
+              <ng-container *ngTemplateOutlet="slotPick; context: { sp: planSlots, id: 'at', title: 'First sitting time' }"></ng-container>
               <div class="form-field full-width">
                 <label for="at-remarks">Doctor suggestion / remarks</label>
                 <div class="input-wrap"><i class="bi bi-chat-left-text"></i><textarea id="at-remarks" name="planRemarks" rows="2" maxlength="1000" [(ngModel)]="plan.remarks"></textarea></div>
@@ -183,6 +180,32 @@
                     <div class="na-sitting done"><strong>Sitting {{ s.sitting_no }}</strong><span>Completed {{ formatDate(s.actual_date || s.scheduled_date) }}</span></div>
                   }
                 </div>
+                @if (canAddTreatment()) {
+                  <div class="na-inline end">
+                    <button type="button" class="save-btn" (click)="openExtra(p)"><i class="bi bi-plus-circle"></i> {{ extraPlanId === p.id ? 'Cancel' : 'Add extra sittings' }}</button>
+                  </div>
+                  @if (extraPlanId === p.id) {
+                    <p class="muted na-hint"><i class="bi bi-info-circle"></i> Extra sittings are billed at this treatment's price per sitting ({{ inr(p.price_per_sitting) }}) and the treatment becomes <strong>In progress</strong> again.</p>
+                    <div class="form-grid">
+                      <div class="form-field">
+                        <label for="ex-count">Extra sittings <span>*</span></label>
+                        <div class="input-wrap"><i class="bi bi-collection"></i><input id="ex-count" type="number" min="1" max="50" name="exCount" [(ngModel)]="extra.count" /></div>
+                      </div>
+                      <div class="form-field">
+                        <label for="ex-gap">Every (days)</label>
+                        <div class="input-wrap"><i class="bi bi-arrow-repeat"></i><input id="ex-gap" type="number" min="1" max="365" name="exGap" [(ngModel)]="extra.interval" /></div>
+                      </div>
+                      <div class="form-field full-width">
+                        <label for="ex-date">First extra sitting date <span>*</span></label>
+                        <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="ex-date" type="date" name="exDate" [min]="today" [(ngModel)]="extra.start_date" (ngModelChange)="onExtraDateChange()" /></div>
+                      </div>
+                      <ng-container *ngTemplateOutlet="slotPick; context: { sp: extraSlots, id: 'ex', title: 'First extra sitting time' }"></ng-container>
+                    </div>
+                    <div class="na-inline end">
+                      <button type="button" class="save-btn" (click)="addExtraSittings(p)"><i class="bi bi-plus-lg"></i> Add extra sittings</button>
+                    </div>
+                  }
+                }
               </details>
             }
           </section>
@@ -203,3 +226,64 @@
     <button type="button" class="cancel-btn" (click)="close()">Close</button>
   </div>
 </div>
+
+<!-- Appointment-style time picker (Morning / Afternoon / Evening slots) + the doctors free at the picked slot -->
+<ng-template #slotPick let-sp="sp" let-id="id" let-title="title">
+  <div class="form-field full-width slot-field">
+    <label>{{ title }}</label>
+    @if (!sp.date) {
+      <p class="slot-hint"><i class="bi bi-info-circle"></i> Pick a date to see the free slots.</p>
+    } @else if (sp.loading) {
+      <p class="slot-hint"><i class="bi bi-arrow-repeat spin"></i> Checking free slots…</p>
+    } @else {
+      <div class="part-tabs" role="tablist" aria-label="Part of the day">
+        @for (group of sp.groups; track group.key) {
+          <button type="button" class="part-tab" role="tab"
+                  [class.active]="sp.activeGroup?.key === group.key" [class.empty]="!group.free"
+                  [attr.aria-selected]="sp.activeGroup?.key === group.key" (click)="sp.activePart = group.key">
+            <i class="bi" [ngClass]="group.icon"></i>
+            <span class="part-name">{{ group.label }}</span>
+            <span class="part-range">{{ group.range }}</span>
+            <span class="part-free">{{ group.free ? group.free + ' free' : 'Full' }}</span>
+          </button>
+        }
+      </div>
+      @if (sp.activeGroup; as group) {
+        <div class="slot-panel" role="listbox" [attr.aria-label]="group.label + ' slots'">
+          @for (slot of group.slots; track slot.time) {
+            <button type="button" class="slot-chip" role="option"
+                    [class.selected]="sp.time === slot.time" [class.booked]="!slot.available" [disabled]="!slot.available"
+                    [attr.aria-selected]="sp.time === slot.time" [title]="slot.reason || 'Available'" (click)="sp.select(slot)">
+              <span class="slot-time">{{ sp.label(slot.time) }}</span>
+              @if (!slot.available) { <span class="slot-note">{{ slot.reason }}</span> }
+            </button>
+          }
+        </div>
+      }
+      @if (sp.passedCount) {
+        <p class="slot-hint"><i class="bi bi-clock-history"></i> {{ sp.passedCount }} earlier slot{{ sp.passedCount === 1 ? '' : 's' }} today {{ sp.passedCount === 1 ? 'has' : 'have' }} passed.</p>
+      }
+      @if (sp.range) {
+        <div class="slot-selected">
+          <span class="slot-selected-icon"><i class="bi bi-calendar2-check"></i></span>
+          <span class="slot-selected-text"><small>Your slot</small><strong>{{ sp.range }}</strong></span>
+          <button type="button" class="slot-clear" (click)="sp.clear()" aria-label="Clear the selected time"><i class="bi bi-x-lg"></i></button>
+        </div>
+      }
+      @if (sp.hint) {
+        <p class="slot-hint" [class.warn]="!!sp.error || !!sp.bookedCount"><i class="bi" [ngClass]="sp.error ? 'bi-exclamation-circle' : 'bi-info-circle'"></i> {{ sp.hint }}</p>
+      }
+    }
+  </div>
+  <div class="form-field full-width">
+    <label [attr.for]="id + '-doctor'">Doctor <small>(checked for availability at every sitting)</small></label>
+    <div class="input-wrap"><i class="bi bi-person-badge"></i>
+      <select [id]="id + '-doctor'" [name]="id + 'Doctor'" [(ngModel)]="sp.doctorId" [disabled]="!sp.doctors.length" [attr.aria-busy]="sp.doctorsLoading">
+        <option [ngValue]="null">{{ sp.doctorPlaceholder }}</option>
+        @for (d of sp.doctors; track d.id) { <option [ngValue]="d.id">{{ d.name }}</option> }
+      </select>
+      <i class="bi bi-chevron-down select-arrow"></i>
+    </div>
+    @if (sp.doctorHint) { <p class="slot-hint" [class.warn]="!sp.doctors.length"><i class="bi bi-info-circle"></i> {{ sp.doctorHint }}</p> }
+  </div>
+</ng-template>

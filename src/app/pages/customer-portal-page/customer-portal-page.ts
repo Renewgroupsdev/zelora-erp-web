@@ -29,13 +29,12 @@ import { Customer, CustomerSegment, CustomerStats } from './customer.model';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { key: 'view', icon: 'bi-eye', label: 'View Profile', variant: 'primary', permission: 'view-customer' },
+  { key: 'view', icon: 'bi-eye', label: 'View Profile', variant: 'primary', permission: 'view-customer', fixedIcon: true },
   { key: 'edit', icon: 'bi-pencil-square', label: 'Edit Customer', variant: 'default', permission: 'edit-customer' },
-  { key: 'call', icon: 'bi-telephone', label: 'Call', variant: 'default', permission: 'call-customer' },
 ];
 
 /** A converted customer (Appointments -> invoice -> customer) has a treatment plan whose sittings are worked here. */
-const SITTINGS_ACTION: QuickAction = { key: 'sittings', icon: 'bi-collection', label: 'Treatment sittings', variant: 'default', permission: 'treatment-sittings' };
+const SITTINGS_ACTION: QuickAction = { key: 'sittings', icon: 'bi-calendar2-week', label: 'Treatment sittings', variant: 'default', permission: 'treatment-sittings', fixedIcon: true };
 
 /**
  * Customer Management. The list, the stat cards and the Branch / Preferred service filter options all come from
@@ -318,7 +317,6 @@ export class CustomerPortalPage implements OnInit {
     if (!customer) return;
 
     if (action === 'view') this.openProfile(customer);
-    else if (action === 'call') window.location.href = `tel:${customer.mobile_no.replace(/\s+/g, '')}`;
     else if (action === 'edit') this.openEdit(customer);
     else if (action === 'sittings') this.openSittings(customer);
   }

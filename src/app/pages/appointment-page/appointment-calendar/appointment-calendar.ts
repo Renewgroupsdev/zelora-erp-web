@@ -4,6 +4,9 @@ import { FlowAppointmentRecord, FlowStatus, statusLabel, treatmentNames } from '
 
 export type CalendarView = 'month' | 'week' | 'day';
 
+/** Visits that are finished or only a consultation: not drawn on the calendar (it shows scheduled, in progress and cancelled visits). */
+const HIDDEN_STATUSES: ReadonlySet<string> = new Set(['Invoiced', 'Converted', 'Consultation Only']);
+
 /** Booking slot length - matches the API's appointments.slot_minutes. */
 export const SLOT_MINUTES = 30;
 /** Slot row height (px): Day view is taller so each booking shows its details. */
@@ -158,6 +161,7 @@ export class AppointmentCalendar implements OnInit, OnDestroy {
   private byDate(): Map<string, FlowAppointmentRecord[]> {
     const map = new Map<string, FlowAppointmentRecord[]>();
     for (const a of this.appointments) {
+      if (HIDDEN_STATUSES.has(a.status)) continue; // the calendar shows only open (scheduled / in progress) and cancelled visits
       const list = map.get(a.appointment_date) ?? [];
       list.push(a);
       map.set(a.appointment_date, list);

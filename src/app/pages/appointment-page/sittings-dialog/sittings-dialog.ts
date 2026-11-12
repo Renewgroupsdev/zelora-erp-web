@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { finalize } from 'rxjs';
@@ -8,6 +8,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { BranchOptionsService, parseUnitKey } from '../../../shared/common-services/branch-options.service';
+import { SlotPicker } from '../../customer-portal-page/add-treatment-dialog/slot-picker';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { FlowAppointmentRecord, FlowCustomerTreatment, PAYMENT_MODES, PaymentMode, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
@@ -39,9 +40,9 @@ interface SittingDraft {
   standalone: true,
   imports: [CommonModule, FormsModule, MatDialogModule, PageLoader, CanActionDirective],
   templateUrl: './sittings-dialog.html',
-  styleUrls: ['../../../shared/styles/erp-dialog.scss', './sittings-dialog.scss'],
+  styleUrls: ['../../../shared/styles/erp-dialog.scss', '../new-appointment-dialog/new-appointment-dialog.scss', './sittings-dialog.scss'],
 })
-export class SittingsDialog implements OnInit {
+export class SittingsDialog implements OnInit, OnDestroy {
   private readonly api = inject(ApiDataService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
@@ -79,6 +80,33 @@ export class SittingsDialog implements OnInit {
   ngOnInit(): void {
     this.branchOptions.load().subscribe(list => this.branches.set(list.map(b => ({ key: b.key, name: b.name }))));
     this.load();
+    // A transfer waits for the other branch's manager: while one is pending, check often so the answer (accepted / rejected) shows at once.
+    this.pollTimer = setInterval(() => this.pollTransfers(), 8000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollTimer) clearInterval(this.pollTimer);
+  }
+
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** Ids of the pending transfer requests across every treatment of the appointment. */
+  private pendingSignature(a: FlowAppointmentRecord | null): string {
+    const plans = a?.customer_treatments?.length ? a.customer_treatments : a?.customer_treatment ? [a.customer_treatment] : [];
+    return plans.flatMap(p => p.sittings.map(s => s.transfer_request?.id ?? 0)).join(',');
+  }
+
+  private pollTransfers(): void {
+    if (document.visibilityState === 'hidden' || !this.sittings().some(s => s.transfer_request)) return;
+    const before = this.pendingSignature(this.appt());
+    this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}`).subscribe({
+      next: (res: any) => {
+        if (this.pendingSignature(res.data) === before) return;
+        this.toast.success('The other branch answered the transfer request - the sittings are updated.');
+        this.load();
+      },
+      error: () => undefined,
+    });
   }
 
   private load(): void {
@@ -132,7 +160,25 @@ export class SittingsDialog implements OnInit {
   }
 
   /** More sittings on the treatment shown (POST customer-treatments/{id}/sittings). */
-  extra = { open: false, count: 1, interval: 30 };
+  extra = { open: false, count: 1, interval: 7, start_date: '' };
+
+  /** Slot + doctor picker of the extra sittings (same as Add Appointment): free slots of the day, then the doctors free at that slot. */
+  readonly extraSlots = new SlotPicker(this.api, this.today, () => {
+    const a = this.appt();
+    return a?.branch_type && a.branch_id ? `&branch_type=${encodeURIComponent(a.branch_type)}&branch_id=${a.branch_id}` : '';
+  });
+
+  toggleExtra(): void {
+    this.extra.open = !this.extra.open;
+    if (!this.extra.open) return;
+    this.extra = { ...this.extra, start_date: this.today, interval: this.appt()?.sitting_interval_days || 7 };
+    this.extraSlots.reset();
+    this.extraSlots.setDate(this.extra.start_date);
+  }
+
+  onExtraDateChange(): void {
+    this.extraSlots.setDate(this.extra.start_date);
+  }
 
   addSittings(): void {
     const plan = this.activePlan();
@@ -140,7 +186,14 @@ export class SittingsDialog implements OnInit {
     const count = Number(this.extra.count);
     if (!(count >= 1 && count <= 50)) return void this.toast.error('Add between 1 and 50 sittings.');
     if (!(Number(this.extra.interval) >= 1)) return void this.toast.error('The gap between sittings must be at least 1 day.');
-    this.run(-1, this.api.POST(`${ApiRoutesConstants.CUSTOMER_TREATMENTS}/${plan.id}/sittings`, { count, sitting_interval_days: Number(this.extra.interval) }), true);
+    if (!this.extra.start_date || this.extra.start_date < this.today) return void this.toast.error('Pick today or a later date for the first extra sitting.');
+    this.run(-1, this.api.POST(`${ApiRoutesConstants.CUSTOMER_TREATMENTS}/${plan.id}/sittings`, {
+      count,
+      sitting_interval_days: Number(this.extra.interval),
+      start_date: this.extra.start_date,
+      start_time: this.extraSlots.time || null,
+      doctor_id: this.extraSlots.doctorId,
+    }), true);
     this.extra.open = false;
   }
 
@@ -237,14 +290,44 @@ export class SittingsDialog implements OnInit {
     this.run(s.id, this.api.PUT(`${ApiRoutesConstants.SITTINGS}/${s.id}/notes`, { notes }));
   }
 
+  /** Slot + doctor picker of one sitting's reschedule form (same as Add Appointment). Slots are those of the branch that will hold the sitting. */
+  private readonly pickers: Record<number, SlotPicker> = {};
+
+  picker(s: Sitting): SlotPicker {
+    return this.pickers[s.id] ??= new SlotPicker(this.api, this.today, () => {
+      const unit = parseUnitKey(this.drafts[s.id]?.branchKey ?? '');
+      if (unit) return `&branch_type=${unit.type}&branch_id=${unit.id}`;
+      const a = this.appt();
+      const type = s.branch_type ?? a?.branch_type;
+      const id = s.branch_id ?? a?.branch_id;
+      return type && id ? `&branch_type=${encodeURIComponent(type)}&branch_id=${id}` : '';
+    });
+  }
+
+  toggleReschedule(s: Sitting): void {
+    const d = this.drafts[s.id];
+    d.rescheduling = !d.rescheduling;
+    if (!d.rescheduling) return;
+    if (!d.date || d.date < this.today) d.date = this.today;
+    const p = this.picker(s);
+    p.reset();
+    p.setDate(d.date);
+  }
+
+  /** New date or a different branch: the free slots and doctors are looked up again. */
+  onRescheduleChange(s: Sitting): void {
+    this.picker(s).setDate(this.drafts[s.id].date);
+  }
+
   reschedule(s: Sitting): void {
     const d = this.drafts[s.id];
     if (!d.date || d.date < this.today) return void this.toast.error('Pick today or a later date.');
-    // A branch picked here moves the sitting there (its stock is used, its staff work it); '' leaves it where it is.
+    const p = this.picker(s);
+    // A branch picked here asks that branch's manager to take the sitting (it moves only when accepted); '' keeps it where it is.
     const unit = parseUnitKey(d.branchKey);
     this.run(s.id, this.api.PUT(`${ApiRoutesConstants.SITTINGS}/${s.id}/reschedule`, {
-      scheduled_date: d.date, scheduled_time: d.time || null,
-      ...(unit ? { branch_type: unit.type, branch_id: unit.id } : {}),
+      scheduled_date: d.date, scheduled_time: p.time || null,
+      ...(unit ? { branch_type: unit.type, branch_id: unit.id } : { doctor_id: p.doctorId }),
     }));
     d.rescheduling = false;
   }

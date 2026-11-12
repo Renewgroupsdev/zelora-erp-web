@@ -27,6 +27,15 @@ export interface SittingPhoto {
   captured_at: string | null;
 }
 
+/** Where a sitting is held, and whether it was moved to another branch / franchise than its treatment's own. */
+export interface SittingTransferInfo {
+  transferred: boolean;
+  branch: string;
+  from: string | null;
+  at: string | null;
+  by: string | null;
+}
+
 export interface Sitting {
   id: number;
   sitting_no: number;
@@ -41,6 +50,7 @@ export interface Sitting {
   doctor?: { id: number; name: string } | null;
   photos: SittingPhoto[];
   requirements?: SittingRequirements;
+  transfer_info?: SittingTransferInfo | null;
   /** A move to another branch that is still waiting for a doctor there to accept. */
   transfer_request?: SittingTransfer | null;
 }
@@ -161,6 +171,7 @@ export interface FlowAppointmentRecord {
   invoiced_at: string | null;
   branch?: { id: number; name: string } | null;
   branch_type?: 'branch' | 'franchise' | null;
+  branch_id?: number | null;
   /** Branch / franchise display name (a franchise reads "Name (Franchise)"). */
   branch_name?: string | null;
   counselor?: { id: number; name: string } | null;
@@ -229,6 +240,8 @@ export interface FlowTreatmentLine {
   treatment_id: number;
   sittings_count: number;
   sitting_interval_days: number;
+  /** Day of this treatment's first sitting (null = the appointment day). */
+  start_date?: string | null;
   price_per_sitting: string;
   total_amount: string;
   treatment?: { id: number; name: string } | null;
@@ -257,7 +270,7 @@ export interface TreatmentHistory {
   net_amount: number;
   paid: number;
   price_per_sitting: number;
-  sittings: { id: number; sitting_no: number; scheduled_date: string | null; scheduled_time: string | null; actual_date: string | null; status: string }[];
+  sittings: { id: number; sitting_no: number; scheduled_date: string | null; scheduled_time: string | null; actual_date: string | null; status: string; notes?: string | null; doctor?: { id: number; name: string } | null; photos?: SittingPhoto[]; transfer_info?: SittingTransferInfo | null }[];
 }
 
 export const PAYMENT_MODES: { value: PaymentMode; label: string; icon: string }[] = [

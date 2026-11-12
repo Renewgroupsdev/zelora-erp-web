@@ -353,3 +353,19 @@
 @media (max-width: 575.98px) {
   .st-add-card .st-add-fields { grid-template-columns: 1fr; }
 }
+
+/* Add sittings: the date / time / doctor rows span the card like the Add Appointment form */
+.st-add-card .st-add-fields { gap: 12px 16px; }
+.st-add-card .st-add-fields .full-width { grid-column: 1 / -1; }
+.st-resched { margin-top: 10px; }
+
+/* A sitting moved to another branch / franchise */
+.st-moved {
+  display: flex; align-items: flex-start; gap: 10px; margin: 8px 0 0; padding: 9px 12px;
+  border: 1px solid #f5d79a; border-left: 4px solid #e0a020; border-radius: 10px; background: #fff8e6; color: #6b4a00; font-size: 12.5px; line-height: 1.45;
+  > i { margin-top: 2px; font-size: 16px; color: #c27a0a; }
+}
+.st-moved-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px;
+  background: #fff4e0; color: #9a6700; border: 1px solid #f5d79a; font-size: 11px; font-weight: 800; white-space: nowrap;
+}

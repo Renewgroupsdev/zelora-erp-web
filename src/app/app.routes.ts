@@ -111,6 +111,8 @@ export const routes: Routes = [
       { path: 'reports/:id', loadComponent: () => import('./pages/reports/report-detail/report-detail').then(m => m.ReportDetail) },
       { path: 'settings', loadComponent: () => import('./pages/settings-page/settings-page').then(m => m.SettingsPage) },
       // Settings -> Integrations -> Meta Lead Ads (Facebook / Instagram Lead Ads import)
+      // Settings -> WhatsApp Templates (Meta review status, active appointment message)
+      { path: 'settings/whatsapp-templates', loadComponent: () => import('./pages/settings-page/whatsapp-templates/whatsapp-templates').then(m => m.WhatsappTemplates) },
       { path: 'settings/meta-lead-ads', loadComponent: () => import('./pages/settings-page/meta-lead-ads/meta-lead-ads').then(m => m.MetaLeadAds) },
       { path: 'settings/meta-lead-ads/activity', loadComponent: () => import('./pages/settings-page/meta-activity/meta-activity').then(m => m.MetaActivity) },
       // A tab added on Roles & Permissions whose page isn't built yet opens a Work in progress page inside the
