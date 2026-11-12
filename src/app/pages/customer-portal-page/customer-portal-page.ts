@@ -25,15 +25,21 @@ import { CustomerDetailsDialog } from '../appointment-page/customer-details-dial
 import { SittingsDialog } from '../appointment-page/sittings-dialog/sittings-dialog';
 import { EditCustomerDialog } from './edit-customer-dialog/edit-customer-dialog';
 import { AddTreatmentDialog } from './add-treatment-dialog/add-treatment-dialog';
+import { CustomerPaymentsDialog } from './customer-payments-dialog/customer-payments-dialog';
 import { Customer, CustomerSegment, CustomerStats } from './customer.model';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'view', icon: 'bi-eye', label: 'View Profile', variant: 'primary', permission: 'view-customer', fixedIcon: true },
   { key: 'edit', icon: 'bi-pencil-square', label: 'Edit Customer', variant: 'default', permission: 'edit-customer' },
+  { key: 'payments', icon: 'bi-cash-coin', label: 'Customer Payments', variant: 'default', permission: 'customer-payments', fixedIcon: true },
 ];
 
 /** A converted customer (Appointments -> invoice -> customer) has a treatment plan whose sittings are worked here. */
+/** Documents of a converted customer: the payment receipt and the tax invoice (Download Invoice permission). */
+const RECEIPT_ACTION: QuickAction = { key: 'receipt', icon: 'bi-receipt', label: 'Payment receipt', variant: 'default', permission: 'download-invoice', fixedIcon: true, fixedLabel: true };
+const INVOICE_ACTION: QuickAction = { key: 'invoice', icon: 'bi-file-earmark-pdf', label: 'Tax invoice', variant: 'default', permission: 'download-invoice', fixedIcon: true, fixedLabel: true };
+
 const SITTINGS_ACTION: QuickAction = { key: 'sittings', icon: 'bi-calendar2-week', label: 'Treatment sittings', variant: 'default', permission: 'treatment-sittings', fixedIcon: true };
 
 /**
@@ -82,13 +88,13 @@ export class CustomerPortalPage implements OnInit {
     { key: 'lead', header: 'Customer', type: 'lead' },
     { key: 'contact', header: 'Contact', type: 'text' },
     { key: 'branch', header: 'Branch', type: 'branch' },
-    { key: 'segment', header: 'Segment', type: 'badge' },
     { key: 'totalVisits', header: 'Visits', type: 'text', width: '70px' },
     { key: 'lastVisit', header: 'Last Visit', type: 'text' },
     { key: 'totalAmount', header: 'Total Amount', type: 'text' },
     { key: 'balanceAmount', header: 'Balance Amount', type: 'text' },
+    { key: 'paymentStatus', header: 'Payment Status', type: 'badge', sortable: false },
     { key: 'status', header: 'Status', type: 'badge' },
-    { key: 'actions', header: 'Actions', type: 'quickActions', sortable: false, width: '110px' },
+    { key: 'actions', header: 'Actions', type: 'quickActions', sortable: false, width: '230px' },
   ];
 
   readonly pageSizeOptions = [12, 24, 48];
@@ -292,19 +298,28 @@ export class CustomerPortalPage implements OnInit {
     this.loadCustomers();
   }
 
+  /** Paid = nothing left on the treatment plans, Unpaid = nothing paid yet, else Partially Paid; No Plan = no treatment billed. */
+  private paymentStatus(c: Customer): string {
+    const total = Number(c.total_amount ?? 0);
+    const balance = Number(c.balance_amount ?? 0);
+    if (total <= 0) return 'No Plan';
+    if (balance <= 0) return 'Paid';
+    return balance >= total ? 'Unpaid' : 'Partially Paid';
+  }
+
   private mapCustomerToRow(customer: Customer): TableRow {
     return {
       id: customer.id,
       lead: { name: customer.name, subtitle: customer.customer_code, photo: customer.photo_url ?? undefined } as LeadCell,
       contact: customer.mobile_no,
       branch: customer.branch_name ?? '-',
-      segment: customer.segment,
       totalVisits: customer.visits,
       lastVisit: this.formatDate(customer.last_visit),
       totalAmount: this.formatCurrency(customer.total_amount),
       balanceAmount: this.formatCurrency(customer.balance_amount),
+      paymentStatus: this.paymentStatus(customer),
       status: customer.status,
-      actions: customer.converted_appointment_id ? [...QUICK_ACTIONS, SITTINGS_ACTION] : QUICK_ACTIONS,
+      actions: customer.converted_appointment_id ? [...QUICK_ACTIONS, RECEIPT_ACTION, INVOICE_ACTION, SITTINGS_ACTION] : QUICK_ACTIONS,
     };
   }
 
@@ -319,6 +334,35 @@ export class CustomerPortalPage implements OnInit {
     if (action === 'view') this.openProfile(customer);
     else if (action === 'edit') this.openEdit(customer);
     else if (action === 'sittings') this.openSittings(customer);
+    else if (action === 'payments') this.openPayments(customer);
+    else if (action === 'receipt') this.openDocument(customer, 'receipt');
+    else if (action === 'invoice') this.openDocument(customer, 'invoice');
+  }
+
+  /** Opens the receipt / tax invoice PDF of the customer's converted appointment in a new tab (opened in the click so it is not blocked). */
+  openDocument(customer: Customer, kind: 'receipt' | 'invoice'): void {
+    if (!customer.converted_appointment_id) return;
+    const tab = window.open('', '_blank');
+    this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${customer.converted_appointment_id}/${kind}`).subscribe({
+      next: (blob: Blob) => {
+        const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: (err: any) => {
+        tab?.close();
+        this.toast.error(kind === 'receipt' ? 'Could not open the receipt.' : 'Could not open the tax invoice.');
+      },
+    });
+  }
+
+  /** Customer Payments [customer-payments]: every payment collected from the customer, consultation and each sitting. */
+  openPayments(customer: Customer): void {
+    this.dialog.open(CustomerPaymentsDialog, {
+      width: '860px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, restoreFocus: true,
+      data: { id: customer.id, name: customer.name },
+    }).afterClosed().subscribe((changed) => { if (changed) this.loadCustomers(); });
   }
 
   /** Edit Customer [edit-customer]; after a save the list reloads from page 1, where the latest updated customer shows first. */

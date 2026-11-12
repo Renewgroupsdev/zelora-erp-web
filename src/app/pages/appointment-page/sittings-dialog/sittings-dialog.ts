@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { CustomerPaymentsDialog } from '../../customer-portal-page/customer-payments-dialog/customer-payments-dialog';
 import { finalize } from 'rxjs';
 import { ApiDataService } from '../../../core/http/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -11,7 +12,7 @@ import { BranchOptionsService, parseUnitKey } from '../../../shared/common-servi
 import { SlotPicker } from '../../customer-portal-page/add-treatment-dialog/slot-picker';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
-import { FlowAppointmentRecord, FlowCustomerTreatment, PAYMENT_MODES, PaymentMode, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
+import { FlowAppointmentRecord, FlowCustomerTreatment, Sitting, SittingPhoto, inr } from '../../../shared/models/appointment-flow.model';
 
 /** Module action whose roles may write the doctor's session notes - assigned in Roles & Permissions (the API checks the same). */
 const SITTING_NOTES_ACTION = 'sitting-notes';
@@ -23,10 +24,6 @@ interface SittingDraft {
   branchKey: string;
   notes: string;
   rescheduling: boolean;
-  paying: boolean;
-  payMode: PaymentMode;
-  payAmount: number | null;
-  payTxn: string;
 }
 
 /**
@@ -46,6 +43,7 @@ export class SittingsDialog implements OnInit, OnDestroy {
   private readonly api = inject(ApiDataService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly dialog = inject(MatDialog);
   private readonly dialogRef = inject(MatDialogRef<SittingsDialog>);
   private readonly data = inject<{ appointmentId: number }>(MAT_DIALOG_DATA);
   private readonly branchOptions = inject(BranchOptionsService);
@@ -54,7 +52,6 @@ export class SittingsDialog implements OnInit, OnDestroy {
   readonly branches = signal<{ key: string; name: string }[]>([]);
 
   readonly inr = inr;
-  readonly paymentModes = PAYMENT_MODES;
   readonly appt = signal<FlowAppointmentRecord | null>(null);
   /** The sittings shown: those of the treatment picked in the tabs (a consultation can have several treatments). */
   readonly sittings = signal<Sitting[]>([]);
@@ -109,7 +106,7 @@ export class SittingsDialog implements OnInit, OnDestroy {
     });
   }
 
-  private load(): void {
+  private load(after?: () => void): void {
     this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}`).subscribe({
       next: (res: any) => {
         const a: FlowAppointmentRecord = res.data;
@@ -130,6 +127,7 @@ export class SittingsDialog implements OnInit, OnDestroy {
         const current = plans.find(p => p.id === this.activePlanId()) ?? plans.find(p => p.sittings.some(s => s.status !== 'completed')) ?? plans[0];
         this.activePlanId.set(current?.id ?? null);
         this.setSittings(current?.sittings ?? []);
+        after?.();
       },
       error: (err: any) => {
         this.toast.error(err?.error?.message || 'Could not load the sittings.');
@@ -152,10 +150,6 @@ export class SittingsDialog implements OnInit, OnDestroy {
       branchKey: '',
       notes: s.notes ?? '',
       rescheduling: false,
-      paying: false,
-      payMode: 'Cash',
-      payAmount: s.requirements?.amount_due || null,
-      payTxn: '',
     };
   }
 
@@ -235,12 +229,22 @@ export class SittingsDialog implements OnInit, OnDestroy {
   }
 
   /** After photos only once there is a before photo; notes only once there are after photos. */
+  /** The doctor's notes are saved: the photos and notes of the sitting are then locked (only the payment and completing are left). */
+  notesSaved(s: Sitting): boolean {
+    return s.status !== 'completed' && (s.notes ?? '').trim() !== '';
+  }
+
+  /** Photos can be added / removed: not once the sitting is completed, or its notes are saved. */
+  photosEditable(s: Sitting): boolean {
+    return s.status !== 'completed' && this.can('sitting-photos') && !this.notesSaved(s);
+  }
+
   canUpload(s: Sitting, type: 'before' | 'after'): boolean {
-    return s.status !== 'completed' && !this.isLocked(s) && (type === 'before' || this.hasPhotos(s, 'before'));
+    return s.status !== 'completed' && !this.notesSaved(s) && !this.isLocked(s) && (type === 'before' || this.hasPhotos(s, 'before'));
   }
 
   canWriteNotes(s: Sitting): boolean {
-    return s.status !== 'completed' && !this.isLocked(s) && this.hasPhotos(s, 'after');
+    return s.status !== 'completed' && !this.notesSaved(s) && !this.isLocked(s) && this.hasPhotos(s, 'after');
   }
 
   shortMaterials(s: Sitting) {
@@ -255,7 +259,7 @@ export class SittingsDialog implements OnInit, OnDestroy {
     if (!this.hasPhotos(s, 'before')) out.push('Add before photos');
     if (!this.hasPhotos(s, 'after')) out.push('Add after photos');
     if (!(s.notes ?? '').trim()) out.push('Save the doctor notes');
-    if (r && r.amount_due > 0) out.push(`Collect ${inr(r.amount_due)} for this sitting`);
+    if (r && r.amount_due > 0) out.push(`Last sitting: collect the pending balance ${inr(r.amount_due)} from Customer Payments`);
     for (const m of this.shortMaterials(s)) out.push(`${m.name}: need ${m.needed}, only ${m.available} in stock`);
     return out;
   }
@@ -270,6 +274,7 @@ export class SittingsDialog implements OnInit, OnDestroy {
     input.value = '';
     if (!files.length) return;
     if (this.isLocked(s)) return void this.toast.error(`Complete sitting ${this.waitingFor(s)} first.`);
+    if (this.notesSaved(s)) return void this.toast.error('The notes are saved, so the photos are locked.');
     if (!this.canUpload(s, type)) return void this.toast.error('Add the before photos first.');
     if (files.some(f => f.size > 4 * 1024 * 1024)) return void this.toast.error('Each photo must be 4 MB or smaller.');
 
@@ -280,6 +285,7 @@ export class SittingsDialog implements OnInit, OnDestroy {
   }
 
   deletePhoto(s: Sitting, photo: SittingPhoto): void {
+    if (this.notesSaved(s)) return void this.toast.error('The notes are saved, so the photos are locked.');
     this.run(s.id, this.api.Delete(`${ApiRoutesConstants.SITTING_PHOTOS}/${photo.id}`, {}));
   }
 
@@ -287,8 +293,52 @@ export class SittingsDialog implements OnInit, OnDestroy {
     if (!this.canWriteNotes(s)) return void this.toast.error('Add the before and after photos before saving the notes.');
     const notes = this.drafts[s.id].notes.trim();
     if (!notes) return void this.toast.error('Write how the session went.');
-    this.run(s.id, this.api.PUT(`${ApiRoutesConstants.SITTINGS}/${s.id}/notes`, { notes }));
+    // Saving the notes is the last step of a sitting: when nothing else is outstanding it is completed straight away.
+    this.run(s.id, this.api.PUT(`${ApiRoutesConstants.SITTINGS}/${s.id}/notes`, { notes }), false, () => this.completeAfterNotes(s.id));
   }
+
+  /** After the notes are saved: complete the sitting if every requirement is met, else say what is still needed. */
+  private completeAfterNotes(id: number): void {
+    const fresh = this.sittings().find(x => x.id === id);
+    if (!fresh || fresh.status === 'completed' || !this.can('sitting-complete')) return;
+    const left = this.blockers(fresh);
+    if (left.length) return void this.explainBlockers(fresh, left);
+    this.complete(fresh);
+  }
+
+  /**
+   * Alert after the notes: what is still needed. Payment is optional at every sitting except the last, which cannot be
+   * completed until the whole balance is paid - then the alert offers "Collect payment" (the customer's Payments dialog).
+   */
+  private explainBlockers(s: Sitting, left: string[]): void {
+    const title = `Notes saved. To complete this sitting: ${left.join(' · ')}`;
+    const customerId = this.appt()?.customer_id;
+    const paymentPending = (s.requirements?.amount_due ?? 0) > 0;
+    if (!paymentPending || !customerId || !this.can('sitting-payment')) return void this.toast.warning(title);
+    void this.toast.action('warning', title, 'This is the last sitting: it can be completed only after the full balance is paid.', 'Collect payment').then(choice => {
+      if (choice === 'action') this.openPayments(customerId, s.id);
+    });
+  }
+
+  /**
+   * Customer Payments dialog: collect the pending payment here. When it closes the sittings reload and, if the payment
+   * cleared the last blocker of `sittingId`, that sitting is completed straight away.
+   */
+  openPayments(customerId: number, sittingId?: number): void {
+    this.dialog.open(CustomerPaymentsDialog, {
+      width: '860px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, restoreFocus: true,
+      data: { id: customerId, name: this.appt()?.name ?? '' },
+    }).afterClosed().subscribe(() => this.load(sittingId ? () => this.completeIfReady(sittingId) : undefined));
+  }
+
+  /** Completes the sitting when nothing is outstanding any more (no alert when something still is - the payment may be partial). */
+  private completeIfReady(id: number): void {
+    const fresh = this.sittings().find(x => x.id === id);
+    if (!fresh || fresh.status === 'completed' || !this.can('sitting-complete') || !this.notesSaved(fresh)) return;
+    if (this.blockers(fresh).length) return;
+    this.complete(fresh);
+  }
+
 
   /** Slot + doctor picker of one sitting's reschedule form (same as Add Appointment). Slots are those of the branch that will hold the sitting. */
   private readonly pickers: Record<number, SlotPicker> = {};
@@ -338,23 +388,6 @@ export class SittingsDialog implements OnInit, OnDestroy {
     this.run(s.id, this.api.POST(`${ApiRoutesConstants.APPOINTMENT_FLOW}/sitting-transfers/${s.transfer_request.id}/cancel`, {}));
   }
 
-  collectPayment(s: Sitting): void {
-    if (this.isLocked(s)) return void this.toast.error(`Complete sitting ${this.waitingFor(s)} first.`);
-    const d = this.drafts[s.id];
-    const amount = Number(d.payAmount);
-    const balance = s.requirements?.balance ?? Infinity;
-    if (!amount || amount <= 0) return void this.toast.error('Enter the amount received.');
-    if (amount > balance) return void this.toast.error(`Only ${inr(balance)} is left to pay on this treatment.`);
-    if (d.payMode !== 'Cash' && !d.payTxn.trim()) return void this.toast.error('Enter the transaction / reference number.');
-
-    // A payment changes what every later sitting still owes (and the header total), so reload them all.
-    this.run(s.id, this.api.POST(`${ApiRoutesConstants.SITTINGS}/${s.id}/payment`, {
-      payment_mode: d.payMode,
-      paid_amount: amount,
-      transaction_no: d.payTxn.trim() || null,
-    }), true);
-  }
-
   complete(s: Sitting): void {
     const blockers = this.blockers(s);
     if (blockers.length) return void this.toast.error(blockers[0]);
@@ -362,12 +395,14 @@ export class SittingsDialog implements OnInit, OnDestroy {
     this.run(s.id, this.api.POST(`${ApiRoutesConstants.SITTINGS}/${s.id}/complete`, {}), true);
   }
 
-  private run(id: number, request: any, reloadAll = false): void {
+  private run(id: number, request: any, reloadAll = false, after?: (res: any) => void): void {
     this.busy.set(id);
     request.pipe(finalize(() => this.busy.set(null))).subscribe({
       next: (res: any) => {
         reloadAll ? this.load() : this.patch(res.data);
         this.toast.success(res?.message || 'Saved.');
+        // After the request has finished (busy cleared), so a follow-up request can take over the busy flag.
+        if (after) queueMicrotask(() => after(res));
       },
       error: (err: any) => {
         const first = err?.error?.errors ? (Object.values(err.error.errors)[0] as string[])?.[0] : null;

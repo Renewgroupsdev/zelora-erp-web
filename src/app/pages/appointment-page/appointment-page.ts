@@ -212,7 +212,10 @@ export class AppointmentPage implements OnInit {
   private refreshPanel(): void {
     if (!this.panel) return;
     const byId = new Map(this.appointments.map(a => [a.id, a]));
-    this.panel = { ...this.panel, appointments: this.panel.appointments.map(a => byId.get(a.id) ?? a) };
+    // A booking missing from the reloaded list is gone from this page (converted to a customer, invoiced, ...): drop its card.
+    const fresh = this.panel.appointments.map(a => byId.get(a.id)).filter((a): a is FlowAppointmentRecord => !!a);
+    if (!fresh.length) return void (this.panel = null);
+    this.panel = { ...this.panel, appointments: fresh };
   }
 
   canOpenForm(a: FlowAppointmentRecord): boolean {
