@@ -9,6 +9,9 @@ export interface RolePermissionAction {
   /** Icon class name (e.g. a Bootstrap Icon class like "bi-eye-fill") rendered next to this
    *  action wherever it shows up as a clickable action. */
   logo?: string | null;
+  /** Report "View ... Report" actions only: the tile name and one-line description the Reports page shows (empty = the report's own). */
+  display_name?: string | null;
+  description?: string | null;
   permission: number;
   /** Comma-separated role ids this action is scoped to. Empty/missing means the action inherits
    *  its parent module's role_ids rather than being hidden from everyone. */
@@ -26,6 +29,8 @@ export interface RolePermissionTab {
   slug_name: string;
   /** In-app page the tab opens (e.g. "/app/inventory/purchase-orders"). */
   url?: string | null;
+  /** One-line description - on the Reports module it is the report tile's description. */
+  description?: string | null;
   /** Bootstrap Icon class (e.g. "bi-receipt") shown on the tab. */
   icon?: string | null;
   permission: number;

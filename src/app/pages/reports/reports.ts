@@ -56,7 +56,7 @@ export class Reports implements OnInit {
   }
 
   private tab(r: ReportMeta): ReportTab {
-    return { id: r.slug, label: r.title.replace(/ Report$/, ''), category: r.category, icon: r.icon, variant: r.variant ?? 'gray', description: r.description };
+    return { id: r.slug, label: r.tile_name ?? r.title.replace(/ Report$/, ''), category: r.category, icon: r.icon, variant: r.variant ?? 'gray', description: r.description };
   }
 
   get total(): number {

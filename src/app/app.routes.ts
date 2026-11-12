@@ -99,6 +99,10 @@ export const routes: Routes = [
       { path: 'audit/modules', loadComponent: () => import('./pages/audit/audit-modules').then(m => m.AuditModules) },
       { path: 'audit/modules/:slug', loadComponent: () => import('./pages/audit/audit-modules').then(m => m.AuditModuleDetail) },
 
+      // Banner Management: the customer app's home banners (each page checks its own action, the API authorises every call).
+      { path: 'banners', pathMatch: 'full', loadComponent: () => import('./pages/banners/banner-list').then(m => m.BannerList) },
+      { path: 'banners/new', loadComponent: () => import('./pages/banners/banner-form').then(m => m.BannerForm) },
+      { path: 'banners/:id/edit', loadComponent: () => import('./pages/banners/banner-form').then(m => m.BannerForm) },
       // Help & Support: report an issue, my tickets (every login); the Support Desk is for the support team (each page checks its own action, the API authorises every call).
       { path: 'support', pathMatch: 'full', loadComponent: () => import('./pages/support/support-home').then(m => m.SupportHome) },
       { path: 'support/report', loadComponent: () => import('./pages/support/support-report').then(m => m.SupportReport) },

@@ -78,7 +78,7 @@ export function allowedRouteTabs(auth: AuthService, _router: Router, moduleSlug:
  * Modules whose pages draw their own tab strip (with live badges) - the layout's automatic strip leaves them alone.
  * Every other module gets its tabs shown by the layout (AutoModuleTabs) as soon as they're added.
  */
-export const OWN_TAB_STRIP_MODULES: readonly string[] = ['purchase-management', 'hr-management'];
+export const OWN_TAB_STRIP_MODULES: readonly string[] = ['purchase-management', 'hr-management', 'reports'];
 
 /** The module a page belongs to, its page tabs, and the tab (or the module itself) the page is. */
 export interface ModuleTabMatch {

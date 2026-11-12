@@ -1,0 +1,105 @@
+<div class="bn-page">
+  <div class="bn-head">
+    <div>
+      <h1 class="bn-title">{{ editing ? 'Edit Banner' : 'Add Banner' }}</h1>
+      <p class="bn-sub">The image is shown on the customer app's home screen. Use a wide image, about 1200 x 600 px (2:1) or 1200 x 400 px (3:1).</p>
+    </div>
+    <a class="bn-btn" routerLink="/app/banners"><i class="bi bi-arrow-left"></i> Back to banners</a>
+  </div>
+
+  @if (loading) {
+    <section class="bn-card"><div class="bn-skel"></div><div class="bn-skel"></div></section>
+  } @else if (error) {
+    <div class="bn-alert" role="alert"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
+  } @else {
+    <form class="bn-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <section class="bn-card">
+        <h2 class="bn-card-title"><i class="bi bi-image"></i> Banner image</h2>
+        <div class="bn-upload">
+          <div class="bn-preview wide" [class.empty]="!preview">
+            @if (preview) { <img [src]="preview" alt="Banner preview"> } @else { <div><i class="bi bi-cloud-arrow-up"></i><span>No image chosen</span></div> }
+          </div>
+          <div class="bn-upload-side">
+            <label class="bn-btn primary">
+              <i class="bi bi-upload"></i> {{ preview ? 'Replace image' : 'Choose image' }}
+              <input type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="pick($event)">
+            </label>
+            @if (file) { <button type="button" class="bn-btn" (click)="removePicked()">Remove</button> }
+            <p class="bn-help">JPG, PNG or WEBP, up to 3 MB. The image is cropped to fit, never stretched.</p>
+            @if (file) { <p class="bn-help">{{ file.name }} - {{ file.size / 1024 | number: '1.0-0' }} KB</p> }
+            @if (imageError) { <p class="bn-error" role="alert">{{ imageError }}</p> }
+          </div>
+        </div>
+      </section>
+
+      <section class="bn-card">
+        <h2 class="bn-card-title"><i class="bi bi-card-text"></i> Details</h2>
+        <div class="bn-grid">
+          <div class="bn-field wide">
+            <label class="bn-label" for="f-title">Banner title <span class="req">*</span></label>
+            <input id="f-title" class="bn-input" formControlName="title" maxlength="150" placeholder="e.g. Diwali skin care offer" [class.bad]="invalid('title')">
+            @if (invalid('title')) { <p class="bn-error">Enter a banner title.</p> }
+          </div>
+          <div class="bn-field wide">
+            <label class="bn-label" for="f-desc">Description</label>
+            <textarea id="f-desc" class="bn-textarea" formControlName="description" maxlength="1000" rows="3" placeholder="A short line about the offer (optional)"></textarea>
+          </div>
+          <div class="bn-field wide">
+            <label class="bn-label" for="f-url">Redirect URL</label>
+            <input id="f-url" class="bn-input" formControlName="redirect_url" inputmode="url" placeholder="https://example.com/offers" [class.bad]="invalid('redirect_url')">
+            @if (invalid('redirect_url')) { <p class="bn-error">Enter a link that starts with http:// or https://.</p> }
+            @else { <p class="bn-help">Customers who tap the banner go here. Leave empty for a banner that is only shown.</p> }
+          </div>
+          <div class="bn-field">
+            <label class="bn-label" for="f-type">Banner type <span class="req">*</span></label>
+            <select id="f-type" class="bn-select" formControlName="banner_type">
+              @for (t of types; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+            </select>
+          </div>
+          <div class="bn-field">
+            <label class="bn-label" for="f-order">Display position</label>
+            <input id="f-order" class="bn-input" type="number" min="0" formControlName="display_order" [class.bad]="invalid('display_order')">
+            <p class="bn-help">Lower numbers show first.</p>
+          </div>
+          <div class="bn-field">
+            <label class="bn-label" for="f-open">Open link in</label>
+            <select id="f-open" class="bn-select" formControlName="open_link_in">
+              <option value="external">External browser (recommended)</option>
+              <option value="in_app">In-app browser</option>
+            </select>
+          </div>
+          <div class="bn-field">
+            <label class="bn-label" for="f-status">Status</label>
+            <select id="f-status" class="bn-select" formControlName="status">
+              <option [ngValue]="true">Active</option>
+              <option [ngValue]="false">Inactive</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="bn-card">
+        <h2 class="bn-card-title"><i class="bi bi-calendar-range"></i> Schedule</h2>
+        <div class="bn-grid">
+          <div class="bn-field">
+            <label class="bn-label" for="f-start">Start date and time</label>
+            <input id="f-start" class="bn-input" type="datetime-local" formControlName="start_date">
+            <p class="bn-help">Empty = starts immediately.</p>
+          </div>
+          <div class="bn-field">
+            <label class="bn-label" for="f-end">End date and time</label>
+            <input id="f-end" class="bn-input" type="datetime-local" formControlName="end_date" [class.bad]="dateOrderBad">
+            @if (dateOrderBad) { <p class="bn-error">The end must be after the start.</p> } @else { <p class="bn-help">Empty = never expires.</p> }
+          </div>
+        </div>
+      </section>
+
+      <div class="bn-form-foot">
+        <a class="bn-btn" routerLink="/app/banners">Cancel</a>
+        <button type="submit" class="bn-btn primary" [disabled]="saving">
+          @if (saving) { <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Saving... } @else { <i class="bi bi-check2"></i> {{ editing ? 'Save changes' : 'Create banner' }} }
+        </button>
+      </div>
+    </form>
+  }
+</div>

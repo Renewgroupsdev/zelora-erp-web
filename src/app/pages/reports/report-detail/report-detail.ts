@@ -39,7 +39,7 @@ export class ReportDetail {
         const r = list.find((x) => x.slug === this.id);
         this.denied = !r;
         if (r) center.markRecent(this.id);
-        if (r && !this.legacy) this.report = { id: r.slug, label: r.title.replace(/ Report$/, ''), category: r.category, icon: r.icon, variant: r.variant ?? 'gray', description: r.description };
+        if (r && !this.legacy) this.report = { id: r.slug, label: r.tile_name ?? r.title.replace(/ Report$/, ''), category: r.category, icon: r.icon, variant: r.variant ?? 'gray', description: r.description };
         this.ready = true;
       },
       error: () => { this.ready = true; this.denied = !this.legacy; },

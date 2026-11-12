@@ -44,6 +44,8 @@ export interface ReportMeta {
   can_export: boolean;
   /** One of the four Lead reports with their own page: the catalog only says whether this role may open it. */
   legacy?: boolean;
+  /** Tile name from Roles & Permissions (the report's "View ... Report" action). */
+  tile_name?: string;
   /** Tile colour (the colour of its section). */
   variant?: ReportCategory['variant'];
   date_column: { label: string; type: 'date' | 'datetime' } | null;

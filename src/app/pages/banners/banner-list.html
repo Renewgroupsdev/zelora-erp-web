@@ -1,0 +1,156 @@
+<div class="bn-page">
+  <div class="bn-head">
+    <div>
+      <h1 class="bn-title">Banner Management</h1>
+      <p class="bn-sub">Banners shown as a slideshow on the customer app's home screen. Tapping a banner opens its link in the phone's browser.</p>
+    </div>
+    <a *appCan="'add-banner'" class="bn-btn primary" routerLink="/app/banners/new"><i class="bi bi-plus-lg"></i> Add Banner</a>
+  </div>
+
+  @if (summary) {
+    <div class="bn-stats">
+      <div class="bn-stat"><span>Total banners</span><b>{{ summary.total }}</b></div>
+      <div class="bn-stat"><span>Live in the app now</span><b class="green">{{ summary.active_now }}</b></div>
+      <div class="bn-stat"><span>Inactive</span><b>{{ summary.inactive }}</b></div>
+    </div>
+  }
+
+  <section class="bn-card">
+    <div class="bn-filters">
+      <div class="bn-field grow">
+        <label class="bn-label" for="bn-search">Search</label>
+        <input id="bn-search" class="bn-input" type="search" [(ngModel)]="search" (ngModelChange)="onSearch()" placeholder="Search by banner title...">
+      </div>
+      <div class="bn-field">
+        <label class="bn-label" for="bn-status">Status</label>
+        <select id="bn-status" class="bn-select" [(ngModel)]="status" (ngModelChange)="changed()">
+          <option value="">All</option><option value="active">Active</option><option value="inactive">Inactive</option>
+        </select>
+      </div>
+      <div class="bn-field">
+        <label class="bn-label" for="bn-type">Type</label>
+        <select id="bn-type" class="bn-select" [(ngModel)]="type" (ngModelChange)="changed()">
+          <option value="">All types</option>
+          @for (t of types; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+        </select>
+      </div>
+      <div class="bn-field">
+        <label class="bn-label" for="bn-from">Created from</label>
+        <input id="bn-from" class="bn-input" type="date" [(ngModel)]="dateFrom" (ngModelChange)="changed()">
+      </div>
+      <div class="bn-field">
+        <label class="bn-label" for="bn-to">Created to</label>
+        <input id="bn-to" class="bn-input" type="date" [(ngModel)]="dateTo" (ngModelChange)="changed()">
+      </div>
+      <div class="bn-field">
+        <label class="bn-label" for="bn-sort">Sort by</label>
+        <select id="bn-sort" class="bn-select" [(ngModel)]="sort" (ngModelChange)="changed()">
+          @for (s of sorts; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+        </select>
+      </div>
+      @if (filtered) { <button type="button" class="bn-btn" (click)="clear()"><i class="bi bi-x-lg"></i> Clear</button> }
+    </div>
+  </section>
+
+  @if (loading) {
+    <section class="bn-card"><div class="bn-skel"></div><div class="bn-skel"></div><div class="bn-skel"></div></section>
+  } @else if (error) {
+    <div class="bn-alert" role="alert"><i class="bi bi-exclamation-triangle"></i> {{ error }} <button type="button" class="bn-btn sm ms-auto" (click)="load()">Try again</button></div>
+  } @else if (items.length === 0) {
+    <section class="bn-card bn-state">
+      <i class="bi bi-images"></i>
+      <p>{{ filtered ? 'No banners match these filters.' : 'No banners yet. Add your first banner to show it on the customer app.' }}</p>
+      @if (filtered) { <button type="button" class="bn-btn" (click)="clear()">Clear filters</button> }
+      @else { <a *appCan="'add-banner'" class="bn-btn primary" routerLink="/app/banners/new">Add Banner</a> }
+    </section>
+  } @else {
+    <section class="bn-card p-0">
+      <div class="bn-table-wrap">
+        <table class="bn-table">
+          <thead>
+            <tr>
+              <th>Banner</th><th>Type</th><th>Link</th><th class="num">Order</th><th>Schedule</th><th>Status</th><th class="num">Clicks</th><th>Created</th><th class="act">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (b of items; track b.id) {
+              <tr>
+                <td>
+                  <div class="bn-cell">
+                    <div class="bn-thumb">@if (b.image_url) { <img [src]="b.image_url" [alt]="b.title" loading="lazy" (error)="imgError($event)"> } @else { <i class="bi bi-image"></i> }</div>
+                    <div class="bn-name"><b>{{ b.title }}</b><span>{{ b.description || 'No description' }}</span></div>
+                  </div>
+                </td>
+                <td><span class="bn-badge t-purple">{{ b.banner_type }}</span></td>
+                <td class="bn-link">@if (b.redirect_url) { <a [href]="b.redirect_url" target="_blank" rel="noopener noreferrer" [title]="b.redirect_url">{{ b.redirect_url }}</a> } @else { <span class="muted">-</span> }</td>
+                <td class="num">{{ b.display_order }}</td>
+                <td class="bn-sched">
+                  @if (b.start_date || b.end_date) { <span>{{ b.start_date ? (b.start_date | date: 'dd MMM yyyy, h:mm a') : 'Any time' }}</span><span>to {{ b.end_date ? (b.end_date | date: 'dd MMM yyyy, h:mm a') : 'no end' }}</span> } @else { <span class="muted">Always</span> }
+                </td>
+                <td>
+                  <span class="bn-badge" [ngClass]="'t-' + stateTone[b.live_state]">{{ stateLabel[b.live_state] }}</span>
+                </td>
+                <td class="num">{{ b.clicks }}<small class="muted d-block">{{ b.ctr === null ? '' : b.ctr + '% CTR' }}</small></td>
+                <td class="bn-sched"><span>{{ b.created_at | date: 'dd MMM yyyy' }}</span><span class="muted">{{ b.created_by || '-' }}</span></td>
+                <td class="act">
+                  <div class="bn-actions">
+                    <button type="button" class="bn-icon" title="View" aria-label="View banner" (click)="view(b)"><i class="bi bi-eye"></i></button>
+                    <a *appCan="'edit-banner'" class="bn-icon" title="Edit" aria-label="Edit banner" [routerLink]="['/app/banners', b.id, 'edit']"><i class="bi bi-pencil"></i></a>
+                    <label *appCan="'toggle-banner-status'" class="bn-switch" [title]="b.status ? 'Deactivate' : 'Activate'">
+                      <input type="checkbox" [checked]="b.status" [disabled]="busyId === b.id" (change)="toggle(b)" [attr.aria-label]="'Active: ' + b.title">
+                      <span></span>
+                    </label>
+                    <button *appCan="'delete-banner'" type="button" class="bn-icon danger" title="Delete" aria-label="Delete banner" (click)="remove(b)"><i class="bi bi-trash3"></i></button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (pagination) {
+        <div class="bn-pager">
+          <span>Showing {{ pagination.from || 0 }}-{{ pagination.to || 0 }} of {{ pagination.total }} banners</span>
+          <span class="d-flex gap-2 align-items-center">
+            <label class="bn-per">Per page
+              <select class="bn-select sm" [(ngModel)]="perPage" (ngModelChange)="changed()">@for (s of sizes; track s) { <option [value]="s">{{ s }}</option> }</select>
+            </label>
+            <button type="button" class="bn-btn sm" [disabled]="pagination.current_page === 1" (click)="goTo(pagination.current_page - 1)"><i class="bi bi-chevron-left"></i> Previous</button>
+            <span class="bn-pg">Page {{ pagination.current_page }} / {{ pagination.last_page }}</span>
+            <button type="button" class="bn-btn sm" [disabled]="pagination.current_page === pagination.last_page" (click)="goTo(pagination.current_page + 1)">Next <i class="bi bi-chevron-right"></i></button>
+          </span>
+        </div>
+      }
+    </section>
+  }
+
+  @if (viewing; as v) {
+    <div class="bn-modal" role="dialog" aria-modal="true" [attr.aria-label]="'Banner ' + v.title" (click)="viewing = null">
+      <div class="bn-dialog" (click)="$event.stopPropagation()">
+        <div class="bn-dialog-head">
+          <h2>{{ v.title }}</h2>
+          <button type="button" class="bn-icon" aria-label="Close" (click)="viewing = null"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="bn-preview">@if (v.image_url) { <img [src]="v.image_url" [alt]="v.title"> }</div>
+        <dl class="bn-dl">
+          <div><dt>Status</dt><dd><span class="bn-badge" [ngClass]="'t-' + stateTone[v.live_state]">{{ stateLabel[v.live_state] }}</span></dd></div>
+          <div><dt>Type</dt><dd class="cap">{{ v.banner_type }}</dd></div>
+          <div class="wide"><dt>Description</dt><dd>{{ v.description || '-' }}</dd></div>
+          <div class="wide"><dt>Redirect link</dt><dd>@if (v.redirect_url) { <a [href]="v.redirect_url" target="_blank" rel="noopener noreferrer">{{ v.redirect_url }}</a> } @else { - }</dd></div>
+          <div><dt>Opens in</dt><dd>{{ v.open_link_in === 'external' ? 'External browser' : 'In-app browser' }}</dd></div>
+          <div><dt>Display order</dt><dd>{{ v.display_order }}</dd></div>
+          <div><dt>Starts</dt><dd>{{ v.start_date ? (v.start_date | date: 'dd MMM yyyy, h:mm a') : 'Immediately' }}</dd></div>
+          <div><dt>Ends</dt><dd>{{ v.end_date ? (v.end_date | date: 'dd MMM yyyy, h:mm a') : 'No end date' }}</dd></div>
+          <div><dt>Impressions</dt><dd>{{ v.impressions }}</dd></div>
+          <div><dt>Clicks</dt><dd>{{ v.clicks }}{{ v.ctr === null ? '' : ' (' + v.ctr + '% CTR)' }}</dd></div>
+          <div><dt>Created</dt><dd>{{ v.created_at | date: 'dd MMM yyyy, h:mm a' }} by {{ v.created_by || '-' }}</dd></div>
+          <div><dt>Updated</dt><dd>{{ v.updated_at ? (v.updated_at | date: 'dd MMM yyyy, h:mm a') : '-' }}</dd></div>
+        </dl>
+        <div class="bn-dialog-foot">
+          <a *appCan="'edit-banner'" class="bn-btn primary" [routerLink]="['/app/banners', v.id, 'edit']"><i class="bi bi-pencil"></i> Edit</a>
+          <button type="button" class="bn-btn" (click)="viewing = null">Close</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
