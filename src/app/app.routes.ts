@@ -99,6 +99,14 @@ export const routes: Routes = [
       { path: 'audit/modules', loadComponent: () => import('./pages/audit/audit-modules').then(m => m.AuditModules) },
       { path: 'audit/modules/:slug', loadComponent: () => import('./pages/audit/audit-modules').then(m => m.AuditModuleDetail) },
 
+      // Help & Support: report an issue, my tickets (every login); the Support Desk is for the support team (each page checks its own action, the API authorises every call).
+      { path: 'support', pathMatch: 'full', loadComponent: () => import('./pages/support/support-home').then(m => m.SupportHome) },
+      { path: 'support/report', loadComponent: () => import('./pages/support/support-report').then(m => m.SupportReport) },
+      { path: 'support/tickets', loadComponent: () => import('./pages/support/support-tickets').then(m => m.SupportTickets) },
+      { path: 'support/tickets/:no', loadComponent: () => import('./pages/support/support-ticket').then(m => m.SupportTicketPage) },
+      { path: 'support/admin', pathMatch: 'full', loadComponent: () => import('./pages/support/support-desk').then(m => m.SupportDesk) },
+      { path: 'support/admin/tickets/:no', data: { admin: true }, loadComponent: () => import('./pages/support/support-ticket').then(m => m.SupportTicketPage) },
+
       { path: 'reports', loadComponent: () => import('./pages/reports/reports').then(m => m.Reports) },
       { path: 'reports/:id', loadComponent: () => import('./pages/reports/report-detail/report-detail').then(m => m.ReportDetail) },
       { path: 'settings', loadComponent: () => import('./pages/settings-page/settings-page').then(m => m.SettingsPage) },

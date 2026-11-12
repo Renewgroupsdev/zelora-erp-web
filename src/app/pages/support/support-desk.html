@@ -1,0 +1,182 @@
+<div class="sp-page">
+  <div class="sp-head">
+    <div>
+      <h1 class="sp-title">Customer Support / Help Desk</h1>
+      <p class="sp-sub">Tickets reported by customers and employees.</p>
+    </div>
+    <div class="sp-tabs" role="tablist">
+      @if (can('view-support-dashboard')) { <button type="button" role="tab" [class.active]="tab === 'dashboard'" (click)="openTab('dashboard')"><i class="bi bi-speedometer2"></i> Dashboard</button> }
+      @if (can('view-support-tickets')) { <button type="button" role="tab" [class.active]="tab === 'tickets'" (click)="openTab('tickets')"><i class="bi bi-ticket-detailed"></i> All Tickets</button> }
+      @if (can('manage-support-settings')) { <button type="button" role="tab" [class.active]="tab === 'settings'" (click)="openTab('settings')"><i class="bi bi-gear"></i> Settings</button> }
+    </div>
+  </div>
+
+  <app-auto-module-tabs></app-auto-module-tabs>
+
+  <!-- ================= dashboard ================= -->
+  @if (tab === 'dashboard') {
+    <section class="sp-card">
+      <div class="sp-filters">
+        <div class="sp-field"><label class="sp-label" for="d1">From</label><input id="d1" class="sp-input" type="date" [(ngModel)]="dashFrom"></div>
+        <div class="sp-field"><label class="sp-label" for="d2">To</label><input id="d2" class="sp-input" type="date" [(ngModel)]="dashTo"></div>
+        <div class="sp-field"><label class="sp-label" for="d3">Trend</label>
+          <select id="d3" class="sp-select" [(ngModel)]="trend" (ngModelChange)="loadDashboard()"><option value="daily">Daily (30 days)</option><option value="weekly">Weekly (12 weeks)</option><option value="monthly">Monthly (12 months)</option></select></div>
+        <div class="d-flex gap-2"><button type="button" class="sp-btn primary" (click)="loadDashboard()">Apply</button><button type="button" class="sp-btn" (click)="dashFrom = ''; dashTo = ''; loadDashboard()">Clear</button></div>
+      </div>
+    </section>
+
+    @if (dashError) {
+      <div class="sp-alert" role="alert">{{ dashError }} <button type="button" class="sp-btn sm ms-auto" (click)="loadDashboard()">Try again</button></div>
+    } @else if (dash) {
+      <div class="sp-grid cards" [style.opacity]="dashLoading ? .55 : 1">
+        @for (c of cards; track c.key) {
+          <div class="sp-stat" [ngClass]="'t-' + c.tone"><span class="ic"><i class="bi" [ngClass]="c.icon"></i></span><span><div class="v">{{ dash.cards[c.key] | number }}</div><div class="l">{{ c.label }}</div></span></div>
+        }
+      </div>
+
+      <div class="sp-grid cards">
+        <div class="sp-stat t-green"><span class="ic"><i class="bi bi-stopwatch"></i></span><span><div class="v">{{ hours(dash.avg_resolution_hours) }}</div><div class="l">Average resolution time</div></span></div>
+        <div class="sp-stat t-purple"><span class="ic"><i class="bi bi-reply"></i></span><span><div class="v">{{ hours(dash.avg_first_response_hours) }}</div><div class="l">Average first response</div></span></div>
+        <div class="sp-stat t-orange"><span class="ic"><i class="bi bi-star-fill"></i></span><span><div class="v">{{ dash.avg_satisfaction ?? '-' }}</div><div class="l">Average rating (of 5)</div></span></div>
+        <div class="sp-stat t-red"><span class="ic"><i class="bi bi-person-x"></i></span><span><div class="v">{{ dash.cards.unassigned | number }}</div><div class="l">Not assigned yet</div></span></div>
+      </div>
+
+      <div class="sp-grid cols-2">
+        <section class="sp-card"><h2 class="sp-card-title">Tickets by status</h2><app-bf-donut [data]="statusData" centerLabel="Tickets"></app-bf-donut></section>
+        <section class="sp-card"><h2 class="sp-card-title">Customer vs employee tickets</h2><app-bf-donut [data]="typeData" centerLabel="Tickets"></app-bf-donut></section>
+        <section class="sp-card"><h2 class="sp-card-title">Tickets by category</h2><app-bf-bars [data]="categoryData"></app-bf-bars></section>
+        <section class="sp-card"><h2 class="sp-card-title">Tickets by priority</h2><app-bf-bars [data]="priorityData"></app-bf-bars></section>
+      </div>
+      <section class="sp-card"><h2 class="sp-card-title">{{ trend === 'daily' ? 'Daily' : trend === 'weekly' ? 'Weekly' : 'Monthly' }} tickets: created and resolved</h2><app-bf-columns [data]="trendData" aName="Created" bName="Resolved"></app-bf-columns></section>
+    } @else {
+      <div class="sp-tickets"><div class="sp-skel"></div><div class="sp-skel"></div></div>
+    }
+  }
+
+  <!-- ================= all tickets ================= -->
+  @if (tab === 'tickets') {
+    <section class="sp-card">
+      <div class="sp-filters">
+        <div class="sp-field" style="grid-column: span 2"><label class="sp-label" for="f0">Search</label><input id="f0" class="sp-input" type="search" [(ngModel)]="f.search" (keydown.enter)="applyFilters()" placeholder="Ticket no., title or reporter name"></div>
+        <div class="sp-field"><label class="sp-label" for="f1">From</label><input id="f1" class="sp-input" type="date" [(ngModel)]="f.date_from"></div>
+        <div class="sp-field"><label class="sp-label" for="f2">To</label><input id="f2" class="sp-input" type="date" [(ngModel)]="f.date_to"></div>
+        <div class="sp-field"><label class="sp-label" for="f3">User type</label><select id="f3" class="sp-select" [(ngModel)]="f.user_type"><option value="">All</option><option value="customer">Customers</option><option value="employee">Employees</option></select></div>
+        <div class="sp-field"><label class="sp-label" for="f4">Category</label><select id="f4" class="sp-select" [(ngModel)]="f.category_id"><option value="">All</option>@for (c of config?.categories ?? []; track c.id) { <option [value]="c.id">{{ c.category_name }}</option> }</select></div>
+        <div class="sp-field"><label class="sp-label" for="f5">Module</label><select id="f5" class="sp-select" [(ngModel)]="f.affected_module"><option value="">All</option>@for (m of config?.modules ?? []; track m) { <option [value]="m">{{ m }}</option> }</select></div>
+        <div class="sp-field"><label class="sp-label" for="f6">Priority</label><select id="f6" class="sp-select" [(ngModel)]="f.priority"><option value="">All</option>@for (p of config?.priorities ?? []; track p.value) { <option [value]="p.value">{{ p.label }}</option> }</select></div>
+        <div class="sp-field"><label class="sp-label" for="f7">Status</label><select id="f7" class="sp-select" [(ngModel)]="f.status"><option value="">All</option><option value="active">Not finished</option>@for (s of config?.statuses ?? []; track s.value) { <option [value]="s.value">{{ s.label }}</option> }</select></div>
+        <div class="sp-field"><label class="sp-label" for="f8">Assigned to</label><select id="f8" class="sp-select" [(ngModel)]="f.assigned_to"><option value="">Anyone</option><option value="unassigned">Not assigned</option>@for (a of agents; track a.id) { <option [value]="a.id">{{ a.name }}</option> }</select></div>
+        <label class="d-flex align-items-center gap-2 sp-label mb-2"><input type="checkbox" [(ngModel)]="f.overdue"> Overdue only</label>
+        <div class="d-flex gap-2"><button type="button" class="sp-btn primary" (click)="applyFilters()"><i class="bi bi-funnel"></i> Apply</button><button type="button" class="sp-btn" (click)="resetFilters()">Reset</button></div>
+      </div>
+    </section>
+
+    <section class="sp-card p-0">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-3">
+        <span class="sp-sub mt-0">@if (pagination) { {{ pagination.total | number }} ticket{{ pagination.total === 1 ? '' : 's' }} }</span>
+        @if (can('export-support-tickets')) {
+          <div class="sp-menu-wrap">
+            <button type="button" class="sp-btn sm" [disabled]="exporting !== null" (click)="showExport = !showExport"><i class="bi bi-download"></i> {{ exporting ? 'Preparing ' + exporting.toUpperCase() + '...' : 'Export' }} <i class="bi bi-chevron-down"></i></button>
+            @if (showExport) {
+              <div class="sp-menu"><button type="button" (click)="download('pdf')"><i class="bi bi-file-earmark-pdf text-danger"></i> PDF</button><button type="button" (click)="download('xlsx')"><i class="bi bi-file-earmark-excel text-success"></i> Excel</button><button type="button" (click)="download('csv')"><i class="bi bi-filetype-csv text-primary"></i> CSV</button></div>
+            }
+          </div>
+        }
+      </div>
+      <div class="sp-table-wrap">
+        <table class="sp-table">
+          <thead><tr>
+            <th><button type="button" (click)="sort('ticket_number')">Ticket No. <i class="bi bi-arrow-down-up"></i></button></th>
+            <th>Reported by</th>
+            <th><button type="button" (click)="sort('user_type')">Type <i class="bi bi-arrow-down-up"></i></button></th>
+            <th><button type="button" (click)="sort('title')">Issue <i class="bi bi-arrow-down-up"></i></button></th>
+            <th><button type="button" (click)="sort('category')">Category <i class="bi bi-arrow-down-up"></i></button></th>
+            <th><button type="button" (click)="sort('module')">Module <i class="bi bi-arrow-down-up"></i></button></th>
+            <th><button type="button" (click)="sort('priority')">Priority <i class="bi bi-arrow-down-up"></i></button></th>
+            <th>Assigned to</th>
+            <th><button type="button" (click)="sort('created_at')">Created <i class="bi bi-arrow-down-up"></i></button></th>
+            <th><button type="button" (click)="sort('updated_at')">Last updated <i class="bi bi-arrow-down-up"></i></button></th>
+            <th><button type="button" (click)="sort('status')">Status <i class="bi bi-arrow-down-up"></i></button></th>
+            <th>Action</th>
+          </tr></thead>
+          <tbody>
+            @for (t of items; track t.ticket_number) {
+              <tr class="clickable" (click)="open(t.ticket_number)">
+                <td><a class="num" [routerLink]="['/app/support/admin/tickets', t.ticket_number]" (click)="$event.stopPropagation()">{{ t.ticket_number }}</a></td>
+                <td>{{ t.reporter?.name }}</td>
+                <td><span class="sp-badge" [ngClass]="t.reporter?.type === 'customer' ? 't-purple' : 't-blue'">{{ t.reporter?.type === 'customer' ? 'Customer' : 'Employee' }}</span></td>
+                <td class="wrap">{{ t.title }} @if (t.is_overdue) { <span class="sp-overdue">Overdue</span> }</td>
+                <td>{{ t.category || '-' }}</td>
+                <td>{{ t.affected_module || '-' }}</td>
+                <td><span class="sp-badge" [ngClass]="'t-' + priorityTone(t.priority)">{{ t.priority_label }}</span></td>
+                <td>{{ t.assigned_to?.name || 'Not assigned' }}</td>
+                <td>{{ t.created_at | date: 'dd MMM yyyy' }}</td>
+                <td>{{ t.updated_at | date: 'dd MMM, h:mm a' }}</td>
+                <td><span class="sp-badge" [ngClass]="'t-' + statusTone(t.status)">{{ t.status_label }}</span></td>
+                <td><a class="sp-btn sm" [routerLink]="['/app/support/admin/tickets', t.ticket_number]" (click)="$event.stopPropagation()">Open</a></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        @if (loading) { <div class="sp-state"><i class="bi bi-hourglass-split"></i><p>Loading tickets...</p></div> }
+        @else if (error) { <div class="sp-state"><i class="bi bi-exclamation-triangle"></i><p>{{ error }}</p><button type="button" class="sp-btn" (click)="loadTickets()">Try again</button></div> }
+        @else if (items.length === 0) { <div class="sp-state"><i class="bi bi-inbox"></i><p>No tickets match these filters.</p></div> }
+      </div>
+      @if (pagination && pagination.last_page > 1) {
+        <div class="sp-pager p-3">
+          <span>Showing {{ pagination.from }}–{{ pagination.to }} of {{ pagination.total | number }} · Page {{ pagination.current_page }} of {{ pagination.last_page }}</span>
+          <span class="d-flex gap-2">
+            <button type="button" class="sp-btn sm" [disabled]="pagination.current_page === 1" (click)="goTo(1)"><i class="bi bi-chevron-double-left"></i></button>
+            <button type="button" class="sp-btn sm" [disabled]="pagination.current_page === 1" (click)="goTo(pagination.current_page - 1)"><i class="bi bi-chevron-left"></i> Previous</button>
+            <button type="button" class="sp-btn sm" [disabled]="pagination.current_page === pagination.last_page" (click)="goTo(pagination.current_page + 1)">Next <i class="bi bi-chevron-right"></i></button>
+            <button type="button" class="sp-btn sm" [disabled]="pagination.current_page === pagination.last_page" (click)="goTo(pagination.last_page)"><i class="bi bi-chevron-double-right"></i></button>
+          </span>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- ================= settings ================= -->
+  @if (tab === 'settings') {
+    @if (settings) {
+      <section class="sp-card sp-grid">
+        <h2 class="sp-card-title mb-0"><i class="bi bi-telephone"></i> Support contact (shown in the customer and employee apps)</h2>
+        <div class="sp-grid cols-2">
+          <div class="sp-field"><label class="sp-label" for="s1">Support phone number <span class="req">*</span></label><input id="s1" class="sp-input" [(ngModel)]="settings.support_phone" maxlength="20"></div>
+          <div class="sp-field"><label class="sp-label" for="s2">WhatsApp number</label><input id="s2" class="sp-input" [(ngModel)]="settings.support_whatsapp" maxlength="20" placeholder="Leave empty if the number is not on WhatsApp"></div>
+          <div class="sp-field"><label class="sp-label" for="s3">Support e-mail</label><input id="s3" class="sp-input" type="email" [(ngModel)]="settings.support_email"></div>
+          <div class="sp-field"><label class="sp-label" for="s4">Working hours</label><input id="s4" class="sp-input" [(ngModel)]="settings.support_hours"></div>
+          <div class="sp-field" style="grid-column: 1 / -1"><label class="sp-label" for="s5">Availability message</label><input id="s5" class="sp-input" [(ngModel)]="settings.support_availability"></div>
+        </div>
+        <h2 class="sp-card-title mb-0"><i class="bi bi-stopwatch"></i> Hours allowed to resolve a ticket</h2>
+        <div class="sp-grid cols-2">
+          <div class="sp-field"><label class="sp-label" for="h1">Low</label><input id="h1" class="sp-input" type="number" min="1" [(ngModel)]="settings.sla_hours_low"></div>
+          <div class="sp-field"><label class="sp-label" for="h2">Medium</label><input id="h2" class="sp-input" type="number" min="1" [(ngModel)]="settings.sla_hours_medium"></div>
+          <div class="sp-field"><label class="sp-label" for="h3">High</label><input id="h3" class="sp-input" type="number" min="1" [(ngModel)]="settings.sla_hours_high"></div>
+          <div class="sp-field"><label class="sp-label" for="h4">Critical</label><input id="h4" class="sp-input" type="number" min="1" [(ngModel)]="settings.sla_hours_critical"></div>
+        </div>
+        <p class="sp-help">A ticket past this time is shown as Overdue and escalated once automatically.</p>
+        <label class="d-flex align-items-center gap-2"><input type="checkbox" [checked]="settings.email_notifications === '1'" (change)="settings.email_notifications = $any($event.target).checked ? '1' : '0'"> Also e-mail employees when their ticket changes (needs working mail settings)</label>
+        <div><button type="button" class="sp-btn primary" [disabled]="saving" (click)="saveSettings()"><i class="bi bi-check2"></i> {{ saving ? 'Saving...' : 'Save settings' }}</button></div>
+      </section>
+
+      <section class="sp-card">
+        <h2 class="sp-card-title"><i class="bi bi-tags"></i> Issue categories</h2>
+        <div class="sp-table-wrap"><table class="sp-table"><thead><tr><th>Category</th><th>Shown to</th><th>Status</th><th></th></tr></thead><tbody>
+          @for (c of categories; track c.id) {
+            <tr><td>{{ c.category_name }}</td><td>{{ c.audience === 'both' ? 'Customers and employees' : c.audience === 'customer' ? 'Customers' : 'Employees' }}</td>
+              <td><span class="sp-badge" [ngClass]="c.is_active ? 't-green' : ''">{{ c.is_active ? 'Active' : 'Hidden' }}</span></td>
+              <td><button type="button" class="sp-btn sm" (click)="toggleCategory(c)">{{ c.is_active ? 'Hide' : 'Show' }}</button></td></tr>
+          }
+        </tbody></table></div>
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <input class="sp-input" style="max-width: 280px" [(ngModel)]="newCategory" maxlength="100" placeholder="New category name" aria-label="New category name">
+          <select class="sp-select" style="max-width: 200px" [(ngModel)]="newAudience" aria-label="Shown to"><option value="both">Customers and employees</option><option value="customer">Customers only</option><option value="employee">Employees only</option></select>
+          <button type="button" class="sp-btn primary" (click)="addCategory()">Add category</button>
+        </div>
+      </section>
+    } @else {
+      <div class="sp-tickets"><div class="sp-skel"></div><div class="sp-skel"></div></div>
+    }
+  }
+</div>

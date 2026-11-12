@@ -148,6 +148,13 @@
       @if (activityOpen()) { <app-module-activity [slug]="mod.slug" (closed)="activityOpen.set(false)" /> }
     } -->
 
+    <!-- Help Desk: report the page the user is on (its address and module travel with the report) -->
+    @if (canReportIssue()) {
+      <button type="button" class="icon-btn" (click)="reportIssue()" aria-label="Report an issue with this page" title="Report this issue">
+        <i class="bi bi-bug"></i>
+      </button>
+    }
+
     <div class="notification-menu-wrapper">
       <button
         type="button"

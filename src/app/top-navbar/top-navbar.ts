@@ -222,6 +222,18 @@ export class TopNavbar {
     this.navLayout.toggleSidebar();
   }
 
+  /** Staff logins only: customers use the customer app's Help & Support. */
+  canReportIssue(): boolean {
+    return this.authService.currentUser()?.login_type !== 'customer';
+  }
+
+  /** Opens the Report an Issue form for the page the user is on (already on a support page: a plain form). */
+  reportIssue(): void {
+    const url = this.router.url.split('#')[0];
+    const onSupport = url.startsWith('/app/support');
+    this.router.navigate(['/app/support/report'], onSupport ? {} : { queryParams: { from: url } });
+  }
+
   goToDashboard(): void {
     this.router.navigate(['/app/dashboard']);
   }

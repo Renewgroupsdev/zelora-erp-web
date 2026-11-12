@@ -1,0 +1,233 @@
+<div class="sp-page">
+  <div class="sp-head">
+    <div class="d-flex align-items-center gap-2">
+      <a class="sp-btn sm" [routerLink]="backLink" aria-label="Back"><i class="bi bi-arrow-left"></i></a>
+      <div>
+        <h1 class="sp-title">{{ t?.ticket_number || no }}</h1>
+        @if (t) { <p class="sp-sub">{{ t.title }}</p> }
+      </div>
+    </div>
+    @if (t) {
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span class="sp-badge" [ngClass]="'t-' + priorityTone(t.priority)">{{ t.priority_label }} priority</span>
+        <span class="sp-badge" [ngClass]="'t-' + statusTone(t.status)">{{ t.status_label }}</span>
+        @if (t.is_overdue) { <span class="sp-overdue"><i class="bi bi-exclamation-triangle-fill"></i> Overdue</span> }
+      </div>
+    }
+  </div>
+
+  <app-auto-module-tabs></app-auto-module-tabs>
+
+  @if (loading) {
+    <div class="sp-tickets"><div class="sp-skel"></div><div class="sp-skel"></div><div class="sp-skel"></div></div>
+  } @else if (error || !t) {
+    <div class="sp-card sp-state"><i class="bi bi-exclamation-circle"></i><p>{{ error || 'This ticket was not found.' }}</p><a class="sp-btn" [routerLink]="backLink">Back to tickets</a></div>
+  } @else {
+
+  <div class="sp-grid side">
+    <div class="sp-grid" style="min-width: 0">
+
+      <!-- ===== details ===== -->
+      <section class="sp-card">
+        <h2 class="sp-card-title"><i class="bi bi-card-text"></i> Issue details</h2>
+        <dl class="sp-kv mb-3">
+          <div><dt>Category</dt><dd>{{ t.category || '-' }}</dd></div>
+          <div><dt>Affected module</dt><dd>{{ t.affected_module || '-' }}</dd></div>
+          <div><dt>Page / screen</dt><dd>{{ t.affected_screen || '-' }}</dd></div>
+          <div><dt>Created</dt><dd>{{ t.created_at | date: 'dd MMM yyyy, h:mm a' }}</dd></div>
+          <div><dt>Last updated</dt><dd>{{ t.updated_at | date: 'dd MMM yyyy, h:mm a' }}</dd></div>
+          <div><dt>Assigned to</dt><dd>{{ t.assigned_to?.name || 'Not assigned yet' }}</dd></div>
+          @if (t.application_version) { <div><dt>App version</dt><dd>{{ t.application_version }}</dd></div> }
+        </dl>
+        <div class="sp-desc">{{ t.description }}</div>
+
+        @if (t.attachments.length) {
+          <div class="sp-previews">
+            @for (a of t.attachments; track a.id) {
+              <div class="sp-thumb" (click)="open(a)" [title]="a.file_name" tabindex="0" (keydown.enter)="open(a)">
+                @if (a.is_image && thumbs.get(a.id)) { <img [src]="thumbs.get(a.id)" [alt]="a.file_name"> }
+                @else { <div class="doc"><i class="bi" [ngClass]="a.is_image ? 'bi-image' : 'bi-file-earmark-text'"></i>{{ a.file_name }}</div> }
+              </div>
+            }
+          </div>
+        }
+
+        @if (t.resolution_description) {
+          <div class="sp-resolution mt-3"><strong><i class="bi bi-check-circle-fill"></i> Resolution</strong>{{ t.resolution_description }}</div>
+        }
+        @if (t.satisfaction_rating) {
+          <div class="sp-help mt-2">Rated {{ t.satisfaction_rating }}/5 @if (t.satisfaction_comment) { · "{{ t.satisfaction_comment }}" }</div>
+        }
+      </section>
+
+      <!-- ===== the reporter answers a resolved / closed ticket ===== -->
+      @if (!admin && t.can_confirm_resolution) {
+        <section class="sp-card" style="border-color: var(--status-green-text)">
+          <h2 class="sp-card-title"><i class="bi bi-patch-question"></i> Is your issue fixed?</h2>
+          <p class="sp-sub mb-2">The support team marked this ticket as resolved. Please check and tell us.</p>
+          <div class="sp-stars mb-2" role="radiogroup" aria-label="Rate the support">
+            @for (s of stars; track s) { <button type="button" [class.on]="s <= rating" (click)="rating = s" [attr.aria-label]="s + ' star'"><i class="bi" [ngClass]="s <= rating ? 'bi-star-fill' : 'bi-star'"></i></button> }
+          </div>
+          <input class="sp-input mb-2" [(ngModel)]="ratingComment" maxlength="500" placeholder="Any comment? (optional)">
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="sp-btn primary" [disabled]="busy" (click)="confirm()"><i class="bi bi-check2-circle"></i> Yes, it is fixed</button>
+            <button type="button" class="sp-btn danger" [disabled]="busy" (click)="showReopen = !showReopen"><i class="bi bi-arrow-counterclockwise"></i> Still not fixed</button>
+          </div>
+        </section>
+      }
+      @if (!admin && t.can_reopen && (showReopen || t.status === 'closed')) {
+        <section class="sp-card">
+          <h2 class="sp-card-title"><i class="bi bi-arrow-counterclockwise"></i> Reopen this ticket</h2>
+          <textarea class="sp-textarea mb-2" style="min-height: 80px" [(ngModel)]="reopenRemarks" maxlength="1000" placeholder="What is still going wrong?"></textarea>
+          <button type="button" class="sp-btn primary" [disabled]="busy" (click)="reopenAsReporter()">Reopen Ticket</button>
+        </section>
+      }
+
+      <!-- ===== conversation ===== -->
+      <section class="sp-card">
+        <h2 class="sp-card-title"><i class="bi bi-chat-dots"></i> Conversation</h2>
+        @if (t.messages.length === 0) { <p class="sp-sub">No messages yet. {{ admin ? 'Reply to the reporter below.' : 'Our team will reply here.' }}</p> }
+        <div class="sp-chat" role="log" aria-live="polite">
+          @for (m of t.messages; track m.id) {
+            <div class="sp-msg" [class.mine]="admin ? m.sender_type === 'support' && !m.is_internal_note : m.sender_type !== 'support'" [class.internal]="m.is_internal_note">
+              <div class="by"><span>{{ m.is_internal_note ? 'Internal note · ' : '' }}{{ m.sender_name }}</span><span>{{ m.created_at | date: 'dd MMM, h:mm a' }}</span></div>
+              <div class="txt">{{ m.message }}</div>
+              @if (m.attachments.length) {
+                <div class="sp-previews">
+                  @for (a of m.attachments; track a.id) {
+                    <div class="sp-thumb" (click)="open(a)" [title]="a.file_name" tabindex="0" (keydown.enter)="open(a)">
+                      @if (a.is_image && thumbs.get(a.id)) { <img [src]="thumbs.get(a.id)" [alt]="a.file_name"> } @else { <div class="doc"><i class="bi bi-file-earmark-text"></i>{{ a.file_name }}</div> }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        @if (t.can_reply && canReply) {
+          <div class="sp-compose">
+            @if (admin) {
+              <div class="sp-chips" role="group" aria-label="Message type">
+                <button type="button" class="sp-chip" [class.on]="mode === 'reply'" (click)="mode = 'reply'">Reply to {{ t.reporter?.type === 'customer' ? 'customer' : 'employee' }}</button>
+                @if (canNote) { <button type="button" class="sp-chip" [class.on]="mode === 'note'" (click)="mode = 'note'"><i class="bi bi-lock-fill"></i> Internal note</button> }
+                <button type="button" class="sp-chip" [class.on]="mode === 'info'" (click)="mode = 'info'">Request more information</button>
+              </div>
+              @if (mode === 'note') { <div class="sp-help">Only the support team can see internal notes.</div> }
+            }
+            <textarea class="sp-textarea" style="min-height: 80px" [(ngModel)]="text" maxlength="5000" [placeholder]="mode === 'note' ? 'Write an internal note...' : mode === 'info' ? 'What do you need from the reporter?' : 'Write your message...'"></textarea>
+            @if (files.length) {
+              <div class="sp-chips">@for (f of files; track f; let i = $index) { <span class="sp-badge">{{ f.name }} <button type="button" class="border-0 bg-transparent p-0 ms-1" (click)="files.splice(i, 1)" [attr.aria-label]="'Remove ' + f.name">×</button></span> }</div>
+            }
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+              @if (mode !== 'info') {
+                <label class="sp-btn mb-0"><i class="bi bi-paperclip"></i> Attach screenshot
+                  <input #pick type="file" multiple hidden accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.txt,.log,.doc,.docx,.xls,.xlsx,.csv" (change)="onFiles(pick)">
+                </label>
+              }
+              <button type="button" class="sp-btn primary ms-auto" [disabled]="busy || !text.trim()" (click)="send()"><i class="bi bi-send-fill"></i> {{ mode === 'note' ? 'Save note' : mode === 'info' ? 'Ask for information' : 'Send' }}</button>
+            </div>
+          </div>
+        } @else if (t.status === 'closed') {
+          <p class="sp-sub mt-2">This ticket is closed. {{ admin ? '' : 'Reopen it above if you still need help.' }}</p>
+        }
+      </section>
+    </div>
+
+    <!-- ===== side: management + timeline ===== -->
+    <aside class="sp-grid" style="min-width: 0">
+      @if (admin) {
+        <section class="sp-card">
+          <h2 class="sp-card-title"><i class="bi bi-person-lines-fill"></i> Reporter</h2>
+          <dl class="sp-kv" style="grid-template-columns: 1fr">
+            <div><dt>Name</dt><dd>{{ t.reporter?.name }} <span class="sp-badge">{{ t.reporter?.type === 'customer' ? 'Customer' : 'Employee' }}</span></dd></div>
+            <div><dt>Reported from</dt><dd>{{ t.application_type === 'web' ? 'Web application' : t.application_type === 'customer_app' ? 'Customer app' : 'Employee app' }}</dd></div>
+            @if (t.page_url) { <div><dt>Page URL</dt><dd>{{ t.page_url }}</dd></div> }
+            @if (t.browser_information) { <div><dt>Browser</dt><dd>{{ t.browser_information }}</dd></div> }
+            @if (t.device_information) { <div><dt>Device</dt><dd>@for (kv of t.device_information | keyvalue; track kv.key) { <div>{{ kv.key }}: {{ kv.value }}</div> }</dd></div> }
+            @if (t.due_at) { <div><dt>Resolve by</dt><dd [class.sp-overdue]="t.is_overdue">{{ t.due_at | date: 'dd MMM yyyy, h:mm a' }}</dd></div> }
+            @if (t.escalation_level) { <div><dt>Escalated</dt><dd>{{ t.escalation_level }} time(s)</dd></div> }
+          </dl>
+        </section>
+
+        @if (canManage) {
+          <section class="sp-card">
+            <h2 class="sp-card-title"><i class="bi bi-sliders"></i> Manage ticket</h2>
+            <div class="sp-field mb-2">
+              <label class="sp-label" for="as">Assign to</label>
+              <div class="d-flex gap-2"><select id="as" class="sp-select" [(ngModel)]="assignTo"><option value="">Nobody (queue)</option>@for (a of agents; track a.id) { <option [ngValue]="a.id">{{ a.name }}</option> }</select>
+                <button type="button" class="sp-btn sm" [disabled]="busy" (click)="saveAssignment()">Save</button></div>
+            </div>
+            <div class="sp-field mb-2">
+              <label class="sp-label" for="pr">Priority</label>
+              <div class="d-flex gap-2"><select id="pr" class="sp-select" [(ngModel)]="priority">@for (p of config?.priorities ?? []; track p.value) { <option [value]="p.value">{{ p.label }}</option> }</select>
+                <button type="button" class="sp-btn sm" [disabled]="busy || priority === t.priority" (click)="savePriority()">Save</button></div>
+            </div>
+            @if (moves.length) {
+              <div class="sp-field mb-2">
+                <label class="sp-label" for="st">Change status</label>
+                <select id="st" class="sp-select mb-1" [(ngModel)]="statusTo"><option value="">Choose the new status</option>@for (m of moves; track m.value) { <option [value]="m.value">{{ m.label }}</option> }</select>
+                <input class="sp-input mb-1" [(ngModel)]="statusRemarks" maxlength="1000" placeholder="Remarks (optional)">
+                <button type="button" class="sp-btn sm primary" [disabled]="busy || !statusTo" (click)="saveStatus()">Update status</button>
+              </div>
+            }
+            <hr>
+            <div class="d-flex flex-wrap gap-2">
+              @if (t.status !== 'resolved' && t.status !== 'closed') {
+                <button type="button" class="sp-btn sm" (click)="showResolve = !showResolve"><i class="bi bi-check2-circle"></i> Mark as resolved</button>
+                <button type="button" class="sp-btn sm" [disabled]="busy" (click)="escalate()"><i class="bi bi-graph-up-arrow"></i> Escalate</button>
+              }
+              @if (t.status !== 'closed') { <button type="button" class="sp-btn sm danger" [disabled]="busy" (click)="closeTicket()"><i class="bi bi-x-circle"></i> Close</button> }
+              @if (t.can_reopen) { <button type="button" class="sp-btn sm" [disabled]="busy" (click)="reopenAsSupport()"><i class="bi bi-arrow-counterclockwise"></i> Reopen</button> }
+            </div>
+            @if (showResolve) {
+              <div class="sp-field mt-2">
+                <label class="sp-label" for="rs">How was it resolved? <span class="req">*</span></label>
+                <textarea id="rs" class="sp-textarea" style="min-height: 80px" [(ngModel)]="resolution" maxlength="2000"></textarea>
+                <button type="button" class="sp-btn sm primary mt-2" [disabled]="busy" (click)="resolve()">Resolve and notify</button>
+              </div>
+            }
+          </section>
+        }
+      }
+
+      <section class="sp-card">
+        <h2 class="sp-card-title"><i class="bi bi-clock-history"></i> Ticket timeline</h2>
+        <ul class="sp-timeline">
+          @for (h of t.history; track $index) {
+            <li>
+              <div class="what">
+                @switch (h.event) {
+                  @case ('created') { Ticket created }
+                  @case ('status') { {{ h.old_status_label }} → {{ h.new_status_label }} }
+                  @case ('assigned') { Assigned }
+                  @case ('priority') { Priority changed }
+                  @case ('reply') { Message / file added }
+                  @case ('note') { Internal note }
+                  @case ('escalated') { Escalated }
+                  @case ('resolved') { Resolved }
+                  @case ('closed') { Closed }
+                  @case ('reopened') { Reopened }
+                  @case ('rating') { Rated }
+                  @default { {{ h.event }} }
+                }
+              </div>
+              <div class="who">{{ h.changed_by }} · {{ h.created_at | date: 'dd MMM yyyy, h:mm a' }}</div>
+              @if (h.remarks) { <div class="note">{{ h.remarks }}</div> }
+            </li>
+          }
+        </ul>
+      </section>
+    </aside>
+  </div>
+  }
+
+  @if (preview) {
+    <div class="sp-modal" role="dialog" aria-modal="true" [attr.aria-label]="preview.name" (click)="preview = null" (keydown.escape)="preview = null">
+      <div class="box" (click)="$event.stopPropagation()">
+        <button type="button" class="close" (click)="preview = null" aria-label="Close preview"><i class="bi bi-x-lg"></i></button>
+        <img [src]="preview.url" [alt]="preview.name">
+      </div>
+    </div>
+  }
+</div>
