@@ -1,4 +1,5 @@
 import { Component, computed, signal, ViewEncapsulation } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { FrontDeskData, statusTone } from '../../../../shared/models/dashboard.model';
 import { initials, to12Hour } from '../../../../shared/utils/format.util';
 import { DashCard } from '../dash-card/dash-card';
@@ -10,7 +11,10 @@ const RING_C = 2 * Math.PI * RING_R;
 const RING_GAP = 3;
 const TONE_COLORS: Record<string, string> = { green: '#1fae5b', red: '#e0344f', orange: '#f08a0a', blue: '#2f6fe5', gray: '#8393a9' };
 
-type WalkFilter = 'all' | 'new' | 'regular' | 'converted' | 'pending';
+/** One colour per balance (largest first): the share bar's segment and that customer's row use the same one. */
+const DUE_COLORS = ['#e0344f', '#f0643c', '#f59e0b', '#d946ef', '#8b5cf6', '#0ea5e9', '#14b8a6', '#64748b'];
+
+type WalkFilter ='all' | 'new' | 'regular' | 'converted' | 'pending';
 
 interface Tile {
   label: string; value: string; hint: string; icon: string; tone: 'blue' | 'purple' | 'orange' | 'red';
@@ -25,7 +29,7 @@ interface Tile {
 @Component({
   selector: 'app-front-desk-widget',
   standalone: true,
-  imports: [DashCard],
+  imports: [DashCard, RouterLink],
   templateUrl: './front-desk-widget.html',
   styleUrl: './front-desk-widget.scss',
   // Rules are scoped under .dash-page like the page sheet, so they are not encapsulated either.
@@ -77,11 +81,25 @@ export class FrontDeskWidget extends DashWidget<FrontDeskData> {
     });
   });
 
-  /** The balances as columns: each customer's due, scaled to the largest. */
-  readonly dueCols = computed(() => {
-    const items = this.data()?.pending_payments.items ?? [];
+  /** The balances as a ranked list: each customer's due with its share of the total (drawn as a bar behind the row). */
+  readonly dueRows = computed(() => {
+    const items = [...(this.data()?.pending_payments.items ?? [])].sort((a, b) => b.due - a.due);
+    const total = items.reduce((s, p) => s + p.due, 0) || 1;
     const max = Math.max(1, ...items.map(p => p.due));
-    return items.map(p => ({ id: p.id, name: p.customer.split(' ')[0], full: p.customer, due: p.due, h: Math.max(6, Math.round((p.due / max) * 100)) }));
+    return items.map((p, i) => ({
+      ...p, rank: i + 1,
+      share: (p.due / total) * 100,
+      pct: Math.round((p.due / total) * 100),
+      bar: Math.max(4, Math.round((p.due / max) * 100)),
+      color: DUE_COLORS[i % DUE_COLORS.length],
+    }));
+  });
+
+  /** Headline of the balances: total, how many plans, the average and the largest one's share. */
+  readonly dueSummary = computed(() => {
+    const rows = this.dueRows();
+    const total = rows.reduce((s, r) => s + r.due, 0);
+    return { total, count: rows.length, average: rows.length ? total / rows.length : 0, topPct: rows[0]?.pct ?? 0, top: rows[0] ?? null };
   });
 
   /** Walk-in list filter chips (counts follow today's walk-ins). */

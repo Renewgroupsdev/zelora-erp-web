@@ -1,5 +1,7 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, Injector, signal } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
+import Swal from 'sweetalert2';
 import { Observable, catchError, finalize, from, map, of, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiDataService } from '../http/api.service';
@@ -30,6 +32,7 @@ export class AuthService {
     private router: Router,
     private idleService: IdleService,
     private geo: GeoLocationService,
+    private injector: Injector,
   ) {
     if (this.isAuthenticated()) {
       this.idleService.start(() => this.signOut().subscribe());
@@ -178,10 +181,23 @@ export class AuthService {
     this.menus.set([]);
     this.permissions.set([]);
     this.isAuthenticated.set(false);
+    this.closeOpenPopups();
 
     if (navigateToLogin) {
       this.router.navigate(['/login']);
     }
+  }
+
+  /**
+   * Sign-out (idle timeout, 401, Logout) leaves nothing of the old session on the login page: every SweetAlert popup
+   * (error / confirm / urgent alert) and every Material dialog (forms, reviews) is closed.
+   */
+  private closeOpenPopups(): void {
+    try { Swal.close(); } catch { /* no popup open */ }
+    try {
+      // looked up lazily: MatDialog is not needed (or constructed) until a session actually ends
+      this.injector.get(MatDialog, null)?.closeAll();
+    } catch { /* dialog service not available */ }
   }
 
   getAccessToken(): string | null {

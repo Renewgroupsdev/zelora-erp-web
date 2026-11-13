@@ -1,0 +1,9 @@
+.ls-stock { display: inline-block; min-width: 34px; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; text-align: center; background: var(--status-orange-bg, #ffedd5); color: var(--status-orange-text, #c2410c); }
+.ls-stock.out { background: var(--status-red-bg, #fee2e2); color: var(--status-red-text, #e0392f); }
+.ls-hint { display: block; margin-top: 3px; font-size: 11px; font-weight: 600; }
+.ls-hint.good { color: var(--status-green-text, #15803d); }
+.ls-hint.warn { color: var(--status-orange-text, #c2410c); }
+.ls-src { font-size: 10.5px; color: var(--text-muted, #6b7280); white-space: nowrap; }
+.ls-groups { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+.ls-group { padding: 7px 12px; border-radius: 12px; border: 1px solid var(--border-soft, #e5ebe8); background: var(--app-surface-soft, #f4f8f6); font-size: 12.5px; }
+.ls-group span { color: var(--text-muted, #6b7280); margin-left: 4px; }

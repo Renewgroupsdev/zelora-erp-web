@@ -26,15 +26,16 @@ const RANGE_KEY = 'zelora_dashboard_range';
 const AUTO_REFRESH_MS = 60_000; // the API caches each widget for a minute
 
 /** Quick links: a link shows only when the role can open its module (the slugs the widgets' drill-downs use). */
-const QUICK_LINKS: { label: string; icon: string; link: string; module: string; tone: string }[] = [
-  { label: 'Leads', icon: 'bi-person-lines-fill', link: '/app/lead-management', module: 'lead-management', tone: 'green' },
-  { label: 'Follow-ups', icon: 'bi-telephone-forward', link: '/app/follow-ups', module: 'follow-up', tone: 'blue' },
-  { label: 'Appointments', icon: 'bi-calendar2-check', link: '/app/appointments', module: 'appoinment', tone: 'orange' },
-  { label: 'Call center', icon: 'bi-headset', link: '/app/call-center', module: 'tele-caller', tone: 'purple' },
-  { label: 'Day book', icon: 'bi-journal-text', link: '/app/accounts/day-book', module: 'accounts-management', tone: 'green' },
-  { label: 'Stock', icon: 'bi-box-seam', link: '/app/inventory/stock', module: 'purchase-management', tone: 'red' },
-  { label: 'Attendance', icon: 'bi-person-check', link: '/app/hr/attendance', module: 'hr-management', tone: 'blue' },
-  { label: 'Branches', icon: 'bi-diagram-3', link: '/app/branches', module: 'branch-management', tone: 'purple' },
+/* Each link has its own colour (icon tile, glow, arrow) and a one-line hint of what it opens. */
+const QUICK_LINKS: { label: string; hint: string; icon: string; link: string; module: string; tone: string; color: string }[] = [
+  { label: 'Leads', hint: 'New enquiries', icon: 'bi-person-lines-fill', link: '/app/lead-management', module: 'lead-management', tone: 'green', color: '#1fae5b' },
+  { label: 'Follow-ups', hint: 'Calls due today', icon: 'bi-telephone-forward-fill', link: '/app/follow-ups', module: 'follow-up', tone: 'blue', color: '#2f6fe5' },
+  { label: 'Appointments', hint: 'Visits & bookings', icon: 'bi-calendar2-check-fill', link: '/app/appointments', module: 'appoinment', tone: 'orange', color: '#ee6a17' },
+  { label: 'Call center', hint: 'Live calls & team', icon: 'bi-headset', link: '/app/call-center', module: 'tele-caller', tone: 'purple', color: '#7b35e6' },
+  { label: 'Day book', hint: 'Today\'s money in / out', icon: 'bi-journal-text', link: '/app/accounts/day-book', module: 'accounts-management', tone: 'teal', color: '#0ea5a4' },
+  { label: 'Stock', hint: 'Levels & transfers', icon: 'bi-box-seam-fill', link: '/app/inventory/stock', module: 'purchase-management', tone: 'red', color: '#e0344f' },
+  { label: 'Attendance', hint: 'Who is in today', icon: 'bi-person-check-fill', link: '/app/hr/attendance', module: 'hr-management', tone: 'indigo', color: '#4a3fdc' },
+  { label: 'Branches', hint: 'Units & franchises', icon: 'bi-diagram-3-fill', link: '/app/branches', module: 'branch-management', tone: 'pink', color: '#d6336c' },
 ];
 
 /**

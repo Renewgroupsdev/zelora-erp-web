@@ -103,6 +103,8 @@ export interface PurchaseOrder {
   expectedAt: string | null;
   items: PurchaseLineItem[];
   status: PurchaseOrderStatus;
+  /** 'low_stock' = raised from Low Stock Replenishment (Central Store, least vendor price, no request / quote step). */
+  source?: string | null;
   closeReason: string | null;
   closedBy: string | null;
   closedAt: string | null;
@@ -381,9 +383,25 @@ export interface NearbyStoreOption {
 /** One requested product with what is needed and the nearby stores that could send it. */
 export interface NearbyStockItem { productId: string; productName: string; productCode: string | null; needed: number; options: NearbyStoreOption[] }
 
+/** One vendor's price for a low-stock product: its latest quote, else its last PO price, else the product master price. */
+export interface LowStockVendorQuote {
+  vendorId: number; vendorName: string; unitPrice: number; gstPercent: number;
+  /** Unit price incl. GST - what the vendors are compared on. */
+  amount: number;
+  /** Where the price came from, e.g. "Quote Q-12", "Last PO PO-2026-0007", "Product master". */
+  source: string; date: string | null;
+}
+
 /** A Central Store product under the low-stock level (Low Stock Replenishment tab). */
 export interface LowStockRow {
   productId: string; productCode: string; productName: string; hsnCode: string;
-  qty: number; onOrder: number; suggestedQty: number; unitPrice: number; gstPercent: number;
-  vendorId: number | null; vendorName: string | null; out: boolean;
+  qty: number; onOrder: number; suggestedQty: number;
+  /** Least vendor price (the pre-selected vendor's). */
+  unitPrice: number; gstPercent: number;
+  /** Least-price vendor (pre-selected). */
+  vendorId: number | null; vendorName: string | null;
+  usualVendorId: number | null; usualVendorName: string | null;
+  /** Vendor prices, least first. */
+  quotes: LowStockVendorQuote[];
+  out: boolean;
 }

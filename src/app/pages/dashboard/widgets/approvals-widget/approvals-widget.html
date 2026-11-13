@@ -1,27 +1,58 @@
 <app-dash-card title="Pending Approvals" [subtitle]="total() ? total() + ' waiting for a decision' : 'All caught up'" icon="bi-patch-check" tone="red"
                [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()">
   @if (total() === 0) {
-    <div class="dash-ok"><i class="bi bi-check2-all" aria-hidden="true"></i> Nothing is waiting for you right now.</div>
-  }
-  <ul class="dash-queues">
-    @for (q of queues(); track q.key) {
-      <li [class.is-empty]="!q.group.count">
-        <div class="dash-queue-head">
-          <span class="dash-queue-icon"><i class="bi" [class]="q.icon" aria-hidden="true"></i></span>
-          <span class="dash-queue-label">{{ q.label }}</span>
-          <span class="dash-count" [class.is-zero]="!q.group.count">{{ q.group.count }}</span>
-          @if (q.group.count && canOpen(q.module)) {
-            <a class="dash-link" [routerLink]="q.group.link" [attr.aria-label]="'Review ' + q.label">Review <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
-          }
-        </div>
-        @if (q.group.items.length) {
-          <ul class="dash-queue-items">
-            @for (i of q.group.items.slice(0, 3); track i.id) {
-              <li><strong>{{ i.title }}</strong><small>{{ i.subtitle }}</small><time>{{ displayDate(i.date) }}</time></li>
+    <div class="ap-clear-all">
+      <span class="ap-clear-icon"><i class="bi bi-check2-all" aria-hidden="true"></i></span>
+      <strong>All caught up</strong>
+      <small>Nothing is waiting for your decision right now.</small>
+    </div>
+  } @else {
+    <!-- summary: how much is waiting and how it splits by queue -->
+    <div class="ap-hero">
+      <i class="bi bi-inboxes-fill ap-hero-mark" aria-hidden="true"></i>
+      <div class="ap-hero-top">
+        <span class="ap-hero-total"><b>{{ total() }}</b><small>waiting for<br />your decision</small></span>
+        @if (queues()[0]; as q) { <span class="ap-hero-top-q"><i class="bi bi-fire" aria-hidden="true"></i> Most: {{ q.label }}</span> }
+      </div>
+      <div class="ap-hero-bar" role="img" aria-label="Waiting requests by queue">
+        @for (q of queues(); track q.key) { <i [style.flex-grow]="q.share" [style.--c]="q.color" [attr.title]="q.group.count + ' ' + q.label"></i> }
+      </div>
+    </div>
+
+    <!-- one card per queue with work -->
+    <ul class="ap-queues">
+      @for (q of queues(); track q.key) {
+        <li class="ap-queue" [style.--c]="q.color">
+          <div class="ap-queue-head">
+            <span class="ap-queue-icon"><i class="bi" [class]="q.icon" aria-hidden="true"></i></span>
+            <span class="ap-queue-label">{{ q.label }}</span>
+            <span class="ap-count">{{ q.group.count }}</span>
+            @if (canOpen(q.module)) {
+              <a class="ap-review" [routerLink]="q.group.link" [attr.aria-label]="'Review ' + q.label">Review <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
             }
-          </ul>
-        }
-      </li>
-    }
-  </ul>
+          </div>
+          @if (q.group.items.length) {
+            <ul class="ap-items">
+              @for (i of q.group.items.slice(0, 3); track i.id) {
+                <li>
+                  <span class="ap-item-avatar">{{ initials(i.title) }}</span>
+                  <span class="ap-item-main"><strong>{{ i.title }}</strong><small>{{ i.subtitle }}</small></span>
+                  <span class="ap-age" [class.is-old]="(age(i.date) ?? 0) > 7" [attr.title]="displayDate(i.date)">{{ ageLabel(i.date) }}</span>
+                </li>
+              }
+              @if (q.group.count > 3) { <li class="ap-more">+ {{ q.group.count - 3 }} more</li> }
+            </ul>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  <!-- queues with nothing waiting -->
+  @if (clear().length && total() > 0) {
+    <div class="ap-clear">
+      <span class="ap-clear-title"><i class="bi bi-check2-circle" aria-hidden="true"></i> All clear</span>
+      @for (q of clear(); track q.key) { <span class="ap-clear-chip" [style.--c]="q.color"><i class="bi" [class]="q.icon" aria-hidden="true"></i> {{ q.label }}</span> }
+    </div>
+  }
 </app-dash-card>

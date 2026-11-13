@@ -1,23 +1,76 @@
 /* ApprovalsWidget: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
 
 .dash-page {
-  /* approvals: queues with work are full rows, empty queues collapse to a single line */
-  .dash-queues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px;
-    > li { padding: 8px 12px; border-radius: 12px; border: 1px solid var(--dash-line); background: color-mix(in srgb, var(--primary) 3%, var(--dash-surface)); }
-    > li.is-empty { padding: 5px 12px; opacity: .65; background: transparent; }
+  /* ------------------------------------------------------------ summary banner */
+  .ap-hero {
+    position: relative; isolation: isolate; overflow: hidden; margin-bottom: 12px; padding: 14px 16px 16px; border-radius: 16px; color: #fff;
+    background: radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .22), transparent 55%), linear-gradient(135deg, #ff6b6b 0%, #e0344f 50%, #a51d3a 100%);
+    box-shadow: 0 16px 28px -20px #c22a43;
   }
-  .dash-queue-head { display: flex; align-items: center; gap: 8px; }
-  .dash-queue-icon { color: var(--primary); font-size: 14px; }
-  .dash-queue-label { flex: 1 1 auto; font-size: 13px; font-weight: 500; }
-  .dash-count {
-    min-width: 24px; padding: 1px 8px; border-radius: var(--radius-pill, 999px); text-align: center; font-size: 12px; font-weight: 600;
-    background: var(--status-red-bg); color: var(--status-red-text);
-    &.is-zero { background: var(--status-gray-bg); color: var(--status-gray-text); }
+  .ap-hero-mark { position: absolute; right: -6px; bottom: -18px; z-index: -1; font-size: 84px; opacity: .14; transform: rotate(-10deg); }
+  .ap-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .ap-hero-total { display: flex; align-items: center; gap: 10px;
+    b { font-size: 40px; font-weight: 800; letter-spacing: -1.2px; line-height: 1; font-variant-numeric: tabular-nums; }
+    small { font-size: 11.5px; font-weight: 600; line-height: 1.25; opacity: .9; } }
+  .ap-hero-top-q { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;
+    background: rgba(255, 255, 255, .18); border: 1px solid rgba(255, 255, 255, .28); backdrop-filter: blur(4px);
+    i { color: #ffd166; } }
+  .ap-hero-bar { display: flex; gap: 3px; height: 9px; padding: 2px; border-radius: 999px; background: rgba(255, 255, 255, .22);
+    i { display: block; flex-basis: 0; min-width: 6px; height: 100%; border-radius: 999px; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 40%, #fff), color-mix(in srgb, var(--c) 80%, #fff));
+      transform-origin: left; animation: ap-grow .8s cubic-bezier(.2, .8, .2, 1) both; } }
+  @keyframes ap-grow { from { transform: scaleX(0); } }
+
+  /* ------------------------------------------------------------ queues */
+  .ap-queues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .ap-queue {
+    position: relative; padding: 11px 12px 10px 14px; border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--c) 18%, var(--dash-line));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--c) 7%, var(--dash-surface)), var(--dash-surface) 60%);
+    box-shadow: 0 10px 22px -22px var(--c);
+    transition: box-shadow .18s ease, transform .18s ease;
+    &::before { content: ''; position: absolute; left: 0; top: 14px; width: 3px; height: 22px; border-radius: 0 3px 3px 0; background: var(--c); }
+    &:hover { transform: translateY(-1px); box-shadow: 0 14px 24px -18px var(--c); }
   }
-  .dash-queue-items { list-style: none; margin: 5px 0 0; padding: 0 0 0 22px; display: flex; flex-direction: column; gap: 4px;
-    li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; font-size: 12px; }
-    strong { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    small { grid-column: 1; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    time { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--text-muted); font-size: 11.5px; }
+  .ap-queue-head { display: flex; align-items: center; gap: 9px; }
+  .ap-queue-icon { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; font-size: 14px; color: #fff;
+    background: linear-gradient(140deg, color-mix(in srgb, var(--c) 60%, #fff), var(--c)); box-shadow: 0 8px 14px -8px var(--c); }
+  .ap-queue-label { flex: 1 1 auto; min-width: 0; font-size: 13.5px; font-weight: 800; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ap-count { flex: none; min-width: 24px; height: 22px; display: grid; place-items: center; padding: 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 800; color: #fff;
+    background: var(--c); box-shadow: 0 4px 10px -4px var(--c); }
+  .ap-review {
+    flex: none; display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 11px; border-radius: 999px; text-decoration: none;
+    font-size: 12px; font-weight: 700; color: var(--c); background: var(--dash-surface); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent);
+    transition: background .15s ease, color .15s ease;
+    i { transition: transform .15s ease; }
+    &:hover { background: var(--c); color: #fff; i { transform: translateX(2px); } }
+  }
+
+  .ap-items { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px;
+    > li { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 6px 8px; border-radius: 11px; background: var(--dash-surface); border: 1px solid color-mix(in srgb, var(--c) 10%, var(--dash-line)); } }
+  .ap-item-avatar { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; font-size: 10.5px; font-weight: 800;
+    color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); }
+  .ap-item-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.25;
+    strong { font-size: 12.5px; font-weight: 700; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    small { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }
+  .ap-age { flex: none; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums;
+    color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent);
+    &.is-old { color: var(--status-red-text); background: color-mix(in srgb, var(--status-red-text) 11%, transparent); } }
+  .ap-more { justify-content: center; padding: 3px 8px !important; font-size: 11px; font-weight: 700; color: var(--c); background: transparent !important; border-style: dashed !important; }
+
+  /* ------------------------------------------------------------ clear queues + all-caught-up */
+  .ap-clear { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--dash-line); }
+  .ap-clear-title { display: inline-flex; align-items: center; gap: 5px; margin-right: 2px; font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--status-green-text); }
+  .ap-clear-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--text-muted);
+    background: color-mix(in srgb, var(--c) 7%, var(--dash-surface)); border: 1px solid color-mix(in srgb, var(--c) 16%, transparent);
+    i { color: var(--c); font-size: 11px; } }
+  .ap-clear-all { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 12px; text-align: center; border-radius: 16px;
+    border: 1px dashed color-mix(in srgb, #1fae5b 30%, transparent); background: radial-gradient(circle at 50% 20%, color-mix(in srgb, #3fd07f 12%, transparent), transparent 60%);
+    strong { font-size: 14px; font-weight: 800; color: var(--text-dark); } small { font-size: 12px; color: var(--text-muted); } }
+  .ap-clear-icon { width: 52px; height: 52px; margin-bottom: 4px; display: grid; place-items: center; border-radius: 50%; font-size: 22px; color: #fff;
+    background: linear-gradient(140deg, #3fd07f, #128a52); box-shadow: 0 12px 22px -12px #128a52; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ap-hero-bar i { animation: none; }
+    .ap-queue, .ap-review, .ap-review i { transition: none; }
   }
 }

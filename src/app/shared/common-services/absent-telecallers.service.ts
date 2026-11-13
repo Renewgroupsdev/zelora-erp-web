@@ -5,6 +5,8 @@ import { TelephonyService } from '../../core/telephony/telephony.service';
 import { openAssignCaller } from '../components/lead-dialogs/assign-caller-dialog';
 import { AlertStackItem, AlertStackService } from './alert-stack.service';
 import { NotificationService } from './notification.service';
+import { Subscription } from 'rxjs';
+import { BellRealtimeService } from './bell-realtime.service';
 
 /** Roles & Permissions -> Lead Management action: who may hand a lead to another telecaller (the API checks the role too). */
 export const ASSIGN_CALLER_ACTION = 'assign-lead-caller';
@@ -24,14 +26,19 @@ export class AbsentTelecallersService {
   private readonly alertStack = inject(AlertStackService);
   private readonly dialog = inject(MatDialog);
 
+  private readonly realtime = inject(BellRealtimeService);
+
   private timer: ReturnType<typeof setInterval> | null = null;
+  private live?: Subscription;
   private readonly onVisible = () => {
     if (document.visibilityState === 'visible') this.refresh();
   };
 
+  /** Attendance changes slowly, so this keeps its 5-minute poll; a lead reassignment (WebSocket) re-reads it at once. */
   start(): void {
     if (this.timer) return;
     this.timer = setInterval(() => this.refresh(), POLL_MS);
+    this.live = this.realtime.topic$.subscribe(t => { if (t === 'absent' || t === 'all') this.refresh(true); });
     document.addEventListener('visibilitychange', this.onVisible);
     this.refresh();
   }
@@ -39,6 +46,8 @@ export class AbsentTelecallersService {
   stop(): void {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    this.live?.unsubscribe();
+    this.live = undefined;
     document.removeEventListener('visibilitychange', this.onVisible);
     this.notifications.syncAbsentTelecallers([]);
   }

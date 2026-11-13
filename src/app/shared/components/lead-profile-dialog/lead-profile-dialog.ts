@@ -64,6 +64,8 @@ export interface LeadProfileDialogData {
   lead: FlowLead;
   stage: LeadProfileStage;
   telecallers: string[];
+  /** Read-only lead view (lead name clicked): details only - no quick call / WhatsApp, no assign form, no next-step buttons. */
+  viewOnly?: boolean;
   /** Branch names to pick from; falls back to the built-in list when omitted. */
   branches?: string[];
   /** Telecaller name -> their branch name, used to pre-select the branch when a telecaller is chosen. */
@@ -410,6 +412,15 @@ export class LeadProfileDialog {
   initials(name: string): string {
     return name.split(/\s+/).map(value => value[0]).slice(0, 2).join('').toUpperCase();
   }
+
+  /** Lead number as the list shows it (LD-00053); a non-numeric id is shown as it is. */
+  get leadCode(): string {
+    const id = String(this.data.lead.id ?? '').trim();
+    if (!id) return '';
+    return /^\d+$/.test(id) ? `LD-${id.padStart(5, '0')}` : id;
+  }
+
+  get viewOnly(): boolean { return !!this.data.viewOnly; }
 
   isInvalid(controlName: string): boolean {
     const control = this.form.get(controlName);

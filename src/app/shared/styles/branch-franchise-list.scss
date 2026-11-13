@@ -367,13 +367,6 @@
 /* ---------- Shared component tweaks ---------- */
 
 :host ::ng-deep {
-  .stat-row app-common-detail-card .detail-card.has-icon {
-    border-radius: 16px;
-    box-shadow: var(--shadow-premium-sm);
-
-    &:hover { box-shadow: var(--shadow-premium-md); }
-  }
-
   app-common-filter-card .filter-card {
     border-radius: 14px;
     border-color: var(--card-border);

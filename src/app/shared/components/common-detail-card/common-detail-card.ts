@@ -25,6 +25,12 @@ export class CommonDetailCard {
   @Input() icon?: string;
   @Input() iconVariant: DetailCardIconVariant = 'primary';
   @Input() sparkline?: number[];
+  /** Optional progress (0 - 100): drawn as a ring around the icon with a "%" badge in the corner. */
+  @Input() ring?: number | null;
+
+  get ringValue(): number | null {
+    return this.ring === null || this.ring === undefined || Number.isNaN(Number(this.ring)) ? null : Math.max(0, Math.min(100, Math.round(Number(this.ring))));
+  }
 
   // Each card renders its own <linearGradient>, so the fill needs an id unique to this instance.
   readonly sparkGradientId = `detail-spark-${CommonDetailCard.nextId++}`;

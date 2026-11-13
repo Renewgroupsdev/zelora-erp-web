@@ -3,33 +3,80 @@
                [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()"
                [empty]="data()?.headcount === 0" emptyText="No employees in this branch / franchise yet." emptyIcon="bi-people">
   @if (data(); as h) {
-    <div class="dash-meter" [attr.aria-label]="h.attendance_today.rate + '% attendance today'">
-      <div class="dash-meter-head"><span>Attendance today</span><strong>{{ h.attendance_today.rate }}%</strong></div>
-      <div class="dash-meter-bar"><span [style.width.%]="h.attendance_today.rate"></span></div>
-      <div class="dash-chips">
-        <span class="dash-chip tone-green"><b>{{ h.attendance_today.present }}</b> present</span>
-        <span class="dash-chip tone-orange"><b>{{ h.attendance_today.late }}</b> late</span>
-        <span class="dash-chip tone-purple"><b>{{ h.attendance_today.on_leave + h.attendance_today.permission }}</b> leave / permission</span>
-        <span class="dash-chip tone-gray"><b>{{ h.attendance_today.not_marked }}</b> not marked</span>
-      </div>
-    </div>
-    <div class="dash-split">
-      <div class="dash-chart"><h3>Headcount by department</h3><app-bf-donut [data]="h.by_department" centerLabel="Staff" emptyText="No staff" /></div>
-      <div>
-        <div class="dash-figures is-stacked">
-          <div><span>Payroll {{ payrollMonth() }}</span><strong>{{ inrShort(h.payroll_last_month.gross) }}</strong><small>{{ h.payroll_last_month.employees }} payslips &middot; net {{ inrShort(h.payroll_last_month.net) }}</small></div>
-          <div><span>Headcount</span><strong>{{ h.headcount }}</strong><small>{{ h.joiners }} joined this period</small></div>
-          <div><span>Open positions</span><strong>{{ h.open_positions }}</strong><small>Approved manpower requests</small></div>
+    <!-- 1. attendance today: the team split by status -->
+    <section class="tm-att" [attr.aria-label]="h.attendance_today.rate + '% attendance today'">
+      <div class="tm-att-head">
+        <div>
+          <h3 class="tm-title"><i class="bi bi-fingerprint" aria-hidden="true"></i> Attendance today</h3>
+          <small>{{ h.attendance_today.present + h.attendance_today.late + h.attendance_today.half_day }} of {{ h.headcount }} in</small>
         </div>
-        @if (h.on_leave_today.length) {
-          <h3 class="dash-sub">On leave today</h3>
-          <ul class="dash-list is-compact">
-            @for (p of h.on_leave_today; track $index) {
-              <li><div class="dash-list-main"><strong>{{ p.name }}</strong><small>{{ p.designation }} &middot; {{ p.type }} till {{ p.to }}</small></div></li>
-            }
-          </ul>
+        <span class="tm-rate" [class]="'tone-' + rateTone(h.attendance_today.rate)"><b>{{ h.attendance_today.rate }}</b>%</span>
+      </div>
+      <div class="tm-att-bar" role="img" aria-label="Team by attendance status">
+        @for (p of attendance(); track p.key) {
+          @if (p.value) { <i [style.flex-grow]="p.share" [style.--c]="p.color" [attr.title]="p.value + ' ' + p.label"></i> }
         }
       </div>
+      <div class="tm-att-legend">
+        @for (p of attendance(); track p.key) {
+          <div class="tm-att-item" [style.--c]="p.color" [class.is-zero]="!p.value">
+            <span class="tm-att-icon"><i class="bi" [class]="p.icon" aria-hidden="true"></i></span>
+            <span><b>{{ p.value }}</b><small>{{ p.label }}</small></span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- 2. payroll, headcount, open positions -->
+    <div class="tm-kpis">
+      <div class="tm-kpi is-hero">
+        <i class="bi bi-wallet2 tm-kpi-mark" aria-hidden="true"></i>
+        <small><i class="bi bi-cash-stack" aria-hidden="true"></i> Payroll {{ payrollMonth() }}</small>
+        <strong>{{ inrShort(h.payroll_last_month.gross) }}</strong>
+        <span>{{ h.payroll_last_month.employees }} payslips &middot; net {{ inrShort(h.payroll_last_month.net) }}</span>
+      </div>
+      <div class="tm-kpi tone-blue">
+        <span class="tm-kpi-icon"><i class="bi bi-people-fill" aria-hidden="true"></i></span>
+        <span><b>{{ h.headcount }}</b><small>Headcount</small><em>{{ h.joiners }} joined this period</em></span>
+      </div>
+      <div class="tm-kpi tone-purple">
+        <span class="tm-kpi-icon"><i class="bi bi-briefcase-fill" aria-hidden="true"></i></span>
+        <span><b>{{ h.open_positions }}</b><small>Open positions</small><em>Approved manpower requests</em></span>
+      </div>
     </div>
+
+    <!-- 3. headcount by department: capsule bars -->
+    <section class="tm-panel">
+      <h3 class="tm-title"><i class="bi bi-diagram-3-fill" aria-hidden="true"></i> Headcount by department <em>{{ h.headcount }} staff</em></h3>
+      @if (departments().length) {
+        <ul class="tm-depts">
+          @for (d of departments(); track d.label) {
+            <li [style.--c]="d.color">
+              <span class="tm-dept-name"><i></i>{{ d.label }}</span>
+              <span class="tm-dept-track"><span class="tm-dept-fill" [style.width.%]="d.bar"><b>{{ d.value }}</b></span></span>
+              <span class="tm-dept-pct">{{ d.pct }}%</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="dash-muted">No staff.</p>
+      }
+    </section>
+
+    <!-- 4. on leave today -->
+    @if (h.on_leave_today.length) {
+      <section class="tm-panel">
+        <h3 class="tm-title"><i class="bi bi-airplane-fill" aria-hidden="true"></i> On leave today <em>{{ h.on_leave_today.length }}</em></h3>
+        <ul class="tm-leave">
+          @for (p of h.on_leave_today; track $index) {
+            <li>
+              <span class="tm-leave-avatar">{{ initials(p.name) }}</span>
+              <span class="tm-leave-main"><strong>{{ p.name }}</strong><small>{{ p.designation }}</small></span>
+              <span class="tm-leave-tag">{{ p.type }} &middot; till {{ p.to }}</span>
+            </li>
+          }
+        </ul>
+      </section>
+    }
   }
 </app-dash-card>

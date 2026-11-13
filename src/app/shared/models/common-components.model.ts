@@ -2,7 +2,7 @@ import { FollowUpEntry } from '../common-services/crm-flow.service';
 
 export type DetailTrendDirection = 'up' | 'down' | 'neutral';
 
-export type DetailCardIconVariant = 'primary' | 'green' | 'orange' | 'blue' | 'purple';
+export type DetailCardIconVariant = 'primary' | 'green' | 'orange' | 'blue' | 'purple' | 'red' | 'teal';
 
 export interface DetailCardData {
   label: string;

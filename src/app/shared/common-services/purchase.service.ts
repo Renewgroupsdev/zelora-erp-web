@@ -347,22 +347,47 @@ export class PurchaseService {
         productId: String(r.product_id), productCode: r.product_code ?? '', productName: r.product_name, hsnCode: r.hsn_code ?? '',
         qty: Number(r.qty) || 0, onOrder: Number(r.on_order) || 0, suggestedQty: Number(r.suggested_qty) || 1,
         unitPrice: Number(r.unit_price) || 0, gstPercent: Number(r.gst_percent) || 0,
-        vendorId: r.vendor_id ? Number(r.vendor_id) : null, vendorName: r.vendor_name ?? null, out: r.severity === 'out',
+        vendorId: r.vendor_id ? Number(r.vendor_id) : null, vendorName: r.vendor_name ?? null,
+        usualVendorId: r.usual_vendor_id ? Number(r.usual_vendor_id) : null, usualVendorName: r.usual_vendor_name ?? null,
+        quotes: ((r.quotes ?? []) as any[]).map(q => ({
+          vendorId: Number(q.vendor_id), vendorName: q.vendor_name ?? '', unitPrice: Number(q.unit_price) || 0, gstPercent: Number(q.gst_percent) || 0,
+          amount: Number(q.amount) || 0, source: q.source ?? '', date: q.date ?? null,
+        })),
+        out: r.severity === 'out',
       })),
     };
   }
 
-  /** One purchase order to one vendor for the chosen low-stock products; the invoice goes to the vendor by e-mail / WhatsApp. */
-  async createLowStockOrder(vendorId: number, items: { productId: string; qty: number }[], expectedAt: string | null, remarks: string): Promise<PurchaseOrder | null> {
+  /**
+   * Purchase order(s) for the chosen low-stock products: one per vendor (each product goes to the vendor picked on its row,
+   * by default the least-price one). No request / quote step; every invoice goes to its vendor by e-mail + WhatsApp and the
+   * orders show in the Purchase Orders tab.
+   */
+  async createLowStockOrder(items: { productId: string; qty: number; vendorId: number }[], expectedAt: string | null, remarks: string): Promise<PurchaseOrder[] | null> {
     const res = await this.send('POST', `${BASE}/low-stock-orders`, {
-      vendor_id: vendorId, items: items.map(i => ({ product_id: Number(i.productId), qty: i.qty })), expected_at: expectedAt || null, remarks: remarks || null,
+      items: items.map(i => ({ product_id: Number(i.productId), qty: i.qty, vendor_id: i.vendorId })), expected_at: expectedAt || null, remarks: remarks || null,
     });
     if (!res) return null;
-    await this.refresh('requests', 'orders');
-    const order = toOrder(res.data.order);
-    this.notifications.add({ type: 'manager', title: 'Low-stock purchase order raised', message: `${order.poNo} raised to ${order.vendorName} for the Central Store.`, link: '/app/inventory/purchase-orders' });
-    this.announceDeliveries(order.poNo, order.vendorName, ((res.data.deliveries ?? []) as any[]).map(toDelivery));
-    return order;
+    await this.refresh('orders');
+    const orders = ((res.data.orders ?? (res.data.order ? [res.data.order] : [])) as any[]).map(toOrder);
+    const deliveries = ((res.data.deliveries ?? []) as any[]);
+    // deliveries carry the PO they belong to (older APIs: all of them belong to the one order)
+    const sent = orders.map(order => ({ order, list: deliveries.filter(d => !d.po_no || d.po_no === order.poNo).map(toDelivery) }));
+    for (const { order } of sent) {
+      this.notifications.add({ type: 'purchase', title: 'Low-stock purchase order raised', message: `${order.poNo} raised to ${order.vendorName} for the Central Store.`, link: '/app/inventory/purchase-orders' });
+    }
+    if (sent.length === 1) {
+      this.announceDeliveries(sent[0].order.poNo, sent[0].order.vendorName, sent[0].list);
+    } else if (sent.length > 1) {
+      // one summary for every vendor (a second Swal would replace the first)
+      const line = (d: VendorDelivery) => `${d.channel === 'mail' ? 'E-mail' : 'WhatsApp'}: ${d.status === 'sent' ? `sent to ${d.recipient}` : `not sent (${d.error ?? 'failed'})`}`;
+      const ok = sent.every(s => s.list.every(d => d.status === 'sent'));
+      Swal.fire({
+        icon: ok ? 'success' : 'warning', title: `${sent.length} purchase orders raised`, confirmButtonColor: '#6C63FF',
+        html: sent.map(s => `<b>${s.order.poNo} - ${s.order.vendorName}</b><br>${s.list.map(line).join('<br>') || 'No delivery recorded'}`).join('<br><br>'),
+      });
+    }
+    return orders;
   }
 
   // ---- nearby branch / franchise stock (head office: transfer instead of ordering from a vendor)
@@ -791,7 +816,7 @@ function toOrder(o: any): PurchaseOrder {
   return {
     id: str(o.id), poNo: o.po_no, invoiceNo: o.invoice_no, requestId: str(o.request_id), requestNo: o.request_no ?? '-',
     branch: o.branch?.name ?? '-', vendorId: o.vendor_id ?? null, vendorName: o.vendor_name ?? '-', orderedAt: o.ordered_at,
-    approvedBy: o.approved_by ?? '-', expectedAt: o.expected_at ?? null, status: o.status as PurchaseOrderStatus,
+    approvedBy: o.approved_by ?? '-', expectedAt: o.expected_at ?? null, status: o.status as PurchaseOrderStatus, source: o.source ?? null,
     closeReason: o.close_reason ?? null, closedBy: o.closed_by ?? null, closedAt: o.closed_at ?? null,
     canEdit: !!o.can_edit, canEditQty: !!o.can_edit_qty, canInward: !!o.can_inward, canCancel: !!o.can_cancel, canClose: !!o.can_close,
     deliveries: ((o.deliveries ?? []) as any[]).map(toDelivery),

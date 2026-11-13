@@ -3,9 +3,11 @@
                [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()">
   @if (data(); as d) {
     <div class="fd">
+      <!-- figure tiles: progress ring around the icon, a large watermark icon behind -->
       <div class="fd-tiles">
         @for (t of tiles(); track t.label) {
           <article class="fd-tile" [class]="'tone-' + t.tone">
+            <i class="bi fd-tile-mark" [class]="t.icon" aria-hidden="true"></i>
             <div class="fd-ring" [attr.title]="t.ring !== null ? t.ring + '%' : null">
               <svg viewBox="0 0 52 52" aria-hidden="true" focusable="false">
                 <circle class="fd-ring-track" cx="26" cy="26" r="22" />
@@ -16,8 +18,8 @@
               <span class="fd-ring-icon"><i class="bi" [class]="t.icon" aria-hidden="true"></i></span>
             </div>
             <div class="fd-tile-text">
-              <strong>{{ t.value }}</strong>
               <span>{{ t.label }}</span>
+              <strong>{{ t.value }}</strong>
               <small>{{ t.hint }}</small>
             </div>
             @if (t.ring !== null) { <span class="fd-tile-pct">{{ t.ring }}%</span> }
@@ -26,32 +28,35 @@
       </div>
 
       @if (d.walk_in; as w) {
-        <section class="fd-panel fd-walk" aria-label="Walk-in customers today">
+        <section class="fd-panel fd-walk tone-purple" aria-label="Walk-in customers today">
           <header class="fd-panel-head">
-            <span class="fd-panel-icon tone-purple"><i class="bi bi-person-walking" aria-hidden="true"></i></span>
-            <h3>Walk-in customers today</h3>
-            <span class="fd-count tone-purple">{{ w.total }}</span>
+            <span class="fd-panel-icon"><i class="bi bi-person-walking" aria-hidden="true"></i></span>
+            <div class="fd-panel-title">
+              <h3>Walk-in customers today</h3>
+              <small>Who came in without a booking, and how many became customers</small>
+            </div>
+            <span class="fd-count">{{ w.total }}</span>
           </header>
 
           <div class="fd-walk-stats">
             <div class="fd-walk-stat tone-blue">
-              <span class="fd-walk-stat-label">Total walk-ins</span>
+              <span class="fd-walk-stat-head"><i class="bi bi-people-fill" aria-hidden="true"></i><span class="fd-walk-stat-label">Total walk-ins</span></span>
               <strong>{{ w.total }}</strong>
               <small>{{ w.new }} new &middot; {{ w.regular }} regular</small>
             </div>
             <div class="fd-walk-stat tone-green">
-              <span class="fd-walk-stat-label">Converted</span>
+              <span class="fd-walk-stat-head"><i class="bi bi-arrow-repeat" aria-hidden="true"></i><span class="fd-walk-stat-label">Converted</span></span>
               <strong>{{ w.converted }}</strong>
               <div class="fd-meter" role="img" [attr.aria-label]="w.conversion_rate + '% converted'"><i [style.width.%]="w.conversion_rate"></i></div>
               <small>{{ w.conversion_rate }}% conversion</small>
             </div>
             <div class="fd-walk-stat tone-orange">
-              <span class="fd-walk-stat-label">Payment received</span>
+              <span class="fd-walk-stat-head"><i class="bi bi-currency-rupee" aria-hidden="true"></i><span class="fd-walk-stat-label">Payment received</span></span>
               <strong>{{ inrShort(w.paid_amount) }}</strong>
               <small>{{ w.paid_count }} paid walk-in{{ w.paid_count === 1 ? '' : 's' }}</small>
             </div>
             <div class="fd-walk-stat tone-purple">
-              <span class="fd-walk-stat-label">New vs regular</span>
+              <span class="fd-walk-stat-head"><i class="bi bi-pie-chart-fill" aria-hidden="true"></i><span class="fd-walk-stat-label">New vs regular</span></span>
               <div class="fd-split" role="img" [attr.aria-label]="walkSplit().newPct + '% new, ' + walkSplit().regularPct + '% regular'">
                 <i class="is-new" [style.flex-grow]="w.new"></i><i class="is-regular" [style.flex-grow]="w.regular"></i>
               </div>
@@ -82,16 +87,24 @@
                 </li>
               } @empty { <li class="fd-walk-empty">No walk-ins match this filter.</li> }
             </ul>
-          } @else { <p class="dash-muted">No walk-ins yet today.</p> }
+          } @else {
+            <div class="fd-empty is-inline tone-purple">
+              <span class="fd-empty-icon"><i class="bi bi-door-open" aria-hidden="true"></i></span>
+              <div><strong>No walk-ins yet today</strong><small>Walk-in customers checked in at the counter will appear here.</small></div>
+            </div>
+          }
         </section>
       }
 
       <div class="fd-panels">
-        <section class="fd-panel">
+        <section class="fd-panel tone-blue">
           <header class="fd-panel-head">
-            <span class="fd-panel-icon tone-blue"><i class="bi bi-people" aria-hidden="true"></i></span>
-            <h3>Today's queue</h3>
-            <span class="fd-count tone-blue">{{ d.today.length }}</span>
+            <span class="fd-panel-icon"><i class="bi bi-people" aria-hidden="true"></i></span>
+            <div class="fd-panel-title">
+              <h3>Today's queue</h3>
+              <small>Booked visits and walk-ins in time order</small>
+            </div>
+            <span class="fd-count">{{ d.today.length }}</span>
           </header>
 
           @if (d.today.length) {
@@ -129,35 +142,79 @@
                 </li>
               }
             </ol>
-          } @else { <p class="dash-muted">No visits booked for today.</p> }
-        </section>
-
-        <section class="fd-panel">
-          <header class="fd-panel-head">
-            <span class="fd-panel-icon tone-red"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
-            <h3>Collect at the counter</h3>
-            @if (d.pending_payments.items.length) { <span class="fd-count tone-red">{{ inrShort(d.pending_payments.amount) }}</span> }
-          </header>
-          @if (d.pending_payments.items.length) {
-            <div class="fd-cols" role="img" aria-label="Balance due per customer">
-              @for (c of dueCols(); track c.id) {
-                <div class="fd-col" [attr.title]="c.full + ' · ' + inr(c.due)">
-                  <span class="fd-col-val">{{ inrShort(c.due) }}</span>
-                  <span class="fd-col-bar" [style.--h]="c.h"></span>
-                  <span class="fd-col-name">{{ c.name }}</span>
-                </div>
+          } @else {
+            <div class="fd-empty tone-blue">
+              <span class="fd-empty-icon"><i class="bi bi-calendar2-check" aria-hidden="true"></i></span>
+              <strong>No visits booked for today</strong>
+              <small>The queue fills as appointments are booked and walk-ins check in.</small>
+              @if (canOpen('appoinment')) {
+                <a class="fd-empty-btn" routerLink="/app/appointments"><i class="bi bi-plus-lg" aria-hidden="true"></i> Book an appointment</a>
               }
             </div>
-            <ul class="fd-due">
-              @for (p of d.pending_payments.items; track p.id) {
-                <li>
-                  <span class="fd-initial">{{ p.customer.charAt(0) }}</span>
-                  <div class="dash-list-main"><strong>{{ p.customer }}</strong><small>{{ p.treatment }} &middot; {{ p.mobile }}</small></div>
-                  <span class="dash-amount">{{ inr(p.due) }}</span>
+          }
+        </section>
+
+        <section class="fd-panel tone-red">
+          <header class="fd-panel-head">
+            <span class="fd-panel-icon"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
+            <div class="fd-panel-title">
+              <h3>Collect at the counter</h3>
+              <small>Open treatment-plan balances, largest first</small>
+            </div>
+            @if (d.pending_payments.items.length) { <span class="fd-count">{{ inrShort(d.pending_payments.amount) }}</span> }
+          </header>
+          @if (d.pending_payments.items.length) {
+            @if (dueSummary(); as s) {
+              <!-- summary: the total, how it splits, and who holds the most -->
+              <div class="fd-due-hero">
+                <div class="fd-due-total">
+                  <small><i class="bi bi-cash-coin" aria-hidden="true"></i> Total to collect</small>
+                  <strong>{{ inr(s.total) }}</strong>
+                  <span>{{ s.count }} open plan{{ s.count === 1 ? '' : 's' }} &middot; avg {{ inrShort(s.average) }}</span>
+                </div>
+                @if (s.top) {
+                  <div class="fd-due-top">
+                    <span class="fd-due-top-ring" [style.--p]="s.topPct" aria-hidden="true"><b>{{ s.topPct }}%</b></span>
+                    <span class="fd-due-top-text"><small>Largest balance</small><b>{{ s.top.customer }}</b><em>{{ inrShort(s.top.due) }}</em></span>
+                  </div>
+                }
+              </div>
+
+              <!-- each customer's share of the total, one colour each (same colour as their row below) -->
+              <div class="fd-due-stack" role="img" [attr.aria-label]="'Share of the balance per customer'">
+                @for (p of dueRows(); track p.id) {
+                  <i [style.flex-grow]="p.share" [style.--c]="p.color" [attr.title]="p.customer + ' · ' + inr(p.due) + ' (' + p.pct + '%)'"></i>
+                }
+              </div>
+            }
+
+            <ol class="fd-due-list">
+              @for (p of dueRows(); track p.id) {
+                <li [style.--c]="p.color" [style.--bar]="p.bar + '%'">
+                  <span class="fd-due-rank">{{ p.rank }}</span>
+                  <span class="fd-due-avatar">{{ initials(p.customer) }}</span>
+                  <div class="fd-due-main">
+                    <strong>{{ p.customer }}</strong>
+                    <span class="fd-due-meta">
+                      <em class="fd-due-chip"><i class="bi bi-capsule" aria-hidden="true"></i> {{ p.treatment }}</em>
+                      @if (p.mobile) { <span><i class="bi bi-telephone" aria-hidden="true"></i> {{ p.mobile }}</span> }
+                    </span>
+                    <span class="fd-due-bar" aria-hidden="true"><i></i></span>
+                  </div>
+                  <div class="fd-due-amt">
+                    <b>{{ inr(p.due) }}</b>
+                    <small>{{ p.pct }}% of total</small>
+                  </div>
                 </li>
               }
-            </ul>
-          } @else { <div class="dash-ok"><i class="bi bi-check2-circle" aria-hidden="true"></i> Every active plan is paid up.</div> }
+            </ol>
+          } @else {
+            <div class="fd-empty tone-green">
+              <span class="fd-empty-icon"><i class="bi bi-check2-circle" aria-hidden="true"></i></span>
+              <strong>All paid up</strong>
+              <small>Every active treatment plan is settled.</small>
+            </div>
+          }
         </section>
       </div>
     </div>

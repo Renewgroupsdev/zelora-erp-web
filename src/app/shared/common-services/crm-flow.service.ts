@@ -29,6 +29,11 @@ export interface FlowLead {
   history?: FollowUpEntry[];
   /** E-mail, when the lead supplied one (Meta lead forms ask for it). */
   email?: string;
+  /** Address / location the lead gave. */
+  address?: string;
+  pincode?: string;
+  /** Why the lead enquired (the enquiry's own reason, e.g. "Hair fall treatment enquiry"). */
+  reason?: string;
   /** Meta Lead Ads source (Page / Form / Ad / campaign) - only for leads that came through the Meta integration. */
   attribution?: LeadAttribution;
 }

@@ -50,6 +50,13 @@ interface LookupResult {
 
 interface TreatmentOption { id: number; name: string; price: number; default_sittings: number; category_id: number }
 
+type HistorySitting = TreatmentHistory['sittings'][number];
+
+/** Today as yyyy-mm-dd in the browser's own time zone. */
+function localIsoDate(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 /**
  * Customer Management -> "Add Treatment". Find the person by customer ID or mobile number; their details load and then
  *  - a converted customer gets another treatment (+ its sittings) on their record, and
@@ -62,7 +69,7 @@ interface TreatmentOption { id: number; name: string; price: number; default_sit
   standalone: true,
   imports: [CommonModule, FormsModule, MatDialogModule],
   templateUrl: './add-treatment-dialog.html',
-  styleUrls: ['../../../shared/styles/erp-dialog.scss', '../../appointment-page/new-appointment-dialog/new-appointment-dialog.scss'],
+  styleUrls: ['../../../shared/styles/erp-dialog.scss', '../../appointment-page/new-appointment-dialog/new-appointment-dialog.scss', './add-treatment-dialog.scss'],
 })
 export class AddTreatmentDialog implements OnInit {
   private readonly api = inject(ApiDataService);
@@ -72,7 +79,8 @@ export class AddTreatmentDialog implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<AddTreatmentDialog, boolean>);
 
   readonly inr = inr;
-  readonly today = new Date().toISOString().slice(0, 10);
+  /** Local date (toISOString() is UTC - after midnight in India it still gives yesterday, and the API then rejects "today"). */
+  readonly today = localIsoDate();
   readonly categories = signal<{ id: number; name: string }[]>([]);
   readonly treatmentOptions = signal<TreatmentOption[]>([]);
   readonly looking = signal(false);
@@ -99,6 +107,11 @@ export class AddTreatmentDialog implements OnInit {
     const f = this.found();
     return f && f.branch_type && f.branch_id ? `&branch_type=${encodeURIComponent(f.branch_type)}&branch_id=${f.branch_id}` : '';
   }
+
+  /** Reschedule of one sitting that is not completed yet (current or earlier treatment): one form open at a time. */
+  rescheduleId: number | null = null;
+  rescheduleDate = '';
+  readonly rescheduleSlots = new SlotPicker(this.api, this.today, () => this.unitQuery());
 
   /** Extra sittings on an earlier treatment: only one plan's form is open at a time. */
   extraPlanId: number | null = null;
@@ -209,6 +222,64 @@ export class AddTreatmentDialog implements OnInit {
         this.search(); // reload: the treatment is in progress again
       },
       error: (err: any) => this.showError(err, 'Could not add the extra sittings.'),
+    });
+  }
+
+  // ---------------------------------------------------------------- sittings: status + reschedule
+
+  /** done = completed; overdue = its date has passed without being completed; today; upcoming. */
+  sittingState(s: HistorySitting): 'done' | 'overdue' | 'today' | 'upcoming' {
+    if (s.status === 'completed') return 'done';
+    const d = (s.scheduled_date ?? '').slice(0, 10);
+    if (!d) return 'upcoming';
+    return d < this.today ? 'overdue' : d === this.today ? 'today' : 'upcoming';
+  }
+
+  sittingStateLabel(s: HistorySitting): string {
+    return { done: 'Completed', overdue: 'Missed', today: 'Today', upcoming: 'Upcoming' }[this.sittingState(s)];
+  }
+
+  /** Share of the plan's sittings completed (for the progress bar). */
+  progress(p: TreatmentHistory): number {
+    return p.sittings_count ? Math.min(100, Math.round((p.completed_sittings / p.sittings_count) * 100)) : 0;
+  }
+
+  pendingCount(p: TreatmentHistory): number {
+    return p.sittings.filter(s => s.status !== 'completed').length;
+  }
+
+  toggleReschedule(s: HistorySitting): void {
+    this.error.set(null);
+    if (this.rescheduleId === s.id) {
+      this.rescheduleId = null;
+      return;
+    }
+    this.rescheduleId = s.id;
+    // an overdue sitting starts from today; an upcoming one from its own date
+    const own = (s.scheduled_date ?? '').slice(0, 10);
+    this.rescheduleDate = own && own >= this.today ? own : this.today;
+    this.rescheduleSlots.reset();
+    this.rescheduleSlots.setDate(this.rescheduleDate);
+  }
+
+  onRescheduleDateChange(): void { this.rescheduleSlots.setDate(this.rescheduleDate); }
+
+  saveReschedule(s: HistorySitting): void {
+    if (!this.rescheduleDate || this.rescheduleDate < this.today) return void this.error.set('Pick today or a later date for the sitting.');
+    this.error.set(null);
+    this.saving.set(true);
+    this.api.PUT(`${ApiRoutesConstants.SITTINGS}/${s.id}/reschedule`, {
+      scheduled_date: this.rescheduleDate,
+      scheduled_time: this.rescheduleSlots.time || null,
+      doctor_id: this.rescheduleSlots.doctorId,
+    }).pipe(finalize(() => this.saving.set(false))).subscribe({
+      next: (res: any) => {
+        this.changed = true;
+        this.toast.success(res?.message || `Sitting ${s.sitting_no} rescheduled.`);
+        this.rescheduleId = null;
+        this.search(); // reload the sittings with the new date
+      },
+      error: (err: any) => this.showError(err, 'Could not reschedule the sitting.'),
     });
   }
 

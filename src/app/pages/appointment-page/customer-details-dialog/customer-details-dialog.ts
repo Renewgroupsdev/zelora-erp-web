@@ -93,6 +93,15 @@ export class CustomerDetailsDialog implements OnInit {
   readonly brokenPhotos = signal<ReadonlySet<number>>(new Set());
   readonly balance = computed(() => Math.max(0, Number(this.appt()?.total_amount ?? 0) - Number(this.appt()?.paid_amount ?? 0)));
 
+  /** Set when the photo URL fails to load (missing file): the initials show instead of a broken image. */
+  readonly avatarFailed = signal(false);
+  /** The customer's profile photo, else the appointment photo; null = show the name's initials. */
+  readonly avatarUrl = computed(() => {
+    const a = this.appt();
+    const url = a?.customer_photo_url || a?.photo_url || null;
+    return url && !this.avatarFailed() ? url : null;
+  });
+
   readonly initials = computed(() =>
     (this.appt()?.name ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join(''));
 

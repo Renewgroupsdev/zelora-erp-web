@@ -42,9 +42,16 @@
         <span class="dash-updated"><span class="dash-live" aria-hidden="true"></span>{{ roleName() ? roleName() + ' · ' : '' }}Updated {{ updatedAt().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) }}</span>
       </div>
 
-      <!-- Decoration: a product shot - pump bottle, amber serum and cream jar on a two-tier podium before an arch. -->
-      <div class="dash-hero-art" aria-hidden="true">
-        <svg class="dash-care" viewBox="0 0 440 170" preserveAspectRatio="xMaxYMax meet" focusable="false">
+      <!-- Decoration: the tagline beside a product shot - pump bottle, amber serum and cream jar on a two-tier podium before an arch. -->
+      <div class="dash-hero-promo" aria-hidden="true">
+      <p class="dash-tagline">
+        <span class="dash-tagline-mark"></span>
+        <strong>Flawless Looks,</strong>
+        <em>Endless Confidence</em>
+      </p>
+      <div class="dash-hero-art">
+        <!-- viewBox cropped to the products (x 200-440) so the tagline never sits on them -->
+        <svg class="dash-care" viewBox="200 0 240 170" preserveAspectRatio="xMidYMax meet" focusable="false">
           <defs>
             <radialGradient id="dash-bokeh" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".9" /><stop offset="1" stop-color="#fff" stop-opacity="0" /></radialGradient>
             <radialGradient id="dash-blush" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#f6d2bf" stop-opacity=".7" /><stop offset="1" stop-color="#f6d2bf" stop-opacity="0" /></radialGradient>
@@ -140,11 +147,7 @@
             <path d="M424 100 l1 2.8 l2.8 1 l-2.8 1 l-1 2.8 l-1 -2.8 l-2.8 -1 l2.8 -1Z" opacity=".8" />
           </g>
         </svg>
-        <p class="dash-tagline">
-          <span class="dash-tagline-mark" aria-hidden="true"></span>
-          <strong>Flawless Looks,</strong>
-          <em>Endless Confidence</em>
-        </p>
+      </div>
       </div>
     </header>
 
@@ -206,15 +209,17 @@
   <ng-template #quick let-width>
     <section class="dash-card dash-quick" [class]="width" aria-labelledby="dash-quick-title">
       <header class="dash-card-head">
-        <span class="dash-card-icon tone-green"><i class="bi bi-grid-1x2" aria-hidden="true"></i></span>
-        <div class="dash-card-title"><h2 id="dash-quick-title">Quick links</h2></div>
+        <span class="dash-card-icon tone-green"><i class="bi bi-grid-1x2-fill" aria-hidden="true"></i></span>
+        <div class="dash-card-title"><h2 id="dash-quick-title">Quick links</h2><p>Jump straight to your work</p></div>
       </header>
-      <ul>
+      <ul class="ql-grid">
         @for (q of quickLinks(); track q.link) {
           <li>
-            <a [routerLink]="q.link">
-              <span class="dash-quick-icon" [class]="'tone-' + q.tone"><i class="bi" [class]="q.icon" aria-hidden="true"></i></span>
-              <span>{{ q.label }}</span>
+            <a class="ql-tile" [routerLink]="q.link" [style.--c]="q.color">
+              <i class="bi ql-mark" [class]="q.icon" aria-hidden="true"></i>
+              <span class="ql-icon"><i class="bi" [class]="q.icon" aria-hidden="true"></i></span>
+              <span class="ql-text"><strong>{{ q.label }}</strong><small>{{ q.hint }}</small></span>
+              <i class="bi bi-arrow-up-right ql-go" aria-hidden="true"></i>
             </a>
           </li>
         }

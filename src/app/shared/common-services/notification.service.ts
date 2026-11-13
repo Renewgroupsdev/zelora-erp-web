@@ -122,6 +122,34 @@ export class NotificationService {
     return { fresh: fresh.length, urgent: fresh.filter(r => r.urgent).length };
   }
 
+  /**
+   * Central Store products under the low-stock threshold (head office / admin / super admin), one notification each (id LSC-<product>).
+   * It keeps its read state while the product stays low and leaves the bell once the stock is back up. Returns how many are new.
+   */
+  syncCentralLowStock(items: { productId: string; productName: string; qty: number }[], threshold: number): number {
+    const known = new Set(this._notifications().filter(n => n.id.startsWith('LSC-')).map(n => n.id));
+    const byId = new Map(items.map(i => [`LSC-${i.productId}`, i]));
+    const fresh = items.filter(i => !known.has(`LSC-${i.productId}`));
+    const toNotification = (i: (typeof items)[number], read = false, at = new Date()): AppNotification => ({
+      id: `LSC-${i.productId}`,
+      type: 'stock',
+      title: i.qty <= 0 ? `Central Store: ${i.productName} is out of stock` : `Central Store low stock: ${i.productName}`,
+      message: `${i.qty} unit${i.qty === 1 ? '' : 's'} left (below ${threshold}). Order it from the least-price vendor.`,
+      timestamp: at,
+      read,
+      link: '/app/inventory/low-stock-replenishment',
+    });
+
+    this._notifications.update(list => [
+      ...fresh.map(i => toNotification(i)),
+      // known ones keep their read state / time but show the current qty
+      ...list.filter(n => !n.id.startsWith('LSC-') || byId.has(n.id))
+        .map(n => (n.id.startsWith('LSC-') ? toNotification(byId.get(n.id)!, n.read, n.timestamp) : n)),
+    ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+
+    return fresh.length;
+  }
+
   /** Sitting transfers waiting for this branch's doctors (id STX-<id>); each leaves the bell once accepted / declined. Returns the new ones. */
   syncSittingTransfers(requests: SittingTransfer[]): SittingTransfer[] {
     const known = new Set(this._notifications().filter(n => n.id.startsWith('STX-')).map(n => n.id));

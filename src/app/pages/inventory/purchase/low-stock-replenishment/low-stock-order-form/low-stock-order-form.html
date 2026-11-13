@@ -1,0 +1,140 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-cart-plus-fill"></i></div>
+      <div class="title-content">
+        <h2>Create Purchase Order - Central Store</h2>
+        <p>Low-stock products (below {{ data.threshold }} units). The least-price vendor is listed first and pre-selected; one purchase order is raised per vendor.</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <form (ngSubmit)="submit()" novalidate>
+    <div class="modal-body-custom">
+
+      <div class="section-title"><i class="bi bi-info-circle"></i> Order Details</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="ls-store">Deliver To</label>
+          <div class="input-wrap">
+            <i class="bi bi-building"></i>
+            <input id="ls-store" type="text" value="Central Store" readonly />
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="ls-expected">Expected Delivery</label>
+          <div class="input-wrap">
+            <i class="bi bi-calendar-event"></i>
+            <input id="ls-expected" name="expectedAt" type="date" [min]="today" [(ngModel)]="expectedAt" />
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Purchase Orders</label>
+          <div class="input-wrap">
+            <i class="bi bi-receipt"></i>
+            <input type="text" readonly [value]="groups().length + ' vendor' + (groups().length === 1 ? '' : 's') + ' / ' + lines().length + ' product' + (lines().length === 1 ? '' : 's')" />
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <i class="bi bi-box-seam"></i> Products
+        <span class="spacer"></span>
+        <button type="button" class="link-btn" (click)="useLeastPrices()"><i class="bi bi-trophy"></i> Use least prices</button>
+        <button type="button" class="link-btn" (click)="addLine()" [disabled]="lines().length >= data.rows.length"><i class="bi bi-plus-lg"></i> Add Product</button>
+      </div>
+
+      <div class="items-table-wrap">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width: 26%">Product</th>
+              <th class="num" style="width: 7%">Stock</th>
+              <th style="width: 27%">Vendor (least price first)</th>
+              <th style="width: 10%">Order Qty</th>
+              <th class="num">Unit Price</th>
+              <th class="num">GST</th>
+              <th class="num">Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of lines(); track l.key) {
+              <tr>
+                <td>
+                  <select class="cell-input" [name]="'p' + l.key" [ngModel]="l.productId" (ngModelChange)="setProduct(l, $event)" [class.is-invalid]="submitted() && !l.productId">
+                    <option [ngValue]="null">Select product</option>
+                    @for (r of data.rows; track r.productId) {
+                      <option class="opt" [class.opt-taken]="isTaken(r.productId, l)" [ngValue]="r.productId" [disabled]="isTaken(r.productId, l)">{{ r.productCode }} - {{ r.productName }}{{ isTaken(r.productId, l) ? ' - already added' : '' }}</option>
+                    }
+                  </select>
+                  @if (submitted() && !l.productId) { <small class="error-text">Select the product.</small> }
+                </td>
+                <td class="num">
+                  @if (row(l); as r) { <span class="ls-stock" [class.out]="r.out">{{ r.out ? 'Out' : r.qty }}</span> } @else { - }
+                </td>
+                <td>
+                  <select class="cell-input" [name]="'v' + l.key" [ngModel]="l.vendorId" (ngModelChange)="update(l, { vendorId: $event })" [disabled]="!l.productId" [class.is-invalid]="submitted() && l.productId && !l.vendorId">
+                    <option [ngValue]="null">Select vendor</option>
+                    @for (v of vendorOptions(l); track v.id) { <option [ngValue]="v.id">{{ v.label }}</option> }
+                  </select>
+                  @if (l.productId) {
+                    @if (isLeast(l)) { <small class="ls-hint good"><i class="bi bi-trophy-fill"></i> Least price</small> }
+                    @else if (row(l)?.quotes?.length) { <small class="ls-hint warn">Least: {{ row(l)!.quotes[0].vendorName }} {{ inr(row(l)!.quotes[0].amount) }}</small> }
+                    @else { <small class="ls-hint warn">No vendor price - product master price</small> }
+                  }
+                  @if (submitted() && l.productId && !l.vendorId) { <small class="error-text">Select the vendor.</small> }
+                </td>
+                <td>
+                  <input class="cell-input" type="number" min="1" step="1" [name]="'q' + l.key" [ngModel]="l.qty" (ngModelChange)="setQty(l, $event)" [class.is-invalid]="submitted() && (!l.qty || l.qty < 1)" />
+                  @if (submitted() && (!l.qty || l.qty < 1)) { <small class="error-text">Min 1.</small> }
+                </td>
+                <td class="num">{{ inr(price(l).unitPrice) }}<div class="ls-src">{{ price(l).source }}</div></td>
+                <td class="num">{{ price(l).gstPercent }}%</td>
+                <td class="num"><strong>{{ inr(amount(l)) }}</strong></td>
+                <td>
+                  <button type="button" class="icon-btn" [disabled]="lines().length === 1" (click)="removeLine(l)" aria-label="Remove product"><i class="bi bi-trash3"></i></button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (groups().length) {
+        <div class="ls-groups">
+          @for (g of groups(); track g.vendorId) {
+            <div class="ls-group"><i class="bi bi-receipt"></i> <strong>PO to {{ g.vendorName }}</strong> <span>{{ g.count }} product{{ g.count === 1 ? '' : 's' }} &middot; {{ inr(g.total) }}</span></div>
+          }
+        </div>
+      }
+
+      <div class="totals">
+        <div><span>Sub Total</span><span>{{ inr(totals().subTotal) }}</span></div>
+        <div><span>GST</span><span>{{ inr(totals().gst) }}</span></div>
+        <div class="grand"><span>Order Total</span><span>{{ inr(totals().grandTotal) }}</span></div>
+      </div>
+
+      <div class="form-field full-width">
+        <label for="ls-notes">Notes</label>
+        <div class="input-wrap textarea-wrap">
+          <i class="bi bi-card-text"></i>
+          <textarea id="ls-notes" name="notes" rows="2" maxlength="300" [(ngModel)]="notes" placeholder="Optional note for the vendor / records"></textarea>
+        </div>
+      </div>
+
+      @if (error()) { <small class="error-text">{{ error() }}</small> }
+    </div>
+
+    <div class="modal-footer-custom">
+      <span class="footer-note"><i class="bi bi-whatsapp"></i> Each invoice is sent to its vendor by e-mail + WhatsApp.</span>
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn" [disabled]="saving()">
+        <i class="bi bi-send-check"></i>
+        {{ saving() ? 'Creating...' : groups().length > 1 ? 'Create ' + groups().length + ' Purchase Orders' : 'Create Purchase Order' }}
+      </button>
+    </div>
+  </form>
+</div>

@@ -8,6 +8,7 @@ import { currentModule } from '../shared/utils/current-module.util';
 import { MatDialog } from '@angular/material/dialog';
 import { NavLayoutService } from '../services/nav-layout.service';
 import { AppNotification, NotificationService } from '../shared/common-services/notification.service';
+import { BellRealtimeService } from '../shared/common-services/bell-realtime.service';
 import { AuthService } from '../core/auth/auth.service';
 import { roleLabel } from '../core/auth/auth.model';
 import { BranchContextService, ScopeType } from '../shared/common-services/branch-context.service';
@@ -176,7 +177,10 @@ export class TopNavbar {
     private absentTelecallers: AbsentTelecallersService,
     private purchaseAlerts: PurchaseApprovalAlertsService,
     private followUpReminder: FollowUpReminderService,
+    private bellRealtime: BellRealtimeService,
   ) {
+    // Bell over WebSocket (Reverb): every list below is re-read the moment it changes; their polls are only a fallback.
+    this.bellRealtime.start();
     // Branch managers / approvers: discount requests of their branch show up here as notifications.
     this.discounts.start();
     // Doctors: a sitting another branch wants to move here waits for their acceptance.

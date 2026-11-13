@@ -18,30 +18,54 @@ export class AuthBackground implements OnDestroy {
     // the scale is capped so the card (it ends at 830px of the 944px layout) is never cut off at the bottom
     const wide = window.innerWidth >= 900;
     const cover = Math.max(window.innerWidth / 1680, window.innerHeight / 944);
-    const kc = wide ? Math.min(cover, window.innerHeight / 830) : cover;
+    // Wide screens (900px+): the 1680x944 design is stretched to fill the window exactly - width and height scaled
+    // separately - so the whole design (picture, card, brand, benefit cards) is always visible at full width, with no
+    // scrollbar, whatever the window's shape (e.g. DevTools docked at the bottom). Picture and layout use the same
+    // factors, so the glass patch stays behind the card.
+    const kx = wide ? window.innerWidth / 1680 : cover;
+    const ky = wide ? window.innerHeight / 944 : cover;
+    const kc = wide ? Math.min(kx, ky) : cover;
     root.setProperty('--stage-k', String(kc));
+    root.setProperty('--stage-kx', String(kx));
+    root.setProperty('--stage-ky', String(ky));
+    root.setProperty('--stage-y', '0px');
     root.setProperty('--fade-x', '0px');
-    root.setProperty('--fade-y', kc * 944 < window.innerHeight - 1 ? '40px' : '0px');
-    // on ultra-wide screens the picture is stretched a little sideways to reach both edges
-    root.setProperty('--stage-w', String(wide ? Math.max(1680 * kc, window.innerWidth) : 1680 * kc) + 'px');
-    root.setProperty('--stage-h', String(944 * kc) + 'px');
+    root.setProperty('--fade-y', '0px');
+    root.setProperty('--stage-w', String(1680 * kx) + 'px');
+    root.setProperty('--stage-h', String(944 * ky) + 'px');
     // small screens show only the card: fit it (and its logo badge) inside the window
     // part of the 1680px layout that is visible (the picture is `cover`-cropped); fit the side panels inside it
     const k = kc;
     const visL = Math.max(0, (1680 - window.innerWidth / k) / 2);
     const visR = 1680 - visL;
     const zb = Math.min(0.95, (609 - (visL + 24)) / 340);
-    const zf = Math.min(1.16, (visR - 24 - 1075) / 330);
+    const zf = Math.min(1.16, (visR - 24 - 1075) / 370);
     root.setProperty('--bz', String(zb));
     root.setProperty('--bl', String(Math.max(136, visL + 24) / zb));
     root.setProperty('--bt', String(285 / zb));
     root.setProperty('--fz', String(zf));
-    root.setProperty('--fl', String(Math.min(1180, visR - 24 - 330 * zf) / zf));
+    root.setProperty('--fl', String(Math.min(1180, visR - 24 - 370 * zf) / zf));
     root.setProperty('--ft', String(195 / zf));
     document.documentElement.classList.toggle('auth-narrow', zb < 0.55 || zf < 0.55);
-    // compact pages also show the benefit cards under the card, so they need the full 944px height
-    root.setProperty('--card-kc', String(Math.min(1, (window.innerWidth - 24) / 450, (window.innerHeight - 8) / 944)));
-    root.setProperty('--card-k', String(Math.min(1, (window.innerWidth - 24) / 450, (window.innerHeight - 24) / 690)));
+    // Below 900px only the card is shown. When the card fits the window at the picture's own (cover) scale - tablets,
+    // small laptops, landscape phones - the stage is scaled exactly like the picture, so the glass patch drawn in the
+    // picture sits right behind the card (no "ghost box" around it). Otherwise (narrow phones) the card is fitted to the
+    // window width and centred on it.
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    // the card is 450 wide; its logo badge starts at 146 and the tallest content (login card / benefit cards) ends near 900
+    const fits = !wide && cover * 450 <= w - 24 && h / cover >= 2 * (472 - 146) && h / cover >= 2 * (900 - 472);
+    document.documentElement.classList.toggle('auth-fit', fits);
+    if (fits) {
+      root.setProperty('--card-kc', String(cover));
+      root.setProperty('--card-k', String(cover));
+      // the three benefit cards sit in one row under the card: as wide as the visible part of the stage allows
+      root.setProperty('--feat-row-w', Math.round(Math.min(640, w / cover - 40)) + 'px');
+    } else {
+      // compact pages also show the benefit cards under the card, so they need the full 944px height
+      root.setProperty('--card-kc', String(Math.min(1, (w - 24) / 450, (h - 8) / 944)));
+      root.setProperty('--card-k', String(Math.min(1, (w - 24) / 450, (h - 24) / 690)));
+    }
   };
 
   constructor() {

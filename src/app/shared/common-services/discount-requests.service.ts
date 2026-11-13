@@ -7,6 +7,8 @@ import { ApiRoutesConstants } from './api-route-constants';
 import { DiscountReviewDialog } from '../components/discount-review-dialog/discount-review-dialog';
 import { AlertStackItem, AlertStackService } from './alert-stack.service';
 import { NotificationService } from './notification.service';
+import { Subscription } from 'rxjs';
+import { BellRealtimeService } from './bell-realtime.service';
 
 /** Roles & Permissions -> Appointment module action: who may decide a discount request (the API checks the same). */
 export const APPROVE_DISCOUNT_ACTION = 'approve-discount';
@@ -26,16 +28,21 @@ export class DiscountRequestsService {
   private readonly alertStack = inject(AlertStackService);
   private readonly dialog = inject(MatDialog);
 
+  private readonly realtime = inject(BellRealtimeService);
+
   readonly pending = signal<FlowDiscountRequest[]>([]);
   private timer: ReturnType<typeof setInterval> | null = null;
+  private live?: Subscription;
+  private lastReadAt = 0;
   private readonly onVisible = () => {
     if (document.visibilityState === 'visible') this.refresh();
   };
 
-  /** Starts polling (once); safe to call again. */
+  /** Starts listening (WebSocket) + polling (fallback, slow while the socket is live); safe to call again. */
   start(): void {
     if (this.timer) return;
-    this.timer = setInterval(() => this.refresh(), POLL_MS);
+    this.timer = setInterval(() => { if (!this.realtime.skipPoll(this.lastReadAt)) this.refresh(); }, POLL_MS);
+    this.live = this.realtime.topic$.subscribe(t => { if (t === 'discount' || t === 'all') this.refresh(true); });
     document.addEventListener('visibilitychange', this.onVisible);
     this.refresh();
   }
@@ -43,6 +50,8 @@ export class DiscountRequestsService {
   stop(): void {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    this.live?.unsubscribe();
+    this.live = undefined;
     document.removeEventListener('visibilitychange', this.onVisible);
     this.clear();
   }
@@ -53,6 +62,7 @@ export class DiscountRequestsService {
     if (!this.auth.hasActionAccess(APPROVE_DISCOUNT_ACTION)) return this.clear();
     if (!force && document.visibilityState === 'hidden') return;
 
+    this.lastReadAt = Date.now();
     this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/discount-requests?status=Pending`).subscribe({
       next: (res: any) => {
         const list = (res?.data ?? []) as FlowDiscountRequest[];

@@ -70,9 +70,11 @@ export class PurchaseOrders extends PurchaseListBase {
       if (o.canEdit) actions.push({ key: 'edit', icon: 'bi-pencil-square', label: o.canEditQty ? 'Edit PO' : 'Change expected date' });
       if (o.canClose) actions.push({ key: 'close', icon: 'bi-slash-circle', label: 'Close PO (write off pending)', variant: 'danger' });
       if (o.canCancel) actions.push({ key: 'cancel', icon: 'bi-x-circle', label: 'Cancel PO', variant: 'danger' });
+      // Low Stock Replenishment orders skip the request / quote step: same vendor-side actions, tagged so they stand out
+      const lowStock = o.source === 'low_stock';
       return {
         id: o.id,
-        poNo: o.poNo,
+        poNo: lowStock ? `${o.poNo} · Low stock` : o.poNo,
         invoiceNo: o.invoiceNo,
         branch: o.branch,
         vendor: o.vendorName,
@@ -85,7 +87,7 @@ export class PurchaseOrders extends PurchaseListBase {
         qty: `${requested} / ${received} / ${pending}`,
         __qty: requested ? received / requested : 0,
         status: o.status,
-        searchText: `${o.poNo} ${o.invoiceNo} ${o.vendorName} ${o.requestNo} ${o.closeReason ?? ''}`,
+        searchText: `${o.poNo} ${o.invoiceNo} ${o.vendorName} ${o.requestNo} ${o.closeReason ?? ''}${lowStock ? ' low stock central store replenishment' : ''}`,
         actions,
       };
     });

@@ -3,86 +3,58 @@
   <div class="page-header d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
     <div>
       <h6 class="page-title"><i class="bi bi-graph-down-arrow"></i> Low Stock Replenishment</h6>
-      <p class="page-subtitle">Central Store products below {{ threshold() }} units. Order them from a vendor; the goods are received into the Central Store.</p>
+      <p class="page-subtitle">Central Store products below {{ threshold() }} units. Order them from the least-price vendor; the invoice goes to the vendor by e-mail + WhatsApp.</p>
     </div>
     <div class="header-actions">
-      <button type="button" class="add-lead-btn" (click)="load()" [disabled]="loading()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+      <button type="button" class="ghost-btn" (click)="load()" [disabled]="loading()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+      <button type="button" class="add-lead-btn" (click)="openCreate()" [disabled]="loading()"><i class="bi bi-cart-plus-fill"></i> Create Purchase Order</button>
     </div>
   </div>
 
   <app-purchase-tabs></app-purchase-tabs>
 
-  <div class="ls-stats">
-    <div class="ls-stat"><small>Products below {{ threshold() }}</small><strong>{{ rows().length }}</strong></div>
-    <div class="ls-stat"><small>Out of stock</small><strong class="red">{{ outCount() }}</strong></div>
-    <div class="ls-stat"><small>Selected to order</small><strong>{{ pickedRows().length }}</strong></div>
-    <div class="ls-stat"><small>Order value (incl. GST)</small><strong>{{ inr(total()) }}</strong></div>
+  @if (!loading() && items().length) {
+    <div class="alert-banner info">
+      <i class="bi bi-bell-fill"></i>
+      <div>
+        <strong>{{ items().length }} Central Store product{{ items().length > 1 ? 's are' : ' is' }} below {{ threshold() }} units</strong>
+        Use <i class="bi bi-cart-plus-fill"></i> on a row or "Create Purchase Order" - the least-price vendor is picked first.
+      </div>
+    </div>
+  }
+
+  <div class="row g-2 stat-row">
+    @for (stat of stats(); track stat.label) {
+      <div class="col-6 col-md-3">
+        <app-common-detail-card [label]="stat.label" [value]="stat.value" [icon]="stat.icon" [iconVariant]="stat.iconVariant ?? 'primary'"></app-common-detail-card>
+      </div>
+    }
   </div>
 
-  <div class="table-col">
-    @if (loading()) {
-      <div class="ls-empty"><i class="bi bi-arrow-repeat"></i> Loading Central Store stock...</div>
-    } @else if (!rows().length) {
-      <div class="ls-empty"><i class="bi bi-check2-circle"></i> Every Central Store product is at or above {{ threshold() }} units. Nothing to replenish.</div>
-    } @else {
-      <div class="ls-wrap">
-        <table class="ls-table">
-          <thead>
-            <tr>
-              <th style="width: 36px"><input type="checkbox" [checked]="pickedRows().length === rows().length" (change)="toggleAll($any($event.target).checked)" aria-label="Select all" /></th>
-              <th>Product</th>
-              <th class="num">Central Stock</th>
-              <th class="num">On Order</th>
-              <th>Usual Vendor</th>
-              <th class="num">Unit Price</th>
-              <th class="num">GST</th>
-              <th class="num" style="width: 110px">Order Qty</th>
-              <th class="num">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (r of rows(); track r.productId) {
-              <tr [class.sel]="isPicked(r)">
-                <td><input type="checkbox" [checked]="isPicked(r)" (change)="toggle(r)" [attr.aria-label]="'Select ' + r.productName" /></td>
-                <td><strong>{{ r.productName }}</strong><div class="muted">{{ r.productCode }}</div></td>
-                <td class="num"><span class="pill" [class.red]="r.out" [class.orange]="!r.out">{{ r.out ? 'Out of stock' : r.qty }}</span></td>
-                <td class="num">{{ r.onOrder || '-' }}</td>
-                <td>{{ r.vendorName || '-' }}</td>
-                <td class="num">{{ inr(r.unitPrice) }}</td>
-                <td class="num">{{ r.gstPercent }}%</td>
-                <td class="num">
-                  @if (isPicked(r)) {
-                    <input type="number" min="1" step="1" class="ls-qty" [value]="picked()[r.productId]" (input)="setQty(r, $any($event.target).value)" [attr.aria-label]="'Order quantity of ' + r.productName" />
-                  } @else { <span class="muted">Suggested {{ r.suggestedQty }}</span> }
-                </td>
-                <td class="num">@if (isPicked(r)) { <strong>{{ inr(amount(r)) }}</strong> } @else { - }</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+  <app-common-filter-card
+    searchPlaceholder="Search by product, code or vendor"
+    [filters]="pageFilters()"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
 
-      <div class="ls-order">
-        <div class="ls-field">
-          <label for="ls-vendor">Vendor <span>*</span></label>
-          <select id="ls-vendor" [(ngModel)]="vendorId">
-            <option [ngValue]="null">Select vendor</option>
-            @for (v of vendors(); track v.id) { <option [ngValue]="v.id">{{ v.name }}</option> }
-          </select>
-        </div>
-        <div class="ls-field">
-          <label for="ls-expected">Expected delivery</label>
-          <input id="ls-expected" type="date" [min]="today" [(ngModel)]="expectedAt" />
-        </div>
-        <div class="ls-field ls-grow">
-          <label for="ls-notes">Notes</label>
-          <input id="ls-notes" type="text" maxlength="300" placeholder="Optional note for the vendor / records" [(ngModel)]="notes" />
-        </div>
-        <button type="button" class="save-btn" [disabled]="saving() || !pickedRows().length" (click)="order()">
-          <i class="bi bi-send-check"></i> {{ saving() ? 'Raising order...' : 'Raise purchase order' }}
-        </button>
-      </div>
-      @if (error()) { <small class="error-text">{{ error() }}</small> }
-    }
+  <div class="table-col">
+    <app-common-table-card
+      [recordCountText]="recordCountText"
+      [columns]="columns"
+      [loading]="loading()"
+      [rows]="rows"
+      [totalRecords]="totalRecords"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage"
+      [pageInfoText]="pageInfoText"
+      [sortActive]="sortActive"
+      [sortDirection]="sortDirection"
+      (pageChange)="onPageChange($event)"
+      (sortChange)="onSortChange($event)"
+      (quickActionClick)="onQuickAction($event)"
+    ></app-common-table-card>
   </div>
 </div>

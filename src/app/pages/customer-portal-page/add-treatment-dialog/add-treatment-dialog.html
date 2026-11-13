@@ -113,6 +113,8 @@
               <div><dt>Sittings</dt><dd>{{ p.completed_sittings }} of {{ p.sittings_count }} completed</dd></div>
               <div><dt>Paid / total</dt><dd>{{ inr(p.paid) }} / {{ inr(p.net_amount) }}</dd></div>
             </dl>
+            <div class="th-progress" role="img" [attr.aria-label]="progress(p) + '% of sittings completed'"><i [style.width.%]="progress(p)"></i></div>
+            <ng-container *ngTemplateOutlet="sittingList; context: { p: p }"></ng-container>
             <p class="muted na-hint"><i class="bi bi-info-circle"></i> Another treatment can be added once this one is completed. Use <strong>Treatment sittings</strong> on the customer row to add sittings or move one to another branch.</p>
           </section>
         } @else if (canAddTreatment()) {
@@ -166,20 +168,28 @@
         }
 
         @if (pastPlans().length) {
-          <section class="na-card">
-            <h3><i class="bi bi-clock-history"></i> Previous treatments <small>· view only</small></h3>
+          <section class="na-card th-section">
+            <h3><i class="bi bi-clock-history"></i> Previous treatments <small>· {{ pastPlans().length }} treatment{{ pastPlans().length === 1 ? '' : 's' }}</small></h3>
             @for (p of pastPlans(); track p.id) {
-              <details class="na-history">
-                <summary>
-                  <strong>{{ p.treatment }}</strong>
-                  <span>{{ formatDate(p.start_date) }} - {{ formatDate(p.end_date) }} · {{ p.completed_sittings }}/{{ p.sittings_count }} sittings · {{ inr(p.net_amount) }}</span>
-                  <span class="na-pill done">Completed</span>
-                </summary>
-                <div class="na-sittings">
-                  @for (s of p.sittings; track s.id) {
-                    <div class="na-sitting done"><strong>Sitting {{ s.sitting_no }}</strong><span>Completed {{ formatDate(s.actual_date || s.scheduled_date) }}</span></div>
+              <details class="th-plan" [class.is-open-items]="pendingCount(p) > 0" [open]="pendingCount(p) > 0 || extraPlanId === p.id">
+                <summary class="th-plan-head">
+                  <span class="th-plan-icon" aria-hidden="true"><i class="bi bi-capsule-pill"></i></span>
+                  <span class="th-plan-title">
+                    <strong>{{ p.treatment }}</strong>
+                    <small><i class="bi bi-calendar-range"></i> {{ formatDate(p.start_date) }} – {{ formatDate(p.end_date) }}</small>
+                  </span>
+                  <span class="th-plan-stats">
+                    <span class="th-stat"><b>{{ p.completed_sittings }}/{{ p.sittings_count }}</b><small>Sittings</small></span>
+                    <span class="th-stat"><b>{{ inr(p.net_amount) }}</b><small>Amount</small></span>
+                  </span>
+                  @if (pendingCount(p) > 0) {
+                    <span class="th-pill warn"><i class="bi bi-hourglass-split"></i> {{ pendingCount(p) }} pending</span>
+                  } @else {
+                    <span class="th-pill done"><i class="bi bi-check2-circle"></i> Completed</span>
                   }
-                </div>
+                  <i class="bi bi-chevron-down th-caret" aria-hidden="true"></i>
+                </summary>
+                <ng-container *ngTemplateOutlet="sittingList; context: { p: p }"></ng-container>
                 @if (canAddTreatment()) {
                   <div class="na-inline end">
                     <button type="button" class="save-btn" (click)="openExtra(p)"><i class="bi bi-plus-circle"></i> {{ extraPlanId === p.id ? 'Cancel' : 'Add extra sittings' }}</button>
@@ -228,6 +238,56 @@
 </div>
 
 <!-- Appointment-style time picker (Morning / Afternoon / Evening slots) + the doctors free at the picked slot -->
+<!-- A treatment's sittings as a timeline: completed ones view only; one not completed yet can be rescheduled (date, time, doctor). -->
+<ng-template #sittingList let-p="p">
+  <ol class="th-sittings">
+    @for (s of p.sittings; track s.id) {
+      <li class="th-sitting" [class]="'is-' + sittingState(s)">
+        <span class="th-node" aria-hidden="true">
+          @if (sittingState(s) === 'done') { <i class="bi bi-check-lg"></i> } @else { {{ s.sitting_no }} }
+        </span>
+        <div class="th-sitting-main">
+          <strong>Sitting {{ s.sitting_no }}</strong>
+          <small>
+            @if (sittingState(s) === 'done') {
+              Completed {{ formatDate(s.actual_date || s.scheduled_date) }}
+            } @else {
+              {{ formatDate(s.scheduled_date) }}@if (s.scheduled_time) { · {{ formatTime(s.scheduled_time) }} }
+            }
+            @if (s.doctor?.name) { · <i class="bi bi-person-badge"></i> {{ s.doctor.name }} }
+          </small>
+        </div>
+        <span class="th-state">{{ sittingStateLabel(s) }}</span>
+        @if (sittingState(s) !== 'done') {
+          <button type="button" class="th-resched-btn" [class.is-active]="rescheduleId === s.id" (click)="toggleReschedule(s)" [disabled]="saving()">
+            <i class="bi" [class]="rescheduleId === s.id ? 'bi-x-lg' : 'bi-calendar2-week'"></i> {{ rescheduleId === s.id ? 'Cancel' : 'Reschedule' }}
+          </button>
+        }
+      </li>
+      @if (rescheduleId === s.id) {
+        <li class="th-resched">
+          <p class="th-resched-title"><i class="bi bi-calendar2-week"></i> Reschedule sitting {{ s.sitting_no }}
+            @if (sittingState(s) === 'overdue') { <span class="th-pill warn">Missed on {{ formatDate(s.scheduled_date) }}</span> }
+          </p>
+          <div class="form-grid">
+            <div class="form-field full-width">
+              <label [for]="'rs-date-' + s.id">New date <span>*</span></label>
+              <div class="input-wrap"><i class="bi bi-calendar3"></i>
+                <input [id]="'rs-date-' + s.id" type="date" [name]="'rsDate' + s.id" [min]="today" [(ngModel)]="rescheduleDate" (ngModelChange)="onRescheduleDateChange()" />
+              </div>
+            </div>
+            <ng-container *ngTemplateOutlet="slotPick; context: { sp: rescheduleSlots, id: 'rs' + s.id, title: 'New time' }"></ng-container>
+          </div>
+          <div class="na-inline end">
+            <button type="button" class="cancel-btn" (click)="toggleReschedule(s)">Cancel</button>
+            <button type="button" class="save-btn" (click)="saveReschedule(s)" [disabled]="saving()"><i class="bi bi-check2"></i> Save new date</button>
+          </div>
+        </li>
+      }
+    }
+  </ol>
+</ng-template>
+
 <ng-template #slotPick let-sp="sp" let-id="id" let-title="title">
   <div class="form-field full-width slot-field">
     <label>{{ title }}</label>

@@ -1,43 +1,78 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { MatDialogModule } from '@angular/material/dialog';
+import { Router } from '@angular/router';
+import Swal from 'sweetalert2';
+import { CommonDetailCard } from '../../../../shared/components/common-detail-card/common-detail-card';
+import { CommonFilterCard } from '../../../../shared/components/common-filter-card/common-filter-card';
+import { CommonTableCard } from '../../../../shared/components/common-table-card/common-table-card';
+import { LocalListBase } from '../../../../shared/components/local-list-base';
 import { PurchaseService } from '../../../../shared/common-services/purchase.service';
-import { LowStockRow, inr } from '../../../../shared/models/purchase.model';
+import { DetailCardData, FilterOption, QuickAction, TableColumn, TableRow } from '../../../../shared/models/common-components.model';
+import { LowStockRow, PurchaseOrder, inr } from '../../../../shared/models/purchase.model';
+import { escapeHtml } from '../../../../shared/utils/export.util';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
+import { LowStockOrderData, LowStockOrderForm } from './low-stock-order-form/low-stock-order-form';
 
 /**
- * Low Stock Replenishment (Super Admin / Admin): Central Store products under the low-stock level. The head office picks the
- * products and quantities, the vendor and the expected date; one purchase order is raised to that vendor and the goods are
- * received into the Central Store through Purchase Inward.
+ * Low Stock Replenishment (Head Office / Admin / Super Admin): Central Store products under the low-stock level, laid out like
+ * the Purchase Orders tab (stat cards, filter card, common table).
+ *
+ * "Create Purchase Order" (or the cart icon on a row) opens the order form: the vendor dropdown of every product lists the
+ * least vendor price first and pre-selects it. One purchase order is raised per vendor - no request / quote step - and its
+ * invoice goes to the vendor by e-mail + WhatsApp. The orders then show in the Purchase Orders tab.
  */
 @Component({
   selector: 'app-low-stock-replenishment',
   standalone: true,
-  imports: [CommonModule, FormsModule, PurchaseTabs],
+  imports: [CommonModule, MatDialogModule, CommonDetailCard, CommonFilterCard, CommonTableCard, PurchaseTabs],
   templateUrl: './low-stock-replenishment.html',
   styleUrl: '../../../../shared/styles/erp-page.scss',
 })
-export class LowStockReplenishment implements OnInit {
+export class LowStockReplenishment extends LocalListBase implements OnInit {
   private readonly purchase = inject(PurchaseService);
-  readonly inr = inr;
+  private readonly router = inject(Router);
+  protected readonly noun = 'low-stock products';
+  /** status = Out of Stock / Low Stock, source = least-price vendor */
+  protected override filterFields = { status: 'status', source: 'vendor', branch: ['branch'] };
 
-  readonly rows = signal<LowStockRow[]>([]);
+  readonly items = signal<LowStockRow[]>([]);
   readonly vendors = signal<{ id: number; name: string }[]>([]);
   readonly threshold = signal(10);
   readonly loading = signal(true);
-  readonly saving = signal(false);
-  readonly error = signal('');
-  readonly today = new Date().toISOString().slice(0, 10);
 
-  /** Selected products -> quantity to order. */
-  readonly picked = signal<Record<string, number>>({});
-  vendorId: number | null = null;
-  expectedAt = '';
-  notes = '';
+  readonly pageFilters = computed<FilterOption[]>(() => [
+    { key: 'status', label: 'Stock', options: ['Out of Stock', 'Low Stock'] },
+    { key: 'source', label: 'Least-price vendor', options: [...new Set(this.items().map(r => r.vendorName).filter((v): v is string => !!v))].sort() },
+  ]);
 
-  readonly outCount = computed(() => this.rows().filter(r => r.out).length);
-  readonly pickedRows = computed(() => this.rows().filter(r => this.picked()[r.productId] !== undefined));
-  readonly total = computed(() => this.pickedRows().reduce((s, r) => s + this.picked()[r.productId] * r.unitPrice * (1 + r.gstPercent / 100), 0));
+  columns: TableColumn[] = [
+    { key: 'product', header: 'Product', width: '17%' },
+    { key: 'code', header: 'Code', width: '8%' },
+    { key: 'stock', header: 'Central Stock', width: '8%' },
+    { key: 'onOrder', header: 'On Order', width: '7%' },
+    { key: 'suggested', header: 'Suggested Qty', width: '8%' },
+    { key: 'vendor', header: 'Least-Price Vendor', width: '15%' },
+    { key: 'price', header: 'Least Price (incl. GST)', width: '11%' },
+    { key: 'quotes', header: 'Vendors Priced', width: '8%' },
+    { key: 'status', header: 'Status', type: 'badge', width: '9%' },
+    { key: 'actions', header: 'Action', type: 'quickActions', width: '9%', sortable: false },
+  ];
+
+  override sortActive = 'stock';
+  override sortDirection: 'asc' | 'desc' = 'asc';
+
+  readonly stats = computed<DetailCardData[]>(() => {
+    const rows = this.items();
+    const out = rows.filter(r => r.out).length;
+    const value = rows.reduce((s, r) => s + r.suggestedQty * (r.quotes[0]?.amount ?? r.unitPrice * (1 + r.gstPercent / 100)), 0);
+    return [
+      { label: `Products below ${this.threshold()}`, value: rows.length, icon: 'bi-graph-down-arrow', iconVariant: 'orange' },
+      { label: 'Out of Stock', value: out, icon: 'bi-x-octagon', iconVariant: 'purple' },
+      { label: 'Units on Order', value: rows.reduce((s, r) => s + r.onOrder, 0), icon: 'bi-truck', iconVariant: 'blue' },
+      { label: 'Suggested Order Value', value: inr(value), icon: 'bi-currency-rupee', iconVariant: 'green' },
+    ];
+  });
 
   ngOnInit(): void {
     void this.load();
@@ -46,53 +81,77 @@ export class LowStockReplenishment implements OnInit {
   async load(): Promise<void> {
     this.loading.set(true);
     const res = await this.purchase.lowStockOrders();
-    this.rows.set(res.rows);
+    this.items.set(res.rows);
     this.vendors.set(res.vendors);
     this.threshold.set(res.threshold);
-    this.picked.set({});
     this.loading.set(false);
   }
 
-  isPicked(r: LowStockRow): boolean {
-    return this.picked()[r.productId] !== undefined;
+  protected allRows(): TableRow[] {
+    return this.items().map(r => {
+      const best = r.quotes[0];
+      const actions: QuickAction[] = [
+        { key: 'order', icon: 'bi-cart-plus-fill', label: 'Create purchase order', variant: 'primary', fixedIcon: true, fixedLabel: true },
+        { key: 'prices', icon: 'bi-list-ol', label: 'Compare vendor prices', fixedIcon: true, fixedLabel: true },
+      ];
+      return {
+        id: r.productId,
+        product: r.productName,
+        code: r.productCode || '-',
+        stock: r.out ? '0' : String(r.qty),
+        __stock: r.qty,
+        onOrder: r.onOrder ? String(r.onOrder) : '-',
+        __onOrder: r.onOrder,
+        suggested: String(r.suggestedQty),
+        __suggested: r.suggestedQty,
+        vendor: r.vendorName ?? '-',
+        price: best ? inr(best.amount) : inr(r.unitPrice * (1 + r.gstPercent / 100)),
+        __price: best?.amount ?? r.unitPrice,
+        quotes: String(r.quotes.length),
+        __quotes: r.quotes.length,
+        status: r.out ? 'Out of Stock' : 'Low Stock',
+        searchText: `${r.productName} ${r.productCode} ${r.vendorName ?? ''} ${r.quotes.map(q => q.vendorName).join(' ')}`,
+        actions,
+      };
+    });
   }
 
-  toggle(r: LowStockRow): void {
-    const next = { ...this.picked() };
-    if (this.isPicked(r)) delete next[r.productId]; else next[r.productId] = r.suggestedQty;
-    this.picked.set(next);
-    // default the vendor to the first picked product's own vendor
-    if (!this.vendorId) this.vendorId = this.pickedRows()[0]?.vendorId ?? null;
+  openCreate(productIds: string[] = []): void {
+    if (!this.items().length) {
+      void Swal.fire({ icon: 'info', title: 'Nothing to replenish', text: `Every Central Store product is at or above ${this.threshold()} units.`, confirmButtonColor: '#0f5c4d' });
+      return;
+    }
+    const data: LowStockOrderData = { rows: this.items(), vendors: this.vendors(), threshold: this.threshold(), productIds };
+    this.openDialog<LowStockOrderForm, PurchaseOrder[]>(LowStockOrderForm, data, '1180px')
+      .afterClosed()
+      .subscribe(orders => {
+        // the new orders are worked from the Purchase Orders tab (invoice, price revision, inward)
+        if (orders?.length) void this.router.navigate(['/app/inventory/purchase-orders']);
+      });
   }
 
-  toggleAll(on: boolean): void {
-    this.picked.set(on ? Object.fromEntries(this.rows().map(r => [r.productId, r.suggestedQty])) : {});
-    if (on && !this.vendorId) this.vendorId = this.rows().find(r => r.vendorId)?.vendorId ?? null;
+  onQuickAction(event: { row: TableRow; action: string }): void {
+    const row = this.items().find(r => r.productId === event.row['id']);
+    if (!row) return;
+    if (event.action === 'order') return this.openCreate([row.productId]);
+    if (event.action === 'prices') this.showPrices(row);
   }
 
-  setQty(r: LowStockRow, value: string | number): void {
-    this.picked.set({ ...this.picked(), [r.productId]: Math.floor(Number(value)) || 0 });
-  }
-
-  amount(r: LowStockRow): number {
-    return (this.picked()[r.productId] ?? 0) * r.unitPrice * (1 + r.gstPercent / 100);
-  }
-
-  async order(): Promise<void> {
-    this.error.set('');
-    const items = this.pickedRows().map(r => ({ productId: r.productId, qty: this.picked()[r.productId] }));
-    if (!items.length) return void this.error.set('Select at least one product.');
-    if (items.some(i => !Number.isInteger(i.qty) || i.qty < 1)) return void this.error.set('Every selected product needs a quantity of at least 1.');
-    if (!this.vendorId) return void this.error.set('Choose the vendor to order from.');
-    if (this.expectedAt && this.expectedAt < this.today) return void this.error.set('Expected delivery cannot be in the past.');
-
-    this.saving.set(true);
-    const order = await this.purchase.createLowStockOrder(this.vendorId, items, this.expectedAt || null, this.notes.trim());
-    this.saving.set(false);
-    if (!order) return;
-    this.vendorId = null;
-    this.expectedAt = '';
-    this.notes = '';
-    await this.load();
+  /** Every vendor price of the product, least first. */
+  private showPrices(r: LowStockRow): void {
+    const e = escapeHtml;
+    const body = r.quotes.length
+      ? `<table style="width:100%;border-collapse:collapse;font-size:13px;text-align:left">
+          <thead><tr><th style="padding:6px">#</th><th style="padding:6px">Vendor</th><th style="padding:6px">Price from</th><th style="padding:6px;text-align:right">Unit</th><th style="padding:6px;text-align:right">GST</th><th style="padding:6px;text-align:right">Incl. GST</th></tr></thead>
+          <tbody>${r.quotes.map((q, i) => `<tr style="border-top:1px solid #e5ebe8;${i === 0 ? 'font-weight:700;color:#15803d' : ''}">
+            <td style="padding:6px">${i + 1}</td><td style="padding:6px">${e(q.vendorName)}${i === 0 ? ' (least)' : ''}${q.vendorId === r.usualVendorId ? ' <small>(usual)</small>' : ''}</td>
+            <td style="padding:6px">${e(q.source)}${q.date ? ` <small>${e(q.date)}</small>` : ''}</td>
+            <td style="padding:6px;text-align:right">${e(inr(q.unitPrice))}</td><td style="padding:6px;text-align:right">${q.gstPercent}%</td>
+            <td style="padding:6px;text-align:right">${e(inr(q.amount))}</td></tr>`).join('')}</tbody></table>`
+      : '<p>No vendor has priced this product yet - the product master price is used.</p>';
+    void Swal.fire({
+      title: e(r.productName), html: body, width: 760, showCancelButton: true,
+      confirmButtonText: '<i class="bi bi-cart-plus-fill"></i> Create purchase order', cancelButtonText: 'Close', confirmButtonColor: '#0f5c4d',
+    }).then(res => { if (res.isConfirmed) this.openCreate([r.productId]); });
   }
 }

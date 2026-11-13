@@ -6,6 +6,8 @@ import { SittingTransfer } from '../models/appointment-flow.model';
 import { ApiRoutesConstants } from './api-route-constants';
 import { AlertStackService } from './alert-stack.service';
 import { NotificationService } from './notification.service';
+import { Subscription } from 'rxjs';
+import { BellRealtimeService } from './bell-realtime.service';
 import { SittingTransferDialog } from '../components/sitting-transfer-dialog/sitting-transfer-dialog';
 
 /** Roles & Permissions -> Appointment module action: who may accept / decline a sitting moved to their branch (the API checks the same). */
@@ -25,15 +27,21 @@ export class SittingTransfersService {
   private readonly alertStack = inject(AlertStackService);
   private readonly dialog = inject(MatDialog);
 
+  private readonly realtime = inject(BellRealtimeService);
+
   readonly pending = signal<SittingTransfer[]>([]);
   private timer: ReturnType<typeof setInterval> | null = null;
+  private live?: Subscription;
+  private lastReadAt = 0;
   private readonly onVisible = () => {
     if (document.visibilityState === 'visible') this.refresh();
   };
 
+  /** WebSocket first (instant); the poll is the fallback (slow while the socket is live). */
   start(): void {
     if (this.timer) return;
-    this.timer = setInterval(() => this.refresh(), POLL_MS);
+    this.timer = setInterval(() => { if (!this.realtime.skipPoll(this.lastReadAt)) this.refresh(); }, POLL_MS);
+    this.live = this.realtime.topic$.subscribe(t => { if (t === 'sitting-transfer' || t === 'all') this.refresh(true); });
     document.addEventListener('visibilitychange', this.onVisible);
     this.refresh();
   }
@@ -41,6 +49,8 @@ export class SittingTransfersService {
   stop(): void {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    this.live?.unsubscribe();
+    this.live = undefined;
     document.removeEventListener('visibilitychange', this.onVisible);
     this.clear();
   }
@@ -57,6 +67,7 @@ export class SittingTransfersService {
     if (!this.auth.hasActionAccess(DECIDE_TRANSFER_ACTION)) return this.clear();
     if (!force && document.visibilityState === 'hidden') return;
 
+    this.lastReadAt = Date.now();
     this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/sitting-transfers`).subscribe({
       next: (res: any) => {
         const list = (res?.data ?? []) as SittingTransfer[];

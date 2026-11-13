@@ -1,24 +1,51 @@
 :host { display: block; }
 
-.cd-avatar {
-  flex: none;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.6);
-
-  &.initials {
-    display: grid;
-    place-items: center;
-    background: color-mix(in srgb, var(--primary, #0f8a6a) 18%, #fff);
-    color: var(--primary-dark, #0b4533);
-    font-weight: 800;
-    font-size: 15px;
-  }
-}
-
 .cd-status { font-weight: 700; }
+
+/* slim title bar (identity is in the hero below) */
+.cd-head {
+  gap: 12px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--primary, #0f5c4d) 10%, transparent), transparent 60%),
+    var(--app-surface-solid, #fff);
+
+  .modal-title-wrap { min-width: 0; }
+  .title-content { min-width: 0; }
+  .title-content h2 { letter-spacing: -.2px; }
+  .title-content p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+.cd-head-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  font-size: 18px;
+  color: #fff;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--primary, #0f5c4d) 70%, #fff), var(--primary-dark, #0b4533));
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .35), 0 8px 16px -10px var(--primary-dark, #0b4533);
+}
+.cd-head-actions { flex: none; display: flex; align-items: center; gap: 8px; }
+.cd-head-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--primary-dark, #0b4533);
+  background: color-mix(in srgb, var(--primary, #0f5c4d) 8%, var(--app-surface-solid, #fff));
+  border: 1px solid color-mix(in srgb, var(--primary, #0f5c4d) 16%, transparent);
+  i { color: var(--primary, #0f5c4d); }
+}
+@media (max-width: 720px) {
+  .cd-head-chip { display: none; }
+  .cd-head .title-content p { display: none; }
+}
 
 .cd-section {
   margin-bottom: 12px;
@@ -208,6 +235,28 @@
   small { display: block; font-size: 10.5px; font-weight: 700; color: var(--text-muted, #6b7280); }
   strong { font-size: 12.5px; word-break: break-word; }
   .cp-grade { display: flex; align-items: center; gap: 8px; app-hair-grade-icon { height: 40px; flex-shrink: 0; } }
+}
+// Grade: the hair-loss drawing needs room - the chip takes two columns and the grade name stays on one line ("Norwood 3")
+.cp-chip.is-grade {
+  grid-column: span 2;
+  min-width: 0;
+  .cp-grade { flex-wrap: wrap; gap: 6px 12px; margin-top: 4px; app-hair-grade-icon { height: 46px; } }
+  .cp-grade-text {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    word-break: normal;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--primary-dark, #0f3d2e);
+    background: color-mix(in srgb, var(--primary, #0f5c4d) 10%, #fff);
+    border: 1px solid color-mix(in srgb, var(--primary, #0f5c4d) 20%, transparent);
+  }
+}
+// narrow dialogs: one chip per row, so the grade chip cannot span two
+@media (max-width: 420px) {
+  .cp-chip.is-grade { grid-column: auto; }
 }
 
 .cp-docs { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px;

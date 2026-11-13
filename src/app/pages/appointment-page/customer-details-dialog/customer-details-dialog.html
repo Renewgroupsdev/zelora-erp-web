@@ -1,19 +1,20 @@
 <div class="lead-modal">
-  <div class="modal-header-custom">
+  <!-- Slim title bar: who the customer is lives in the hero below (photo, name, code, mobile) - not repeated here. -->
+  <div class="modal-header-custom cd-head">
     <div class="modal-title-wrap">
-      @if (appt()?.photo_url) {
-        <img class="cd-avatar" [src]="appt()!.photo_url" alt="Customer photo" />
-      } @else {
-        <div class="cd-avatar initials">{{ initials() || '?' }}</div>
-      }
+      <span class="cd-head-icon" aria-hidden="true"><i class="bi bi-person-badge-fill"></i></span>
       <div class="title-content">
-        <h2>{{ appt()?.name ?? 'Customer details' }}</h2>
-        @if (appt(); as a) {
-          <p>{{ a.customer?.customer_code ?? 'Not a customer yet' }} · {{ a.mobile_no }} · <span class="cd-status">{{ statusLabel(a.status) }}</span></p>
-        }
+        <h2>Customer Profile</h2>
+        <p>Personal details, treatments, sittings, billing and photos</p>
       </div>
     </div>
-    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+    <div class="cd-head-actions">
+      @if (appt(); as a) {
+        @if (a.branch_name) { <span class="cd-head-chip"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i> {{ a.branch_name }}</span> }
+        @if (a.appointment_date) { <span class="cd-head-chip"><i class="bi bi-calendar-event" aria-hidden="true"></i> {{ a.appointment_date | date: 'd MMM y' }}</span> }
+      }
+      <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+    </div>
   </div>
 
   <div class="modal-body-custom cp">
@@ -21,7 +22,7 @@
       <!-- Hero: who, and the numbers that matter at a glance -->
       <section class="cp-hero">
         <div class="cp-hero-id">
-          @if (a.photo_url) { <img class="cp-hero-avatar" [src]="a.photo_url" alt="Customer photo" /> }
+          @if (avatarUrl(); as url) { <img class="cp-hero-avatar" [src]="url" [alt]="a.name" (error)="avatarFailed.set(true)" /> }
           @else { <div class="cp-hero-avatar initials">{{ initials() || '?' }}</div> }
           <div>
             <h3>{{ a.name }}</h3>
@@ -66,10 +67,10 @@
           <h4><span class="cp-badge b-rose"><i class="bi bi-clipboard2-pulse"></i></span> Clinical examination</h4>
           <div class="cp-chips">
             @for (item of clinical(); track item.label) {
-              <div class="cp-chip">
+              <div class="cp-chip" [class.is-grade]="item.label === 'Grade'">
                 <small>{{ item.label }}</small>
                 @if (item.label === 'Grade') {
-                  <span class="cp-grade"><app-hair-grade-icon [grade]="item.value" /><strong>{{ item.value }}</strong></span>
+                  <span class="cp-grade"><app-hair-grade-icon [grade]="item.value" /><strong class="cp-grade-text">{{ item.value }}</strong></span>
                 } @else {
                   <strong>{{ item.value }}</strong>
                 }

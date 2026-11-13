@@ -7,6 +7,8 @@ import { AuthService } from '../../core/auth/auth.service';
 import { AlertStackService } from './alert-stack.service';
 import { NotificationService } from './notification.service';
 import { PurchaseService } from './purchase.service';
+import { Subscription } from 'rxjs';
+import { BellRealtimeService } from './bell-realtime.service';
 
 const POLL_MS = 30_000;
 /** A pending urgent request that was already alerted is alerted again after this long, until it is decided. */
@@ -96,7 +98,16 @@ export class PurchaseApprovalAlertsService {
     if (this.timer) return;
     // a page load / login always alerts again for the urgent requests still waiting (while the app stays open, a pending urgent request is repeated every 45 seconds until it is decided)
     try { sessionStorage.removeItem(SEEN_KEY); } catch { /* storage blocked */ }
-    this.timer = setInterval(() => this.refresh(), POLL_MS);
+    // WebSocket first: each list is re-read the moment it changes. The poll is the fallback - slow while the socket is
+    // live, except that pending urgent requests keep being re-read so their 45 s reminder still repeats.
+    this.timer = setInterval(() => {
+      if (!this.realtime.skipPoll(this.lastReadAt)) this.refresh();
+      else if (this.urgentPending) this.refresh('purchase-request');
+    }, POLL_MS);
+    this.live = this.realtime.topic$.subscribe(t => {
+      if (t === 'all') this.refresh();
+      else if (t === 'purchase-request' || t === 'price-revision' || t === 'low-stock') this.refresh(t);
+    });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.refresh(); });
     this.refresh();
     setTimeout(() => this.refresh(), 1500); // the first call can run before the session is ready: check again almost at once
@@ -105,16 +116,61 @@ export class PurchaseApprovalAlertsService {
   stop(): void {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    this.live?.unsubscribe();
+    this.live = undefined;
+    this.urgentPending = false;
+    this.lowStockDenied = false; // the next login may be a head office / admin
     this.notifications.syncPurchaseApprovals([]);
     this.notifications.syncPriceRevisions([]);
+    this.notifications.syncCentralLowStock([], 0);
   }
 
-  refresh(): void {
+  /** Set once the API says this login may not see Central Store low stock (403), so the poll stops asking. */
+  private lowStockDenied = false;
+
+  /**
+   * Central Store products under the threshold -> the bell of the head office / admin / super admin (the API answers 403 for
+   * every other role). A product that newly drops low also pops a short alert linking to Low Stock Replenishment.
+   */
+  private refreshCentralLowStock(): void {
+    if (this.lowStockDenied) return;
+    this.api.GET('purchase/low-stock-orders?summary=1').subscribe({
+      next: (res: any) => {
+        const items = ((res?.data ?? []) as any[]).map(r => ({ productId: String(r.product_id), productName: r.product_name ?? 'A product', qty: Number(r.qty) || 0 }));
+        const fresh = this.notifications.syncCentralLowStock(items, Number(res?.threshold) || 10);
+        if (fresh > 0) {
+          this.alertStack.show({
+            tone: 'info', icon: 'bi-box-seam-fill', duration: 9000,
+            title: fresh === 1 ? 'Central Store product running low' : `${fresh} Central Store products running low`,
+            text: 'Open Low Stock Replenishment from the bell to order from the least-price vendor.',
+          });
+        }
+      },
+      error: (e: any) => { if (e?.status === 403 || e?.status === 401) { this.lowStockDenied = true; this.notifications.syncCentralLowStock([], 0); } },
+    });
+  }
+
+  /** Re-reads one list (a WebSocket topic) or all of them. */
+  refresh(topic: 'all' | 'purchase-request' | 'price-revision' | 'low-stock' = 'all'): void {
     if (!this.auth.isAuthenticated()) return this.stop();
     if (document.visibilityState === 'hidden') return;
+    if (topic === 'all') this.lastReadAt = Date.now();
 
+    if (topic === 'all' || topic === 'purchase-request') this.refreshRequests();
+    if (topic === 'all' || topic === 'price-revision') this.refreshRevisions();
+    if (topic === 'all' || topic === 'low-stock') this.refreshCentralLowStock();
+  }
+
+  private readonly realtime = inject(BellRealtimeService);
+  private live?: Subscription;
+  private lastReadAt = 0;
+  /** Urgent requests are waiting: their reminder repeats, so the list keeps being read even while the socket is live. */
+  private urgentPending = false;
+
+  private refreshRequests(): void {
     this.api.GET('purchase/requests?status=Pending&per_page=20').subscribe({
       next: (res: any) => {
+        this.urgentPending = !!res?.can_approve && ((res?.data ?? []) as any[]).some(r => r.priority === 'Urgent');
         if (!res?.can_approve) return void this.notifications.syncPurchaseApprovals([]);
         const fresh = this.notifications.syncPurchaseApprovals(((res.data ?? []) as any[]).map(r => ({
           id: String(r.id), requestNo: r.request_no, branch: r.branch?.name ?? 'a branch', items: Number(r.items_count) || 0,
@@ -139,8 +195,10 @@ export class PurchaseApprovalAlertsService {
       },
       error: () => this.retrySoon(),
     });
+  }
 
-    // vendor price revisions waiting for the admin (the API returns nothing for roles that cannot accept them)
+  /** Vendor price revisions waiting for the admin (the API returns nothing for roles that cannot accept them). */
+  private refreshRevisions(): void {
     this.api.GET('purchase/price-revisions').subscribe({
       next: (res: any) => {
         const fresh = this.notifications.syncPriceRevisions(((res?.data?.items ?? []) as any[]).map(r => ({

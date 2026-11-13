@@ -10,29 +10,48 @@
     <div class="profile-header-info">
       <div class="profile-name-row">
         <h2>{{ data.lead.name }}</h2>
-        <span class="profile-id">{{ data.lead.phone }} - {{ data.lead.gender }}</span>
+        @if (leadCode) { <span class="profile-code">{{ leadCode }}</span> }
+      </div>
+
+      <div class="profile-meta">
+        <span><i class="bi bi-telephone-fill"></i> {{ data.lead.phone }}</span>
+        @if (data.lead.gender) { <span><i class="bi bi-gender-ambiguous"></i> {{ data.lead.gender }}</span> }
+        @if (data.lead.telecaller) { <span><i class="bi bi-headset"></i> {{ data.lead.telecaller }}</span> }
       </div>
 
       <div class="profile-chips">
-        <span class="chip status-blue">{{ stageLabel }}</span>
-        @if (data.lead.branch) { <span class="chip status-gray">{{ data.lead.branch }}</span> }
+        <span class="chip status-blue"><i class="bi bi-stars"></i> {{ stageLabel }}</span>
+        @if (data.lead.branch) { <span class="chip status-gray"><i class="bi bi-geo-alt-fill"></i> {{ data.lead.branch }}</span> }
       </div>
     </div>
+
   </div>
 
   <form [formGroup]="form" class="profile-body">
 
     <div class="profile-section">
-      <div class="section-title"><i class="bi bi-person-lines-fill"></i> Lead Details</div>
-      <div class="detail-grid">
-        <div class="detail-row"><i class="bi bi-megaphone"></i> <span>{{ data.lead.source || 'Direct lead' }}</span></div>
-        <div class="detail-row"><i class="bi bi-tags"></i> <span>{{ data.lead.category || 'Service not selected' }}</span></div>
-        <div class="detail-row"><i class="bi bi-heart-pulse"></i> <span>{{ data.lead.request || 'Consultation' }}</span></div>
-        <div class="detail-row"><i class="bi bi-telephone"></i> <span>{{ data.lead.phone }}</span></div>
+      <div class="section-title"><span class="st-icon"><i class="bi bi-person-lines-fill"></i></span> Lead Details</div>
+      <div class="detail-grid lp-info">
+        <div class="detail-row tone-blue"><i class="bi bi-megaphone-fill"></i> <span><small>Source</small><b>{{ data.lead.source || 'Direct lead' }}</b></span></div>
+        <div class="detail-row tone-purple"><i class="bi bi-tags-fill"></i> <span><small>Service category</small><b>{{ data.lead.category || 'Not selected' }}</b></span></div>
+        <div class="detail-row tone-rose"><i class="bi bi-heart-pulse-fill"></i> <span><small>Service request</small><b>{{ data.lead.request || 'Consultation' }}</b></span></div>
+        <div class="detail-row tone-green"><i class="bi bi-telephone-fill"></i> <span><small>Mobile</small><b>{{ data.lead.phone }}</b></span></div>
         @if (data.lead.email) {
-          <div class="detail-row"><i class="bi bi-envelope"></i> <span>{{ data.lead.email }}</span></div>
+          <div class="detail-row tone-orange"><i class="bi bi-envelope-fill"></i> <span><small>E-mail</small><b>{{ data.lead.email }}</b></span></div>
+        }
+        @if (data.lead.followUpDate) {
+          <div class="detail-row tone-teal"><i class="bi bi-calendar2-week-fill"></i> <span><small>Next follow-up</small><b>{{ data.lead.followUpDate }}</b></span></div>
+        }
+        @if (viewOnly || data.lead.pincode) {
+          <div class="detail-row tone-indigo"><i class="bi bi-mailbox2"></i> <span><small>Pincode</small><b>{{ data.lead.pincode || 'Not given' }}</b></span></div>
+        }
+        @if (viewOnly || data.lead.address) {
+          <div class="detail-row tone-amber is-wide"><i class="bi bi-house-door-fill"></i> <span><small>Address</small><b class="wrap">{{ data.lead.address || 'Not given' }}</b></span></div>
         }
       </div>
+      @if (viewOnly || data.lead.reason) {
+        <div class="lp-note is-reason"><i class="bi bi-chat-quote-fill"></i><p><small>Reason for enquiry</small>{{ data.lead.reason || 'No reason given.' }}</p></div>
+      }
     </div>
 
     @if (data.lead.attribution; as a) {
@@ -54,10 +73,24 @@
       <div class="outstanding-banner"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ phoneWarning }}</span></div>
     }
 
-    @if (isLead) {
+    @if (viewOnly) {
+      <!-- view only: who has the lead and the latest notes, as read-only cards -->
       <div class="profile-section">
-        <div class="section-title"><i class="bi bi-person-check"></i> Assign &amp; Next Step</div>
-        <div class="field-grid">
+        <div class="section-title"><span class="st-icon"><i class="bi bi-diagram-3-fill"></i></span> Assignment</div>
+        <div class="detail-grid lp-info">
+          <div class="detail-row tone-teal"><i class="bi bi-headset"></i> <span><small>Telecaller</small><b>{{ data.lead.telecaller || 'Unassigned' }}</b></span></div>
+          <div class="detail-row tone-orange"><i class="bi bi-geo-alt-fill"></i> <span><small>Branch / Franchise</small><b>{{ data.lead.branch || 'Not set' }}</b></span></div>
+        </div>
+        @if (data.lead.notes) {
+          <div class="lp-note"><i class="bi bi-chat-square-text-fill"></i><p><small>Notes</small>{{ data.lead.notes }}</p></div>
+        }
+      </div>
+    }
+
+    @if (isLead && !viewOnly) {
+      <div class="profile-section">
+        <div class="section-title"><span class="st-icon"><i class="bi bi-person-check-fill"></i></span> Assign &amp; Next Step</div>
+        <div class="field-grid lp-assign">
           <label>Assigned telecaller<select formControlName="telecaller" (change)="onTelecallerChange()" [class.is-invalid]="isInvalid('telecaller')"><option value="">Select telecaller</option>@for (caller of data.telecallers; track caller) { <option [value]="caller">{{ caller }}</option> }</select></label>
           <label>Branch / Franchise<select formControlName="branch" [class.is-invalid]="isInvalid('branch')"><option value="">Select branch / franchise</option>@for (branch of branches(); track branch) { <option [value]="branch">{{ branch }}</option> }</select></label>
           <label class="full">Reason / Notes<textarea rows="4" formControlName="notes" [class.is-invalid]="isInvalid('notes')" placeholder="Why this lead was contacted, requirements, and next action"></textarea></label>
@@ -405,7 +438,9 @@
       <i class="bi bi-telephone-fill"></i> Call
     </a> -->
 
-    @if (isLead) {
+    @if (viewOnly) {
+      <button type="button" class="footer-btn close-btn" (click)="close()">Close</button>
+    } @else if (isLead) {
       <button type="button" class="footer-btn book-btn" (click)="save('followup')">Move to Follow-Ups <i class="bi bi-arrow-right"></i></button>
     } @else if (isFollowUp) {
       @if (followupMode === 'schedule') {

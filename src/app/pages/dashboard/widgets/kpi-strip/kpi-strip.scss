@@ -1,4 +1,6 @@
-/* KpiStrip: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+/* KpiStrip: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss).
+   Same tile design as the Walk-in figures and the shared count card: tinted glass card, tone accent on the top edge, the icon in a
+   gradient disc inside a ring, an uppercase tone label, a large value and a faint watermark icon. */
 
 .dash-page {
   /* ------------------------------------------------------------ figure cards */
@@ -7,45 +9,75 @@
     &.is-refreshing { opacity: .75; transition: opacity .2s ease; }
   }
   .dash-stat {
-    position: relative; overflow: hidden; min-width: 0;
-    display: flex; flex-direction: column; gap: 4px; padding: 14px 16px;
-    border-radius: var(--dash-radius); border: 1px solid var(--dash-line);
+    position: relative; isolation: isolate; overflow: hidden; min-width: 0;
+    display: flex; align-items: center; gap: 14px; padding: 16px;
+    border-radius: 18px; border: 1px solid color-mix(in srgb, var(--tone-b, var(--primary)) 18%, transparent);
     background:
-      radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--tone-b, var(--primary)) 12%, transparent), transparent 60%),
-      var(--dash-surface);
-    box-shadow: var(--dash-shadow);
-    transition: transform .2s ease, box-shadow .2s ease;
-    &:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -18px color-mix(in srgb, var(--tone-b, var(--primary)) 55%, transparent); }
-    &.is-skeleton { gap: 10px; min-height: 104px; }
+      radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--tone-a, var(--primary)) 24%, transparent), transparent 60%),
+      linear-gradient(135deg, color-mix(in srgb, var(--tone-a, var(--primary)) 13%, var(--dash-surface)) 0%, var(--dash-surface) 75%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 1px 2px rgba(16, 40, 30, .05), 0 14px 28px -20px var(--tone-b, var(--primary));
+    transition: transform .25s cubic-bezier(.2, .8, .2, 1), box-shadow .25s ease;
+    // tone accent along the top edge
+    &::before { content: ''; position: absolute; left: 16px; right: 16px; top: 0; height: 3px; border-radius: 0 0 4px 4px; background: linear-gradient(90deg, var(--tone-a), var(--tone-b)); opacity: .9; }
+    &:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 2px 4px rgba(16, 40, 30, .05), 0 20px 34px -20px var(--tone-b, var(--primary)); }
+    &.is-skeleton { flex-direction: column; align-items: stretch; gap: 10px; min-height: 104px; &::before { display: none; } }
   }
-  .dash-stat-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .dash-stat-mark { position: absolute; right: -10px; bottom: -18px; z-index: -1; font-size: 82px; line-height: 1; color: var(--tone-b); opacity: .07; transform: rotate(-12deg); pointer-events: none; }
+
+  .dash-stat-ring { position: relative; flex: 0 0 auto; width: 58px; height: 58px; svg { position: absolute; inset: 0; width: 100%; height: 100%; } }
+  .dash-stat-ring-track { fill: none; stroke: color-mix(in srgb, var(--tone-b) 15%, transparent); stroke-width: 4; }
+  .dash-stat-ring-arc { fill: none; stroke: var(--tone-b); stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--tone-b) 45%, transparent)); animation: dash-stat-ring 1.2s ease-out both; }
+  @keyframes dash-stat-ring { from { stroke-dasharray: 0 100; } }
   .dash-stat-icon {
-    flex: 0 0 auto; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; font-size: 18px; color: #fff;
+    position: absolute; inset: 8px; display: grid; place-items: center; border-radius: 50%; font-size: 17px; color: #fff;
     background: linear-gradient(140deg, var(--tone-a), var(--tone-b));
-    box-shadow: 0 6px 14px -6px var(--tone-b);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, .45), 0 8px 14px -6px var(--tone-b);
   }
-  .dash-stat-label { font-size: 13px; font-weight: 600; color: var(--text-dark); line-height: 1.25; }
-  .dash-stat-value { margin-top: 2px; font-size: clamp(22px, 1.8vw, 28px); font-weight: 700; letter-spacing: -.6px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .dash-stat-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  // wraps onto a second line instead of being cut
+  .dash-stat-label {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .5px; line-height: 1.25; text-transform: uppercase; color: var(--tone-fg);
+  }
+  .dash-stat.has-badge .dash-stat-label { padding-right: 46px; }
+  .dash-stat-value {
+    font-size: clamp(22px, 1.75vw, 29px); font-weight: 800; letter-spacing: -.8px; line-height: 1.15; color: var(--text-dark);
+    font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .dash-stat-change {
-    display: inline-flex; align-items: center; gap: 3px; font-size: 12.5px; font-weight: 600; color: var(--status-green-text);
-    small { margin-left: 4px; font-weight: 400; color: var(--text-muted); font-size: 11.5px; }
+    display: inline-flex; align-items: center; gap: 3px; min-width: 0; font-size: 12px; font-weight: 700; color: var(--status-green-text);
+    small { margin-left: 3px; font-weight: 400; color: var(--text-muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     &.is-down { color: var(--status-red-text); }
-    &.is-flat { font-weight: 400; color: var(--text-muted); }
   }
   .dash-stat-hint { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dash-stat-badge {
+    position: absolute; top: 12px; right: 12px; padding: 2px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 800; color: var(--tone-fg);
+    background: color-mix(in srgb, var(--dash-surface) 75%, transparent); border: 1px solid color-mix(in srgb, var(--tone-b) 22%, transparent); backdrop-filter: blur(4px);
+  }
 
-  @container dash-main (max-width: 1100px) {
+  @container dash-main (max-width: 1400px) {
     .dash-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
   @container dash-main (max-width: 760px) {
     .dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (max-width: 720px) {
-    .dash-stat { padding: 14px; }
-    .dash-stat-icon { width: 36px; height: 36px; font-size: 15px; }
+    .dash-stat { padding: 12px; gap: 10px; border-radius: 16px; &::before { left: 12px; right: 12px; } }
+    .dash-stat-ring { width: 46px; height: 46px; }
+    .dash-stat-icon { inset: 6px; font-size: 15px; }
+    .dash-stat-label { font-size: 10.5px; letter-spacing: .3px; }
+    .dash-stat-value { font-size: 21px; }
+    .dash-stat-mark { font-size: 64px; }
+    .dash-stat-change small { display: none; }
+    .dash-stat.has-badge .dash-stat-label { padding-right: 40px; }
   }
   @media (max-width: 420px) {
     .dash-stats { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dash-stat { transition: none; }
+    .dash-stat-ring-arc { animation: none; }
   }
   @media print {
     .dash-stat { box-shadow: none; background: #fff; break-inside: avoid; }
