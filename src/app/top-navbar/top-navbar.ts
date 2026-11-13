@@ -141,6 +141,18 @@ export class TopNavbar {
   @HostListener('document:keydown.escape')
   onEscape(): void {
     if (this.scopeMenu()) this.closeScopeMenu();
+    if (this.navLayout.notificationsOpen()) this.navLayout.closeNotifications();
+  }
+
+  /** Closes the notification popup when the user clicks anywhere outside it (or its bell button). */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.navLayout.notificationsOpen()) return;
+    const target = event.target as Node | null;
+    const wrapper = this.host.nativeElement.querySelector('.notification-menu-wrapper');
+    // Ignore clicks inside the bell/dropdown, and clicks on nodes already removed from the DOM by that click.
+    if (!target || !target.isConnected || wrapper?.contains(target)) return;
+    this.navLayout.closeNotifications();
   }
 
   /** Profile photo of the signed-in user / employee / customer; falls back to the icon if it fails to load. */
