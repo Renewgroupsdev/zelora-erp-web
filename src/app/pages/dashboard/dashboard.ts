@@ -1,8 +1,9 @@
-import { Component, DestroyRef, ViewEncapsulation, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, ViewEncapsulation, computed, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { BranchContextService } from '../../shared/common-services/branch-context.service';
+import { BranchOptionsService } from '../../shared/common-services/branch-options.service';
 import { DASH_RANGES, DASH_WIDGETS, DashRange, DashWidgetKey } from '../../shared/models/dashboard.model';
 import { AppointmentsWidget } from './widgets/appointments-widget/appointments-widget';
 import { ApprovalsWidget } from './widgets/approvals-widget/approvals-widget';
@@ -64,6 +65,7 @@ const QUICK_LINKS: { label: string; icon: string; link: string; module: string; 
 export class Dashboard {
   private readonly auth = inject(AuthService);
   private readonly scope = inject(BranchContextService);
+  private readonly branchOptions = inject(BranchOptionsService);
 
   readonly ranges = DASH_RANGES;
   readonly range = signal<DashRange>(readRange());
@@ -91,7 +93,10 @@ export class Dashboard {
   readonly scopeLabel = computed(() => {
     if (!this.scope.enabled()) return '';
     if (!this.scope.canSwitch()) return this.scope.ownLabel();
-    return this.scope.selection().type === 'all' ? 'All branches & franchises' : 'Header branch / franchise filter';
+    const s = this.scope.selection();
+    if (s.type === 'all') return this.scope.allAccess() ? 'All branches & franchises' : 'All my branches';
+    if (s.id === null) return s.type === 'branch' ? 'All branches' : 'All franchises';
+    return this.branchOptions.nameOf(s.type, s.id) || (s.type === 'branch' ? 'Selected branch' : 'Selected franchise');
   });
 
   /** Permission per widget (re-evaluated when the permissions refresh). */
@@ -142,11 +147,34 @@ export class Dashboard {
     return this.allowed()[key];
   }
 
+  /** Period dropdown: each option carries the dates it covers (this month = 1st of the month up to today). */
+  readonly rangeOpen = signal(false);
+  readonly rangeOptions = computed(() => {
+    this.tick(); // re-evaluate "today" on refresh
+    return DASH_RANGES.map(r => ({ ...r, span: rangeSpan(r.key) }));
+  });
+  readonly rangeSpanLabel = computed(() => this.rangeOptions().find(o => o.key === this.range())?.span ?? '');
+
+  toggleRange(): void { this.rangeOpen.update(v => !v); }
+
+  pickRange(range: DashRange): void {
+    this.rangeOpen.set(false);
+    this.setRange(range);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocClick(e: Event): void {
+    if (this.rangeOpen() && !(e.target as HTMLElement).closest('.dash-range-wrap')) this.rangeOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEsc(): void { this.rangeOpen.set(false); }
+
   setRange(range: DashRange): void {
     if (range === this.range()) return;
     this.range.set(range);
     this.updatedAt.set(new Date());
-    try { localStorage.setItem(RANGE_KEY, range); } catch { /* private mode: not remembered */ }
+    try { sessionStorage.setItem(RANGE_KEY, range); } catch { /* private mode: not remembered */ }
   }
 
   /** The print stylesheet turns the page into a light report (dark panels go white, the ECG trace is hidden). */
@@ -160,10 +188,26 @@ export class Dashboard {
   }
 }
 
+/** Every visit opens on the current month (1st up to today); a pick is kept only for the browser session. */
 function readRange(): DashRange {
   try {
-    const saved = localStorage.getItem(RANGE_KEY) as DashRange | null;
+    const saved = sessionStorage.getItem(RANGE_KEY) as DashRange | null;
     if (saved && DASH_RANGES.some(r => r.key === saved)) return saved;
   } catch { /* storage blocked */ }
   return 'month';
+}
+
+/** "1 Nov until 13 Nov 2026" style label for the dates a range covers. */
+function rangeSpan(key: DashRange): string {
+  const end = new Date();
+  const start = new Date(end);
+  switch (key) {
+    case '7d': start.setDate(end.getDate() - 6); break;
+    case '30d': start.setDate(end.getDate() - 29); break;
+    case 'month': start.setDate(1); break;
+    case 'quarter': start.setMonth(Math.floor(end.getMonth() / 3) * 3, 1); break;
+    case 'year': start.setMonth(0, 1); break;
+  }
+  const f = (d: Date, y: boolean) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', ...(y ? { year: 'numeric' } : {}) });
+  return key === 'today' ? f(end, true) : `${f(start, false)} until ${f(end, true)}`;
 }

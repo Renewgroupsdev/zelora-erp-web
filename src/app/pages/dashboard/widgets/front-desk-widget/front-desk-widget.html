@@ -25,6 +25,67 @@
         }
       </div>
 
+      @if (d.walk_in; as w) {
+        <section class="fd-panel fd-walk" aria-label="Walk-in customers today">
+          <header class="fd-panel-head">
+            <span class="fd-panel-icon tone-purple"><i class="bi bi-person-walking" aria-hidden="true"></i></span>
+            <h3>Walk-in customers today</h3>
+            <span class="fd-count tone-purple">{{ w.total }}</span>
+          </header>
+
+          <div class="fd-walk-stats">
+            <div class="fd-walk-stat tone-blue">
+              <span class="fd-walk-stat-label">Total walk-ins</span>
+              <strong>{{ w.total }}</strong>
+              <small>{{ w.new }} new &middot; {{ w.regular }} regular</small>
+            </div>
+            <div class="fd-walk-stat tone-green">
+              <span class="fd-walk-stat-label">Converted</span>
+              <strong>{{ w.converted }}</strong>
+              <div class="fd-meter" role="img" [attr.aria-label]="w.conversion_rate + '% converted'"><i [style.width.%]="w.conversion_rate"></i></div>
+              <small>{{ w.conversion_rate }}% conversion</small>
+            </div>
+            <div class="fd-walk-stat tone-orange">
+              <span class="fd-walk-stat-label">Payment received</span>
+              <strong>{{ inrShort(w.paid_amount) }}</strong>
+              <small>{{ w.paid_count }} paid walk-in{{ w.paid_count === 1 ? '' : 's' }}</small>
+            </div>
+            <div class="fd-walk-stat tone-purple">
+              <span class="fd-walk-stat-label">New vs regular</span>
+              <div class="fd-split" role="img" [attr.aria-label]="walkSplit().newPct + '% new, ' + walkSplit().regularPct + '% regular'">
+                <i class="is-new" [style.flex-grow]="w.new"></i><i class="is-regular" [style.flex-grow]="w.regular"></i>
+              </div>
+              <small><b class="dot-new"></b>New {{ walkSplit().newPct }}% &nbsp;<b class="dot-regular"></b>Regular {{ walkSplit().regularPct }}%</small>
+            </div>
+          </div>
+
+          @if (w.items.length) {
+            <div class="fd-chips" role="tablist" aria-label="Filter walk-ins">
+              @for (c of walkChips(); track c.key) {
+                <button type="button" role="tab" [attr.aria-selected]="walkFilter() === c.key" [class.is-active]="walkFilter() === c.key" (click)="setWalkFilter(c.key)">
+                  {{ c.label }} <em>{{ c.count }}</em>
+                </button>
+              }
+            </div>
+            <ul class="fd-walk-list">
+              @for (r of walkRows(); track r.id) {
+                <li [class.is-converted]="r.converted">
+                  <span class="fd-time">{{ to12Hour(r.time) ?? '--' }}</span>
+                  <span class="fd-avatar">{{ initials(r.name) }}</span>
+                  <div class="dash-list-main">
+                    <strong>{{ r.name }}</strong>
+                    <small>{{ r.treatment || 'Consultation' }}@if (r.mobile) { &middot; {{ r.mobile }} }</small>
+                  </div>
+                  <span class="fd-tag" [class]="r.is_regular ? 'is-regular' : 'is-new'">{{ r.is_regular ? 'Regular' : 'New' }}</span>
+                  <span class="dash-pill" [class]="'tone-' + (r.converted ? 'green' : tone(r.status))">{{ r.converted ? 'Converted' : r.status }}</span>
+                  <span class="fd-paid" [class.is-zero]="!r.paid">{{ r.paid ? inr(r.paid) : '—' }}</span>
+                </li>
+              } @empty { <li class="fd-walk-empty">No walk-ins match this filter.</li> }
+            </ul>
+          } @else { <p class="dash-muted">No walk-ins yet today.</p> }
+        </section>
+      }
+
       <div class="fd-panels">
         <section class="fd-panel">
           <header class="fd-panel-head">

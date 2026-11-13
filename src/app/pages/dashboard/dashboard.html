@@ -5,16 +5,30 @@
         <h1>{{ greeting() }}@if (firstName()) {, {{ firstName() }}} <span class="dash-wave" aria-hidden="true">👋</span></h1>
         <p class="dash-hero-sub">{{ subtitle() }}</p>
         <div class="dash-hero-meta">
-          @if (scopeLabel()) { <span class="dash-badge"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i> {{ scopeLabel() }}</span> }
+          @if (scopeLabel()) { <span class="dash-badge"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i> <span class="dash-badge-text">{{ scopeLabel() }}</span></span> }
           @if (!nothing() && !isCustomer()) {
-            <label class="dash-range">
-              <i class="bi bi-calendar2-week" aria-hidden="true"></i>
-              <span class="visually-hidden">Period</span>
-              <select [value]="range()" (change)="setRange($any($event.target).value)">
-                @for (r of ranges; track r.key) { <option [value]="r.key">{{ r.label }}</option> }
-              </select>
-              <i class="bi bi-chevron-down" aria-hidden="true"></i>
-            </label>
+            <div class="dash-range-wrap">
+              <button type="button" class="dash-range" [class.is-open]="rangeOpen()" (click)="toggleRange()"
+                aria-haspopup="listbox" [attr.aria-expanded]="rangeOpen()" aria-label="Period">
+                <i class="bi bi-calendar2-week" aria-hidden="true"></i>
+                <span class="dash-range-label">{{ rangeLabel() }}</span>
+                <span class="dash-range-span">{{ rangeSpanLabel() }}</span>
+                <i class="bi bi-chevron-down dash-range-caret" aria-hidden="true"></i>
+              </button>
+              @if (rangeOpen()) {
+                <ul class="dash-range-menu" role="listbox" aria-label="Period">
+                  @for (o of rangeOptions(); track o.key) {
+                    <li role="option" [attr.aria-selected]="o.key === range()">
+                      <button type="button" [class.is-active]="o.key === range()" (click)="pickRange(o.key)">
+                        <span class="dash-range-opt-main">{{ o.label }}</span>
+                        <span class="dash-range-opt-sub">{{ o.span }}</span>
+                        @if (o.key === range()) { <i class="bi bi-check2" aria-hidden="true"></i> }
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
           }
           @if (!nothing()) {
             <button type="button" class="dash-icon-btn" (click)="refresh()" aria-label="Refresh dashboard" title="Refresh">

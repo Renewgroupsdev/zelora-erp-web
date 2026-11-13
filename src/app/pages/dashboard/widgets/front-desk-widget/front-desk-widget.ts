@@ -1,4 +1,4 @@
-import { Component, computed, ViewEncapsulation } from '@angular/core';
+import { Component, computed, signal, ViewEncapsulation } from '@angular/core';
 import { FrontDeskData, statusTone } from '../../../../shared/models/dashboard.model';
 import { initials, to12Hour } from '../../../../shared/utils/format.util';
 import { DashCard } from '../dash-card/dash-card';
@@ -9,6 +9,8 @@ const RING_R = 44;
 const RING_C = 2 * Math.PI * RING_R;
 const RING_GAP = 3;
 const TONE_COLORS: Record<string, string> = { green: '#1fae5b', red: '#e0344f', orange: '#f08a0a', blue: '#2f6fe5', gray: '#8393a9' };
+
+type WalkFilter = 'all' | 'new' | 'regular' | 'converted' | 'pending';
 
 interface Tile {
   label: string; value: string; hint: string; icon: string; tone: 'blue' | 'purple' | 'orange' | 'red';
@@ -81,6 +83,39 @@ export class FrontDeskWidget extends DashWidget<FrontDeskData> {
     const max = Math.max(1, ...items.map(p => p.due));
     return items.map(p => ({ id: p.id, name: p.customer.split(' ')[0], full: p.customer, due: p.due, h: Math.max(6, Math.round((p.due / max) * 100)) }));
   });
+
+  /** Walk-in list filter chips (counts follow today's walk-ins). */
+  readonly walkFilter = signal<WalkFilter>('all');
+  readonly walkChips = computed(() => {
+    const w = this.data()?.walk_in;
+    if (!w) return [];
+    const items = w.items;
+    return [
+      { key: 'all' as const, label: 'All', count: items.length },
+      { key: 'new' as const, label: 'New', count: items.filter(i => !i.is_regular).length },
+      { key: 'regular' as const, label: 'Regular', count: items.filter(i => i.is_regular).length },
+      { key: 'converted' as const, label: 'Converted', count: items.filter(i => i.converted).length },
+      { key: 'pending' as const, label: 'Not converted', count: items.filter(i => !i.converted).length },
+    ];
+  });
+  readonly walkRows = computed(() => {
+    const items = this.data()?.walk_in?.items ?? [];
+    switch (this.walkFilter()) {
+      case 'new': return items.filter(i => !i.is_regular);
+      case 'regular': return items.filter(i => i.is_regular);
+      case 'converted': return items.filter(i => i.converted);
+      case 'pending': return items.filter(i => !i.converted);
+      default: return items;
+    }
+  });
+  /** New vs regular as shares of today's walk-ins, for the split bar. */
+  readonly walkSplit = computed(() => {
+    const w = this.data()?.walk_in;
+    const total = (w?.new ?? 0) + (w?.regular ?? 0);
+    return { newPct: total ? Math.round(((w?.new ?? 0) / total) * 100) : 0, regularPct: total ? 100 - Math.round(((w?.new ?? 0) / total) * 100) : 0 };
+  });
+
+  setWalkFilter(f: WalkFilter): void { this.walkFilter.set(f); }
 
   private share(done: number, of: number): number | null {
     return of > 0 ? Math.min(100, Math.round((done / of) * 100)) : null;
