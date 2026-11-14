@@ -3,13 +3,14 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
+import { PageLoader } from '../../shared/components/page-loader/page-loader';
 
 type PageState = 'loading' | 'ready' | 'invalid';
 
 @Component({
   selector: 'app-qr-landing-page',
   standalone: true,
-  imports: [CommonModule],
+  imports: [PageLoader, CommonModule],
   templateUrl: './qr-landing-page.html',
   styleUrl: './qr-landing-page.scss',
 })

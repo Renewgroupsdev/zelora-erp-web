@@ -12,12 +12,12 @@ const RING_GAP = 3;
 const TONE_COLORS: Record<string, string> = { green: '#1fae5b', red: '#e0344f', orange: '#f08a0a', blue: '#2f6fe5', gray: '#8393a9' };
 
 /** One colour per balance (largest first): the share bar's segment and that customer's row use the same one. */
-const DUE_COLORS = ['#e0344f', '#f0643c', '#f59e0b', '#d946ef', '#8b5cf6', '#0ea5e9', '#14b8a6', '#64748b'];
+const DUE_COLORS = ['#0d9488', '#2563eb', '#f59e0b', '#d946ef', '#8b5cf6', '#0ea5e9', '#14b8a6', '#64748b'];
 
 type WalkFilter ='all' | 'new' | 'regular' | 'converted' | 'pending';
 
 interface Tile {
-  label: string; value: string; hint: string; icon: string; tone: 'blue' | 'purple' | 'orange' | 'red';
+  label: string; value: string; hint: string; icon: string; tone: 'blue' | 'purple' | 'orange' | 'teal';
   /** Share of the figure that is done (0 - 100), drawn as a ring around the icon; null when there is no such share. */
   ring: number | null;
 }
@@ -49,7 +49,7 @@ export class FrontDeskWidget extends DashWidget<FrontDeskData> {
       { label: 'Visits today', value: String(d.appointments_today), hint: `${d.checked_in} checked in · ${d.walk_ins_today} walk-ins`, icon: 'bi-calendar2-day', tone: 'blue', ring: this.share(d.checked_in, d.appointments_today) },
       { label: 'Sittings today', value: `${d.sittings_done_today} / ${d.sittings_today}`, hint: 'Completed / scheduled', icon: 'bi-heart-pulse', tone: 'purple', ring: this.share(d.sittings_done_today, d.sittings_today) },
       { label: 'Awaiting terms', value: String(d.awaiting_terms), hint: `${d.invoiced_not_converted} invoiced, not converted`, icon: 'bi-file-earmark-check', tone: 'orange', ring: null },
-      { label: 'Balances to collect', value: this.inrShort(d.pending_payments.amount), hint: `${d.pending_payments.count} treatment plans`, icon: 'bi-cash-coin', tone: 'red', ring: null },
+      { label: 'Balances to collect', value: this.inrShort(d.pending_payments.amount), hint: `${d.pending_payments.count} treatment plans`, icon: 'bi-cash-coin', tone: 'teal', ring: null },
     ];
   });
 

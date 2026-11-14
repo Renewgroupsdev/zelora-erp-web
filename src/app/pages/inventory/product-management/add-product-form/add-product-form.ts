@@ -3,7 +3,7 @@ import { Component, DestroyRef, Inject, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { InventoryService, ProductPayload, ProductRecord } from '../../../../shared/common-services/inventory.service';
+import { InventoryService, PRODUCT_TYPES, ProductPayload, ProductRecord, ProductType } from '../../../../shared/common-services/inventory.service';
 import { ToastService } from '../../../../shared/common-services/toast.service';
 import { catchError, combineLatest, map, debounceTime, distinctUntilChanged, filter, of, startWith, switchMap } from 'rxjs';
 import { ImagePick, ImagePicker } from '../../../../shared/components/image-picker/image-picker';
@@ -28,6 +28,7 @@ export class AddProductForm {
 
   readonly isEdit: boolean;
   readonly isSaving = signal(false);
+  readonly productTypes = PRODUCT_TYPES;
   readonly vendors: { id: number; name: string }[];
   /** Shown read-only when editing; new products get their code from the API on save. */
   readonly code: string;
@@ -36,6 +37,7 @@ export class AddProductForm {
     name: ['', [Validators.required, Validators.maxLength(150)]],
     description: ['', Validators.maxLength(255)],
     hsnCode: ['', Validators.pattern(/^\d{4}(\d{2}(\d{2})?)?$/)],
+    productType: [null as ProductType | null, Validators.required],
     vendorId: [null as number | null, Validators.required],
     purchasePrice: [null as number | null, [Validators.required, Validators.min(0)]],
     marginPercent: [0, [Validators.required, Validators.min(0)]],
@@ -70,6 +72,7 @@ export class AddProductForm {
         name: product.name,
         description: product.description ?? '',
         hsnCode: product.hsn_code ?? '',
+        productType: product.product_type ?? null,
         vendorId: product.vendor_id,
         purchasePrice: Number(product.purchase_price),
         marginPercent: Number(product.margin_percent),
@@ -138,6 +141,7 @@ export class AddProductForm {
       name: (raw.name ?? '').trim(),
       description: (raw.description ?? '').trim(),
       hsn_code: (raw.hsnCode ?? '').trim(),
+      product_type: raw.productType as ProductType,
       vendor_id: Number(raw.vendorId),
       purchase_price: Number(raw.purchasePrice),
       margin_percent: Number(raw.marginPercent),
@@ -177,7 +181,7 @@ export class AddProductForm {
     this.dialogRef.close();
   }
 
-  isInvalid(controlName: 'name' | 'description' | 'hsnCode' | 'vendorId' | 'purchasePrice' | 'marginPercent' | 'discountPercent' | 'gstPercent'): boolean {
+  isInvalid(controlName: 'name' | 'description' | 'hsnCode' | 'productType' | 'vendorId' | 'purchasePrice' | 'marginPercent' | 'discountPercent' | 'gstPercent'): boolean {
     const control = this.productForm.controls[controlName];
     return control.invalid && (control.touched || control.dirty);
   }

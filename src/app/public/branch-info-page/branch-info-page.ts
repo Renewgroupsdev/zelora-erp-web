@@ -5,11 +5,12 @@ import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { BranchQrPayload, decodeBranchQrPayload } from '../../shared/models/branch-qr-payload.model';
 import { AppDownloadLink, detectPlatform, resolveAppDownloadLink } from '../../shared/models/app-download-link.util';
+import { PageLoader } from '../../shared/components/page-loader/page-loader';
 
 @Component({
   selector: 'app-branch-info-page',
   standalone: true,
-  imports: [CommonModule],
+  imports: [PageLoader, CommonModule],
   templateUrl: './branch-info-page.html',
   styleUrl: './branch-info-page.scss',
 })

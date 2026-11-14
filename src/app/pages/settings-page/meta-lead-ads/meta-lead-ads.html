@@ -17,7 +17,7 @@
   }
 
   @if (loading() && !overview()) {
-    <div class="card empty">Loading Meta integration…</div>
+    <div class="card empty"><app-page-loader [inline]="true" /></div>
   }
 
   @if (overview(); as o) {

@@ -7,6 +7,7 @@ import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { ImagePick, ImagePicker } from '../../../shared/components/image-picker/image-picker';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 export interface EditCustomerData {
   id: number;
@@ -17,7 +18,7 @@ export interface EditCustomerData {
 @Component({
   selector: 'app-edit-customer-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, MatDialogModule, ImagePicker],
+  imports: [PageLoader, CommonModule, FormsModule, ReactiveFormsModule, MatDialogModule, ImagePicker],
   templateUrl: './edit-customer-dialog.html',
   styleUrl: '../add-customer-form/add-customer-form.scss',
 })

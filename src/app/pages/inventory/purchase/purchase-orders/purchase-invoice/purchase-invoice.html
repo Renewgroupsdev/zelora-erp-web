@@ -14,7 +14,7 @@
 
   <div class="modal-body-custom invoice-body">
     @if (loading()) {
-      <div class="pdf-state"><i class="bi bi-arrow-repeat pdf-spin"></i> Loading the invoice…</div>
+      <div class="pdf-state"><app-page-loader [inline]="true" /></div>
     } @else if (failed()) {
       <div class="pdf-state pdf-error">
         <i class="bi bi-exclamation-triangle"></i> The invoice could not be loaded.

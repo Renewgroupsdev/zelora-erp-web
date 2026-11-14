@@ -7,6 +7,7 @@ import { ReportTab } from './reports.model';
 import { ToastService } from '../../shared/common-services/toast.service';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 import { saveBlob } from '../../shared/utils/export.util';
+import { PageLoader } from '../../shared/components/page-loader/page-loader';
 
 interface ReportGroup extends ReportCategory {
   items: ReportTab[];
@@ -18,7 +19,7 @@ const COLLAPSED_TILES = 4;
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [AutoModuleTabs, CommonModule, RouterLink],
+  imports: [PageLoader, AutoModuleTabs, CommonModule, RouterLink],
   templateUrl: './reports.html',
   styleUrl: './reports.scss',
 })

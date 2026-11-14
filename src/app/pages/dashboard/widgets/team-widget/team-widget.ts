@@ -5,7 +5,7 @@ import { DashCard } from '../dash-card/dash-card';
 import { DashWidget } from '../dash-widget';
 
 /** One colour per department (largest first), used by its bar, dot and share tag. */
-const DEPT_COLORS = ['#2f6fe5', '#1fae5b', '#d97706', '#7b35e6', '#e0344f', '#0ea5e9', '#14b8a6', '#d946ef', '#64748b'];
+const DEPT_COLORS = ['#2f6fe5', '#1fae5b', '#d97706', '#7b35e6', '#4f46e5', '#0ea5e9', '#14b8a6', '#d946ef', '#64748b'];
 
 /** The team today (attendance, who is on leave), headcount by department and last month's payroll. */
 @Component({
@@ -41,6 +41,19 @@ export class TeamWidget extends DashWidget<HrData> {
     return parts.map(p => ({ ...p, share: (p.value / total) * 100 }));
   });
 
+  /** Donut for the attendance ring: one conic-gradient arc per status, with a hairline gap between them. */
+  readonly ring = computed(() => {
+    const parts = this.attendance().filter(p => p.value > 0);
+    if (!parts.length) return 'conic-gradient(rgba(255,255,255,.14) 0 100%)';
+    let at = 0;
+    const stops = parts.map(p => {
+      const from = at;
+      at += p.share;
+      return `${p.color} ${from.toFixed(2)}% ${Math.max(from, at - 0.8).toFixed(2)}%, transparent ${Math.max(from, at - 0.8).toFixed(2)}% ${at.toFixed(2)}%`;
+    });
+    return `conic-gradient(from -90deg, ${stops.join(', ')})`;
+  });
+
   /** Departments, largest first: the bar is scaled to the largest, the tag is the share of all staff. */
   readonly departments = computed(() => {
     const list = [...(this.data()?.by_department ?? [])].map(d => ({ label: d.label, value: Number(d.value) || 0 })).sort((a, b) => b.value - a.value);
@@ -54,8 +67,8 @@ export class TeamWidget extends DashWidget<HrData> {
     }));
   });
 
-  /** Attendance meter tone: green from 80%, amber from 50%, red below. */
+  /** Attendance meter tone: green from 80%, amber below. */
   rateTone(rate: number): string {
-    return rate >= 80 ? 'green' : rate >= 50 ? 'orange' : 'red';
+    return rate >= 80 ? 'green' : 'orange';
   }
 }

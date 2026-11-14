@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { ApiDataService } from '../../../core/http/api.service';
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 interface WaTemplate {
   id: number;
@@ -50,7 +51,7 @@ const SAMPLES: Record<string, string> = {
 @Component({
   selector: 'app-whatsapp-templates',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, AutoModuleTabs],
+  imports: [PageLoader, CommonModule, FormsModule, RouterLink, AutoModuleTabs],
   templateUrl: './whatsapp-templates.html',
   styleUrl: './whatsapp-templates.scss',
 })

@@ -1,8 +1,7 @@
 <div class="qr-landing-page">
 
   <div class="state-card" *ngIf="state === 'loading'">
-    <div class="spinner"></div>
-    <p>Verifying...</p>
+    <app-page-loader [inline]="true" />
   </div>
 
   <div class="landing-card" *ngIf="state === 'ready'">

@@ -12,6 +12,7 @@ import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-
 import { saveBlob } from '../../shared/utils/export.util';
 import { AdminCategory, DashboardData, Pagination, SupportConfig, SupportSettings, TicketSummary, priorityTone, statusTone } from './support.model';
 import { ExportFormat, SupportService } from './support.service';
+import { PageLoader } from '../../shared/components/page-loader/page-loader';
 
 type Tab = 'dashboard' | 'tickets' | 'settings';
 
@@ -26,7 +27,7 @@ const BLANK: Filters = { search: '', date_from: '', date_to: '', user_type: '', 
 @Component({
   selector: 'app-support-desk',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, AutoModuleTabs, BfDonut, BfColumns, BfBars],
+  imports: [PageLoader, CommonModule, FormsModule, RouterLink, AutoModuleTabs, BfDonut, BfColumns, BfBars],
   templateUrl: './support-desk.html',
   styleUrl: './support.scss',
 })

@@ -147,7 +147,7 @@
     <h2 class="card-title"><span class="title-main"><i class="bi bi-collection"></i> Templates</span><small class="muted">{{ templates().length }} total</small></h2>
 
     @if (loading() && !templates().length) {
-      <div class="empty">Loading templates…</div>
+      <div class="empty"><app-page-loader [inline]="true" /></div>
     } @else if (!templates().length) {
       <div class="empty">No template yet. Click <strong>New template</strong> to write one and send it to Meta for review.</div>
     }

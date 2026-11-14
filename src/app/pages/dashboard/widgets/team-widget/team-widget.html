@@ -5,25 +5,27 @@
   @if (data(); as h) {
     <!-- 1. attendance today: the team split by status -->
     <section class="tm-att" [attr.aria-label]="h.attendance_today.rate + '% attendance today'">
-      <div class="tm-att-head">
-        <div>
+      <div class="tm-att-ring" [style.background]="ring()" [class]="'tm-att-ring tone-' + rateTone(h.attendance_today.rate)">
+        <div class="tm-att-ring-core"><b>{{ h.attendance_today.rate }}<sup>%</sup></b><small>present</small></div>
+      </div>
+      <div class="tm-att-body">
+        <div class="tm-att-head">
           <h3 class="tm-title"><i class="bi bi-fingerprint" aria-hidden="true"></i> Attendance today</h3>
           <small>{{ h.attendance_today.present + h.attendance_today.late + h.attendance_today.half_day }} of {{ h.headcount }} in</small>
         </div>
-        <span class="tm-rate" [class]="'tone-' + rateTone(h.attendance_today.rate)"><b>{{ h.attendance_today.rate }}</b>%</span>
-      </div>
-      <div class="tm-att-bar" role="img" aria-label="Team by attendance status">
-        @for (p of attendance(); track p.key) {
-          @if (p.value) { <i [style.flex-grow]="p.share" [style.--c]="p.color" [attr.title]="p.value + ' ' + p.label"></i> }
-        }
-      </div>
-      <div class="tm-att-legend">
-        @for (p of attendance(); track p.key) {
-          <div class="tm-att-item" [style.--c]="p.color" [class.is-zero]="!p.value">
-            <span class="tm-att-icon"><i class="bi" [class]="p.icon" aria-hidden="true"></i></span>
-            <span><b>{{ p.value }}</b><small>{{ p.label }}</small></span>
-          </div>
-        }
+        <div class="tm-att-bar" role="img" aria-label="Team by attendance status">
+          @for (p of attendance(); track p.key) {
+            @if (p.value) { <i [style.flex-grow]="p.share" [style.--c]="p.color" [attr.title]="p.value + ' ' + p.label"></i> }
+          }
+        </div>
+        <div class="tm-att-legend">
+          @for (p of attendance(); track p.key) {
+            <div class="tm-att-item" [style.--c]="p.color" [class.is-zero]="!p.value">
+              <span class="tm-att-icon"><i class="bi" [class]="p.icon" aria-hidden="true"></i></span>
+              <span><b>{{ p.value }}</b><small>{{ p.label }}</small></span>
+            </div>
+          }
+        </div>
       </div>
     </section>
 

@@ -1,4 +1,4 @@
-<app-dash-card title="Pending Approvals" [subtitle]="total() ? total() + ' waiting for a decision' : 'All caught up'" icon="bi-patch-check" tone="red"
+<app-dash-card title="Pending Approvals" [subtitle]="total() ? total() + ' waiting for a decision' : 'All caught up'" icon="bi-patch-check" tone="blue"
                [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()">
   @if (total() === 0) {
     <div class="ap-clear-all">

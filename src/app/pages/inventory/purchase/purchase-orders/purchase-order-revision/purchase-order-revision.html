@@ -91,7 +91,7 @@
     }
 
     <div class="quote-list">
-      @if (loading()) { <div class="quote-empty">Loading…</div> }
+      @if (loading()) { <div class="quote-empty"><app-page-loader [inline]="true" /></div> }
       @for (r of revisions(); track r.id) {
         <div class="rev-card">
           <div class="qtop">

@@ -26,7 +26,8 @@ const APP_ONLY = new Set(['login', 'attendance_check_in', 'attendance_check_out'
 /** Deep link of a personal notification (`data.screen` from the backend). */
 const SCREEN_LINKS: Record<string, string> = {
   purchase: '/app/inventory/purchase-requests',
-  low_stock_replenishment: '/app/inventory/low-stock-replenishment',
+  stock_transfer: '/app/inventory/stock',
+  low_stock_replenishment: '/app/inventory/stock', // older notifications
   sitting_transfer: '/app/appointments',
   attendance: '/app/hr/attendance',
 };

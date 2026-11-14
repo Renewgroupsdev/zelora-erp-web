@@ -4,8 +4,8 @@
   /* ------------------------------------------------------------ summary banner */
   .ap-hero {
     position: relative; isolation: isolate; overflow: hidden; margin-bottom: 12px; padding: 14px 16px 16px; border-radius: 16px; color: #fff;
-    background: radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .22), transparent 55%), linear-gradient(135deg, #ff6b6b 0%, #e0344f 50%, #a51d3a 100%);
-    box-shadow: 0 16px 28px -20px #c22a43;
+    background: radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .22), transparent 55%), linear-gradient(135deg, #3b82f6 0%, #2f55d4 50%, #1e2f8f 100%);
+    box-shadow: 0 16px 28px -20px #1e2f8f;
   }
   .ap-hero-mark { position: absolute; right: -6px; bottom: -18px; z-index: -1; font-size: 84px; opacity: .14; transform: rotate(-10deg); }
   .ap-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -54,7 +54,7 @@
     small { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }
   .ap-age { flex: none; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums;
     color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent);
-    &.is-old { color: var(--status-red-text); background: color-mix(in srgb, var(--status-red-text) 11%, transparent); } }
+    &.is-old { color: var(--status-orange-text); background: color-mix(in srgb, var(--status-orange-text) 11%, transparent); } }
   .ap-more { justify-content: center; padding: 3px 8px !important; font-size: 11px; font-weight: 700; color: var(--c); background: transparent !important; border-style: dashed !important; }
 
   /* ------------------------------------------------------------ clear queues + all-caught-up */

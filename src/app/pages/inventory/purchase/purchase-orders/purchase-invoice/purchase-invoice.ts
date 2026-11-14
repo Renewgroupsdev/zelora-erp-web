@@ -4,6 +4,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
 import { CanActionDirective } from '../../../../../shared/directives/can-action.directive';
+import { PageLoader } from '../../../../../shared/components/page-loader/page-loader';
 
 /**
  * Preview of a purchase order's invoice. It shows the very PDF the vendor receives (the server-built tax invoice with the Renew Plus logo),
@@ -12,7 +13,7 @@ import { CanActionDirective } from '../../../../../shared/directives/can-action.
 @Component({
   selector: 'app-purchase-invoice',
   standalone: true,
-  imports: [CanActionDirective, CommonModule, MatDialogModule],
+  imports: [PageLoader, CanActionDirective, CommonModule, MatDialogModule],
   templateUrl: './purchase-invoice.html',
   styleUrls: ['../../../../../shared/styles/erp-dialog.scss', './purchase-invoice.scss'],
 })

@@ -130,11 +130,11 @@ export class PurchaseApprovalAlertsService {
 
   /**
    * Central Store products under the threshold -> the bell of the head office / admin / super admin (the API answers 403 for
-   * every other role). A product that newly drops low also pops a short alert linking to Low Stock Replenishment.
+   * every other role). A product that newly drops low also pops a short alert linking to Stock & Transfer.
    */
   private refreshCentralLowStock(): void {
     if (this.lowStockDenied) return;
-    this.api.GET('purchase/low-stock-orders?summary=1').subscribe({
+    this.api.GET('purchase/stock/central-low-stock').subscribe({
       next: (res: any) => {
         const items = ((res?.data ?? []) as any[]).map(r => ({ productId: String(r.product_id), productName: r.product_name ?? 'A product', qty: Number(r.qty) || 0 }));
         const fresh = this.notifications.syncCentralLowStock(items, Number(res?.threshold) || 10);
@@ -142,7 +142,7 @@ export class PurchaseApprovalAlertsService {
           this.alertStack.show({
             tone: 'info', icon: 'bi-box-seam-fill', duration: 9000,
             title: fresh === 1 ? 'Central Store product running low' : `${fresh} Central Store products running low`,
-            text: 'Open Low Stock Replenishment from the bell to order from the least-price vendor.',
+            text: 'Open Stock & Transfer from the bell to move stock from a nearby branch.',
           });
         }
       },
@@ -254,7 +254,7 @@ export class PurchaseApprovalAlertsService {
       html: `
         <div class="ua-head">
           <span class="ua-badge"><span class="ua-ring"></span><i class="bi bi-exclamation-triangle-fill"></i></span>
-          <div><div class="ua-title">${this.esc(title)}</div><div class="ua-sub">A branch needs stock urgently. Check nearby branch stock or the vendor quotes now.</div></div>
+          <div><div class="ua-title">${this.esc(title)}</div><div class="ua-sub">A branch needs stock urgently. Choose a vendor and approve it now.</div></div>
         </div>
         <div class="ua-list">${rows}${more}</div>`,
       didClose: () => closed(),

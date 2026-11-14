@@ -118,7 +118,7 @@
             }
           </tbody>
         </table>
-        @if (loading) { <div class="sp-state"><i class="bi bi-hourglass-split"></i><p>Loading tickets...</p></div> }
+        @if (loading) { <div class="sp-state"><app-page-loader [inline]="true" /></div> }
         @else if (error) { <div class="sp-state"><i class="bi bi-exclamation-triangle"></i><p>{{ error }}</p><button type="button" class="sp-btn" (click)="loadTickets()">Try again</button></div> }
         @else if (items.length === 0) { <div class="sp-state"><i class="bi bi-inbox"></i><p>No tickets match these filters.</p></div> }
       </div>

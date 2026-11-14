@@ -179,7 +179,8 @@ export function duration(seconds: number): string {
 export function statusTone(status: string | null | undefined): string {
   const s = (status ?? '').toLowerCase();
   if (['converted', 'completed', 'approved', 'present', 'paid', 'active', 'achieved', 'available', 'online'].some(k => s.includes(k))) return 'green';
-  if (['cancel', 'reject', 'missed', 'expired', 'overdue', 'absent', 'blocked', 'offline'].some(k => s.includes(k))) return 'red';
+  if (['cancel', 'reject', 'expired', 'absent', 'blocked', 'offline'].some(k => s.includes(k))) return 'gray';
+  if (['missed', 'overdue'].some(k => s.includes(k))) return 'orange';
   if (['pending', 'awaiting', 'late', 'draft', 'not started', 'busy', 'on call', 'break'].some(k => s.includes(k))) return 'orange';
   if (['consultation', 'progress', 'scheduled', 'invoiced'].some(k => s.includes(k))) return 'blue';
   return 'gray';

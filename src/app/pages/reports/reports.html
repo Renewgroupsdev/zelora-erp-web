@@ -22,7 +22,7 @@
     </section>
 
     @if (loading) {
-      <div class="rp-state"><i class="bi bi-hourglass-split"></i><p>Loading reports...</p></div>
+      <div class="rp-state"><app-page-loader [inline]="true" /></div>
     } @else if (error) {
       <div class="rp-state rp-error" role="alert"><i class="bi bi-exclamation-triangle"></i><p>Reports could not be loaded. Refresh the page to try again.</p></div>
     } @else if (groups.length === 0) {

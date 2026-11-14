@@ -12,7 +12,7 @@
   </div>
 
   @if (loading()) {
-    <div class="modal-body-custom"><p>Loading...</p></div>
+    <div class="modal-body-custom"><app-page-loader [inline]="true" /></div>
   } @else {
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <div class="modal-body-custom">

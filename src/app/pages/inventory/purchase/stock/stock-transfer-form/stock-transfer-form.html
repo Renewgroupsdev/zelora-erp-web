@@ -44,6 +44,41 @@
       </div>
     </div>
 
+    <div class="section-title"><i class="bi bi-geo-alt"></i> Find a product at nearby branches / franchises</div>
+    <div class="pl-card nearby-card">
+      <p class="muted" style="margin: 0 0 8px; font-size: 12px">Search a product to see which branch or franchise has it near {{ purchase.storeName(toStoreKey) }}: within 50 km first, nearest first. Pick one to use it as the From Store.</p>
+      <app-search-select icon="bi-search" placeholder="Search product by code or name" searchPlaceholder="Type a product code or name..."
+                         [options]="productChoices()" [ngModel]="findProductId()" (ngModelChange)="findNearby($event)" />
+      @if (findProductId()) {
+        @if (nearbyLoading()) {
+          <app-page-loader [inline]="true" />
+        } @else if (nearby().length) {
+          <ul class="nb-list">
+            @for (o of nearby(); track o.storeKey) {
+              <li class="nb-item" [class.near]="o.zone === 'near'" [class.far]="o.zone === 'far'" [class.is-picked]="o.storeKey === fromStoreKey()"
+                  tabindex="0" role="button" (click)="useSource(o)" (keydown.enter)="useSource(o)">
+                <span class="nb-icon"><i class="bi bi-shop" aria-hidden="true"></i></span>
+                <span class="nb-main"><b>{{ o.name }}</b><small>{{ o.city }}</small></span>
+                <span class="nb-km"><i class="bi bi-signpost-split" aria-hidden="true"></i> {{ km(o) }}</span>
+                <span class="nb-stock"><b>{{ o.available }}</b> in stock</span>
+                <span class="nb-zone">{{ zoneLabel(o) }}</span>
+              </li>
+            }
+          </ul>
+          @if (picked(); as p) {
+            <div class="route-card" [class.near]="p.zone === 'near'" [class.far]="p.zone === 'far'">
+              <span class="route-node from"><i class="bi bi-shop" aria-hidden="true"></i><span class="route-text"><b>{{ p.name }}</b><small>{{ p.city }}</small></span></span>
+              <span class="route-line"><i class="bi bi-truck route-truck" aria-hidden="true"></i><em><i class="bi bi-signpost-split" aria-hidden="true"></i> {{ km(p) }}</em></span>
+              <span class="route-node to"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span class="route-text"><b>{{ purchase.storeName(toStoreKey) }}</b><small>{{ totalQty() }} unit{{ totalQty() === 1 ? '' : 's' }} will be sent</small></span></span>
+              <span class="route-tag"><i class="bi" [class.bi-check-circle-fill]="p.zone === 'near'" [class.bi-exclamation-triangle-fill]="p.zone === 'far'" [class.bi-question-circle-fill]="p.zone !== 'near' && p.zone !== 'far'" aria-hidden="true"></i> {{ zoneLabel(p) }}</span>
+            </div>
+          }
+        } @else if (nearbyLoaded()) {
+          <div class="empty-note"><i class="bi bi-inbox"></i> No other branch or franchise has this product in stock.</div>
+        }
+      }
+    </div>
+
     <div class="section-title"><i class="bi bi-upc-scan"></i> Products &amp; Batches</div>
     @if (!batches().length) {
       <div class="empty-note"><i class="bi bi-inbox"></i> No stock available in {{ purchase.storeName(fromStoreKey()) }}.</div>

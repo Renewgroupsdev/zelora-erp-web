@@ -134,10 +134,10 @@ export class NotificationService {
       id: `LSC-${i.productId}`,
       type: 'stock',
       title: i.qty <= 0 ? `Central Store: ${i.productName} is out of stock` : `Central Store low stock: ${i.productName}`,
-      message: `${i.qty} unit${i.qty === 1 ? '' : 's'} left (below ${threshold}). Order it from the least-price vendor.`,
+      message: `${i.qty} unit${i.qty === 1 ? '' : 's'} left (below ${threshold}). Move stock from a nearby branch or raise a purchase request.`,
       timestamp: at,
       read,
-      link: '/app/inventory/low-stock-replenishment',
+      link: '/app/inventory/stock',
     });
 
     this._notifications.update(list => [

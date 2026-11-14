@@ -73,7 +73,7 @@
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="8" class="empty">{{ loading() ? 'Loading…' : 'No lead events yet. Leads appear here the moment Meta notifies the ERP.' }}</td></tr>
+              <tr><td colspan="8" class="empty">@if (loading()) { <app-page-loader [inline]="true" /> } @else { No lead events yet. Leads appear here the moment Meta notifies the ERP. }</td></tr>
             }
           </tbody>
         </table>
@@ -114,7 +114,7 @@
                 <td>{{ l.user || 'System' }}</td>
               </tr>
             } @empty {
-              <tr><td colspan="5" class="empty">{{ loading() ? 'Loading…' : 'Nothing logged yet.' }}</td></tr>
+              <tr><td colspan="5" class="empty">@if (loading()) { <app-page-loader [inline]="true" /> } @else { Nothing logged yet. }</td></tr>
             }
           </tbody>
         </table>

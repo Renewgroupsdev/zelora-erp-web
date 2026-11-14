@@ -17,6 +17,10 @@ export interface VendorRecord {
   products_count: number;
 }
 
+export type ProductType = 'Consumables' | 'Miscellaneous';
+
+export const PRODUCT_TYPES: ProductType[] = ['Consumables', 'Miscellaneous'];
+
 export interface ProductRecord {
   /** Encrypted id - use as-is in URLs. */
   id: string;
@@ -24,6 +28,7 @@ export interface ProductRecord {
   name: string;
   description: string | null;
   hsn_code: string | null;
+  product_type?: ProductType | null;
   vendor_id: number | null;
   vendor: { id: number; name: string } | null;
   purchase_price: number | string;
@@ -43,6 +48,7 @@ export interface ProductPayload {
   name: string;
   description: string;
   hsn_code: string;
+  product_type: ProductType;
   vendor_id: number;
   purchase_price: number;
   margin_percent: number;

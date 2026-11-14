@@ -10,7 +10,7 @@
 
   <div class="cpd-body">
     @if (loading()) {
-      <p class="cpd-empty">Loading payments...</p>
+      <div class="cpd-empty"><app-page-loader [inline]="true" /></div>
     } @else if (result(); as r) {
       <section class="cpd-customer">
         <span class="avatar">

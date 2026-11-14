@@ -3,6 +3,7 @@ import { Component, Inject, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { InventoryService, ProductRecord } from '../../../../shared/common-services/inventory.service';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
+import { PageLoader } from '../../../../shared/components/page-loader/page-loader';
 
 export interface ProductViewData {
   product: ProductRecord;
@@ -11,7 +12,7 @@ export interface ProductViewData {
 @Component({
   selector: 'app-product-view',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CanActionDirective],
+  imports: [PageLoader, CommonModule, MatDialogModule, CanActionDirective],
   templateUrl: './product-view.html',
   styleUrl: './product-view.scss',
 })

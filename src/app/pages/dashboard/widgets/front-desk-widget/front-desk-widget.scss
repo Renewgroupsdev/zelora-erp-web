@@ -2,7 +2,7 @@
 
 .dash-page {
   .fd { flex: 1 1 auto; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-  .dash-amount { font-weight: 800; font-size: 13.5px; color: var(--status-red-text); white-space: nowrap; font-variant-numeric: tabular-nums; letter-spacing: -.2px; }
+  .dash-amount { font-weight: 800; font-size: 13.5px; color: #0b6b5c; white-space: nowrap; font-variant-numeric: tabular-nums; letter-spacing: -.2px; }
 
   /* ------------------------------------------------------------ figure tiles: glass card, progress ring, watermark icon */
   .fd-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
@@ -149,8 +149,8 @@
     padding: 16px 18px; margin-bottom: 12px; border-radius: 16px; color: #fff;
     background:
       radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .22), transparent 55%),
-      linear-gradient(135deg, #e0344f 0%, #c22a43 55%, #8f1d33 100%);
-    box-shadow: 0 16px 30px -20px #c22a43;
+      linear-gradient(135deg, #14b8a6 0%, #0b8572 55%, #065f5b 100%);
+    box-shadow: 0 16px 30px -20px #065f5b;
     // faint coin pattern
     &::after { content: ''; position: absolute; right: -30px; bottom: -40px; z-index: -1; width: 160px; height: 160px; border-radius: 50%; border: 22px solid rgba(255, 255, 255, .08); }
   }
@@ -168,7 +168,7 @@
     --p: 0;
     width: 46px; height: 46px; flex: none; display: grid; place-items: center; border-radius: 50%;
     background: conic-gradient(#fff calc(var(--p) * 1%), rgba(255, 255, 255, .22) 0);
-    b { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #c22a43; font-size: 11px; font-weight: 800; }
+    b { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #065f5b; font-size: 11px; font-weight: 800; }
   }
   .fd-due-top-text {
     display: flex; flex-direction: column; min-width: 0; line-height: 1.2;

@@ -374,34 +374,9 @@ export interface PriceRevision {
 }
 export interface RevisionLine { productId: string; productName: string; productCode: string; unitPrice: number; gstPercent: number }
 
-/** A nearby branch / franchise (same state as the requesting unit) holding a requested product. */
+/** A nearby branch / franchise holding a product (Transfer Stock). */
 export interface NearbyStoreOption {
   storeKey: string; name: string; city: string; state: string; sameCity: boolean; available: number;
-  /** Straight-line km from the requesting unit (null = a unit has no coordinates) and the zone it falls in. */
+  /** Straight-line km from the receiving store (null = a unit has no coordinates) and the zone it falls in. */
   distanceKm: number | null; zone: 'near' | 'far' | 'unknown';
-}
-/** One requested product with what is needed and the nearby stores that could send it. */
-export interface NearbyStockItem { productId: string; productName: string; productCode: string | null; needed: number; options: NearbyStoreOption[] }
-
-/** One vendor's price for a low-stock product: its latest quote, else its last PO price, else the product master price. */
-export interface LowStockVendorQuote {
-  vendorId: number; vendorName: string; unitPrice: number; gstPercent: number;
-  /** Unit price incl. GST - what the vendors are compared on. */
-  amount: number;
-  /** Where the price came from, e.g. "Quote Q-12", "Last PO PO-2026-0007", "Product master". */
-  source: string; date: string | null;
-}
-
-/** A Central Store product under the low-stock level (Low Stock Replenishment tab). */
-export interface LowStockRow {
-  productId: string; productCode: string; productName: string; hsnCode: string;
-  qty: number; onOrder: number; suggestedQty: number;
-  /** Least vendor price (the pre-selected vendor's). */
-  unitPrice: number; gstPercent: number;
-  /** Least-price vendor (pre-selected). */
-  vendorId: number | null; vendorName: string | null;
-  usualVendorId: number | null; usualVendorName: string | null;
-  /** Vendor prices, least first. */
-  quotes: LowStockVendorQuote[];
-  out: boolean;
 }

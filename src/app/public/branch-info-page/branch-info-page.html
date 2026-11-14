@@ -54,8 +54,7 @@
   </div>
 
   <div class="state-card" *ngIf="loading">
-    <div class="spinner"></div>
-    <p>Loading branch details...</p>
+    <app-page-loader [inline]="true" />
   </div>
 
   <div class="state-card" *ngIf="!loading && notFound">

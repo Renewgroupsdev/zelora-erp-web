@@ -8,6 +8,7 @@ import { ToastService } from '../../../shared/common-services/toast.service';
 import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { RazorpayCheckoutService, RazorpayResult } from '../../../shared/common-services/razorpay-checkout.service';
 import { PAYMENT_MODES, PaymentMode, RazorpayOrder } from '../../../shared/models/appointment-flow.model';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 export interface CustomerPaymentsData {
   id: number;
@@ -78,7 +79,7 @@ interface PaymentsPayload {
 @Component({
   selector: 'app-customer-payments-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, CanActionDirective],
+  imports: [PageLoader, CommonModule, FormsModule, MatDialogModule, CanActionDirective],
   templateUrl: './customer-payments-dialog.html',
   styleUrl: './customer-payments-dialog.scss',
 })
