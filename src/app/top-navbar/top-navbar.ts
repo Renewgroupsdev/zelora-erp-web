@@ -18,6 +18,7 @@ import { DiscountRequestsService } from '../shared/common-services/discount-requ
 import { SittingTransfersService } from '../shared/common-services/sitting-transfers.service';
 import { AbsentTelecallersService } from '../shared/common-services/absent-telecallers.service';
 import { PurchaseApprovalAlertsService } from '../shared/common-services/purchase-approval-alerts.service';
+import { TabAttentionService } from '../shared/common-services/tab-attention.service';
 import { FollowUpReminderService } from '../shared/common-services/follow-up-reminder.service';
 import { openAssignCaller } from '../shared/components/lead-dialogs/assign-caller-dialog';
 import { DiscountReviewDialog } from '../shared/components/discount-review-dialog/discount-review-dialog';
@@ -178,6 +179,7 @@ export class TopNavbar {
     private purchaseAlerts: PurchaseApprovalAlertsService,
     private followUpReminder: FollowUpReminderService,
     private bellRealtime: BellRealtimeService,
+    private tabAttention: TabAttentionService,
   ) {
     // Bell over WebSocket (Reverb): every list below is re-read the moment it changes; their polls are only a fallback.
     this.bellRealtime.start();
@@ -191,6 +193,8 @@ export class TopNavbar {
     this.purchaseAlerts.start();
     // Telecallers: 5 minutes before a follow-up call-back is due, a card offers "Call back" / "Later" (45 s).
     this.followUpReminder.start();
+    // Unread count on the browser tab (title + favicon badge), blinking title while away, desktop notification for new ones.
+    this.tabAttention.start();
   }
 
   onNotificationClick(notification: AppNotification): void {

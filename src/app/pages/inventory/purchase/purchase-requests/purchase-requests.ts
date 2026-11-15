@@ -12,6 +12,7 @@ import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { PurchaseRequestForm } from './purchase-request-form/purchase-request-form';
 import { PurchaseRequestReview, ReviewResult } from './purchase-request-review/purchase-request-review';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
+import { PurchaseDocView } from '../purchase-doc-view/purchase-doc-view';
 
 @Component({
   selector: 'app-purchase-requests',
@@ -59,7 +60,7 @@ export class PurchaseRequests extends PurchaseListBase {
     const canApprove = this.purchase.canApproveRequests();
     return this.purchase.requests().map(r => {
       const total = lineTotals(r.items).grandTotal;
-      const actions: QuickAction[] = [{ key: 'view', icon: 'bi-eye-fill', label: 'View details' }];
+      const actions: QuickAction[] = [{ key: 'view', icon: 'bi-eye-fill', label: 'View details', permission: 'view-purchase-request' }];
       if (r.status === 'Pending' && canApprove) actions.push({ key: 'review', icon: 'bi-check2-square', label: 'Approve / Reject', variant: 'primary' });
       actions.push({ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Print request (PDF)', permission: 'download-purchase-request' });
       return {
@@ -91,6 +92,10 @@ export class PurchaseRequests extends PurchaseListBase {
 
     if (event.action === 'pdf') {
       void this.purchase.openPdf('purchase-request', request.id);
+      return;
+    }
+    if (event.action === 'view') {
+      this.openDialog(PurchaseDocView, { kind: 'request', id: request.id }, '980px');
       return;
     }
 

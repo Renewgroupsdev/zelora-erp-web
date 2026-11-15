@@ -16,8 +16,9 @@ interface TransferRow {
  * Dispatch stock to another store (reference stock transfer / stock return): one or more batches leave the source
  * now and stay "In Transit" until the receiving store accepts or rejects them.
  *
- * "Find a product at nearby branches": search a product and the branches / franchises holding it are listed (within 50 km of the
- * To Store first, nearest first). Picking one fills From Store and its earliest-expiry batch.
+ * "Nearby stores": for the product being transferred (the stock row it was opened from, else the batch picked in the table)
+ * the branches / franchises holding it load into a dropdown (within 50 km of the To Store first, nearest first). Picking one
+ * fills From Store and its earliest-expiry batch.
  */
 @Component({
   selector: 'app-stock-transfer-form',
@@ -52,20 +53,40 @@ export class StockTransferForm {
     return others[0]?.key ?? CENTRAL_STORE_KEY;
   }
 
-  // ---- nearby branches / franchises holding a product
+  // ---- nearby branches / franchises holding the product being transferred (no product search: it is the row's product)
+  readonly findProductId = signal<string | null>(null);
+  /** Opened from a stock row: the product is that row's, so no product search is shown. */
+  readonly fromRow = !!this.startBatch;
+  /** Every product held in any store (searchable), for the "Transfer Stock" button case. */
   readonly productChoices = computed<SelectOption[]>(() => {
     const seen = new Map<string, SelectOption>();
     for (const b of this.purchase.stock()) {
-      if (b.qty > 0 && !seen.has(b.productId)) seen.set(b.productId, { value: b.productId, label: `${b.productCode} - ${b.productName}` });
+      if (b.qty > 0 && !seen.has(b.productId)) seen.set(b.productId, { value: b.productId, label: b.productName, hint: b.productCode });
     }
     return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label));
   });
-  readonly findProductId = signal<string | null>(null);
+  /** "PRD-0002 - GFC Kit" of the product the nearby list is for. */
+  readonly findProductLabel = computed(() => {
+    const b = this.purchase.stock().find(x => x.productId === this.findProductId());
+    return b ? `${b.productCode} - ${b.productName}` : '';
+  });
+  /** Nearby stores as dropdown options: nearest first, grouped by distance zone. */
+  readonly nearbyChoices = computed<SelectOption[]>(() => this.nearby().map(o => ({
+    value: o.storeKey,
+    label: o.city && o.city !== o.name ? `${o.name} · ${o.city}` : o.name,
+    hint: `${this.km(o)} · ${o.available} in stock`,
+    group: this.zoneLabel(o),
+  })));
   readonly nearby = signal<NearbyStoreOption[]>([]);
   readonly nearbyLoading = signal(false);
   readonly nearbyLoaded = signal(false);
   /** The nearby store currently chosen as the From Store, for the route card. */
   readonly picked = computed(() => this.nearby().find(o => o.storeKey === this.fromStoreKey()) ?? null);
+
+  constructor() {
+    // opened from a stock row: load the stores near the To Store that hold this product straight away
+    if (this.startBatch) void this.findNearby(this.startBatch.productId);
+  }
 
   async findNearby(productId: string | null): Promise<void> {
     this.findProductId.set(productId);
@@ -78,6 +99,40 @@ export class StockTransferForm {
     this.nearby.set(list);
     this.nearbyLoading.set(false);
     this.nearbyLoaded.set(true);
+  }
+
+  /** Nearby dropdown picked a store: use it as the sender. */
+  pickNearby(storeKey: string | null): void {
+    const o = this.nearby().find(x => x.storeKey === storeKey);
+    if (o) this.useSource(o);
+  }
+
+  /** Products with a batch still free for this row (the product dropdown lists names only). */
+  productOptions(index: number): { productId: string; productName: string }[] {
+    const seen = new Map<string, string>();
+    for (const b of this.options(index)) if (!seen.has(b.productId)) seen.set(b.productId, b.productName);
+    return [...seen].map(([productId, productName]) => ({ productId, productName }));
+  }
+
+  /**
+   * A product was picked: the row takes its earliest-expiry batch that no other row uses (batches() is earliest expiry first),
+   * and the product drives the nearby-stores dropdown.
+   */
+  pickProduct(index: number, productId: string | null): void {
+    const row = this.rows()[index];
+    if (!row) return;
+    row.batchId = productId ? this.options(index).find(b => b.productId === productId)?.id ?? null : null;
+    row.qty = row.batchId ? row.qty : null;
+    this.touch();
+    if (productId && productId !== this.findProductId()) void this.findNearby(productId);
+  }
+
+  /** − / + buttons of the transfer qty (0 .. available in the batch). */
+  stepQty(row: TransferRow, by: number): void {
+    const max = this.batch(row)?.qty ?? 0;
+    const next = Math.min(max, Math.max(0, (Number(row.qty) || 0) + by));
+    row.qty = next || null;
+    this.touch();
   }
 
   /** Use a nearby store as the sender: From Store + the product's earliest-expiry batch there. */

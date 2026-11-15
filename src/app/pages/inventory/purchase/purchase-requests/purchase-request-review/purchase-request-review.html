@@ -80,6 +80,178 @@
                              [options]="vendorChoices()" [invalid]="vendorError()" [ngModel]="choice()" (ngModelChange)="onChoice($event)" />
           @if (vendorError()) { <small class="error-text">Choose a vendor to approve with.</small> }
         </div>
+
+        @if (chosenVendorId() !== null) {
+          @let vq = vendorQuote();
+          @let pv = priceView();
+          <section class="vq-panel" [class.is-quote]="pv?.kind === 'quote'" [class.is-estimate]="pv?.kind === 'estimate'" [class.is-editing]="showQuoteForm()">
+
+            <!-- Header: vendor + source + total -->
+            <header class="vq-head">
+              <div class="vq-badge"><i class="bi" [class.bi-patch-check-fill]="vq" [class.bi-tags-fill]="!vq && pv" [class.bi-file-earmark-plus]="!vq && !pv"></i></div>
+              <div class="vq-title">
+                <small>Vendor quotation</small>
+                <strong [title]="vendorName()">{{ vendorName() || 'Selected vendor' }}</strong>
+                <div class="vq-chips">
+                  @if (vq) {
+                    <span class="vq-chip strong"><i class="bi bi-hash"></i>{{ vq.quoteNo }}</span>
+                    @if (vq.lowest) { <span class="vq-chip good"><i class="bi bi-trophy-fill"></i> Lowest</span> }
+                    @if (vq.expired) { <span class="vq-chip bad"><i class="bi bi-hourglass-bottom"></i> Expired</span> }
+                    @else if (!vq.complete) { <span class="vq-chip warn"><i class="bi bi-exclamation-circle"></i> Incomplete</span> }
+                    @else { <span class="vq-chip info"><i class="bi bi-check2-circle"></i> {{ vq.status }}</span> }
+                  } @else if (pv) {
+                    <span class="vq-chip warn"><i class="bi bi-info-circle"></i> No quotation · price list</span>
+                  } @else {
+                    <span class="vq-chip muted"><i class="bi bi-dash-circle"></i> No quotation</span>
+                  }
+                </div>
+              </div>
+              @if (pv && !showQuoteForm()) {
+                <div class="vq-total">
+                  <small>{{ pv.kind === 'quote' ? 'Quote total' : 'Price-list total' }}</small>
+                  <strong>₹{{ pv.total | number:'1.2-2' }}</strong>
+                  @if (pv.requestTotal > 0 && pv.total !== pv.requestTotal) {
+                    <span class="vq-delta" [class.up]="pv.total > pv.requestTotal" [class.down]="pv.total < pv.requestTotal">
+                      <i class="bi" [class.bi-arrow-up-right]="pv.total > pv.requestTotal" [class.bi-arrow-down-right]="pv.total < pv.requestTotal"></i>
+                      ₹{{ (pv.total > pv.requestTotal ? pv.total - pv.requestTotal : pv.requestTotal - pv.total) | number:'1.2-2' }} vs request
+                    </span>
+                  } @else {
+                    <span class="vq-delta same"><i class="bi bi-dash"></i> Same as request</span>
+                  }
+                </div>
+              }
+            </header>
+
+            @if (showQuoteForm()) {
+              <!-- Quotation form: 3 steps -->
+              <div class="vq-form">
+                <p class="vq-hint"><i class="bi bi-lightbulb"></i> Enter the price {{ vendorName() }} quoted for every product and attach its proforma. Prices start from {{ vq ? 'its current quotation' : 'its last quote, else the request prices' }}. Saving selects this quotation for approval{{ vq ? ' and replaces the earlier one' : '' }}.</p>
+
+                <div class="vq-step">
+                  <div class="vq-step-head"><span class="vq-step-no">1</span> Quote details</div>
+                  <div class="vq-fields">
+                    <div class="form-field">
+                      <label for="rq-no">Quote no <span>*</span></label>
+                      <div class="input-wrap"><i class="bi bi-hash"></i><input id="rq-no" type="text" maxlength="60" placeholder="e.g. QT-1024" [(ngModel)]="quoteForm.quoteNo" /></div>
+                    </div>
+                    <div class="form-field">
+                      <label for="rq-date">Quote date <span>*</span></label>
+                      <div class="input-wrap"><i class="bi bi-calendar-event"></i><input id="rq-date" type="date" [max]="today" [(ngModel)]="quoteForm.quoteDate" /></div>
+                    </div>
+                    <div class="form-field">
+                      <label for="rq-valid">Valid till</label>
+                      <div class="input-wrap"><i class="bi bi-calendar-check"></i><input id="rq-valid" type="date" [min]="quoteForm.quoteDate" [(ngModel)]="quoteForm.validTill" /></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="vq-step">
+                  <div class="vq-step-head"><span class="vq-step-no">2</span> Product prices <span class="spacer"></span><small class="muted">Request price → vendor's price</small></div>
+                  <div class="vq-rows">
+                    @for (item of r.items; track item.productId) {
+                      @let d = quoteDelta(item.productId);
+                      <div class="vq-row edit">
+                        <div class="vq-prod">
+                          <span class="vq-prod-icon"><i class="bi bi-box-seam"></i></span>
+                          <div><strong>{{ item.productName }}</strong><small>{{ item.productCode }} · Qty {{ item.requestedQty }} · GST {{ item.gstPercent }}%</small></div>
+                        </div>
+                        <div class="vq-was"><small>Request</small><span>₹{{ item.unitPrice | number:'1.2-2' }}</span></div>
+                        <div class="vq-input">
+                          <span class="cur">₹</span>
+                          <input type="number" min="0" step="0.01" [(ngModel)]="quoteForm.prices[item.productId]" [attr.aria-label]="'Vendor price of ' + item.productName" />
+                          @if (d !== 0) { <span class="vq-pct" [class.up]="d > 0" [class.down]="d < 0">{{ d > 0 ? '+' : '' }}{{ d | number:'1.0-1' }}%</span> }
+                        </div>
+                        <div class="vq-amt"><small>Amount</small><strong>₹{{ quoteLineAmount(item.productId) | number:'1.2-2' }}</strong></div>
+                      </div>
+                    }
+                  </div>
+                  <div class="vq-sum"><span>Quote total (incl. GST)</span><strong>₹{{ quoteFormTotal() | number:'1.2-2' }}</strong></div>
+                </div>
+
+                <div class="vq-step">
+                  <div class="vq-step-head"><span class="vq-step-no">3</span> Proforma &amp; notes</div>
+                  <div class="vq-fields two">
+                    <div class="form-field">
+                      <label for="rq-file">Proforma file <span>*</span></label>
+                      <label class="vq-drop" for="rq-file" [class.has-file]="quoteFileName()">
+                        <i class="bi" [class.bi-cloud-arrow-up]="!quoteFileName()" [class.bi-file-earmark-check-fill]="quoteFileName()"></i>
+                        <span><strong>{{ quoteFileName() ? 'Change file' : 'Choose proforma' }}</strong><small>{{ quoteFileName() || 'PDF / JPG / PNG / WEBP · max 4 MB' }}</small></span>
+                      </label>
+                      <input id="rq-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="onQuoteFile($event)" hidden />
+                      @if (quoteFileName()) {
+                        <div class="file-rename"><i class="bi bi-pencil-square"></i><input type="text" maxlength="100" [(ngModel)]="quoteFileBase" aria-label="File name" placeholder="File name" /><span class="ext">{{ quoteFileExt }}</span></div>
+                      }
+                    </div>
+                    <div class="form-field">
+                      <label for="rq-remarks">Remarks</label>
+                      <div class="input-wrap"><i class="bi bi-chat-left-text"></i><input id="rq-remarks" type="text" maxlength="500" [(ngModel)]="quoteForm.remarks" placeholder="Delivery terms, notes..." /></div>
+                    </div>
+                  </div>
+                </div>
+
+                @if (quoteError()) { <div class="vq-error"><i class="bi bi-exclamation-triangle-fill"></i> {{ quoteError() }}</div> }
+                <div class="vq-actions">
+                  <button type="button" class="cancel-btn" (click)="showQuoteForm.set(false)">Cancel</button>
+                  <button type="button" class="save-btn" [disabled]="quoteSaving()" (click)="saveQuote()"><i class="bi bi-save"></i> {{ quoteSaving() ? 'Saving...' : 'Save quotation' }}</button>
+                </div>
+              </div>
+            } @else {
+              @if (pv) {
+                <!-- Product-wise prices: saved quotation, else the vendor's price list -->
+                <div class="vq-rows">
+                  @for (row of pv.rows; track row.productId) {
+                    <div class="vq-row">
+                      <div class="vq-prod">
+                        <span class="vq-prod-icon"><i class="bi bi-box-seam"></i></span>
+                        <div>
+                          <strong>{{ row.name }}</strong>
+                          <small>{{ row.code }} · Qty {{ row.qty }} · GST {{ row.gst }}%</small>
+                          @if (row.source) { <span class="vq-src" [class.warn]="row.source.startsWith('master')">{{ sourceLabel(row.source) }}</span> }
+                        </div>
+                      </div>
+                      <div class="vq-was"><small>Request</small><span>₹{{ row.requestPrice | number:'1.2-2' }}</span></div>
+                      <div class="vq-now">
+                        <small>{{ pv.kind === 'quote' ? 'Quoted' : 'Vendor price' }}</small>
+                        <strong>₹{{ row.price | number:'1.2-2' }}</strong>
+                        @if (row.delta !== 0) { <span class="vq-pct" [class.up]="row.delta > 0" [class.down]="row.delta < 0">{{ row.delta > 0 ? '+' : '' }}{{ row.delta | number:'1.0-1' }}%</span> }
+                      </div>
+                      <div class="vq-amt"><small>Amount</small><strong>₹{{ row.amount | number:'1.2-2' }}</strong></div>
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (vq) {
+                <div class="vq-meta">
+                  <span><i class="bi bi-calendar-event"></i> {{ displayDate(vq.quoteDate) }}</span>
+                  @if (vq.validTill) { <span><i class="bi bi-calendar-check"></i> Valid till {{ displayDate(vq.validTill) }}</span> }
+                  @if (vq.addedBy) { <span><i class="bi bi-person"></i> {{ vq.addedBy }}</span> }
+                  @if (vq.remarks) { <span class="note"><i class="bi bi-chat-left-text"></i> {{ vq.remarks }}</span> }
+                </div>
+                @if (vq.expired || !vq.complete) {
+                  <div class="vq-error"><i class="bi bi-exclamation-triangle-fill"></i> This quotation is {{ vq.expired ? 'expired' : 'missing some products' }}, so the order uses the vendor's price list. Replace it with a current quotation to order at quoted prices.</div>
+                }
+              } @else {
+                <div class="vq-empty">
+                  <i class="bi bi-file-earmark-plus"></i>
+                  <span>{{ vendorName() || 'This vendor' }} has not sent a quotation for this request.
+                    {{ pv ? 'Prices above are from its price list.' : 'The order goes at the product prices.' }}
+                    @if (canManageQuotes()) { Add its quotation to order at the quoted prices. }</span>
+                </div>
+              }
+
+              <footer class="vq-foot">
+                @if (vq?.hasFile) { <button type="button" class="vq-ghost" (click)="viewQuoteFile(vq!.id)"><i class="bi bi-file-earmark-pdf"></i> View proforma</button> }
+                <span class="spacer"></span>
+                @if (canManageQuotes()) {
+                  <button type="button" class="vq-cta" (click)="openQuoteForm()">
+                    <i class="bi" [class.bi-cloud-upload]="!vq" [class.bi-arrow-repeat]="vq"></i> {{ vq ? 'Replace quotation' : 'Add quotation' }}
+                  </button>
+                }
+              </footer>
+            }
+          </section>
+        }
       </div>
 
       <div class="section-title"><i class="bi bi-person-check"></i> Head Office Decision</div>

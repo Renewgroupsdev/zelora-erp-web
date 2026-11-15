@@ -21,7 +21,7 @@ interface ReceiveRow extends StockTransferLine {
   standalone: true,
   imports: [CommonModule, FormsModule, MatDialogModule],
   templateUrl: './stock-transfer-receive.html',
-  styleUrls: ['../../../../../shared/styles/erp-dialog.scss', '../../goods-inward/goods-inward-form/goods-inward-form.scss'],
+  styleUrls: ['../../../../../shared/styles/erp-dialog.scss', '../../goods-inward/goods-inward-form/goods-inward-form.scss', './stock-transfer-receive.scss'],
 })
 export class StockTransferReceive {
   private readonly dialogRef = inject(MatDialogRef<StockTransferReceive>);
@@ -29,6 +29,15 @@ export class StockTransferReceive {
   readonly purchase = inject(PurchaseService);
   readonly displayDate = displayDate;
   readonly statusTone = statusTone;
+
+  /** Confetti pieces for the "delivered" banner: position across the banner, start delay, colour, spin and width. */
+  readonly confetti = Array.from({ length: 22 }, (_, i) => ({
+    x: Math.round(((i * 37) % 100) + (i % 3)),
+    d: +(3.6 + (i % 7) * 0.09).toFixed(2), // after the porter hands the box over (~3.5 s)
+    c: ['#fde68a', '#6ee7b7', '#ffffff', '#fca5a5', '#93c5fd', '#fbbf24'][i % 6],
+    r: (i * 53) % 360,
+    w: 5 + (i % 3) * 2,
+  }));
 
   readonly transfer = computed(() => this.purchase.transfers().find(t => t.id === this.data.transferId)!);
   readonly editable = computed(() => this.transfer().canReceive);

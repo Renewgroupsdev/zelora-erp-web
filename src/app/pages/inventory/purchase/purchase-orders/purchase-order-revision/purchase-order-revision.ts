@@ -17,7 +17,7 @@ import { PageLoader } from '../../../../../shared/components/page-loader/page-lo
   standalone: true,
   imports: [PageLoader, CommonModule, FormsModule, MatDialogModule],
   templateUrl: './purchase-order-revision.html',
-  styleUrl: '../../../../../shared/styles/erp-dialog.scss',
+  styleUrls: ['../../../../../shared/styles/erp-dialog.scss', './purchase-order-revision.scss'],
 })
 export class PurchaseOrderRevision {
   private readonly dialogRef = inject(MatDialogRef<PurchaseOrderRevision, boolean>);
@@ -89,6 +89,15 @@ export class PurchaseOrderRevision {
     const base = this.fileBase.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'revised-proforma';
     return base + this.fileExt;
   }
+
+  /** % change of a new price against the old one (0 when unchanged / not entered). */
+  delta(oldPrice: number, newPrice: number | string | null | undefined): number {
+    if (newPrice === null || newPrice === undefined || String(newPrice) === '' || !oldPrice) return 0;
+    return ((Number(newPrice) - oldPrice) / oldPrice) * 100;
+  }
+
+  /** Deliveries that failed (shown as a warning count in the header). */
+  readonly failedDeliveries = computed(() => (this.order()?.deliveries ?? []).filter(d => d.status === 'failed').length);
 
   /** Lines whose price the vendor changed. */
   changedLines(): RevisionLine[] {

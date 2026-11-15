@@ -12,15 +12,6 @@
 
   <app-purchase-tabs></app-purchase-tabs>
 
-  @if (purchase.pendingCount() && purchase.canApproveRequests()) {
-    <div class="alert-banner info">
-      <i class="bi bi-bell-fill"></i>
-      <div>
-        <strong>{{ purchase.pendingCount() }} purchase request{{ purchase.pendingCount() > 1 ? 's are' : ' is' }} waiting for your approval</strong>
-        Open a request with <i class="bi bi-check2-square"></i> to check the details and confirm the purchase order.
-      </div>
-    </div>
-  }
 
   <div class="row g-2 stat-row">
     @for (stat of stats(); track stat.label) {

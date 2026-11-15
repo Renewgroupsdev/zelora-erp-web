@@ -188,6 +188,14 @@
   border-color: #dc3545;
 }
 
+/* Read-only identity fields (edit dialog: name + mobile) */
+.input-wrap input:disabled {
+  background: var(--status-gray-bg, #eef1f0);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .select-arrow {
   position: absolute;
   right: 11px;

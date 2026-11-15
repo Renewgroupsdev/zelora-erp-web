@@ -135,6 +135,28 @@ export class GoodsInwardForm {
     if ((damaged || short) && !this.raiseNote) this.raiseNote = true;
   }
 
+  /** Consumables need MFG + expiry dates on receipt; Miscellaneous items do not. */
+  needsDates(line: InwardLine): boolean {
+    return (line.productType ?? 'Consumables') === 'Consumables';
+  }
+
+  /** A required date is missing on a line that is being received (red outline on the date box). */
+  missingDate(line: InwardLine, field: 'mfgDate' | 'expiryDate'): boolean {
+    return this.submitted() && this.needsDates(line) && Number(line.receivedQty) > 0 && !line[field];
+  }
+
+  /** − / + buttons of the qty cells (never below 0). */
+  step(line: EditableLine, field: 'receivedQty' | 'damagedQty' | 'freeQty', by: number): void {
+    if (field === 'receivedQty' && by > 0 && !this.canAddReceived(line)) return;
+    line[field] = Math.max(0, (Number(line[field]) || 0) + by);
+    this.touch();
+  }
+
+  /** Received "+" stops once the accepted qty (received - damaged) covers the pending qty of the product. */
+  canAddReceived(line: EditableLine): boolean {
+    return this.acceptedFor(line.productId) < this.pendingFor(line.productId);
+  }
+
   lineError(line: InwardLine): string | null {
     const whole = (v: unknown) => Number.isInteger(Number(v || 0)) && Number(v || 0) >= 0;
     if (!whole(line.receivedQty) || !whole(line.damagedQty) || !whole(line.freeQty)) return 'Qty must be a whole number (0 or more).';
@@ -145,9 +167,15 @@ export class GoodsInwardForm {
     if (disc < 0 || disc >= 100) return 'Discount must be between 0 and 100%.';
     const net = this.netRate(line);
     if (net !== null && line.sellingPrice !== null && line.sellingPrice !== undefined && String(line.sellingPrice) !== '' && Number(line.sellingPrice) < net) {
-      return 'Selling price cannot be below the purchase rate after discount.';
+      return 'Selling price (from Product Management) is below the purchase rate after discount - update it in Product Management or check the rate.';
     }
     if (this.isDuplicateBatch(line)) return 'Same batch no already added for this product.';
+    if (Number(line.receivedQty) > 0 && this.needsDates(line)) {
+      if (!line.mfgDate && !line.expiryDate) return 'MFG and expiry dates are required for consumable products.';
+      if (!line.mfgDate) return 'MFG date is required for consumable products.';
+      if (!line.expiryDate) return 'Expiry date is required for consumable products.';
+    }
+    if (line.mfgDate && line.mfgDate > this.today) return 'MFG date cannot be in the future.';
     if (line.expiryDate && line.mfgDate && line.expiryDate <= line.mfgDate) return 'Expiry must be after MFG.';
     if (line.expiryDate && line.expiryDate <= this.today) return 'Expiry date must be in the future.';
     return null;

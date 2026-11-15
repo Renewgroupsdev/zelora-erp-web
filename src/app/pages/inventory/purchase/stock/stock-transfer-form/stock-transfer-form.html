@@ -44,27 +44,25 @@
       </div>
     </div>
 
-    <div class="section-title"><i class="bi bi-geo-alt"></i> Find a product at nearby branches / franchises</div>
+    <div class="section-title"><i class="bi bi-geo-alt"></i> Nearby branches / franchises</div>
     <div class="pl-card nearby-card">
-      <p class="muted" style="margin: 0 0 8px; font-size: 12px">Search a product to see which branch or franchise has it near {{ purchase.storeName(toStoreKey) }}: within 50 km first, nearest first. Pick one to use it as the From Store.</p>
-      <app-search-select icon="bi-search" placeholder="Search product by code or name" searchPlaceholder="Type a product code or name..."
-                         [options]="productChoices()" [ngModel]="findProductId()" (ngModelChange)="findNearby($event)" />
-      @if (findProductId()) {
+      @if (!fromRow) {
+        <!-- "Transfer Stock" button: search the product first, its nearby stores load below -->
+        <div class="form-field" style="margin-bottom: 8px">
+          <label for="st-product">Product</label>
+          <app-search-select inputId="st-product" icon="bi-search" placeholder="Search product to find it at nearby stores" searchPlaceholder="Type product name or code..."
+                             [options]="productChoices()" [ngModel]="findProductId()" (ngModelChange)="findNearby($event)" />
+        </div>
+      }
+      @if (!findProductId()) {
+        <p class="muted" style="margin: 0; font-size: 12px"><i class="bi bi-info-circle"></i> {{ fromRow ? 'Pick a product below' : 'Search a product' }} to see which branch or franchise near {{ purchase.storeName(toStoreKey) }} holds it.</p>
+      } @else {
+        <p class="muted" style="margin: 0 0 8px; font-size: 12px">Stores holding <b>{{ findProductLabel() }}</b> near {{ purchase.storeName(toStoreKey) }} - within 50 km first, nearest first. Pick one to use it as the From Store.</p>
         @if (nearbyLoading()) {
           <app-page-loader [inline]="true" />
         } @else if (nearby().length) {
-          <ul class="nb-list">
-            @for (o of nearby(); track o.storeKey) {
-              <li class="nb-item" [class.near]="o.zone === 'near'" [class.far]="o.zone === 'far'" [class.is-picked]="o.storeKey === fromStoreKey()"
-                  tabindex="0" role="button" (click)="useSource(o)" (keydown.enter)="useSource(o)">
-                <span class="nb-icon"><i class="bi bi-shop" aria-hidden="true"></i></span>
-                <span class="nb-main"><b>{{ o.name }}</b><small>{{ o.city }}</small></span>
-                <span class="nb-km"><i class="bi bi-signpost-split" aria-hidden="true"></i> {{ km(o) }}</span>
-                <span class="nb-stock"><b>{{ o.available }}</b> in stock</span>
-                <span class="nb-zone">{{ zoneLabel(o) }}</span>
-              </li>
-            }
-          </ul>
+          <app-search-select inputId="st-nearby" icon="bi-shop" placeholder="Choose a nearby store ({{ nearby().length }} hold this product)" searchPlaceholder="Search store or city..."
+                             [options]="nearbyChoices()" [ngModel]="picked()?.storeKey ?? null" (ngModelChange)="pickNearby($event)" />
           @if (picked(); as p) {
             <div class="route-card" [class.near]="p.zone === 'near'" [class.far]="p.zone === 'far'">
               <span class="route-node from"><i class="bi bi-shop" aria-hidden="true"></i><span class="route-text"><b>{{ p.name }}</b><small>{{ p.city }}</small></span></span>
@@ -86,25 +84,33 @@
       <div class="items-table-wrap">
         <table class="items-table">
           <thead>
-            <tr><th style="width:48%">Product · Batch (earliest expiry first)</th><th class="num">Available</th><th>Transfer Qty</th><th class="num">Store total after</th></tr>
+            <tr><th style="width:38%">Product</th><th>Batch No</th><th class="num">Available</th><th class="ctr">Transfer Qty</th></tr>
           </thead>
           <tbody>
             @for (row of rows(); track $index; let i = $index) {
+              @let b = batch(row);
               <tr>
                 <td>
-                  <select class="cell-input" [(ngModel)]="row.batchId" (ngModelChange)="touch()" [class.is-invalid]="submitted() && !batch(row)">
-                    <option [ngValue]="null">Select product batch</option>
-                    @for (b of options(i); track b.id) {
-                      <option [ngValue]="b.id">{{ b.productName }} · {{ b.batchNo }} · exp {{ displayDate(b.expiryDate) }}</option>
+                  <select class="cell-input" [ngModel]="b?.productId ?? null" (ngModelChange)="pickProduct(i, $event)" [class.is-invalid]="submitted() && !b" aria-label="Product">
+                    <option [ngValue]="null">Select product</option>
+                    @for (p of productOptions(i); track p.productId) {
+                      <option [ngValue]="p.productId">{{ p.productName }}</option>
                     }
                   </select>
                 </td>
-                <td class="num">{{ batch(row)?.qty ?? '-' }}</td>
-                <td><input class="cell-input qty" type="number" min="1" [max]="batch(row)?.qty ?? null" placeholder="0" [(ngModel)]="row.qty" (ngModelChange)="touch()" [class.is-invalid]="submitted() && !!rowError(row)" /></td>
-                <td class="num">
-                  @if (batch(row)) {
-                    <span class="pill" [class.red]="sourceAfter(row) < purchase.threshold()" [class.green]="sourceAfter(row) >= purchase.threshold()">{{ sourceAfter(row) }}</span>
-                  }
+                <td>
+                  <span class="batch-box locked">
+                    <i class="bi bi-upc"></i>
+                    <input type="text" [value]="b?.batchNo ?? ''" placeholder="Auto from product" disabled aria-label="Batch no" />
+                  </span>
+                </td>
+                <td class="num">{{ b?.qty ?? '-' }}</td>
+                <td class="ctr">
+                  <span class="stepper" [class.is-invalid]="submitted() && !!rowError(row)">
+                    <button type="button" (click)="stepQty(row, -1)" [disabled]="!b || !row.qty" aria-label="Decrease transfer qty"><i class="bi bi-dash"></i></button>
+                    <input type="number" min="1" [max]="b?.qty ?? null" placeholder="0" [disabled]="!b" [(ngModel)]="row.qty" (ngModelChange)="touch()" aria-label="Transfer qty" />
+                    <button type="button" (click)="stepQty(row, 1)" [disabled]="!b || (row.qty || 0) >= b.qty" aria-label="Increase transfer qty"><i class="bi bi-plus"></i></button>
+                  </span>
                 </td>
               </tr>
               @if (submitted() && rowError(row); as err) {

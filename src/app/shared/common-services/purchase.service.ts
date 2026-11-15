@@ -766,7 +766,8 @@ function toOrder(o: any): PurchaseOrder {
 
 function toInwardLine(l: any): InwardLine {
   return {
-    productId: str(l.product_id), productName: l.product_name, batchNo: l.batch_no ?? '', mfgDate: l.mfg_date ?? null,
+    productId: str(l.product_id), productName: l.product_name, productCode: l.product_code ?? null,
+    productType: l.product_type === 'Miscellaneous' ? 'Miscellaneous' : 'Consumables', batchNo: l.batch_no ?? '', mfgDate: l.mfg_date ?? null,
     expiryDate: l.expiry_date ?? null, orderedQty: num(l.ordered_qty), previousQty: num(l.previous_qty), receivedQty: num(l.received_qty),
     damagedQty: num(l.damaged_qty), freeQty: num(l.free_qty), unitPrice: num(l.unit_price), discountPercent: num(l.discount_percent),
     gstPercent: num(l.gst_percent), sellingPrice: l.selling_price === null || l.selling_price === undefined ? null : num(l.selling_price),

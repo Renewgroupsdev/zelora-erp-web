@@ -9,6 +9,7 @@ import { NotificationService } from './notification.service';
 import { PurchaseService } from './purchase.service';
 import { Subscription } from 'rxjs';
 import { BellRealtimeService } from './bell-realtime.service';
+import { TabAttentionService } from './tab-attention.service';
 
 const POLL_MS = 30_000;
 /** A pending urgent request that was already alerted is alerted again after this long, until it is decided. */
@@ -29,6 +30,7 @@ export class PurchaseApprovalAlertsService {
   private readonly alertStack = inject(AlertStackService);
   private readonly dialog = inject(MatDialog);
   private readonly purchase = inject(PurchaseService);
+  private readonly tabAttention = inject(TabAttentionService);
   private queueRunning = false;
   private retry: ReturnType<typeof setTimeout> | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -44,7 +46,9 @@ export class PurchaseApprovalAlertsService {
     this.reviewing.set(true);
     Swal.close();
     try {
-      await this.purchase.reload('requests');
+      // usually already fetched while the urgent card was showing, so the dialog opens at once
+      const { PurchaseRequestReview } = await this.prepareReview();
+      this.prepared = null;
       const list = () => this.purchase.requests();
       const at = (id: string) => String(list().find(r => r.id === id)?.requestedAt);
       const ids = [...new Set([...alertIds, ...list().filter(r => r.status === 'Pending' && r.priority === 'Urgent').map(r => r.id)])]
@@ -54,7 +58,6 @@ export class PurchaseApprovalAlertsService {
         this.alertStack.show({ tone: 'info', title: 'No pending urgent request to review', duration: 4000 });
         return;
       }
-      const { PurchaseRequestReview } = await import('../../pages/inventory/purchase/purchase-requests/purchase-request-review/purchase-request-review');
       for (let i = 0; i < ids.length; i++) {
         if (i > 0) await this.purchase.reload('requests');
         const current = list().find(r => r.id === ids[i]);
@@ -76,6 +79,21 @@ export class PurchaseApprovalAlertsService {
       this.reviewing.set(false);
       void this.purchase.reload('requests');
     }
+  }
+
+  /** Request list + approve-dialog chunk, fetched ahead (while the urgent card shows) so "Review now" opens the dialog instantly. */
+  private prepared: { at: number; promise: Promise<typeof import('../../pages/inventory/purchase/purchase-requests/purchase-request-review/purchase-request-review')> } | null = null;
+
+  private prepareReview(): Promise<typeof import('../../pages/inventory/purchase/purchase-requests/purchase-request-review/purchase-request-review')> {
+    // reuse a fetch from the last 30 s; an older one may miss a newer request
+    if (this.prepared && Date.now() - this.prepared.at < 30_000) return this.prepared.promise;
+    const promise = Promise.all([
+      import('../../pages/inventory/purchase/purchase-requests/purchase-request-review/purchase-request-review'),
+      this.purchase.reload('requests'),
+    ]).then(([m]) => m);
+    promise.catch(() => (this.prepared = null)); // a failed fetch is retried on the next call
+    this.prepared = { at: Date.now(), promise };
+    return promise;
   }
 
   /** "Later": the urgent alert comes back after 45 seconds. */
@@ -140,7 +158,8 @@ export class PurchaseApprovalAlertsService {
         const fresh = this.notifications.syncCentralLowStock(items, Number(res?.threshold) || 10);
         if (fresh > 0) {
           this.alertStack.show({
-            tone: 'info', icon: 'bi-box-seam-fill', duration: 9000,
+            // shared key with the Stock & Transfer page alert: only one low-stock card is ever shown
+            tone: 'info', icon: 'bi-box-seam-fill', duration: 9000, key: 'low-stock',
             title: fresh === 1 ? 'Central Store product running low' : `${fresh} Central Store products running low`,
             text: 'Open Stock & Transfer from the bell to move stock from a nearby branch.',
           });
@@ -244,6 +263,12 @@ export class PurchaseApprovalAlertsService {
     const more = list.length > 3 ? `<div class="ua-more">+ ${list.length - 3} more urgent request${list.length - 3 === 1 ? '' : 's'}</div>` : '';
     const title = position ? `Urgent request ${position.index} of ${position.total}` : list.length === 1 ? 'Urgent stock request' : `${list.length} urgent stock requests`;
 
+    // fetch the request list and the approve dialog while the card is on screen
+    void this.prepareReview().catch(() => undefined);
+
+    // away from the page (e.g. in e-mail): blink the tab, desktop notification and flash Chrome's taskbar button
+    this.tabAttention.attention(title, list.map(r => `${r.requestNo} - ${r.branch}`).join(', '));
+
     let closed!: () => void;
     const done = new Promise<void>(resolve => (closed = resolve));
     const res = await Swal.fire({
@@ -257,10 +282,11 @@ export class PurchaseApprovalAlertsService {
           <div><div class="ua-title">${this.esc(title)}</div><div class="ua-sub">A branch needs stock urgently. Choose a vendor and approve it now.</div></div>
         </div>
         <div class="ua-list">${rows}${more}</div>`,
-      didClose: () => closed(),
+      // willClose fires as the card starts fading out: the dialog opens beneath it straight away instead of after the animation
+      willClose: () => closed(),
     });
-    // didClose normally fires within ~200 ms; the timeout only guards against a close that never reports
-    await Promise.race([done, new Promise<void>(resolve => setTimeout(resolve, 700))]);
+    // the timeout only guards against a close that never reports
+    await Promise.race([done, new Promise<void>(resolve => setTimeout(resolve, 150))]);
     return res.isConfirmed;
   }
 

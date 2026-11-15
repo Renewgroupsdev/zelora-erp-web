@@ -14,140 +14,205 @@
   </div>
 
   <div class="modal-body-custom">
-    <div class="form-grid cols-4">
-      <div class="form-field">
-        <label for="pr-grn">Purchase Inward (GRN) <span>*</span></label>
-        <div class="input-wrap">
-          <i class="bi bi-box-arrow-in-down"></i>
-          <select id="pr-grn" [ngModel]="grnId()" (ngModelChange)="selectGrn($event)" [class.is-invalid]="submitted() && !g">
-            <option [ngValue]="null">Select purchase inward</option>
-            @for (i of inwards(); track i.id) {
-              <option [ngValue]="i.id">{{ i.grnNo }} · {{ i.poNo }} · {{ i.vendorName }} ({{ displayDate(i.receivedAt) }})</option>
-            }
-          </select>
-          <i class="bi bi-chevron-down select-arrow"></i>
+
+    <!-- Step 1: inward + return details -->
+    <div class="pr-step">
+      <div class="pr-step-head"><span class="pr-step-no">1</span> Inward &amp; return details</div>
+      <div class="pr-fields">
+        <div class="form-field span-2">
+          <label for="pr-grn">Purchase Inward (GRN) <span>*</span></label>
+          <app-search-select inputId="pr-grn" icon="bi-box-arrow-in-down" placeholder="Select purchase inward" searchPlaceholder="Search GRN, PO or vendor..."
+                             emptyText="No inward has stock left to return" [options]="grnOptions()" [invalid]="submitted() && !g"
+                             [ngModel]="grnId()" (ngModelChange)="selectGrn($event)" />
+          @if (submitted() && !g) { <small class="error-text">Select a purchase inward.</small> }
         </div>
-        @if (submitted() && !g) { <small class="error-text">Select a purchase inward.</small> }
+
+        <div class="form-field">
+          <label for="pr-reason">Return Reason <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-flag"></i>
+            <select id="pr-reason" [(ngModel)]="reason" [class.is-invalid]="submitted() && !reason">
+              <option value="">Select reason</option>
+              @for (r of reasons(); track r) { <option [value]="r">{{ r }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+          @if (submitted() && !reason) { <small class="error-text">Select a return reason.</small> }
+        </div>
+
+        <div class="form-field">
+          <label for="pr-type">Return Type <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi" [class.bi-receipt-cutoff]="returnType === 'Debit Note'" [class.bi-arrow-repeat]="returnType !== 'Debit Note'"></i>
+            <select id="pr-type" [(ngModel)]="returnType">
+              @for (t of returnTypes(); track t) { <option [value]="t">{{ t }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field span-full">
+          <label for="pr-remarks">Remarks</label>
+          <div class="input-wrap">
+            <i class="bi bi-chat-left-dots"></i>
+            <input id="pr-remarks" type="text" maxlength="255" placeholder="Optional note for the vendor / accounts" [(ngModel)]="remarks" />
+          </div>
+        </div>
       </div>
 
-      <div class="form-field">
-        <label for="pr-reason">Return Reason <span>*</span></label>
-        <div class="input-wrap">
-          <i class="bi bi-flag"></i>
-          <select id="pr-reason" [(ngModel)]="reason" [class.is-invalid]="submitted() && !reason">
-            <option value="">Select reason</option>
-            @for (r of reasons(); track r) { <option [value]="r">{{ r }}</option> }
-          </select>
-          <i class="bi bi-chevron-down select-arrow"></i>
-        </div>
-        @if (submitted() && !reason) { <small class="error-text">Select a return reason.</small> }
-      </div>
+      <!-- inward "ticket": tracked by GRN id so the entrance animation replays when another inward is picked -->
+      @for (t of g ? [g] : []; track t.id) {
+        <div class="grn-ticket">
+          <span class="grn-shine" aria-hidden="true"></span>
+          <span class="grn-orb one" aria-hidden="true"></span>
+          <span class="grn-orb two" aria-hidden="true"></span>
 
-      <div class="form-field">
-        <label for="pr-type">Return Type <span>*</span></label>
-        <div class="input-wrap">
-          <i class="bi bi-arrow-repeat"></i>
-          <select id="pr-type" [(ngModel)]="returnType">
-            @for (t of returnTypes(); track t) { <option [value]="t">{{ t }}</option> }
-          </select>
-          <i class="bi bi-chevron-down select-arrow"></i>
-        </div>
-      </div>
+          <div class="grn-ticket-main">
+            <span class="grn-ticket-icon">
+              <i class="bi bi-truck"></i>
+              <span class="grn-road" aria-hidden="true"></span>
+            </span>
+            <div>
+              <small>Vendor</small>
+              <strong [title]="t.vendorName">{{ t.vendorName }}</strong>
+              <span class="grn-store"><span class="grn-pulse" aria-hidden="true"></span><i class="bi bi-geo-alt-fill"></i> {{ t.store }}</span>
+            </div>
+            <span class="grn-stamp" aria-hidden="true"><i class="bi bi-arrow-return-left"></i> Return</span>
+          </div>
 
-      <div class="form-field">
-        <label for="pr-remarks">Remarks</label>
-        <div class="input-wrap">
-          <i class="bi bi-chat-left-dots"></i>
-          <input id="pr-remarks" type="text" maxlength="255" placeholder="Optional" [(ngModel)]="remarks" />
+          <div class="grn-ticket-cut" aria-hidden="true"></div>
+
+          <div class="grn-ticket-facts">
+            <div class="grn-fact" style="--i: 0"><span class="grn-fact-icon"><i class="bi bi-box-arrow-in-down"></i></span><span><small>GRN</small><strong>{{ t.grnNo }}</strong></span></div>
+            <div class="grn-fact" style="--i: 1"><span class="grn-fact-icon"><i class="bi bi-file-earmark-text"></i></span><span><small>PO No</small><strong>{{ t.poNo }}</strong></span></div>
+            <div class="grn-fact" style="--i: 2"><span class="grn-fact-icon"><i class="bi bi-receipt"></i></span><span><small>Vendor Invoice</small><strong>{{ t.vendorInvoiceNo || '-' }}</strong></span></div>
+            <div class="grn-fact" style="--i: 3"><span class="grn-fact-icon"><i class="bi bi-calendar2-check"></i></span><span><small>Received On</small><strong>{{ displayDate(t.receivedAt) }}</strong></span></div>
+          </div>
         </div>
-      </div>
+      }
     </div>
 
     @if (g) {
-      <div class="info-grid">
-        <div><small>PO No</small><strong>{{ g.poNo }}</strong></div>
-        <div><small>Vendor Invoice</small><strong>{{ g.vendorInvoiceNo || '-' }}</strong></div>
-        <div><small>Received On</small><strong>{{ displayDate(g.receivedAt) }}</strong></div>
-      </div>
+      <!-- Step 2: products -->
+      <div class="pr-step">
+        <div class="pr-step-head">
+          <span class="pr-step-no">2</span> Products to return
+          <span class="spacer"></span>
+          @if (s.products) { <span class="count-chip">{{ s.products }} product{{ s.products === 1 ? '' : 's' }}</span> }
+        </div>
 
-      <div class="section-title"><i class="bi bi-upc-scan"></i> Batch-wise Return</div>
+        <div class="add-bar">
+          <div class="add-bar-select">
+            <app-search-select inputId="pr-product" icon="bi-plus-circle" placeholder="Add product from this inward" searchPlaceholder="Search product..."
+                               [emptyText]="loadingRows() ? 'Loading products...' : 'Nothing left to return on this inward'"
+                               [options]="productOptions()" [disabledValues]="picked()" disabledLabel="added"
+                               [(ngModel)]="productPick" (ngModelChange)="addProduct($event)" />
+          </div>
+          <button type="button" class="add-all-btn" [disabled]="!productOptions().length || allAdded()" (click)="addAllProducts()">
+            <i class="bi bi-collection"></i> Add all
+          </button>
+        </div>
+        <small class="add-hint"><i class="bi bi-info-circle"></i> Only products received on {{ g.grnNo }} with stock still returnable are listed.</small>
 
-      <div class="items-table-wrap">
-        <table class="items-table return-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Batch No</th>
-              <th class="num">Accepted</th>
-              <th class="num">Returned</th>
-              <th class="num">Stock in Hand</th>
-              <th class="num">Returnable</th>
-              <th>Return Qty</th>
-              <th class="num">Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of rows(); track row.productId + row.batchNo) {
-              <tr [class.disabled]="!row.returnable">
-                <td><strong>{{ row.productName }}</strong></td>
-                <td>{{ row.batchNo }}</td>
-                <td class="num">{{ row.accepted }}</td>
-                <td class="num">{{ row.returned }}</td>
-                <td class="num">{{ row.inStock }}</td>
-                <td class="num"><span class="pill" [class.green]="row.returnable" [class.red]="!row.returnable">{{ row.returnable }}</span></td>
-                <td>
-                  <div class="qty-cell">
-                    <input class="cell-input qty" type="number" min="0" [max]="row.returnable" placeholder="0" [disabled]="!row.returnable"
-                      [(ngModel)]="row.qty" (ngModelChange)="touch()" [class.is-invalid]="rowError(row)" />
-                    @if (row.returnable) {
-                      <button type="button" class="link-btn" (click)="returnAll(row)">All</button>
-                    }
+        @if (groups().length) {
+          <div class="ret-list">
+            @for (grp of groups(); track grp.productId; let gi = $index) {
+              <article class="ret-card" [class.has-qty]="grp.qty > 0" [style.animation-delay]="(gi * 40) + 'ms'">
+                <header class="ret-card-head">
+                  <span class="ret-card-icon"><i class="bi bi-box-seam-fill"></i></span>
+                  <div class="ret-card-title">
+                    <strong [title]="grp.productName">{{ grp.productName }}</strong>
+                    <small>{{ grp.batches.length }} batch{{ grp.batches.length === 1 ? '' : 'es' }} · {{ grp.returnable }} returnable</small>
                   </div>
-                </td>
-                <td class="num">{{ inr((row.qty || 0) * row.unitPrice) }}</td>
-              </tr>
-              @if (rowError(row); as err) {
-                <tr class="error-row"><td colspan="8"><i class="bi bi-exclamation-circle"></i> {{ row.productName }}: {{ err }}</td></tr>
-              }
+                  <div class="ret-card-total">
+                    <small>Returning</small>
+                    <strong>{{ grp.qty }} <span>· {{ inr(grp.value) }}</span></strong>
+                  </div>
+                  <button type="button" class="ret-chip-btn" [disabled]="!grp.returnable" (click)="returnAllOf(grp)" title="Return every batch in full"><i class="bi bi-check2-all"></i> All</button>
+                  <button type="button" class="ret-remove" (click)="removeProduct(grp.productId)" [attr.aria-label]="'Remove ' + grp.productName" title="Remove product"><i class="bi bi-x-lg"></i></button>
+                </header>
+
+                <div class="batch-list">
+                  @for (row of grp.batches; track row.batchNo) {
+                    @let err = rowError(row);
+                    <div class="batch-row" [class.disabled]="!row.returnable" [class.invalid]="err">
+                      <div class="batch-id">
+                        <span class="batch-chip"><i class="bi bi-upc"></i> {{ row.batchNo }}</span>
+                        <small>{{ inr(row.unitPrice) }} / unit</small>
+                      </div>
+                      <div class="batch-stats">
+                        <span><small>Accepted</small><b>{{ row.accepted }}</b></span>
+                        <span><small>Returned</small><b>{{ row.returned }}</b></span>
+                        <span><small>In hand</small><b>{{ row.inStock }}</b></span>
+                        <span class="ok" [class.none]="!row.returnable"><small>Returnable</small><b>{{ row.returnable }}</b></span>
+                      </div>
+                      <div class="batch-qty">
+                        <div class="stepper" [class.is-invalid]="err">
+                          <button type="button" (click)="step(row, -1)" [disabled]="!row.returnable || !row.qty" aria-label="Decrease"><i class="bi bi-dash"></i></button>
+                          <input type="number" min="0" [max]="row.returnable" placeholder="0" [disabled]="!row.returnable"
+                                 [(ngModel)]="row.qty" (ngModelChange)="touch()" [attr.aria-label]="'Return qty of batch ' + row.batchNo" />
+                          <button type="button" (click)="step(row, 1)" [disabled]="!row.returnable || (row.qty || 0) >= row.returnable" aria-label="Increase"><i class="bi bi-plus"></i></button>
+                        </div>
+                        @if (row.returnable) { <button type="button" class="link-btn" (click)="returnAll(row)">Max</button> }
+                      </div>
+                      <div class="batch-value">{{ inr((row.qty || 0) * row.unitPrice) }}</div>
+                      @if (err) { <div class="batch-error"><i class="bi bi-exclamation-circle"></i> {{ err }}</div> }
+                    </div>
+                  }
+                </div>
+              </article>
             }
-          </tbody>
-        </table>
+          </div>
+        } @else {
+          <div class="ret-empty">
+            <div class="ret-empty-art"><i class="bi bi-box-arrow-up"></i></div>
+            <strong>No products added yet</strong>
+            <span>Pick a product above to see its batches from {{ g.grnNo }}, or use <b>Add all</b>.</span>
+          </div>
+        }
       </div>
 
-      <div class="qty-summary">
-        <span><i class="bi bi-box-seam"></i> Return qty <strong>{{ s.qty }}</strong></span>
-        <span class="bad"><i class="bi bi-currency-rupee"></i> Return value <strong>{{ inr(s.value) }}</strong></span>
-      </div>
-
-      @if (returnType === 'Debit Note') {
-        <div class="note-card" [class.on]="raiseNote">
-          <label class="note-toggle">
+      <!-- Step 3: settlement -->
+      <div class="pr-step">
+        <div class="pr-step-head"><span class="pr-step-no">3</span> Settlement</div>
+        @if (returnType === 'Debit Note') {
+          <label class="note-card" [class.on]="raiseNote">
             <input type="checkbox" [(ngModel)]="raiseNote" />
-            <span>
+            <span class="note-icon"><i class="bi bi-receipt-cutoff"></i></span>
+            <span class="note-text">
               <strong>Raise Debit Note</strong>
               <small>Creates a debit note on {{ g.vendorName }} for the return value. It shows under Credit / Debit Notes.</small>
             </span>
+            <span class="note-switch" aria-hidden="true"></span>
           </label>
-        </div>
-      } @else {
-        <div class="note-card on">
-          <span class="note-toggle">
-            <i class="bi bi-arrow-repeat"></i>
-            <span>
+        } @else {
+          <div class="note-card on static">
+            <span class="note-icon"><i class="bi bi-arrow-repeat"></i></span>
+            <span class="note-text">
               <strong>Replacement</strong>
               <small>The returned qty is re-opened on {{ g.poNo }} and comes back from {{ g.vendorName }} on a later Purchase Inward. No debit note is raised.</small>
             </span>
-          </span>
-        </div>
-      }
+          </div>
+        }
+      </div>
     }
 
-    @if (error(); as err) { <p class="error-text"><i class="bi bi-exclamation-circle"></i> {{ err }}</p> }
+    @if (error(); as err) { <p class="form-error"><i class="bi bi-exclamation-triangle-fill"></i> {{ err }}</p> }
   </div>
+
+  <!-- Live summary -->
+  @if (g) {
+    <div class="ret-summary">
+      <div><small>Products</small><strong>{{ s.products }}</strong></div>
+      <div><small>Batches</small><strong>{{ s.batches }}</strong></div>
+      <div><small>Return qty</small><strong>{{ s.qty }}</strong></div>
+      <div class="big"><small>{{ returnType === 'Debit Note' ? 'Return value' : 'Replacement value' }}</small><strong>{{ inr(s.value) }}</strong></div>
+    </div>
+  }
 
   <div class="modal-footer-custom">
     <span class="footer-note"><i class="bi bi-bell"></i> Branch head is alerted if any product drops below {{ purchase.threshold() }} units.</span>
     <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
-    <button type="button" class="save-btn" [disabled]="!g || saving()" (click)="save()"><i class="bi bi-box-arrow-up"></i> Save Return</button>
+    <button type="button" class="save-btn" [disabled]="!g || saving()" (click)="save()"><i class="bi bi-box-arrow-up"></i> {{ saving() ? 'Saving...' : 'Save Return' }}</button>
   </div>
 </div>

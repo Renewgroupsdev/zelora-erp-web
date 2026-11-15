@@ -13,9 +13,95 @@
   </div>
 
   <div class="modal-body-custom">
-    @if (t.remarks) { <p class="muted"><i class="bi bi-chat-left-dots"></i> {{ t.remarks }}</p> }
-    @if (t.cancelReason) { <p class="error-text"><i class="bi bi-x-circle"></i> Cancelled: {{ t.cancelReason }}</p> }
+    <!-- Route banner -->
+    <!-- done = received: the truck drives to the destination, which lights up with a check; in transit: the truck rolls on the road -->
+    <section class="tv-route" [ngClass]="'s-' + statusTone(t.status)" [class.done]="t.status === 'Received'" [class.moving]="t.status === 'In Transit' || t.status === 'Partially Received'">
+      <div class="tv-end">
+        <span class="tv-end-icon"><i class="bi bi-building"></i></span>
+        <span class="tv-end-text"><small>From</small><b>{{ t.fromStore }}</b><em>{{ displayDate(t.transferredAt) }} · {{ t.transferredBy }}</em></span>
+      </div>
+      <div class="tv-path" [class.scene]="t.status === 'Received'" aria-hidden="true">
+        <span class="tv-path-line"></span>
+        <span class="tv-path-trail"></span>
+        @if (t.status === 'Received') {
+          <!-- delivery scene: truck drives in, shutter rolls up, porter carries the box over to the store -->
+          <div class="sc-truck">
+            <span class="sc-cargo">
+              <span class="sc-parcel"><i class="bi bi-box-seam-fill"></i></span>
+              <span class="sc-shutter"></span>
+            </span>
+            <span class="sc-cab"><span class="sc-window"></span></span>
+            <span class="sc-wheel w1"></span>
+            <span class="sc-wheel w2"></span>
+            <span class="tv-dust"><i></i><i></i><i></i></span>
+          </div>
+          <div class="sc-porter">
+            <i class="bi bi-box-seam-fill sc-box"></i>
+            <i class="bi bi-person-walking sc-man"></i>
+          </div>
+        } @else {
+          <span class="tv-truck"><i class="bi bi-truck"></i></span>
+        }
+        <span class="tv-kind">{{ t.status === 'Received' ? 'Delivered' : t.kind }}</span>
+      </div>
+      <div class="tv-end to">
+        <span class="tv-end-text"><small>To</small><b>{{ t.toStore }}</b><em>{{ t.receivedBy ? displayDate(t.receivedAt) + ' · ' + t.receivedBy : 'Not received yet' }}</em></span>
+        <span class="tv-end-icon dest">
+          <i class="bi bi-geo-alt-fill"></i>
+          @if (t.status === 'Received') {
+            <span class="tv-check"><i class="bi bi-check-lg"></i></span>
+            <span class="tv-burst" aria-hidden="true">@for (n of [1, 2, 3, 4, 5, 6, 7, 8]; track n) { <i [style.--a]="(n * 45) + 'deg'"></i> }</span>
+          }
+        </span>
+      </div>
+      @if (t.status === 'Received') {
+        <span class="tv-stamp" aria-hidden="true"><i class="bi bi-patch-check-fill"></i> Delivered</span>
+        <span class="tv-confetti" aria-hidden="true">
+          @for (c of confetti; track $index) {
+            <i [style.--x]="c.x + '%'" [style.--d]="c.d + 's'" [style.--c]="c.c" [style.--r]="c.r + 'deg'" [style.--w]="c.w + 'px'"></i>
+          }
+        </span>
+      }
+    </section>
 
+    <!-- Counts -->
+    <div class="tv-stats">
+      <div class="tv-stat"><i class="bi bi-box-seam"></i><span><small>Sent</small><b>{{ t.qty }}</b></span></div>
+      <div class="tv-stat ok"><i class="bi bi-check2-circle"></i><span><small>Accepted</small><b>{{ t.acceptedQty }}</b></span></div>
+      <div class="tv-stat bad"><i class="bi bi-arrow-return-left"></i><span><small>Rejected</small><b>{{ t.rejectedQty }}</b></span></div>
+      <div class="tv-stat warn"><i class="bi bi-truck"></i><span><small>In transit</small><b>{{ t.pendingQty }}</b></span></div>
+    </div>
+
+    @if (t.remarks) { <div class="tv-note info"><i class="bi bi-chat-left-dots"></i><span><b>Remarks</b>{{ t.remarks }}</span></div> }
+    @if (t.cancelReason) { <div class="tv-note bad"><i class="bi bi-x-octagon"></i><span><b>Cancelled</b>{{ t.cancelReason }}</span></div> }
+
+    @if (!editable()) {
+      <div class="section-title"><i class="bi bi-upc-scan"></i> Products <span class="tv-count">{{ rows().length }}</span></div>
+      <div class="tv-table-wrap">
+        <table class="tv-table">
+          <thead>
+            <tr>
+              <th>Product</th><th>Batch No</th><th>Expiry</th>
+              <th class="num">Sent</th><th class="num">Accepted</th><th class="num">Rejected</th><th class="num">In Transit</th><th>Reject Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.id) {
+              <tr [class.has-reject]="row.rejectedQty" [class.has-pending]="row.pendingQty">
+                <td class="prod"><span class="tv-line-icon"><i class="bi bi-box"></i></span><b>{{ row.productName }}</b></td>
+                <td><span class="tv-batch"><i class="bi bi-upc"></i> {{ row.batchNo }}</span></td>
+                <td>{{ displayDate(row.expiryDate) }}</td>
+                <td class="num">{{ row.qty }}</td>
+                <td class="num"><span class="tv-pill ok">{{ row.acceptedQty }}</span></td>
+                <td class="num"><span class="tv-pill" [class.bad]="row.rejectedQty">{{ row.rejectedQty }}</span></td>
+                <td class="num"><span class="tv-pill" [class.warn]="row.pendingQty">{{ row.pendingQty }}</span></td>
+                <td [class.reason]="row.rejectReason">{{ row.rejectReason || '-' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
     <div class="section-title">
       <i class="bi bi-upc-scan"></i> Lines
       @if (editable()) { <button type="button" class="link-btn" style="margin-left: auto" (click)="acceptAll()"><i class="bi bi-check2-all"></i> Accept all</button> }
@@ -63,6 +149,7 @@
         </tbody>
       </table>
     </div>
+    }
 
     @if (editable()) {
       <div class="qty-summary">
@@ -75,13 +162,11 @@
         <label for="tr-remarks">Remarks</label>
         <div class="input-wrap"><i class="bi bi-chat-left-text"></i><input id="tr-remarks" type="text" maxlength="255" placeholder="Optional" [(ngModel)]="remarks" /></div>
       </div>
-    } @else if (t.receivedBy) {
-      <p class="muted"><i class="bi bi-person-check"></i> Last received by {{ t.receivedBy }} on {{ displayDate(t.receivedAt) }}</p>
     }
   </div>
 
   <div class="modal-footer-custom">
-    <button type="button" class="cancel-btn" (click)="printPdf()"><i class="bi bi-printer"></i> Print</button>
+    <button type="button" class="tv-pdf-btn" (click)="printPdf()"><i class="bi bi-file-earmark-pdf-fill"></i> Download Stock Transfer / Invoice PDF</button>
     <button type="button" class="cancel-btn" (click)="close()">{{ editable() ? 'Cancel' : 'Close' }}</button>
     @if (editable()) {
       <button type="button" class="save-btn" [disabled]="saving()" (click)="save()"><i class="bi bi-check2-circle"></i> {{ s.left ? 'Save Partial Receipt' : 'Save Receipt' }}</button>

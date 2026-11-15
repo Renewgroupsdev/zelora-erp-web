@@ -1108,6 +1108,8 @@ input.ndp-input.ndp-solo {
 .input-wrap input.ndp-input:hover { border-color: var(--primary-border-strong, var(--border-soft-strong)); }
 .input-wrap input.ndp-input:focus { border-color: var(--primary-border-strong, var(--primary)); box-shadow: 0 0 0 3px var(--primary-soft); }
 .input-wrap input.ndp-input.is-invalid, .input-wrap input.ndp-input.ndp-bad { border-color: #dc3545 !important; }
+/* invalid date box outside an .input-wrap too (e.g. table cells): red border + light red fill */
+input.ndp-input.is-invalid, input.ndp-input.ndp-bad { border-color: #dc3545 !important; background-color: #fff8f7 !important; }
 .input-wrap input.ndp-input:disabled, .input-wrap input.ndp-input[readonly] { background-color: var(--app-surface-bg); cursor: default; }
 input.ndp-input.ndp-solo:focus { border-color: var(--primary, #0a6c55); outline: 0; box-shadow: 0 0 0 3px rgba(10, 108, 85, .12); }
 input.ndp-input.ndp-bad { border-color: #dc2626 !important; }

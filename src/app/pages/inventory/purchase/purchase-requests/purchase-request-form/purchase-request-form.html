@@ -71,7 +71,7 @@
         <button type="button" class="link-btn" (click)="addItem()"><i class="bi bi-plus-lg"></i> Add Product</button>
       </div>
 
-      <p class="muted" style="margin: 0 0 6px; font-size: 12px"><i class="bi bi-info-circle"></i> Pick from all products. Stock shown is what the requesting branch holds (low = under {{ threshold() }} units). A product already added is greyed out.</p>
+      <p class="muted" style="margin: 0 0 6px; font-size: 12px"><i class="bi bi-info-circle"></i> Pick from all products. A product already added is greyed out.</p>
       <div class="items-table-wrap" formArrayName="items">
         <table class="items-table">
           <thead>
@@ -97,7 +97,11 @@
                   @if (invalid('items.' + i + '.productId')) { <small class="error-text">Select the product.</small> }
                 </td>
                 <td>
-                  <input class="cell-input" type="number" min="1" formControlName="qty" [class.is-invalid]="invalid('items.' + i + '.qty')" />
+                  <span class="qty-stepper" [class.is-invalid]="invalid('items.' + i + '.qty')">
+                    <button type="button" (click)="stepQty(i, -1)" [disabled]="(row.value.qty || 0) <= 1" aria-label="Decrease qty"><i class="bi bi-dash"></i></button>
+                    <input type="number" min="1" formControlName="qty" aria-label="Request qty" />
+                    <button type="button" (click)="stepQty(i, 1)" aria-label="Increase qty"><i class="bi bi-plus"></i></button>
+                  </span>
                   @if (invalid('items.' + i + '.qty')) { <small class="error-text">Enter qty (min 1).</small> }
                 </td>
                 <td>{{ product(i)?.hsnCode || '-' }}</td>

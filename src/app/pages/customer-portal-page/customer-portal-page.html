@@ -87,44 +87,44 @@
                      [attr.role]="can('view-customer') ? 'button' : null" [attr.tabindex]="can('view-customer') ? 0 : null"
                      [attr.aria-label]="can('view-customer') ? 'View profile of ' + customer.name : null"
                      (click)="can('view-customer') && openProfile(customer)" (keydown.enter)="can('view-customer') && openProfile(customer)">
-              <div class="cc-cover">
-                <span class="segment-chip" [ngClass]="segmentClass(customer.segment)">{{ customer.segment }}</span>
+              <header class="cc-head">
+                <div class="cc-avatar-wrap">
+                  @if (customer.photo_url) {
+                    <img class="customer-avatar" [src]="customer.photo_url" [alt]="customer.name" />
+                  } @else {
+                    <span class="customer-avatar" [ngClass]="avatarColorForName(customer.name)">{{ initials(customer.name) }}</span>
+                  }
+                  <span class="cc-presence" [class.on]="customer.status === 'Active'"></span>
+                </div>
+
+                <div class="cc-identity">
+                  <span class="customer-name" [title]="customer.name">{{ customer.name }}</span>
+                  <div class="cc-tags">
+                    <span class="customer-id"><i class="bi bi-hash"></i>{{ customer.customer_code }}</span>
+                    <span class="segment-chip" [ngClass]="segmentClass(customer.segment)">{{ customer.segment }}</span>
+                  </div>
+                </div>
+
                 <span class="cc-status" [ngClass]="statusClass(customer.status)"><i class="bi bi-circle-fill"></i> {{ customer.status }}</span>
-              </div>
-
-              <div class="cc-avatar-wrap">
-                @if (customer.photo_url) {
-                  <img class="customer-avatar" [src]="customer.photo_url" [alt]="customer.name" />
-                } @else {
-                  <span class="customer-avatar" [ngClass]="avatarColorForName(customer.name)">{{ initials(customer.name) }}</span>
-                }
-              </div>
-
-              <div class="cc-identity">
-                <span class="customer-name" [title]="customer.name">{{ customer.name }}</span>
-                <span class="customer-id"><i class="bi bi-person-vcard"></i> {{ customer.customer_code }}</span>
-              </div>
+              </header>
 
               <div class="cc-contact">
-                <span class="customer-meta"><i class="bi bi-telephone-fill"></i> {{ customer.mobile_no }}</span>
-                <span class="customer-meta" [title]="customer.branch_name || ''"><i class="bi bi-geo-alt-fill"></i> {{ customer.branch_name || "-" }}</span>
+                <span class="customer-meta"><i class="bi bi-telephone-fill"></i><span class="meta-text">{{ customer.mobile_no }}</span></span>
+                <span class="customer-meta" [title]="customer.branch_name || ''"><i class="bi bi-geo-alt-fill"></i><span class="meta-text">{{ customer.branch_name || "-" }}</span></span>
               </div>
 
               <div class="customer-card-stats">
                 <div class="mini-stat">
-                  <i class="bi bi-calendar2-check"></i>
+                  <span class="mini-label"><i class="bi bi-calendar2-check"></i> Visits</span>
                   <span class="mini-value">{{ customer.visits }}</span>
-                  <span class="mini-label">Visits</span>
                 </div>
                 <div class="mini-stat">
-                  <i class="bi bi-wallet2"></i>
-                  <span class="mini-value">{{ formatCurrency(customer.total_amount) }}</span>
-                  <span class="mini-label">LTV</span>
+                  <span class="mini-label"><i class="bi bi-wallet2"></i> LTV</span>
+                  <span class="mini-value" [title]="formatCurrency(customer.total_amount)">{{ formatCurrency(customer.total_amount) }}</span>
                 </div>
                 <div class="mini-stat">
-                  <i class="bi bi-clock-history"></i>
-                  <span class="mini-value">{{ formatDate(customer.last_visit) }}</span>
-                  <span class="mini-label">Last visit</span>
+                  <span class="mini-label"><i class="bi bi-clock-history"></i> Last</span>
+                  <span class="mini-value" [title]="formatDate(customer.last_visit)">{{ formatDate(customer.last_visit) }}</span>
                 </div>
               </div>
 

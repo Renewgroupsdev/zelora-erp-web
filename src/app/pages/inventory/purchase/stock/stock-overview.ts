@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { MatDialogModule } from '@angular/material/dialog';
 import { CommonDetailCard } from '../../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../../shared/components/common-filter-card/common-filter-card';

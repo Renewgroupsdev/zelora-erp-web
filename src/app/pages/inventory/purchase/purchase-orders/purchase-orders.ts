@@ -11,6 +11,7 @@ import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { PurchaseOrderEdit } from './purchase-order-edit/purchase-order-edit';
 import { PurchaseOrderRevision } from './purchase-order-revision/purchase-order-revision';
+import { PurchaseDocView } from '../purchase-doc-view/purchase-doc-view';
 
 @Component({
   selector: 'app-purchase-orders',
@@ -62,6 +63,7 @@ export class PurchaseOrders extends PurchaseListBase {
       const pending = o.items.reduce((s, i) => s + (i.pendingQty ?? 0), 0);
       // Same actions as the reference PO worklist, shown only when the server says they are allowed.
       const actions: QuickAction[] = [
+        { key: 'view', icon: 'bi-eye-fill', label: 'View details', permission: 'view-purchase-order' },
         { key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Tax invoice (PDF)' },
       ];
       // vendor side: where the invoice went, and a revised proforma when the vendor changes a price
@@ -74,7 +76,7 @@ export class PurchaseOrders extends PurchaseListBase {
       const lowStock = o.source === 'low_stock';
       return {
         id: o.id,
-        poNo: lowStock ? `${o.poNo} · Low stock` : o.poNo,
+        poNo: o.poNo,
         invoiceNo: o.invoiceNo,
         branch: o.branch,
         vendor: o.vendorName,
@@ -99,6 +101,7 @@ export class PurchaseOrders extends PurchaseListBase {
     if (!order) return;
 
     switch (event.action) {
+      case 'view': this.openDialog(PurchaseDocView, { kind: 'order', id: orderId }, '980px'); break;
       case 'pdf': void this.purchase.openPdf('purchase-order', orderId); break;
       case 'inward': this.openDialog(GoodsInwardForm, { orderId }, '1240px'); break;
       case 'edit': this.openDialog(PurchaseOrderEdit, { orderId }, '820px'); break;

@@ -5,6 +5,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { TelephonyService } from '../../core/telephony/telephony.service';
 import { FollowUpLead } from '../../core/telephony/telephony.models';
 import { ToastService } from './toast.service';
+import { TabAttentionService } from './tab-attention.service';
 
 /** Roles & Permissions -> Follow-up action: who may call a follow-up lead (the reminder offers exactly that call). */
 const CALL_ACTION = 'call-follow-up-lead';
@@ -26,6 +27,7 @@ export class FollowUpReminderService {
   private readonly auth = inject(AuthService);
   private readonly telephony = inject(TelephonyService);
   private readonly toast = inject(ToastService);
+  private readonly tabAttention = inject(TabAttentionService);
 
   private timer: ReturnType<typeof setInterval> | null = null;
   private busy = false;
@@ -104,6 +106,8 @@ export class FollowUpReminderService {
       : minutes >= 0 ? 'Your call-back is due now.'
       : `Your call-back was due ${-minutes} minute${minutes === -1 ? '' : 's'} ago.`;
     const code = `LD-${String(lead.id).padStart(5, '0')}`;
+    // away from the page (e.g. in e-mail): blink the tab, desktop notification and flash Chrome's taskbar button
+    this.tabAttention.attention('Follow-up call due', `${lead.name ?? code}: ${message}`);
 
     let closed!: () => void;
     const done = new Promise<void>(resolve => (closed = resolve));

@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { TabAttentionService } from './tab-attention.service';
 
 export type AlertStackTone = 'warning' | 'info' | 'success' | 'danger';
 
@@ -15,6 +16,12 @@ export interface AlertStackItem {
   /** Optional action button (e.g. "Reassign"). Clicking it closes the card and runs the handler. */
   actionLabel?: string;
   onAction?: () => void;
+  /**
+   * Alerts about the same thing share a key, so only one card per key is ever on screen. By default a new alert is skipped
+   * while one with its key is showing / waiting; `replace: true` closes that one and shows the new one instead.
+   */
+  key?: string;
+  replace?: boolean;
 }
 
 const MAX_VISIBLE = 4;
@@ -35,6 +42,8 @@ const TONE_ICON: Record<AlertStackTone, string> = {
  */
 @Injectable({ providedIn: 'root' })
 export class AlertStackService {
+  /** Background tab: an alert card also blinks the tab title, raises a desktop notification and tries to flash the taskbar. */
+  private readonly tabAttention = inject(TabAttentionService);
   private host: HTMLElement | null = null;
   private readonly queue: AlertStackItem[] = [];
   private visible = 0;
@@ -42,7 +51,18 @@ export class AlertStackService {
 
   /** Queue one or more alerts; they enter one after another. */
   show(...items: AlertStackItem[]): void {
-    this.queue.push(...items);
+    for (const item of items) {
+      if (item.key) {
+        const showing = this.host?.querySelectorAll<HTMLElement>(`.as-card[data-key="${CSS.escape(item.key)}"]:not(.as-leaving)`) ?? [];
+        const waiting = this.queue.some(q => q.key === item.key);
+        if (!item.replace && (showing.length || waiting)) continue; // one card per key
+        if (item.replace) {
+          showing.forEach(c => c.dispatchEvent(new Event('as-close')));
+          for (let i = this.queue.length - 1; i >= 0; i--) if (this.queue[i].key === item.key) this.queue.splice(i, 1);
+        }
+      }
+      this.queue.push(item);
+    }
     void this.drain();
   }
 
@@ -72,6 +92,7 @@ export class AlertStackService {
     card.className = `as-card as-${tone}`;
     card.setAttribute('role', tone === 'danger' || tone === 'warning' ? 'alert' : 'status');
     card.style.setProperty('--as-duration', `${duration}ms`);
+    if (item.key) card.dataset['key'] = item.key;
     card.innerHTML = `
       <span class="as-badge"><span class="as-ring"></span><span class="as-ring as-ring-2"></span><i class="bi ${this.esc(item.icon ?? TONE_ICON[tone])}"></i></span>
       <div class="as-body">
@@ -85,6 +106,7 @@ export class AlertStackService {
 
     this.visible++;
     host.appendChild(card);
+    this.tabAttention.attention(item.title, item.text);
 
     let timer: ReturnType<typeof setTimeout> | null = null;
     let left = duration;

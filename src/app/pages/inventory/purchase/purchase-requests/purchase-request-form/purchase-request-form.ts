@@ -14,7 +14,7 @@ import { SearchSelect, SelectOption } from '../../../../../shared/components/sea
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, MatDialogModule, SearchSelect],
   templateUrl: './purchase-request-form.html',
-  styleUrl: '../../../../../shared/styles/erp-dialog.scss',
+  styleUrls: ['../../../../../shared/styles/erp-dialog.scss', './purchase-request-form.scss'],
 })
 export class PurchaseRequestForm {
   private readonly fb = inject(FormBuilder);
@@ -47,7 +47,7 @@ export class PurchaseRequestForm {
 
   /** Options for the searchable dropdowns. */
   readonly branchChoices = computed<SelectOption[]>(() => this.branches().map(b => ({ value: b.key, label: b.name })));
-  readonly productChoices = computed<SelectOption[]>(() => this.products().map(p => ({ value: p.id, label: `${p.code} - ${p.name}`, hint: `stock ${p.stockQty ?? 0}` })));
+  readonly productChoices = computed<SelectOption[]>(() => this.products().map(p => ({ value: p.id, label: `${p.code} - ${p.name}` })));
   private readonly itemsValue = toSignal(this.form.controls.items.valueChanges, { initialValue: this.form.controls.items.value });
   /** Per row: the products already picked in the OTHER rows (greyed out in that row's list). */
   readonly takenByRow = computed<(string[] | undefined)[]>(() => {
@@ -190,6 +190,14 @@ export class PurchaseRequestForm {
 
   get items(): FormArray {
     return this.form.controls.items;
+  }
+
+  /** − / + buttons of the request qty (never below 1). */
+  stepQty(index: number, by: number): void {
+    const ctrl = this.items.at(index).get('qty');
+    if (!ctrl) return;
+    ctrl.setValue(Math.max(1, (Number(ctrl.value) || 0) + by));
+    ctrl.markAsDirty();
   }
 
   private newItem() {

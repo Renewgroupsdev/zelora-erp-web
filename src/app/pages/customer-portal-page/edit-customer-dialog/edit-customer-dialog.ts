@@ -49,11 +49,12 @@ export class EditCustomerDialog implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: EditCustomerData,
   ) {
     this.form = fb.group({
-      first_name: ['', [Validators.required, Validators.maxLength(100)]],
-      last_name: ['', Validators.maxLength(100)],
+      // Name and mobile are identity fields - shown read-only in edit (getRawValue() still sends them).
+      first_name: [{ value: '', disabled: true }, [Validators.required, Validators.maxLength(100)]],
+      last_name: [{ value: '', disabled: true }, Validators.maxLength(100)],
       gender: [''],
       date_of_birth: [''],
-      mobile_no: ['', [Validators.required, Validators.pattern(/^[0-9]{10}$/)]],
+      mobile_no: [{ value: '', disabled: true }, [Validators.required, Validators.pattern(/^[0-9]{10}$/)]],
       alternate_mobile_no: ['', Validators.pattern(/^[0-9]{10}$/)],
       email: ['', [Validators.email, Validators.maxLength(150)]],
       address: ['', Validators.maxLength(500)],

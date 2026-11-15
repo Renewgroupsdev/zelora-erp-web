@@ -11,6 +11,7 @@ import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { PurchaseReturnForm } from './purchase-return-form/purchase-return-form';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
+import { PurchaseDocView } from '../purchase-doc-view/purchase-doc-view';
 
 /** Stock sent back to the vendor against a purchase inward (GRN). Each return reduces store stock and can raise a debit note. */
 @Component({
@@ -65,7 +66,10 @@ export class PurchaseReturns extends PurchaseListBase {
     return this.purchase.returns().map(r => {
       const qty = r.lines.reduce((s, l) => s + l.qty, 0);
       const value = r.lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
-      const actions: QuickAction[] = [{ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Return slip (PDF)', permission: 'download-purchase-return' }];
+      const actions: QuickAction[] = [
+        { key: 'view', icon: 'bi-eye-fill', label: 'View details', permission: 'view-purchase-return' },
+        { key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'Return slip (PDF)', permission: 'download-purchase-return' },
+      ];
       if (r.canCancel) actions.push({ key: 'cancel', icon: 'bi-x-circle', label: 'Cancel Return', variant: 'danger' });
       return {
         id: r.id,
@@ -101,6 +105,10 @@ export class PurchaseReturns extends PurchaseListBase {
   async onQuickAction(event: { row: TableRow; action: string }): Promise<void> {
     const ret = this.purchase.returns().find(r => r.id === String(event.row['id']));
     if (!ret) return;
+    if (event.action === 'view') {
+      this.openDialog(PurchaseDocView, { kind: 'return', id: ret.id }, '980px');
+      return;
+    }
     if (event.action === 'pdf') {
       void this.purchase.openPdf('purchase-return', ret.id);
       return;

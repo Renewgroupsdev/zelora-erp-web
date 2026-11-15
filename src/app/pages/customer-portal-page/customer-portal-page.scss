@@ -211,12 +211,14 @@ app-common-table-card {
   min-height: 0;
   overflow-y: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  // Rows keep the cards' natural height and start at the top - without this a few cards
-  // stretch to fill the whole page height (grid's default align-content: stretch).
+  // min(100%, ...) keeps a single column from overflowing on very narrow phones.
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  // Rows must size to card content. With `auto` rows the cards (overflow: hidden => min-content 0)
+  // shrink to share the scroll container's height, clipping the stats/actions.
+  grid-auto-rows: max-content;
   align-content: start;
-  gap: 16px;
-  padding: 4px;
+  gap: 14px;
+  padding: 4px 4px 8px;
   scrollbar-width: thin;
   scrollbar-color: var(--table-scrollbar-thumb) var(--table-scrollbar-track);
 }
@@ -230,81 +232,102 @@ app-common-table-card {
   border-radius: var(--radius-md);
 }
 
-/* ---------- Customer card (premium) ---------- */
+/* ---------- Customer card ---------- */
 .customer-card {
+  --cc-accent: var(--primary);
+  --cc-accent-dark: var(--primary-dark);
+
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 0 14px 14px;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 16px 14px;
   overflow: hidden;
+  isolation: isolate;
   border: 1px solid var(--border-soft);
-  border-radius: 18px;
+  border-radius: 16px;
   background: var(--app-surface-solid);
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 22px -12px rgba(16, 24, 40, 0.16);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 18px -10px rgba(16, 24, 40, 0.14);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+
+  // Top accent bar
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--cc-accent-dark), var(--cc-accent));
+  }
+
+  // Soft corner glow
+  &::after {
+    content: "";
+    position: absolute;
+    top: -60px;
+    right: -60px;
+    z-index: -1;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--primary-soft) 0%, transparent 70%);
+    opacity: 0.9;
+    pointer-events: none;
+  }
+}
+
+.customer-card:not(.is-active) {
+  --cc-accent: #9aa7a2;
+  --cc-accent-dark: #6b7a75;
 }
 
 .customer-card.clickable { cursor: pointer; }
 .customer-card.clickable:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 .customer-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
   border-color: var(--primary-border);
-  box-shadow: 0 2px 4px rgba(16, 24, 40, 0.05), 0 18px 32px -14px rgba(11, 69, 51, 0.32);
+  box-shadow: 0 2px 4px rgba(16, 24, 40, 0.05), 0 16px 30px -14px rgba(11, 69, 51, 0.3);
 }
 
-/* Cover band: soft brand gradient with a faint pattern; segment + status sit on it */
-.cc-cover {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-  height: 64px;
-  margin: 0 -14px;
-  padding: 10px 12px;
-  background:
-    radial-gradient(circle at 88% -20%, rgba(255, 255, 255, 0.45), transparent 55%),
-    linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+/* Header: avatar | name + tags | status */
+.cc-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
 }
-
-.customer-card:not(.is-active) .cc-cover {
-  background: linear-gradient(135deg, #5b6b66 0%, #8a9792 100%);
-}
-
-.segment-chip,
-.cc-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-}
-
-.cc-status i { font-size: 7px; }
 
 .cc-avatar-wrap {
-  display: flex;
-  justify-content: center;
-  margin-top: -30px;
+  position: relative;
+  flex: 0 0 auto;
 }
 
 .customer-avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 3px solid var(--app-surface-solid);
-  box-shadow: 0 4px 12px rgba(16, 24, 40, 0.18);
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  border: 2px solid var(--app-surface-solid);
+  box-shadow: 0 0 0 1px var(--border-soft), 0 4px 10px rgba(16, 24, 40, 0.12);
   object-fit: cover;
-  font-size: 19px;
+  font-size: 17px;
   font-weight: var(--fw-bold);
+}
+
+.cc-presence {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--app-surface-solid);
+  background: #9aa7a2;
+
+  &.on { background: #22c55e; }
 }
 
 .customer-avatar.avatar-color-1 { background: var(--avatar-color-1-bg); color: var(--avatar-color-1-text); }
@@ -316,16 +339,16 @@ app-common-table-card {
 .cc-identity {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  margin-top: 8px;
+  gap: 6px;
   min-width: 0;
+  padding-top: 2px;
 }
 
 .customer-name {
   max-width: 100%;
   font-family: var(--font-family-display);
-  font-size: 16px;
+  font-size: 15.5px;
+  line-height: 1.2;
   font-weight: 800;
   letter-spacing: -0.2px;
   color: var(--text-dark);
@@ -334,27 +357,50 @@ app-common-table-card {
   white-space: nowrap;
 }
 
-.customer-id {
-  display: inline-flex;
+.cc-tags {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 5px;
-  padding: 2px 10px;
-  border-radius: var(--radius-pill);
-  background: var(--primary-soft);
-  color: var(--primary-dark);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-
-  i { font-size: 12px; }
+  min-width: 0;
 }
 
+.customer-id,
+.segment-chip,
+.cc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.customer-id {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+
+  i { font-size: 10px; }
+}
+
+.cc-status {
+  gap: 5px;
+  font-size: 11px;
+
+  i { font-size: 6px; }
+}
+
+/* Contact block */
 .cc-contact {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin: 12px 0;
-  padding: 9px 12px;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-soft-strong);
   border-radius: 12px;
   background: var(--app-surface-soft, #f6f9f8);
 }
@@ -362,53 +408,71 @@ app-common-table-card {
 .customer-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   min-width: 0;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--text-dark);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 
   i {
     flex: 0 0 auto;
     display: grid;
     place-items: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 7px;
-    background: var(--primary-soft);
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    background: var(--app-surface-solid);
+    box-shadow: 0 0 0 1px var(--border-soft);
     font-size: 11px;
     color: var(--primary);
   }
 }
 
+.meta-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Stats strip: 3 equal cells with dividers */
 .customer-card-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin-bottom: 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .mini-stat {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 8px 4px;
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
-  text-align: center;
+  align-items: flex-start;
+  gap: 3px;
   min-width: 0;
+  padding: 8px 10px;
 
-  > i { font-size: 14px; color: var(--primary); margin-bottom: 1px; }
+  & + & { border-left: 1px solid var(--border-soft); }
+}
+
+.mini-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  white-space: nowrap;
+
+  i { font-size: 11px; color: var(--primary); }
 }
 
 .mini-value {
   max-width: 100%;
   font-family: var(--font-family-display);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--text-dark);
   white-space: nowrap;
@@ -416,14 +480,7 @@ app-common-table-card {
   text-overflow: ellipsis;
 }
 
-.mini-label {
-  font-size: 9.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-}
-
+/* Actions */
 .cc-actions {
   display: flex;
   align-items: center;
@@ -433,17 +490,19 @@ app-common-table-card {
 
 .cc-primary {
   flex: 1 1 auto;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  height: 38px;
+  height: 36px;
   border: 0;
-  border-radius: 11px;
+  border-radius: 10px;
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: #fff;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
   box-shadow: 0 6px 14px -6px var(--primary);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -455,10 +514,10 @@ app-common-table-card {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border: 1px solid var(--border-soft-strong);
-  border-radius: 11px;
+  border-radius: 10px;
   background: var(--app-surface-solid);
   color: var(--primary-dark);
   font-size: 15px;
@@ -466,6 +525,54 @@ app-common-table-card {
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 
   &:hover { background: var(--primary-soft); border-color: var(--primary-border-strong); color: var(--primary); }
+}
+
+/* Large monitors: roomier cards */
+@media (min-width: 1600px) {
+  .customer-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (min-width: 2200px) {
+  .customer-grid {
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 18px;
+  }
+
+  .customer-card { padding: 18px 18px 16px; }
+  .customer-avatar { width: 58px; height: 58px; font-size: 19px; }
+  .customer-name { font-size: 17px; }
+  .mini-value { font-size: 14px; }
+}
+
+/* Tablets: two columns */
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .customer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+/* Phones */
+@media (max-width: 575.98px) {
+  .customer-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 2px 0 8px;
+  }
+
+  .customer-card { padding: 14px 12px 12px; gap: 10px; }
+  .cc-head { gap: 10px; }
+  .customer-avatar { width: 46px; height: 46px; font-size: 15px; border-radius: 12px; }
+  .mini-stat { padding: 7px 8px; }
+}
+
+/* Very narrow phones: status drops under the name */
+@media (max-width: 359.98px) {
+  .cc-head { grid-template-columns: auto minmax(0, 1fr); }
+  .cc-status { grid-column: 2; justify-self: start; }
 }
 
 .grid-footer {

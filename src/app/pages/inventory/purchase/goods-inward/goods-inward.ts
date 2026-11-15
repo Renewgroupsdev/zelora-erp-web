@@ -11,6 +11,7 @@ import { PurchaseCollection, PurchaseListBase } from '../purchase-list-base';
 import { PurchaseTabs } from '../purchase-tabs/purchase-tabs';
 import { GoodsInwardForm } from './goods-inward-form/goods-inward-form';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
+import { PurchaseDocView } from '../purchase-doc-view/purchase-doc-view';
 
 const GRN_COLUMNS: TableColumn[] = [
   { key: 'grnNo', header: 'GRN No', width: '10%' },
@@ -110,7 +111,10 @@ export class GoodsInward extends PurchaseListBase {
     return inwards.map(g => {
       const received = g.lines.reduce((s, l) => s + l.receivedQty, 0);
       const damaged = g.lines.reduce((s, l) => s + l.damagedQty, 0);
-      const actions: QuickAction[] = [{ key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'GRN (PDF)', permission: 'download-goods-inward' }];
+      const actions: QuickAction[] = [
+        { key: 'view', icon: 'bi-eye-fill', label: 'View details', permission: 'view-goods-inward' },
+        { key: 'pdf', icon: 'bi-file-earmark-pdf-fill', label: 'GRN (PDF)', permission: 'download-goods-inward' },
+      ];
       if (g.canCancel) actions.push({ key: 'cancel', icon: 'bi-x-circle', label: 'Cancel Inward', variant: 'danger' });
       return {
         id: g.id,
@@ -156,6 +160,10 @@ export class GoodsInward extends PurchaseListBase {
   async onQuickAction(event: { row: TableRow; action: string }): Promise<void> {
     const inward = this.purchase.inwards().find(g => g.id === String(event.row['id']));
     if (!inward) return;
+    if (event.action === 'view') {
+      this.openDialog(PurchaseDocView, { kind: 'inward', id: inward.id }, '1040px');
+      return;
+    }
     if (event.action === 'pdf') {
       void this.purchase.openPdf('goods-inward', inward.id);
       return;

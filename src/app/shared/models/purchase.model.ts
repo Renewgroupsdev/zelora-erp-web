@@ -121,6 +121,9 @@ export interface PurchaseOrder {
 export interface InwardLine {
   productId: string;
   productName: string;
+  productCode?: string | null;
+  /** Consumables need MFG + expiry dates on receipt; Miscellaneous items do not. */
+  productType?: 'Consumables' | 'Miscellaneous';
   batchNo: string;
   mfgDate: string | null;
   expiryDate: string | null;
