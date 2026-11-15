@@ -2,7 +2,8 @@ export const environment = {
   production: false,
   envName: 'local',
 
-  apiBaseUrl: `http://192.168.0.202:8000/api/`,
+  // apiBaseUrl: `http://192.168.1.7:8080/api/`,
+  apiBaseUrl: `https://crm.renewhairandskincare.com/api/`,
   disableDevTools: false,
   rememberMeKey: 'remember_me',
 
