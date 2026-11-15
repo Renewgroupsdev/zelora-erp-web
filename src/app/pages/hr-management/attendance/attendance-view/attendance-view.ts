@@ -1,10 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { finalize } from 'rxjs';
 import { AttendanceMonthSummary, HrService } from '../../../../shared/common-services/hr.service';
 import { PageLoader } from '../../../../shared/components/page-loader/page-loader';
-import { AttendanceRecord, BREAK_TYPES, breakMinutes, hoursLabel, minutesLabel, workedHours } from '../../../../shared/models/hr.model';
+import { AttendanceGeofence, AttendanceRecord, BREAK_TYPES, GeofenceViolation, breakMinutes, hoursLabel, minutesLabel, workedHours } from '../../../../shared/models/hr.model';
 import { displayDate, displayTime, isoDate, monthLabel } from '../../../../shared/utils/format.util';
 
 interface PunchPhoto {
@@ -143,6 +143,73 @@ export class AttendanceView implements OnInit {
   netOf(r: AttendanceRecord): number {
     const brk = (r.breaks ?? []).reduce((s, b) => s + breakMinutes(b), 0);
     return Math.max(0, workedHours(r) - brk / 60);
+  }
+
+  // ---- Employee app geofence (GET /hr/attendance/{id}/geofence) -----------
+
+  readonly geofence = signal<AttendanceGeofence | null>(null);
+  readonly geofenceLoading = signal(false);
+  private geofenceFor = '';
+
+  /** Height / width of the distance-over-time chart (SVG user units). */
+  readonly chartW = 600;
+  readonly chartH = 120;
+
+  constructor() {
+    // Mobile punches have a location trail: load it whenever another mobile day is selected.
+    effect(() => {
+      const r = this.record();
+      if (!r || r.source !== 'Mobile' || r.id === this.geofenceFor) return;
+      this.geofenceFor = r.id;
+      this.geofence.set(null);
+      this.geofenceLoading.set(true);
+      this.hr.fetchAttendanceGeofence(r.id).pipe(finalize(() => this.geofenceLoading.set(false))).subscribe({
+        next: g => { if (this.geofenceFor === r.id) this.geofence.set(g); },
+        error: () => { if (this.geofenceFor === r.id) this.geofence.set(null); },
+      });
+    });
+  }
+
+  /** Numbers for the tiles above the chart. */
+  readonly trailStats = computed(() => {
+    const pts = this.geofence()?.points ?? [];
+    const decided = pts.filter(p => p.inside !== null);
+    return {
+      readings: pts.length,
+      outside: decided.filter(p => p.inside === false).length,
+      farthest: pts.reduce((m, p) => Math.max(m, p.distanceM ?? 0), 0),
+      weak: pts.filter(p => p.inside === null && !p.isMock).length,
+    };
+  });
+
+  /** Distance from the branch over the day, capped at 5x the radius so one far reading does not flatten the chart. */
+  readonly trailChart = computed(() => {
+    const g = this.geofence();
+    const pts = (g?.points ?? []).filter(p => p.distanceM !== null);
+    if (!g || pts.length < 2) return null;
+    const cap = Math.max(g.radiusM * 5, ...pts.map(p => Math.min(p.distanceM!, g.radiusM * 5)), 1);
+    const x = (i: number) => (i / (pts.length - 1)) * this.chartW;
+    const y = (d: number) => this.chartH - (Math.min(d, cap) / cap) * (this.chartH - 6) - 3;
+    return {
+      line: pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.distanceM!).toFixed(1)}`).join(' '),
+      radiusY: y(g.radiusM),
+      outside: pts.map((p, i) => ({ x: x(i), y: y(p.distanceM!), out: p.inside === false })).filter(p => p.out),
+      from: pts[0].at,
+      to: pts[pts.length - 1].at,
+    };
+  });
+
+  violationClass(v: GeofenceViolation): string {
+    switch (v.status) {
+      case 'returned': return 'green';
+      case 'auto_closed': case 'review': return 'red';
+      case 'open': return 'orange';
+      default: return 'blue';
+    }
+  }
+
+  violationLabel(v: GeofenceViolation): string {
+    return ({ open: 'Outside now', returned: 'Returned in time', auto_closed: 'Auto-closed', cancelled: 'Checked out', review: 'Needs review' } as Record<string, string>)[v.status] ?? v.status;
   }
 
   close(): void {

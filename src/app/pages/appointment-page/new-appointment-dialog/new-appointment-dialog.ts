@@ -4,11 +4,10 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { BranchOptionsService, parseUnitKey, unitKey } from '../../../shared/common-services/branch-options.service';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { finalize } from 'rxjs';
+import { Observable, Subscription, finalize } from 'rxjs';
 import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
-import { CanActionDirective } from '../../../shared/directives/can-action.directive';
 import { HEARD_FROM, TreatmentHistory, inr } from '../../../shared/models/appointment-flow.model';
 
 /** What the mobile lookup returns: personal details, plus the treatment history of a converted customer. */
@@ -55,8 +54,20 @@ export interface NewAppointmentResult {
 const emptyForm = () => ({
   name: '', email: '', gender: '', age: null as number | null, location: '', pincode: '', heard_from: '',
   /** "branch:9" / "franchise:7"; sent as branch_type + branch_id. */
-  branch_key: '', appointment_date: '', appointment_time: '', notes: '',
+  branch_key: '', appointment_date: '', appointment_time: '', doctor_id: '', notes: '',
 });
+
+/** One slot of the day (GET appointment-flow/slots); `reason` says why it can't be picked. */
+interface DaySlot {
+  time: string;
+  available: boolean;
+  reason: string | null;
+}
+
+interface FreeDoctor {
+  id: number;
+  name: string;
+}
 
 /**
  * "Add Appointment": enter the mobile number first.
@@ -67,7 +78,7 @@ const emptyForm = () => ({
 @Component({
   selector: 'app-new-appointment-dialog',
   standalone: true,
-  imports: [PhoneInput, CommonModule, FormsModule, MatDialogModule, CanActionDirective],
+  imports: [PhoneInput, CommonModule, FormsModule, MatDialogModule],
   templateUrl: './new-appointment-dialog.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', './new-appointment-dialog.scss'],
 })
@@ -83,32 +94,14 @@ export class NewAppointmentDialog implements OnInit {
   readonly today = toIsoDate(new Date());
 
   readonly branches = signal<{ key: string; name: string }[]>([]);
-  readonly categories = signal<{ id: number; name: string }[]>([]);
-  readonly treatmentOptions = signal<TreatmentOption[]>([]);
   readonly looking = signal(false);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
   /** Lookup outcome for the current number: null = not looked up yet, false = new customer. */
   readonly found = signal<LookupResult | false | null>(null);
 
-  /** Converted customer -> the treatment screen instead of the new appointment form. */
-  readonly returning = computed(() => {
-    const f = this.found();
-    return f && f.base_appointment_id ? f : null;
-  });
-  readonly activePlan = computed(() => this.returning()?.treatments.find(t => t.status === 'active') ?? null);
-  readonly pastPlans = computed(() => this.returning()?.treatments.filter(t => t.status !== 'active') ?? []);
-  /** The next sitting still to happen on the active treatment - its slot can be changed here. */
-  readonly nextSitting = computed(() => this.activePlan()?.sittings.find(s => s.status !== 'completed') ?? null);
-
   mobile = '';
   form = emptyForm();
-  /** Returning customer: more sittings on the treatment in progress. */
-  extra = { count: 1, interval: 30 };
-  /** Returning customer: the next sitting's new slot. */
-  slot = { date: '', time: '' };
-  /** Returning customer with nothing in progress: another treatment. */
-  plan = { category_id: null as number | null, treatment_id: null as number | null, sittings_count: 1, interval: 30, start_date: '', start_time: '', remarks: '' };
   private lookedUp = '';
   private changed = false;
 
@@ -116,25 +109,12 @@ export class NewAppointmentDialog implements OnInit {
     const now = new Date();
     // Opened from a calendar slot: that slot; otherwise now.
     const date = this.preset?.date || this.today;
-    const time = this.preset?.time || `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    // The time is picked from the slot grid; a clicked calendar slot is kept only if it is a free slot.
+    const time = this.preset?.time || '';
     this.form.appointment_date = date;
     this.form.appointment_time = time;
-    this.plan.start_date = date;
-    this.plan.start_time = time;
-    if (this.preset) this.slot = { date, time };
+    this.loadSlots();
     this.branchOptions.load().subscribe(list => this.branches.set(list.map(b => ({ key: b.key, name: b.name }))));
-    this.api.GetAllPages(ApiRoutesConstants.SERVICE_CATEGORY_TREE_LIST).subscribe({
-      next: (cats: any[]) => {
-        const active = cats.filter(c => c.is_active !== false);
-        this.categories.set(active.map(c => ({ id: Number(c.id), name: c.name ?? '' })));
-        this.treatmentOptions.set(active.flatMap(c => (c.treatments ?? [])
-          .filter((t: any) => t.is_active !== false)
-          .map((t: any) => ({
-            id: Number(t.id), name: t.name, price: Number(t.total_amount ?? 0), default_sittings: Number(t.default_sittings ?? 1), category_id: Number(c.id),
-          }))));
-      },
-      error: () => this.treatmentOptions.set([]),
-    });
   }
 
   // ---------------------------------------------------------------- lookup
@@ -168,19 +148,13 @@ export class NewAppointmentDialog implements OnInit {
       location: r.location ?? '', pincode: r.pincode ?? '', heard_from: r.heard_from ?? '',
       branch_key: unitKey(r.branch_type, r.branch_id) || this.form.branch_key,
     };
-    const interval = r.sitting_interval_days || 30;
-    this.extra = { count: 1, interval };
-    this.plan = { ...this.plan, interval };
-    const next = this.nextSitting();
-    // A slot clicked on the calendar wins over the sitting's current one.
-    this.slot = this.preset ? { date: this.preset.date, time: this.preset.time }
-      : { date: next?.scheduled_date ?? '', time: (next?.scheduled_time ?? '').slice(0, 5) };
+    this.onUnitChange();
   }
 
   /** Number changed after a lookup: drop the details that belonged to the previous number. */
   private reset(): void {
-    const { appointment_date, appointment_time, notes } = this.form;
-    this.form = { ...emptyForm(), appointment_date, appointment_time, notes };
+    const { appointment_date, appointment_time, doctor_id, notes } = this.form;
+    this.form = { ...emptyForm(), appointment_date, appointment_time, doctor_id, notes };
     this.found.set(null);
     this.lookedUp = '';
   }
@@ -198,6 +172,8 @@ export class NewAppointmentDialog implements OnInit {
     if (!this.form.name.trim()) return void this.error.set('Name is required.');
     if (this.form.pincode && !/^\d{6}$/.test(this.form.pincode)) return void this.error.set('Pincode must be 6 digits.');
     if (!this.form.appointment_date || !this.form.appointment_time) return void this.error.set('Pick the appointment date and time.');
+    if (this.slotsLoading || this.doctorsLoading) return void this.error.set('Checking availability. Please wait a moment.');
+    if (this.doctorsTotal !== 0 && !this.form.doctor_id) return void this.error.set(this.doctors.length ? 'Select an available doctor.' : 'No doctor is available at this time. Pick another time.');
 
     this.saving.set(true);
     const { branch_key, ...form } = this.form;
@@ -215,6 +191,7 @@ export class NewAppointmentDialog implements OnInit {
       heard_from: this.form.heard_from || null,
       notes: this.form.notes || null,
       appointment_time: this.form.appointment_time.slice(0, 5),
+      doctor_id: this.form.doctor_id ? Number(this.form.doctor_id) : null,
     }).pipe(finalize(() => this.saving.set(false))).subscribe({
       next: (res: any) => {
         this.toast.success(res?.message || 'Appointment created.');
@@ -224,82 +201,168 @@ export class NewAppointmentDialog implements OnInit {
     });
   }
 
-  // ---------------------------------------------------------------- returning customer
+  // ---------------------------------------------------------------- slots + doctors
 
-  get filteredTreatments(): TreatmentOption[] {
-    const all = this.treatmentOptions();
-    return this.plan.category_id ? all.filter(t => t.category_id === Number(this.plan.category_id)) : all;
+  slots: DaySlot[] = [];
+  slotsLoading = false;
+  slotsError = '';
+  slotMinutes = 45;
+  doctors: FreeDoctor[] = [];
+  /** How many doctors the unit has at all (null until a lookup finishes): "none free" vs "none set up". */
+  doctorsTotal: number | null = null;
+  doctorsLoading = false;
+  doctorsError = '';
+  private slotsSub?: Subscription;
+  private doctorsSub?: Subscription;
+
+  /** `&branch_type=..&branch_id=..` of the picked unit ('' = the signed-in user's own, which the server resolves). */
+  private unitQuery(): string {
+    const unit = parseUnitKey(this.form.branch_key);
+    return unit ? `&branch_type=${unit.type}&branch_id=${unit.id}` : '';
   }
 
-  get selectedTreatment(): TreatmentOption | undefined {
-    return this.treatmentOptions().find(t => t.id === Number(this.plan.treatment_id));
+  /** Date picked / changed. */
+  onDateChange(): void {
+    this.form.appointment_time = '';
+    this.activePart = '';
+    this.loadSlots();
   }
 
-  get newPlanTotal(): number {
-    return Math.round((this.selectedTreatment?.price ?? 0) * (Number(this.plan.sittings_count) || 0) * 100) / 100;
+  /** Branch / franchise picked: its doctors and bookings decide the slots. */
+  onUnitChange(): void {
+    this.loadSlots();
   }
 
-  onCategoryChange(): void {
-    if (this.selectedTreatment && this.selectedTreatment.category_id !== Number(this.plan.category_id)) this.plan.treatment_id = null;
+  loadSlots(): void {
+    this.slotsSub?.unsubscribe();
+    const date = this.form.appointment_date;
+    this.slots = [];
+    this.slotsError = '';
+    if (!date || date < this.today) {
+      this.slotsLoading = false;
+      this.resetDoctors();
+      return;
+    }
+    this.slotsLoading = true;
+    this.slotsSub = (this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/slots?date=${date}${this.unitQuery()}`) as Observable<any>)
+      .pipe(finalize(() => (this.slotsLoading = false)))
+      .subscribe({
+        next: res => {
+          this.slots = (res?.data ?? []) as DaySlot[];
+          this.slotMinutes = Number(res?.meta?.slot_minutes ?? this.slotMinutes);
+          const picked = this.form.appointment_time;
+          if (picked && !this.slots.some(s => s.time === picked && s.available)) this.form.appointment_time = '';
+          this.loadDoctors();
+        },
+        error: err => { this.slotsError = err?.error?.message || 'Could not load the appointment slots.'; this.resetDoctors(); },
+      });
   }
 
-  onTreatmentChange(): void {
-    const t = this.selectedTreatment;
-    if (!t) return;
-    this.plan.sittings_count = t.default_sittings || 1;
-    if (!this.plan.category_id) this.plan.category_id = t.category_id;
+  selectSlot(slot: DaySlot): void {
+    if (!slot.available) return;
+    this.form.appointment_time = this.form.appointment_time === slot.time ? '' : slot.time;
+    this.loadDoctors();
   }
 
-  /** Moves the next sitting of the treatment in progress. */
-  saveSlot(): void {
-    const next = this.nextSitting();
-    if (!next) return;
-    if (!this.slot.date || this.slot.date < this.today) return void this.error.set('Pick today or a later date for the next sitting.');
-    this.run(this.api.PUT(`${ApiRoutesConstants.SITTINGS}/${next.id}/reschedule`, {
-      scheduled_date: this.slot.date, scheduled_time: this.slot.time ? this.slot.time.slice(0, 5) : null,
-    }), 'Sitting rescheduled.');
+  private resetDoctors(): void {
+    this.doctorsSub?.unsubscribe();
+    this.doctors = [];
+    this.doctorsTotal = null;
+    this.doctorsError = '';
+    this.doctorsLoading = false;
+    this.form.doctor_id = '';
   }
 
-  addSittings(): void {
-    const active = this.activePlan();
-    if (!active) return;
-    const count = Number(this.extra.count);
-    if (!(count >= 1 && count <= 50)) return void this.error.set('Add between 1 and 50 sittings.');
-    if (!(Number(this.extra.interval) >= 1)) return void this.error.set('The gap between sittings must be at least 1 day.');
-    this.run(this.api.POST(`${ApiRoutesConstants.CUSTOMER_TREATMENTS}/${active.id}/sittings`, {
-      count, sitting_interval_days: Number(this.extra.interval),
-    }));
+  /** Doctors of the unit who are free at the picked date + time. */
+  loadDoctors(): void {
+    const { appointment_date: date, appointment_time: time } = this.form;
+    this.resetDoctors();
+    if (!date || !time) return;
+    this.doctorsLoading = true;
+    this.doctorsSub = (this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/available-doctors?date=${date}&time=${encodeURIComponent(time)}${this.unitQuery()}`) as Observable<any>)
+      .pipe(finalize(() => (this.doctorsLoading = false)))
+      .subscribe({
+        next: res => {
+          this.doctors = (res?.data ?? []) as FreeDoctor[];
+          this.doctorsTotal = Number(res?.meta?.doctors ?? 0);
+          if (this.doctors.length === 1) this.form.doctor_id = String(this.doctors[0].id);
+        },
+        error: err => { this.doctorsError = err?.error?.message || 'Could not load the available doctors.'; },
+      });
   }
 
-  addTreatment(): void {
-    const base = this.returning()?.base_appointment_id;
-    if (!base) return;
-    if (!this.plan.treatment_id) return void this.error.set('Choose the treatment.');
-    if (!(Number(this.plan.sittings_count) >= 1)) return void this.error.set('Sittings must be at least 1.');
-    if (!this.plan.start_date || this.plan.start_date < this.today) return void this.error.set('Pick today or a later date for the first sitting.');
-    this.run(this.api.POST(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${base}/treatments`, {
-      treatment_id: Number(this.plan.treatment_id),
-      sittings_count: Number(this.plan.sittings_count),
-      sitting_interval_days: Number(this.plan.interval) || 30,
-      start_date: this.plan.start_date,
-      start_time: this.plan.start_time ? this.plan.start_time.slice(0, 5) : null,
-      remarks: this.plan.remarks || null,
-    }), undefined, () => (this.plan = { ...this.plan, category_id: null, treatment_id: null, sittings_count: 1, remarks: '' }));
+  get doctorPlaceholder(): string {
+    if (!this.form.appointment_time) return 'Pick date and time first';
+    if (this.doctorsLoading) return 'Checking availability…';
+    if (this.doctorsError) return 'Could not load doctors';
+    if (this.doctorsTotal === 0) return 'No doctor set up for this branch';
+    if (!this.doctors.length) return 'No doctor available at this time';
+    return 'Select available doctor';
   }
 
-  /** Saves a returning-customer change, then reloads the customer's treatments. */
-  private run(request: any, fallbackMessage = 'Saved.', after?: () => void): void {
-    this.error.set(null);
-    this.saving.set(true);
-    request.pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (res: any) => {
-        this.changed = true;
-        this.toast.success(res?.message || fallbackMessage);
-        after?.();
-        this.lookup(true);
-      },
-      error: (err: any) => this.showError(err, 'Could not save.'),
-    });
+  get doctorHint(): string {
+    if (!this.form.appointment_time || this.doctorsLoading) return '';
+    if (this.doctorsError) return this.doctorsError;
+    if (this.doctorsTotal === 0) return 'This branch / franchise has no doctor yet, so the visit is booked without one.';
+    if (!this.doctors.length) return 'Every doctor here is booked or on leave at this time. Try another time.';
+    return `${this.doctors.length} of ${this.doctorsTotal} doctor${this.doctorsTotal === 1 ? '' : 's'} available at ${this.slotLabel(this.form.appointment_time)}.`;
+  }
+
+  /** Slots grouped Morning / Afternoon / Evening, each with how many are still free. */
+  get slotGroups(): { key: string; label: string; icon: string; range: string; slots: DaySlot[]; free: number }[] {
+    const defs = [
+      { key: 'morning', label: 'Morning', icon: 'bi-sunrise', from: 0, to: 12, range: 'Before 12 PM' },
+      { key: 'afternoon', label: 'Afternoon', icon: 'bi-sun', from: 12, to: 16, range: '12 - 4 PM' },
+      { key: 'evening', label: 'Evening', icon: 'bi-moon-stars', from: 16, to: 24, range: 'After 4 PM' },
+    ];
+    return defs
+      // slots already past today are not offered at all (the count shows under the grid)
+      .map(d => {
+        const slots = this.slots.filter(s => s.reason !== 'Time has passed' && Number(s.time.slice(0, 2)) >= d.from && Number(s.time.slice(0, 2)) < d.to);
+        return { key: d.key, label: d.label, icon: d.icon, range: d.range, slots, free: slots.filter(s => s.available).length };
+      })
+      .filter(g => g.slots.length);
+  }
+
+  /** Part of the day shown in the grid; until one is tapped, the part holding the picked slot, else the first with a free slot. */
+  activePart = '';
+
+  get activeGroup(): { key: string; label: string; icon: string; range: string; slots: DaySlot[]; free: number } | undefined {
+    const groups = this.slotGroups;
+    const picked = this.form.appointment_time;
+    return groups.find(g => g.key === this.activePart)
+      ?? groups.find(g => g.slots.some(s => s.time === picked))
+      ?? groups.find(g => g.free > 0)
+      ?? groups[0];
+  }
+
+  get passedSlotCount(): number {
+    return this.slots.filter(s => s.reason === 'Time has passed').length;
+  }
+
+  get bookedSlotCount(): number {
+    return this.slots.filter(s => !s.available && s.reason !== 'Time has passed').length;
+  }
+
+  get slotHint(): string {
+    if (this.slotsError) return this.slotsError;
+    if (!this.slots.length) return '';
+    if (!this.slots.some(s => s.available)) return 'Every slot on this date is taken. Pick another date.';
+    return `Each visit takes ${this.slotMinutes} minutes. Greyed slots are already booked or have no doctor free.`;
+  }
+
+  /** "11:15 AM - 12:00 PM" for the picked slot. */
+  get selectedSlotRange(): string {
+    const picked = this.form.appointment_time;
+    if (!picked) return '';
+    const [h, m] = picked.split(':').map(Number);
+    const end = new Date(2000, 0, 1, h, m + this.slotMinutes);
+    return `${this.slotLabel(picked)} - ${this.slotLabel(`${pad(end.getHours())}:${pad(end.getMinutes())}`)}`;
+  }
+
+  slotLabel(time: string): string {
+    const [h, m] = time.split(':').map(Number);
+    return `${pad(h % 12 || 12)}:${pad(m)} ${h >= 12 ? 'PM' : 'AM'}`;
   }
 
   private showError(err: any, fallback: string): void {

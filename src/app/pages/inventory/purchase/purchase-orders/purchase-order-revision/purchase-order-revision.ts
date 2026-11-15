@@ -5,6 +5,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import Swal from 'sweetalert2';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
 import { PriceRevision, RevisionLine, displayDate } from '../../../../../shared/models/purchase.model';
+import { PageLoader } from '../../../../../shared/components/page-loader/page-loader';
 
 /**
  * Vendor side of a purchase order: where its invoice was sent (e-mail / WhatsApp, with a re-send), and what to do when the vendor
@@ -14,7 +15,7 @@ import { PriceRevision, RevisionLine, displayDate } from '../../../../../shared/
 @Component({
   selector: 'app-purchase-order-revision',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [PageLoader, CommonModule, FormsModule, MatDialogModule],
   templateUrl: './purchase-order-revision.html',
   styleUrl: '../../../../../shared/styles/erp-dialog.scss',
 })

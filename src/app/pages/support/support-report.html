@@ -1,0 +1,114 @@
+<div class="sp-page">
+  <div class="sp-head">
+    <div>
+      <h1 class="sp-title">Report an Issue</h1>
+      <p class="sp-sub">Describe what went wrong. A screenshot helps us fix it faster.</p>
+    </div>
+    <a class="sp-btn" routerLink="/app/support/tickets"><i class="bi bi-ticket-detailed"></i> My Support Tickets</a>
+  </div>
+
+  <app-auto-module-tabs></app-auto-module-tabs>
+
+  @if (created) {
+    <section class="sp-card text-center py-5">
+      <i class="bi bi-check-circle-fill" style="font-size: 44px; color: var(--status-green-text)"></i>
+      <h2 class="sp-title mt-2">Your support ticket has been successfully created.</h2>
+      <p class="mb-1">Ticket Number: <strong>{{ created.number }}</strong></p>
+      <p class="sp-sub">Our support team will review your issue. You will get a notification whenever its status changes.</p>
+      <div class="d-flex flex-wrap justify-content-center gap-2 mt-3">
+        <button type="button" class="sp-btn primary" (click)="view()"><i class="bi bi-eye"></i> View Ticket</button>
+        <button type="button" class="sp-btn" (click)="another()"><i class="bi bi-plus-lg"></i> Report Another Issue</button>
+      </div>
+    </section>
+  } @else {
+    <div class="sp-grid side">
+      <form class="sp-card sp-grid" (ngSubmit)="submit()" novalidate>
+        <div class="sp-field">
+          <label class="sp-label" for="sp-title">Issue title <span class="req">*</span></label>
+          <input id="sp-title" class="sp-input" name="title" [(ngModel)]="title" maxlength="160" placeholder="e.g. Appointment list shows a blank page">
+          @if (touched && title.trim().length < 3) { <div class="sp-error">Enter a short title (at least 3 letters).</div> }
+        </div>
+
+        <div class="sp-grid cols-2">
+          <div class="sp-field">
+            <label class="sp-label" for="sp-cat">Issue category</label>
+            <select id="sp-cat" class="sp-select" name="category" [(ngModel)]="categoryId">
+              <option value="">Choose a category</option>
+              @for (c of config?.categories ?? []; track c.id) { <option [ngValue]="c.id">{{ c.category_name }}</option> }
+            </select>
+          </div>
+          <div class="sp-field">
+            <label class="sp-label" for="sp-mod">Affected module</label>
+            <select id="sp-mod" class="sp-select" name="module" [(ngModel)]="module">
+              <option value="">Choose the module</option>
+              @for (m of config?.modules ?? []; track m) { <option [value]="m">{{ m }}</option> }
+            </select>
+          </div>
+          <div class="sp-field">
+            <label class="sp-label" for="sp-screen">Affected page / screen</label>
+            <input id="sp-screen" class="sp-input" name="screen" [(ngModel)]="screen" maxlength="160" placeholder="e.g. Appointments / Add appointment">
+          </div>
+          <div class="sp-field">
+            <label class="sp-label" for="sp-prio">Priority</label>
+            <select id="sp-prio" class="sp-select" name="priority" [(ngModel)]="priority">
+              @for (p of config?.priorities ?? []; track p.value) { <option [value]="p.value">{{ p.label }}</option> }
+            </select>
+            <div class="sp-help">Pick High or Critical only if you cannot continue your work.</div>
+          </div>
+        </div>
+
+        <div class="sp-field">
+          <label class="sp-label" for="sp-desc">Describe the issue <span class="req">*</span></label>
+          <textarea id="sp-desc" class="sp-textarea" name="description" [(ngModel)]="description" maxlength="5000" placeholder="What did you do, what did you expect, and what happened instead?"></textarea>
+          @if (touched && description.trim().length < 5) { <div class="sp-error">Please describe the problem (at least 5 characters).</div> }
+        </div>
+
+        <div class="sp-field">
+          <span class="sp-label">Screenshots / files</span>
+          <div class="sp-drop">
+            <label class="sp-btn mb-0"><i class="bi bi-image"></i> Choose files
+              <input #pick type="file" multiple hidden accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.txt,.log,.doc,.docx,.xls,.xlsx,.csv" (change)="onFiles(pick)">
+            </label>
+            <span class="sp-help mb-0">Up to {{ config?.attachments?.max_files ?? 6 }} files, {{ ((config?.attachments?.max_kb ?? 5120) / 1024) | number: '1.0-0' }} MB each. Images, PDF, text or Office files.</span>
+          </div>
+          @for (e of fileErrors; track e) { <div class="sp-error">{{ e }}</div> }
+          @if (files.length) {
+            <div class="sp-previews">
+              @for (f of files; track f.file; let i = $index) {
+                <div class="sp-thumb" [title]="f.file.name">
+                  @if (f.preview) { <img [src]="f.preview" [alt]="f.file.name"> } @else { <div class="doc"><i class="bi bi-file-earmark-text"></i>{{ f.file.name }}</div> }
+                  <button type="button" class="rm" (click)="remove(i)" [attr.aria-label]="'Remove ' + f.file.name"><i class="bi bi-x-lg"></i></button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        @if (error) { <div class="sp-alert" role="alert"><i class="bi bi-exclamation-circle"></i> {{ error }}</div> }
+        @if (uploading) { <div class="sp-progress" aria-label="Upload progress"><span [style.width.%]="progress"></span></div> }
+
+        <div class="d-flex flex-wrap gap-2">
+          <button type="submit" class="sp-btn primary" [disabled]="uploading"><i class="bi bi-send-fill"></i> {{ uploading ? 'Submitting... ' + progress + '%' : 'Submit Ticket' }}</button>
+          <a class="sp-btn" routerLink="/app/support">Cancel</a>
+        </div>
+      </form>
+
+      <aside class="sp-card">
+        <h2 class="sp-card-title"><i class="bi bi-info-circle"></i> Sent with your report</h2>
+        <dl class="sp-kv" style="grid-template-columns: 1fr">
+          <div><dt>Reported by</dt><dd>{{ user?.name }}</dd></div>
+          <div><dt>Date &amp; time</dt><dd>{{ capturedAt | date: 'dd MMM yyyy, h:mm a' }}</dd></div>
+          <div><dt>Page where it happened</dt><dd>{{ pageUrl || 'Not captured' }}</dd></div>
+          <div><dt>Browser &amp; system</dt><dd>{{ browser.text }}</dd></div>
+        </dl>
+        <p class="sp-help mt-2">No passwords or login tokens are ever sent.</p>
+        @if (config) {
+          <hr>
+          <h2 class="sp-card-title"><i class="bi bi-telephone"></i> Need it urgently?</h2>
+          <p class="mb-1">Call support: <a [href]="'tel:' + config.support_phone"><strong>{{ config.support_phone }}</strong></a></p>
+          @if (config.support_hours) { <div class="sp-help">{{ config.support_hours }}</div> }
+        }
+      </aside>
+    </div>
+  }
+</div>

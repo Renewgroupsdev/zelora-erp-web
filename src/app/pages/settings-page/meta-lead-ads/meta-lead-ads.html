@@ -10,12 +10,14 @@
     </div>
   </div>
 
+  <app-auto-module-tabs></app-auto-module-tabs>
+
   @if (loadError()) {
     <div class="notice bad"><i class="bi bi-exclamation-octagon-fill"></i><span>{{ loadError() }}</span></div>
   }
 
   @if (loading() && !overview()) {
-    <div class="card empty">Loading Meta integration…</div>
+    <div class="card empty"><app-page-loader [inline]="true" /></div>
   }
 
   @if (overview(); as o) {

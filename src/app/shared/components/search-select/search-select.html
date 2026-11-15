@@ -1,0 +1,35 @@
+<div class="ss" [class.is-open]="open()" [class.is-compact]="compact()" [class.is-invalid]="invalid()" [class.has-icon]="!!icon()">
+  <button #trigger type="button" class="ss-trigger" [attr.id]="inputId()" [disabled]="disabled()"
+          aria-haspopup="listbox" [attr.aria-expanded]="open()" (click)="toggle()" (keydown)="onTriggerKey($event)">
+    @if (icon()) { <i class="bi ss-icon" [class]="icon()" aria-hidden="true"></i> }
+    <span class="ss-text" [class.is-placeholder]="!selected()">{{ selected()?.label ?? placeholder() }}</span>
+    <i class="bi bi-chevron-down ss-arrow" aria-hidden="true"></i>
+  </button>
+
+  @if (open()) {
+    <div class="ss-panel" role="presentation"
+         [style.left.px]="pos().left" [style.width.px]="pos().width"
+         [style.top.px]="pos().top" [style.bottom.px]="pos().bottom" [style.max-height.px]="pos().maxHeight">
+      <div class="ss-search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input #searchBox type="text" autocomplete="off" [placeholder]="searchPlaceholder()" [value]="query()"
+               (input)="onSearch($any($event.target).value)" (keydown)="onSearchKey($event)" aria-label="Search" />
+      </div>
+      <ul class="ss-list" role="listbox">
+        @for (o of filtered(); track o.value; let i = $index) {
+          @if (o.group && o.group !== filtered()[i - 1]?.group) { <li class="ss-group" role="presentation">{{ o.group }}</li> }
+          <li class="ss-opt" role="option" [attr.aria-selected]="o.value === value()"
+              [class.is-active]="i === active()" [class.is-selected]="o.value === value()" [class.is-disabled]="isDisabled(o)"
+              (mousedown)="$event.preventDefault()" (click)="pick(o)" (mousemove)="active.set(i)">
+            <span class="ss-opt-label">{{ o.label }}</span>
+            @if (isDisabled(o)) { <small class="ss-opt-hint">{{ disabledLabel() }}</small> }
+            @else if (o.hint) { <small class="ss-opt-hint">{{ o.hint }}</small> }
+            @if (o.value === value()) { <i class="bi bi-check2 ss-check" aria-hidden="true"></i> }
+          </li>
+        } @empty {
+          <li class="ss-empty">{{ options().length ? 'No matches found' : emptyText() }}</li>
+        }
+      </ul>
+    </div>
+  }
+</div>

@@ -36,6 +36,23 @@ export class ToastService {
     this.fire('info', title, text);
   }
 
+  /** Alert with a primary action button next to Close (only the two buttons dismiss it); resolves 'action' or 'close'. */
+  action(icon: SweetAlertIcon, title: string, text: string | undefined, actionText: string): Promise<'action' | 'close'> {
+    return Swal.fire({
+      icon,
+      title,
+      text,
+      showCancelButton: true,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      confirmButtonText: actionText,
+      cancelButtonText: 'Close',
+      confirmButtonColor: '#0f4c3a',
+      cancelButtonColor: '#6C63FF',
+      reverseButtons: true,
+    }).then(result => (result.isConfirmed ? 'action' : 'close'));
+  }
+
   /** Swal-based Yes/No prompt so destructive actions never fall back to the browser's native confirm(). */
   confirm(title: string, text?: string, confirmButtonText = 'Yes, delete it'): Promise<boolean> {
     return Swal.fire({

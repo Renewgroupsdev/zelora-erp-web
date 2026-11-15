@@ -8,12 +8,14 @@ import { currentModule } from '../shared/utils/current-module.util';
 import { MatDialog } from '@angular/material/dialog';
 import { NavLayoutService } from '../services/nav-layout.service';
 import { AppNotification, NotificationService } from '../shared/common-services/notification.service';
+import { BellRealtimeService } from '../shared/common-services/bell-realtime.service';
 import { AuthService } from '../core/auth/auth.service';
 import { roleLabel } from '../core/auth/auth.model';
 import { BranchContextService, ScopeType } from '../shared/common-services/branch-context.service';
 import { BranchOptionsService } from '../shared/common-services/branch-options.service';
 import { BranchChat } from '../shared/components/branch-chat/branch-chat';
 import { DiscountRequestsService } from '../shared/common-services/discount-requests.service';
+import { SittingTransfersService } from '../shared/common-services/sitting-transfers.service';
 import { AbsentTelecallersService } from '../shared/common-services/absent-telecallers.service';
 import { PurchaseApprovalAlertsService } from '../shared/common-services/purchase-approval-alerts.service';
 import { FollowUpReminderService } from '../shared/common-services/follow-up-reminder.service';
@@ -140,6 +142,18 @@ export class TopNavbar {
   @HostListener('document:keydown.escape')
   onEscape(): void {
     if (this.scopeMenu()) this.closeScopeMenu();
+    if (this.navLayout.notificationsOpen()) this.navLayout.closeNotifications();
+  }
+
+  /** Closes the notification popup when the user clicks anywhere outside it (or its bell button). */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.navLayout.notificationsOpen()) return;
+    const target = event.target as Node | null;
+    const wrapper = this.host.nativeElement.querySelector('.notification-menu-wrapper');
+    // Ignore clicks inside the bell/dropdown, and clicks on nodes already removed from the DOM by that click.
+    if (!target || !target.isConnected || wrapper?.contains(target)) return;
+    this.navLayout.closeNotifications();
   }
 
   /** Profile photo of the signed-in user / employee / customer; falls back to the icon if it fails to load. */
@@ -159,12 +173,18 @@ export class TopNavbar {
     private router: Router,
     private dialog: MatDialog,
     private discounts: DiscountRequestsService,
+    private sittingTransfers: SittingTransfersService,
     private absentTelecallers: AbsentTelecallersService,
     private purchaseAlerts: PurchaseApprovalAlertsService,
     private followUpReminder: FollowUpReminderService,
+    private bellRealtime: BellRealtimeService,
   ) {
+    // Bell over WebSocket (Reverb): every list below is re-read the moment it changes; their polls are only a fallback.
+    this.bellRealtime.start();
     // Branch managers / approvers: discount requests of their branch show up here as notifications.
     this.discounts.start();
+    // Doctors: a sitting another branch wants to move here waits for their acceptance.
+    this.sittingTransfers.start();
     // Branch managers: telecallers absent today with leads to follow up (click to reassign).
     this.absentTelecallers.start();
     // Head office / admin: purchase requests sent by the branches wait for approval here.
@@ -182,6 +202,12 @@ export class TopNavbar {
         .open(DiscountReviewDialog, { width: '640px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, restoreFocus: true, data: { id: notification.action.id } })
         .afterClosed()
         .subscribe(() => this.discounts.refresh(true)); // a decided request leaves the bell at once
+      return;
+    }
+
+    if (notification.action?.kind === 'sitting-transfer') {
+      this.navLayout.closeNotifications();
+      this.sittingTransfers.review(notification.action.transfer);
       return;
     }
 
@@ -210,6 +236,18 @@ export class TopNavbar {
   /** 3-bar icon: collapsed (icons only) by default, expands to show link names. */
   onToggleSidebar(): void {
     this.navLayout.toggleSidebar();
+  }
+
+  /** Staff logins only: customers use the customer app's Help & Support. */
+  canReportIssue(): boolean {
+    return this.authService.currentUser()?.login_type !== 'customer';
+  }
+
+  /** Opens the Report an Issue form for the page the user is on (already on a support page: a plain form). */
+  reportIssue(): void {
+    const url = this.router.url.split('#')[0];
+    const onSupport = url.startsWith('/app/support');
+    this.router.navigate(['/app/support/report'], onSupport ? {} : { queryParams: { from: url } });
   }
 
   goToDashboard(): void {

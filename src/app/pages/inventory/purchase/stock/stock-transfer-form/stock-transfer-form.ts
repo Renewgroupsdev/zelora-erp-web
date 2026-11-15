@@ -3,7 +3,9 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
-import { CENTRAL_STORE_KEY, StockBatch, displayDate } from '../../../../../shared/models/purchase.model';
+import { CENTRAL_STORE_KEY, NearbyStoreOption, StockBatch, displayDate } from '../../../../../shared/models/purchase.model';
+import { PageLoader } from '../../../../../shared/components/page-loader/page-loader';
+import { SearchSelect, SelectOption } from '../../../../../shared/components/search-select/search-select';
 
 interface TransferRow {
   batchId: string | null;
@@ -13,11 +15,14 @@ interface TransferRow {
 /**
  * Dispatch stock to another store (reference stock transfer / stock return): one or more batches leave the source
  * now and stay "In Transit" until the receiving store accepts or rejects them.
+ *
+ * "Find a product at nearby branches": search a product and the branches / franchises holding it are listed (within 50 km of the
+ * To Store first, nearest first). Picking one fills From Store and its earliest-expiry batch.
  */
 @Component({
   selector: 'app-stock-transfer-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatDialogModule, PageLoader, SearchSelect],
   templateUrl: './stock-transfer-form.html',
   styleUrls: ['../../../../../shared/styles/erp-dialog.scss', '../../goods-inward/goods-inward-form/goods-inward-form.scss'],
 })
@@ -47,6 +52,49 @@ export class StockTransferForm {
     return others[0]?.key ?? CENTRAL_STORE_KEY;
   }
 
+  // ---- nearby branches / franchises holding a product
+  readonly productChoices = computed<SelectOption[]>(() => {
+    const seen = new Map<string, SelectOption>();
+    for (const b of this.purchase.stock()) {
+      if (b.qty > 0 && !seen.has(b.productId)) seen.set(b.productId, { value: b.productId, label: `${b.productCode} - ${b.productName}` });
+    }
+    return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label));
+  });
+  readonly findProductId = signal<string | null>(null);
+  readonly nearby = signal<NearbyStoreOption[]>([]);
+  readonly nearbyLoading = signal(false);
+  readonly nearbyLoaded = signal(false);
+  /** The nearby store currently chosen as the From Store, for the route card. */
+  readonly picked = computed(() => this.nearby().find(o => o.storeKey === this.fromStoreKey()) ?? null);
+
+  async findNearby(productId: string | null): Promise<void> {
+    this.findProductId.set(productId);
+    this.nearby.set([]);
+    this.nearbyLoaded.set(false);
+    if (!productId) return;
+    this.nearbyLoading.set(true);
+    const list = await this.purchase.nearbyStores(productId, this.toStoreKey);
+    if (productId !== this.findProductId()) return; // another product was picked while loading
+    this.nearby.set(list);
+    this.nearbyLoading.set(false);
+    this.nearbyLoaded.set(true);
+  }
+
+  /** Use a nearby store as the sender: From Store + the product's earliest-expiry batch there. */
+  useSource(o: NearbyStoreOption): void {
+    this.setFrom(o.storeKey);
+    const batch = this.purchase.availableBatches(o.storeKey).find(b => b.productId === this.findProductId());
+    this.rows.set([{ batchId: batch?.id ?? null, qty: null }]);
+  }
+
+  km(o: NearbyStoreOption): string {
+    return o.distanceKm === null ? 'distance not set' : `${o.distanceKm} km`;
+  }
+
+  zoneLabel(o: NearbyStoreOption): string {
+    return o.zone === 'near' ? 'Within 50 km' : o.zone === 'far' ? 'Beyond 50 km' : 'Distance unknown';
+  }
+
   setFrom(storeKey: string): void {
     this.fromStoreKey.set(storeKey);
     this.rows.set([{ batchId: null, qty: null }]);
@@ -56,6 +104,7 @@ export class StockTransferForm {
   setTo(storeKey: string): void {
     this.toStoreKey = storeKey;
     this.toStoreKeySignal.set(storeKey);
+    if (this.findProductId()) void this.findNearby(this.findProductId()); // distances are measured from the To Store
   }
 
   batch(row: TransferRow): StockBatch | null {

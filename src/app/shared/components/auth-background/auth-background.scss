@@ -32,18 +32,22 @@
 /* Wide screens: the whole picture is shown at its own proportions, so nothing is cropped. A pale gradient fills any
    space left at the sides, and the picture's edges fade into it. */
 @media (min-width: 900px) {
+  /* behind the picture: a soft, blurred copy of the same picture stretched over the whole window, so a very wide / short
+     window (where the sharp picture cannot reach the edges without being stretched) still reads as full width */
   .auth-bg::before {
     content: "";
     position: absolute;
-    inset: 0;
+    inset: -40px;
     z-index: -2;
-    background: radial-gradient(ellipse at 50% 40%, #f4f9f6 0%, #e8f2ed 55%, #d9eae1 100%);
+    background: var(--bg-url) center / 100% 100% no-repeat, #e8f2ed;
+    filter: blur(28px) saturate(1.1);
+    opacity: .9;
   }
 
   .auth-bg::after {
     inset: auto;
     left: 50%;
-    top: 0;
+    top: var(--stage-y, 0px); /* moves up with the layout in a short window */
     width: var(--stage-w, 100%);
     height: var(--stage-h, 100%);
     transform: translateX(-50%);

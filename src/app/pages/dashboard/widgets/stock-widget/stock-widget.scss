@@ -1,1 +1,114 @@
-/* StockWidget: no styles of its own - it uses the shared card, list and chart styles in ../../dashboard.scss. */
+/* StockWidget: styles used only by this widget. Scoped under .dash-page (tokens, tones and shared card / list styles live in ../../dashboard.scss). */
+
+.dash-page {
+  /* ------------------------------------------------------------ headline: stock value + alert counts */
+  .st-hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 10px; margin-bottom: 14px; }
+  .st-value {
+    position: relative; isolation: isolate; overflow: hidden; min-width: 0;
+    display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 16px 18px; border-radius: 16px; color: #fff;
+    background:
+      radial-gradient(120% 140% at 100% 0%, rgba(255, 255, 255, .2), transparent 55%),
+      linear-gradient(135deg, #14917a 0%, var(--primary, #0f5c4d) 55%, #0a3d33 100%);
+    box-shadow: 0 16px 28px -20px #0a3d33;
+    small { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; opacity: .85; i { margin-right: 4px; } }
+    strong { font-size: clamp(24px, 2.1vw, 30px); font-weight: 800; letter-spacing: -.8px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    span { font-size: 12px; opacity: .85; }
+  }
+  .st-value-mark { position: absolute; right: -8px; bottom: -16px; z-index: -1; font-size: 86px; opacity: .1; transform: rotate(-10deg); }
+
+  .st-alerts { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .st-alert {
+    flex: 1 1 0; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 9px 12px; border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--tone-b) 20%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--tone-a) 14%, var(--dash-surface)), var(--dash-surface) 80%);
+    > span:last-child { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+    b { font-size: 20px; font-weight: 800; color: var(--tone-fg); font-variant-numeric: tabular-nums; }
+    small { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    &.is-zero { filter: grayscale(.85); opacity: .75; }
+  }
+  .st-alert-icon {
+    flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; font-size: 15px; color: #fff;
+    background: linear-gradient(140deg, var(--tone-a), var(--tone-b)); box-shadow: 0 8px 14px -8px var(--tone-b);
+  }
+
+  /* section titles with a count */
+  .st-sub {
+    display: flex; align-items: center; gap: 7px; margin: 4px 0 8px; font-size: 12px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--text-muted);
+    i { font-size: 14px; color: var(--primary); }
+    em { font-style: normal; padding: 0 7px; border-radius: 999px; font-size: 11px; color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, transparent); }
+    &::after { content: ''; flex: 1; height: 1px; background: var(--dash-line); }
+  }
+
+  /* ------------------------------------------------------------ running low: a level gauge per product */
+  .st-low { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 7px; max-height: 330px; overflow-y: auto;
+    > li {
+      --l-a: #ffb453; --l-b: #ee6a17;
+      display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 14px;
+      border: 1px solid color-mix(in srgb, var(--l-b) 16%, var(--dash-line));
+      background: linear-gradient(90deg, color-mix(in srgb, var(--l-a) 9%, var(--dash-surface)), var(--dash-surface) 65%);
+      transition: transform .18s ease, box-shadow .18s ease;
+      &:hover { transform: translateX(2px); box-shadow: 0 10px 20px -16px var(--l-b); }
+      &.is-critical { --l-a: #ff8a6a; --l-b: #e2531f; }
+      &.is-out { --l-a: #ff8484; --l-b: #da3434; }
+    } }
+  .st-low-icon {
+    flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; font-size: 15px; color: #fff;
+    background: linear-gradient(140deg, var(--l-a), var(--l-b)); box-shadow: 0 8px 14px -8px var(--l-b);
+  }
+  .st-low-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .st-low-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    strong { min-width: 0; font-size: 13px; font-weight: 800; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } }
+  .st-qty { flex: none; font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums;
+    b { font-size: 14px; font-weight: 800; color: var(--l-b); } }
+  .st-gauge {
+    display: block; height: 6px; border-radius: 999px; overflow: hidden;
+    background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--l-b) 12%, transparent) 0 calc(10% - 2px), transparent calc(10% - 2px) 10%);
+    i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--l-b), var(--l-a)); transition: width .6s ease; }
+  }
+  .st-low-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .st-store {
+    min-width: 0; font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    i { margin-right: 2px; font-size: 10.5px; }
+    &.is-central { color: var(--primary); font-weight: 700; }
+  }
+  .st-level { flex: none; padding: 1px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; color: var(--l-b); background: color-mix(in srgb, var(--l-a) 18%, transparent); }
+
+  /* ------------------------------------------------------------ expiring soon: a calendar tile + countdown */
+  .st-exp { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px;
+    > li {
+      --e-a: #ffb453; --e-b: #d97706;
+      display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 8px; border-radius: 14px;
+      border: 1px solid color-mix(in srgb, var(--e-b) 15%, var(--dash-line)); background: var(--dash-surface);
+      transition: transform .18s ease, box-shadow .18s ease;
+      &:hover { transform: translateX(2px); box-shadow: 0 10px 20px -16px var(--e-b); }
+      &.is-expired { --e-a: #ff8484; --e-b: #da3434; background: color-mix(in srgb, #ff8484 6%, var(--dash-surface)); }
+    } }
+  .st-date {
+    flex: none; width: 44px; overflow: hidden; display: flex; flex-direction: column; align-items: center; border-radius: 11px;
+    background: var(--dash-surface); border: 1px solid color-mix(in srgb, var(--e-b) 25%, transparent); box-shadow: 0 6px 12px -10px var(--e-b);
+    small { order: -1; width: 100%; padding: 2px 0; text-align: center; font-size: 9.5px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: #fff; background: linear-gradient(90deg, var(--e-a), var(--e-b)); }
+    b { padding: 2px 0 3px; font-size: 17px; font-weight: 800; line-height: 1.1; color: var(--text-dark); }
+  }
+  .st-exp-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+    strong { font-size: 13px; font-weight: 800; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    small { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; i { font-size: 10.5px; } } }
+  .st-countdown { flex: none; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; white-space: nowrap; color: var(--e-b); background: color-mix(in srgb, var(--e-a) 16%, transparent); }
+
+  @media (max-width: 520px) {
+    .st-hero { grid-template-columns: minmax(0, 1fr); }
+    .st-alerts { flex-direction: row; }
+    .st-countdown { padding: 2px 8px; font-size: 10.5px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .st-low > li, .st-exp > li, .st-gauge i { transition: none; }
+  }
+
+  /* scrolling lists: vertical only - the hover slide / shadow of a row never adds a horizontal scrollbar */
+  .cc-board, .st-low, .st-exp, .fd-due-list, .fd-timeline, .fd-walk-list {
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 2px 6px 4px 2px;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--text-muted) 35%, transparent) transparent;
+  }
+}

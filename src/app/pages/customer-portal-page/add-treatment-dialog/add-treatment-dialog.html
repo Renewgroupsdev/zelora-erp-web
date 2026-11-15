@@ -1,0 +1,349 @@
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-capsule-pill"></i></div>
+      <div class="title-content">
+        <h2>Add Treatment</h2>
+        <p>Enter the customer ID or mobile number - the record loads, then add a treatment or confirm a Nill Card consultation.</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-body-custom">
+    <fieldset class="na-fieldset" [disabled]="saving()">
+      <div class="form-grid">
+        <div class="form-field full-width">
+          <label for="at-query">Customer ID or Mobile No <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-search"></i>
+            <input id="at-query" name="query" autocomplete="off" placeholder="e.g. CUST00004 or 9000000011" [(ngModel)]="query"
+                   (ngModelChange)="onQueryChange()" (keydown.enter)="search()" />
+            @if (looking()) { <i class="bi bi-arrow-repeat spin na-lookup-icon" aria-label="Searching"></i> }
+          </div>
+        </div>
+      </div>
+      <div class="na-inline end">
+        <button type="button" class="save-btn" [disabled]="looking() || !query.trim()" (click)="search()"><i class="bi bi-search"></i> Find</button>
+      </div>
+
+      @if (found(); as r) {
+        <div class="na-banner found">
+          <i class="bi bi-person-check-fill"></i>
+          <span>
+            @if (r.is_customer) { Existing customer <strong>{{ r.customer_code }}</strong> - details loaded. }
+            @else { Nill Card visit found - details loaded. }
+          </span>
+        </div>
+
+        <section class="na-card">
+          <h3><i class="bi bi-person-vcard"></i> Personal information</h3>
+          <dl class="na-grid">
+            <div><dt>Name</dt><dd>{{ r.name || '-' }}</dd></div>
+            <div><dt>Gender</dt><dd>{{ r.gender || '-' }}</dd></div>
+            <div><dt>Age</dt><dd>{{ r.age ?? '-' }}</dd></div>
+            <div><dt>E-mail</dt><dd>{{ r.email || '-' }}</dd></div>
+            <div><dt>Address</dt><dd>{{ r.location || '-' }}</dd></div>
+            <div><dt>Pincode</dt><dd>{{ r.pincode || '-' }}</dd></div>
+          </dl>
+        </section>
+
+        @if (r.nill_card; as n) {
+          <section class="na-card active">
+            <h3><i class="bi bi-credit-card-2-front"></i> Previous consultation (Nill Card)
+              <span class="na-pill">{{ n.is_free ? 'Free consultation' : 'Fee paid ' + inr(n.consultation_fee) }}</span>
+            </h3>
+            <dl class="na-grid">
+              <div><dt>Visit date</dt><dd>{{ formatDate(n.visit_date) }}</dd></div>
+              <div><dt>Mobile</dt><dd>{{ n.mobile_no || '-' }}</dd></div>
+              <div><dt>Branch</dt><dd>{{ n.branch || '-' }}</dd></div>
+              <div><dt>Doctor</dt><dd>{{ n.doctor || '-' }}</dd></div>
+              <div><dt>Consultation fee</dt><dd>{{ n.is_free ? 'Free (₹0)' : inr(n.consultation_fee) }}</dd></div>
+              <div><dt>Payment ref.</dt><dd>{{ n.transaction_no || '-' }}</dd></div>
+              <div><dt>Treatment suggested</dt><dd>@for (t of n.treatments; track $index) { {{ t.name }} ({{ t.sittings_count }} sittings){{ $last ? '' : ', ' }} } @empty { None yet }</dd></div>
+              <div><dt>Treatment total</dt><dd>{{ n.total_amount ? inr(n.total_amount) : '-' }}</dd></div>
+              <div class="na-wide"><dt>Doctor suggestion</dt><dd>{{ n.doctor_suggestion || '-' }}</dd></div>
+            </dl>
+
+            @if (n.can_start) {
+              <div class="at-choice" role="radiogroup" aria-label="Treatment">
+                <button type="button" role="radio" [class.on]="nillMode === 'continue'" [attr.aria-checked]="nillMode === 'continue'" (click)="nillMode = 'continue'">
+                  <i class="bi bi-arrow-right-circle"></i>
+                  <span><strong>Continue the previous treatment</strong>
+                    <small>@for (t of n.treatments; track $index) { {{ t.name }} ({{ t.sittings_count }}){{ $last ? '' : ', ' }} } · {{ inr(n.total_amount) }}</small></span>
+                </button>
+                <button type="button" role="radio" [class.on]="nillMode === 'change'" [attr.aria-checked]="nillMode === 'change'" (click)="nillMode = 'change'">
+                  <i class="bi bi-arrow-repeat"></i>
+                  <span><strong>Change to a new treatment</strong><small>Pick another treatment and sittings</small></span>
+                </button>
+              </div>
+            }
+
+            @if (n.can_start || nillMode === 'change') {
+              <p class="muted na-hint"><i class="bi bi-info-circle"></i>
+                @if (nillMode === 'continue') { The consultation form opens at the <strong>Payment</strong> step with this treatment (the consultation fee is already collected). Take the payment, send the terms &amp; conditions, and the customer is converted. }
+                @else { The consultation form opens at the <strong>Treatment</strong> step so the treatment can be changed, then goes on to Payment, terms &amp; conditions and conversion. }
+              </p>
+            } @else {
+              <p class="muted na-hint"><i class="bi bi-info-circle"></i> No treatment was suggested at that visit - the consultation form opens at the <strong>Treatment</strong> step to choose one.</p>
+            }
+            <div class="na-inline end">
+              <button type="button" class="save-btn" (click)="startNillCard(n, n.can_start && nillMode === 'continue' ? 4 : 3)">
+                <i class="bi bi-play-circle"></i> Proceed
+              </button>
+            </div>
+          </section>
+        }
+
+        @if (!r.nill_card && r.open_appointment_id) {
+          <section class="na-card active">
+            <h3><i class="bi bi-clipboard2-pulse"></i> Consultation in progress <span class="na-pill">{{ r.open_status }}</span></h3>
+            <p class="muted na-hint"><i class="bi bi-info-circle"></i> This consultation form is already open for the customer. Continue it where it was left (treatment, payment, terms &amp; conditions).</p>
+            <div class="na-inline end">
+              <button type="button" class="save-btn" (click)="openForm(r.open_appointment_id!)"><i class="bi bi-arrow-right-circle"></i> Continue consultation form</button>
+            </div>
+          </section>
+        }
+
+        @if (activePlan(); as p) {
+          <section class="na-card active">
+            <h3><i class="bi bi-activity"></i> Current treatment <span class="na-pill">In progress</span></h3>
+            <dl class="na-grid">
+              <div><dt>Treatment</dt><dd>{{ p.treatment }}</dd></div>
+              <div><dt>Sittings</dt><dd>{{ p.completed_sittings }} of {{ p.sittings_count }} completed</dd></div>
+              <div><dt>Paid / total</dt><dd>{{ inr(p.paid) }} / {{ inr(p.net_amount) }}</dd></div>
+            </dl>
+            <div class="th-progress" role="img" [attr.aria-label]="progress(p) + '% of sittings completed'"><i [style.width.%]="progress(p)"></i></div>
+            <ng-container *ngTemplateOutlet="sittingList; context: { p: p }"></ng-container>
+            <p class="muted na-hint"><i class="bi bi-info-circle"></i> Another treatment can be added once this one is completed. Use <strong>Treatment sittings</strong> on the customer row to add sittings or move one to another branch.</p>
+          </section>
+        } @else if (canAddTreatment()) {
+          <section class="na-card active">
+            <h3><i class="bi bi-capsule"></i> Start another treatment</h3>
+            <p class="muted na-hint">The earlier treatments are completed. The new treatment is added to this customer's record - no new appointment is created.</p>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="at-cat">Service category</label>
+                <div class="input-wrap"><i class="bi bi-tags"></i>
+                  <select id="at-cat" name="planCat" [(ngModel)]="plan.category_id" (ngModelChange)="onCategoryChange()">
+                    <option [ngValue]="null">All categories</option>
+                    @for (c of categories(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
+                  </select>
+                  <i class="bi bi-chevron-down select-arrow"></i>
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="at-treatment">Treatment <span>*</span></label>
+                <div class="input-wrap"><i class="bi bi-capsule"></i>
+                  <select id="at-treatment" name="planTreatment" [(ngModel)]="plan.treatment_id" (ngModelChange)="onTreatmentChange()">
+                    <option [ngValue]="null">Select</option>
+                    @for (t of filteredTreatments; track t.id) { <option [ngValue]="t.id">{{ t.name }} · {{ inr(t.price) }}/sitting</option> }
+                  </select>
+                  <i class="bi bi-chevron-down select-arrow"></i>
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="at-count">Sittings <span>*</span></label>
+                <div class="input-wrap"><i class="bi bi-collection"></i><input id="at-count" type="number" min="1" max="100" name="planCount" [(ngModel)]="plan.sittings_count" /></div>
+              </div>
+              <div class="form-field">
+                <label for="at-gap">Every (days)</label>
+                <div class="input-wrap"><i class="bi bi-arrow-repeat"></i><input id="at-gap" type="number" min="1" max="365" name="planGap" [(ngModel)]="plan.interval" /></div>
+              </div>
+              <div class="form-field full-width">
+                <label for="at-date">First sitting date <span>*</span></label>
+                <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="at-date" type="date" name="planDate" [min]="today" [(ngModel)]="plan.start_date" (ngModelChange)="onPlanDateChange()" /></div>
+              </div>
+              <ng-container *ngTemplateOutlet="slotPick; context: { sp: planSlots, id: 'at', title: 'First sitting time' }"></ng-container>
+              <div class="form-field full-width">
+                <label for="at-remarks">Doctor suggestion / remarks</label>
+                <div class="input-wrap"><i class="bi bi-chat-left-text"></i><textarea id="at-remarks" name="planRemarks" rows="2" maxlength="1000" [(ngModel)]="plan.remarks"></textarea></div>
+              </div>
+            </div>
+            <div class="na-inline end">
+              @if (selectedTreatment) { <span class="na-total">Total {{ inr(newPlanTotal) }}</span> }
+              <button type="button" class="save-btn" (click)="addTreatment()"><i class="bi bi-plus-lg"></i> Add treatment &amp; schedule sittings</button>
+            </div>
+          </section>
+        }
+
+        @if (pastPlans().length) {
+          <section class="na-card th-section">
+            <h3><i class="bi bi-clock-history"></i> Previous treatments <small>· {{ pastPlans().length }} treatment{{ pastPlans().length === 1 ? '' : 's' }}</small></h3>
+            @for (p of pastPlans(); track p.id) {
+              <details class="th-plan" [class.is-open-items]="pendingCount(p) > 0" [open]="pendingCount(p) > 0 || extraPlanId === p.id">
+                <summary class="th-plan-head">
+                  <span class="th-plan-icon" aria-hidden="true"><i class="bi bi-capsule-pill"></i></span>
+                  <span class="th-plan-title">
+                    <strong>{{ p.treatment }}</strong>
+                    <small><i class="bi bi-calendar-range"></i> {{ formatDate(p.start_date) }} – {{ formatDate(p.end_date) }}</small>
+                  </span>
+                  <span class="th-plan-stats">
+                    <span class="th-stat"><b>{{ p.completed_sittings }}/{{ p.sittings_count }}</b><small>Sittings</small></span>
+                    <span class="th-stat"><b>{{ inr(p.net_amount) }}</b><small>Amount</small></span>
+                  </span>
+                  @if (pendingCount(p) > 0) {
+                    <span class="th-pill warn"><i class="bi bi-hourglass-split"></i> {{ pendingCount(p) }} pending</span>
+                  } @else {
+                    <span class="th-pill done"><i class="bi bi-check2-circle"></i> Completed</span>
+                  }
+                  <i class="bi bi-chevron-down th-caret" aria-hidden="true"></i>
+                </summary>
+                <ng-container *ngTemplateOutlet="sittingList; context: { p: p }"></ng-container>
+                @if (canAddTreatment()) {
+                  <div class="na-inline end">
+                    <button type="button" class="save-btn" (click)="openExtra(p)"><i class="bi bi-plus-circle"></i> {{ extraPlanId === p.id ? 'Cancel' : 'Add extra sittings' }}</button>
+                  </div>
+                  @if (extraPlanId === p.id) {
+                    <p class="muted na-hint"><i class="bi bi-info-circle"></i> Extra sittings are billed at this treatment's price per sitting ({{ inr(p.price_per_sitting) }}) and the treatment becomes <strong>In progress</strong> again.</p>
+                    <div class="form-grid">
+                      <div class="form-field">
+                        <label for="ex-count">Extra sittings <span>*</span></label>
+                        <div class="input-wrap"><i class="bi bi-collection"></i><input id="ex-count" type="number" min="1" max="50" name="exCount" [(ngModel)]="extra.count" /></div>
+                      </div>
+                      <div class="form-field">
+                        <label for="ex-gap">Every (days)</label>
+                        <div class="input-wrap"><i class="bi bi-arrow-repeat"></i><input id="ex-gap" type="number" min="1" max="365" name="exGap" [(ngModel)]="extra.interval" /></div>
+                      </div>
+                      <div class="form-field full-width">
+                        <label for="ex-date">First extra sitting date <span>*</span></label>
+                        <div class="input-wrap"><i class="bi bi-calendar3"></i><input id="ex-date" type="date" name="exDate" [min]="today" [(ngModel)]="extra.start_date" (ngModelChange)="onExtraDateChange()" /></div>
+                      </div>
+                      <ng-container *ngTemplateOutlet="slotPick; context: { sp: extraSlots, id: 'ex', title: 'First extra sitting time' }"></ng-container>
+                    </div>
+                    <div class="na-inline end">
+                      <button type="button" class="save-btn" (click)="addExtraSittings(p)"><i class="bi bi-plus-lg"></i> Add extra sittings</button>
+                    </div>
+                  }
+                }
+              </details>
+            }
+          </section>
+        }
+
+        @if (!r.nill_card && !r.open_appointment_id && !r.base_appointment_id) {
+          <div class="na-banner warn"><i class="bi bi-exclamation-triangle-fill"></i> <span>This person has no completed consultation yet - book an appointment from the Appointments page first.</span></div>
+        }
+      } @else if (found() === false) {
+        <div class="na-banner warn"><i class="bi bi-person-x"></i> <span>No customer or Nill Card visit found for this ID / number.</span></div>
+      }
+    </fieldset>
+
+    @if (error(); as err) { <div class="na-banner error"><i class="bi bi-exclamation-triangle-fill"></i> <span>{{ err }}</span></div> }
+  </div>
+
+  <div class="modal-footer-custom">
+    <button type="button" class="cancel-btn" (click)="close()">Close</button>
+  </div>
+</div>
+
+<!-- Appointment-style time picker (Morning / Afternoon / Evening slots) + the doctors free at the picked slot -->
+<!-- A treatment's sittings as a timeline: completed ones view only; one not completed yet can be rescheduled (date, time, doctor). -->
+<ng-template #sittingList let-p="p">
+  <ol class="th-sittings">
+    @for (s of p.sittings; track s.id) {
+      <li class="th-sitting" [class]="'is-' + sittingState(s)">
+        <span class="th-node" aria-hidden="true">
+          @if (sittingState(s) === 'done') { <i class="bi bi-check-lg"></i> } @else { {{ s.sitting_no }} }
+        </span>
+        <div class="th-sitting-main">
+          <strong>Sitting {{ s.sitting_no }}</strong>
+          <small>
+            @if (sittingState(s) === 'done') {
+              Completed {{ formatDate(s.actual_date || s.scheduled_date) }}
+            } @else {
+              {{ formatDate(s.scheduled_date) }}@if (s.scheduled_time) { · {{ formatTime(s.scheduled_time) }} }
+            }
+            @if (s.doctor?.name) { · <i class="bi bi-person-badge"></i> {{ s.doctor.name }} }
+          </small>
+        </div>
+        <span class="th-state">{{ sittingStateLabel(s) }}</span>
+        @if (sittingState(s) !== 'done') {
+          <button type="button" class="th-resched-btn" [class.is-active]="rescheduleId === s.id" (click)="toggleReschedule(s)" [disabled]="saving()">
+            <i class="bi" [class]="rescheduleId === s.id ? 'bi-x-lg' : 'bi-calendar2-week'"></i> {{ rescheduleId === s.id ? 'Cancel' : 'Reschedule' }}
+          </button>
+        }
+      </li>
+      @if (rescheduleId === s.id) {
+        <li class="th-resched">
+          <p class="th-resched-title"><i class="bi bi-calendar2-week"></i> Reschedule sitting {{ s.sitting_no }}
+            @if (sittingState(s) === 'overdue') { <span class="th-pill warn">Missed on {{ formatDate(s.scheduled_date) }}</span> }
+          </p>
+          <div class="form-grid">
+            <div class="form-field full-width">
+              <label [for]="'rs-date-' + s.id">New date <span>*</span></label>
+              <div class="input-wrap"><i class="bi bi-calendar3"></i>
+                <input [id]="'rs-date-' + s.id" type="date" [name]="'rsDate' + s.id" [min]="today" [(ngModel)]="rescheduleDate" (ngModelChange)="onRescheduleDateChange()" />
+              </div>
+            </div>
+            <ng-container *ngTemplateOutlet="slotPick; context: { sp: rescheduleSlots, id: 'rs' + s.id, title: 'New time' }"></ng-container>
+          </div>
+          <div class="na-inline end">
+            <button type="button" class="cancel-btn" (click)="toggleReschedule(s)">Cancel</button>
+            <button type="button" class="save-btn" (click)="saveReschedule(s)" [disabled]="saving()"><i class="bi bi-check2"></i> Save new date</button>
+          </div>
+        </li>
+      }
+    }
+  </ol>
+</ng-template>
+
+<ng-template #slotPick let-sp="sp" let-id="id" let-title="title">
+  <div class="form-field full-width slot-field">
+    <label>{{ title }}</label>
+    @if (!sp.date) {
+      <p class="slot-hint"><i class="bi bi-info-circle"></i> Pick a date to see the free slots.</p>
+    } @else if (sp.loading) {
+      <p class="slot-hint"><i class="bi bi-arrow-repeat spin"></i> Checking free slots…</p>
+    } @else {
+      <div class="part-tabs" role="tablist" aria-label="Part of the day">
+        @for (group of sp.groups; track group.key) {
+          <button type="button" class="part-tab" role="tab"
+                  [class.active]="sp.activeGroup?.key === group.key" [class.empty]="!group.free"
+                  [attr.aria-selected]="sp.activeGroup?.key === group.key" (click)="sp.activePart = group.key">
+            <i class="bi" [ngClass]="group.icon"></i>
+            <span class="part-name">{{ group.label }}</span>
+            <span class="part-range">{{ group.range }}</span>
+            <span class="part-free">{{ group.free ? group.free + ' free' : 'Full' }}</span>
+          </button>
+        }
+      </div>
+      @if (sp.activeGroup; as group) {
+        <div class="slot-panel" role="listbox" [attr.aria-label]="group.label + ' slots'">
+          @for (slot of group.slots; track slot.time) {
+            <button type="button" class="slot-chip" role="option"
+                    [class.selected]="sp.time === slot.time" [class.booked]="!slot.available" [disabled]="!slot.available"
+                    [attr.aria-selected]="sp.time === slot.time" [title]="slot.reason || 'Available'" (click)="sp.select(slot)">
+              <span class="slot-time">{{ sp.label(slot.time) }}</span>
+              @if (!slot.available) { <span class="slot-note">{{ slot.reason }}</span> }
+            </button>
+          }
+        </div>
+      }
+      @if (sp.passedCount) {
+        <p class="slot-hint"><i class="bi bi-clock-history"></i> {{ sp.passedCount }} earlier slot{{ sp.passedCount === 1 ? '' : 's' }} today {{ sp.passedCount === 1 ? 'has' : 'have' }} passed.</p>
+      }
+      @if (sp.range) {
+        <div class="slot-selected">
+          <span class="slot-selected-icon"><i class="bi bi-calendar2-check"></i></span>
+          <span class="slot-selected-text"><small>Your slot</small><strong>{{ sp.range }}</strong></span>
+          <button type="button" class="slot-clear" (click)="sp.clear()" aria-label="Clear the selected time"><i class="bi bi-x-lg"></i></button>
+        </div>
+      }
+      @if (sp.hint) {
+        <p class="slot-hint" [class.warn]="!!sp.error || !!sp.bookedCount"><i class="bi" [ngClass]="sp.error ? 'bi-exclamation-circle' : 'bi-info-circle'"></i> {{ sp.hint }}</p>
+      }
+    }
+  </div>
+  <div class="form-field full-width">
+    <label [attr.for]="id + '-doctor'">Doctor <small>(checked for availability at every sitting)</small></label>
+    <div class="input-wrap"><i class="bi bi-person-badge"></i>
+      <select [id]="id + '-doctor'" [name]="id + 'Doctor'" [(ngModel)]="sp.doctorId" [disabled]="!sp.doctors.length" [attr.aria-busy]="sp.doctorsLoading">
+        <option [ngValue]="null">{{ sp.doctorPlaceholder }}</option>
+        @for (d of sp.doctors; track d.id) { <option [ngValue]="d.id">{{ d.name }}</option> }
+      </select>
+      <i class="bi bi-chevron-down select-arrow"></i>
+    </div>
+    @if (sp.doctorHint) { <p class="slot-hint" [class.warn]="!sp.doctors.length"><i class="bi bi-info-circle"></i> {{ sp.doctorHint }}</p> }
+  </div>
+</ng-template>

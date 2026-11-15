@@ -29,10 +29,14 @@ interface PlanLine {
   treatment_id: number | null;
   sittings_count: number;
   sitting_interval_days: number;
+  /** Day of the first sitting of this treatment (YYYY-MM-DD). */
+  start_date: string;
 }
 
 const MAX_TREATMENTS = 10;
-const blankLine = (): PlanLine => ({ treatment_id: null, sittings_count: 1, sitting_interval_days: 30 });
+/** Today as YYYY-MM-DD in the browser's own time zone. */
+const todayIso = (): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const blankLine = (): PlanLine => ({ treatment_id: null, sittings_count: 1, sitting_interval_days: 30, start_date: todayIso() });
 
 /** Which clinical examination sections a service category needs. */
 type ExamKind = 'Hair' | 'Skin' | 'Combo' | 'Other';
@@ -180,6 +184,8 @@ export class AppointmentWizard implements OnInit {
     /** treatment = the customer takes the treatment; consultation = treatment too costly, only the consultation fee. */
     payment_type: 'treatment' as PaymentType,
     consultation_fee: null as number | null,
+    /** consultation only: 'paid' collects the fee, 'free' gives the consultation at no charge. */
+    consultation_type: 'paid' as 'paid' | 'free',
     payment_mode: 'UPI' as PaymentMode,
     paid_amount: 0,
     transaction_no: '',
@@ -256,10 +262,10 @@ export class AppointmentWizard implements OnInit {
     // Saved treatments; an older appointment only has its single treatment on the appointment itself.
     const saved = a.treatment_lines?.length
       ? a.treatment_lines
-      : a.treatment_id ? [{ treatment_id: a.treatment_id, sittings_count: a.sittings_count, sitting_interval_days: a.sitting_interval_days }] : [];
+      : a.treatment_id ? [{ treatment_id: a.treatment_id, sittings_count: a.sittings_count, sitting_interval_days: a.sitting_interval_days, start_date: null }] : [];
     this.plan = {
       lines: saved.length
-        ? saved.map(l => ({ treatment_id: Number(l.treatment_id), sittings_count: Number(l.sittings_count) || 1, sitting_interval_days: Number(l.sitting_interval_days) || 30 }))
+        ? saved.map(l => ({ treatment_id: Number(l.treatment_id), sittings_count: Number(l.sittings_count) || 1, sitting_interval_days: Number(l.sitting_interval_days) || 30, start_date: this.keepOrToday((l as { start_date?: string | null }).start_date) }))
         : [blankLine()],
       doctor_suggestion: a.doctor_suggestion ?? '',
     };
@@ -267,6 +273,8 @@ export class AppointmentWizard implements OnInit {
     this.pay = {
       payment_type: a.payment_type ?? 'treatment',
       consultation_fee: a.consultation_fee != null ? Number(a.consultation_fee) : null,
+      // A saved consultation-only record with fee 0 was given free.
+      consultation_type: a.payment_type === 'consultation' && a.consultation_fee != null && Number(a.consultation_fee) === 0 ? 'free' : 'paid',
       payment_mode: a.payment_mode ?? 'UPI',
       paid_amount: Number(a.paid_amount) || 0,
       transaction_no: a.transaction_no ?? '',
@@ -529,6 +537,14 @@ export class AppointmentWizard implements OnInit {
     if (this.plan.lines.length > 1) this.plan.lines.splice(index, 1);
   }
 
+  /** A saved start date is kept while it is today or later; an empty / past one becomes today. */
+  private keepOrToday(date: string | null | undefined): string {
+    const d = (date ?? '').slice(0, 10);
+    return d && d >= todayIso() ? d : todayIso();
+  }
+
+  readonly minStartDate = todayIso();
+
   /** A row's treatment changed: start from that treatment's usual number of sittings. */
   onLineTreatmentChange(index: number): void {
     const t = this.treatmentOf(this.plan.lines[index]);
@@ -539,6 +555,7 @@ export class AppointmentWizard implements OnInit {
     const lines = this.plan.lines;
     if (lines.some(l => !l.treatment_id)) return void this.error.set(lines.length > 1 ? 'Choose the treatment for every row.' : 'Choose the treatment.');
     if (lines.some(l => !(Number(l.sittings_count) >= 1))) return void this.error.set('Sittings must be at least 1 for every treatment.');
+    if (lines.some(l => !l.start_date || l.start_date < todayIso())) return void this.error.set('Pick today or a later start date for every treatment.');
     if (new Set(lines.map(l => Number(l.treatment_id))).size !== lines.length) return void this.error.set('A treatment can only be added once - change its sittings instead.');
 
     this.send(this.api.PUT(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/treatment`, {
@@ -546,6 +563,7 @@ export class AppointmentWizard implements OnInit {
         treatment_id: Number(l.treatment_id),
         sittings_count: Number(l.sittings_count),
         sitting_interval_days: Number(l.sitting_interval_days) || 30,
+        start_date: l.start_date,
       })),
       doctor_suggestion: this.plan.doctor_suggestion || null,
     }), () => {
@@ -561,13 +579,13 @@ export class AppointmentWizard implements OnInit {
   }
 
   /** Price details of the Payment step: one row per treatment (price per sitting x sittings), as saved by the API. */
-  get priceLines(): { name: string; price: number; sittings: number; gap: number; amount: number }[] {
+  get priceLines(): { name: string; price: number; sittings: number; gap: number; amount: number; start?: string | null }[] {
     const a = this.appt();
     if (!a) return [];
     if (a.treatment_lines?.length) {
       return a.treatment_lines.map(l => ({
         name: l.treatment?.name ?? 'Treatment', price: Number(l.price_per_sitting), sittings: Number(l.sittings_count),
-        gap: Number(l.sitting_interval_days), amount: Number(l.total_amount),
+        gap: Number(l.sitting_interval_days), amount: Number(l.total_amount), start: l.start_date ?? null,
       }));
     }
     return a.treatment_id
@@ -587,6 +605,21 @@ export class AppointmentWizard implements OnInit {
     return this.pay.payment_type === 'consultation';
   }
 
+  /** A Nill Card member back for the treatment: the consultation fee is already collected, so only the treatment is paid here. */
+  get consultationFeePaid(): boolean {
+    return !!this.appt()?.consultation_paid_at;
+  }
+
+  /** A consultation given free: nothing is collected (no fee, mode or reference). */
+  get freeConsultation(): boolean {
+    return this.isConsultationOnly && this.pay.consultation_type === 'free';
+  }
+
+  setConsultationType(type: 'paid' | 'free'): void {
+    this.pay.consultation_type = type;
+    this.error.set(null);
+  }
+
   /** EMI is for the treatment only; the consultation fee is paid by UPI, cash or internet banking. */
   get availableModes() {
     return this.isConsultationOnly ? this.paymentModes.filter(m => m.value !== 'EMI') : this.paymentModes;
@@ -594,12 +627,13 @@ export class AppointmentWizard implements OnInit {
 
   /** Internet Banking goes through Razorpay Checkout once the keys are set on the server. */
   get usesRazorpay(): boolean {
-    return this.pay.payment_mode === 'Online' && this.payOptions().razorpay.enabled;
+    return this.pay.payment_mode === 'Online' && this.payOptions().razorpay.enabled && !this.freeConsultation;
   }
 
   /** UPI transaction ID, EMI loan / approval no, or a manual bank reference while Razorpay is not set up. */
   get needsReference(): boolean {
     const mode = this.pay.payment_mode;
+    if (this.freeConsultation) return false;
     return mode === 'UPI' || (mode === 'EMI' && !this.isConsultationOnly) || (mode === 'Online' && !this.usesRazorpay);
   }
 
@@ -622,6 +656,7 @@ export class AppointmentWizard implements OnInit {
 
   /** What is collected now: the consultation fee, or the treatment amount paying now. */
   get amountNow(): number {
+    if (this.freeConsultation) return 0;
     return this.isConsultationOnly ? Number(this.pay.consultation_fee) || 0 : Number(this.pay.paid_amount) || 0;
   }
 
@@ -649,6 +684,9 @@ export class AppointmentWizard implements OnInit {
     const consultation = this.isConsultationOnly;
     const mode = this.pay.payment_mode;
     const amount = this.amountNow;
+
+    // Free consultation: nothing to collect or verify - the record just moves to Nill Card.
+    if (this.freeConsultation) return this.submitPayment(null);
 
     if (consultation) {
       if (!(amount > 0)) return void this.error.set('Enter the consultation fee.');
@@ -687,8 +725,10 @@ export class AppointmentWizard implements OnInit {
   private submitPayment(razorpay: RazorpayResult | null): void {
     const consultation = this.isConsultationOnly;
     const mode = this.pay.payment_mode;
-    const body = consultation
-      ? { payment_type: 'consultation', consultation_fee: this.amountNow, payment_mode: mode, transaction_no: this.pay.transaction_no.trim() || null, ...razorpay }
+    const body = this.freeConsultation
+      ? { payment_type: 'consultation', consultation_type: 'free' }
+      : consultation
+      ? { payment_type: 'consultation', consultation_type: 'paid', consultation_fee: this.amountNow, payment_mode: mode, transaction_no: this.pay.transaction_no.trim() || null, ...razorpay }
       : {
           payment_type: 'treatment',
           payment_mode: mode,
@@ -922,19 +962,26 @@ export class AppointmentWizard implements OnInit {
     });
   })();
 
+  /** Creates the customer, then opens the payment receipt (the tab is opened in the click so the popup blocker allows it). The tax invoice stays one click away in the customer list. */
   convert(): void {
+    const receiptTab = window.open('', '_blank');
     this.act('convert', res => {
       this.toast.success(res?.message || 'Customer created.');
+      this.openPdf('receipt', receiptTab, 'Could not open the receipt.');
       this.dialogRef.close(true);
-    });
+    }, () => receiptTab?.close());
   }
 
   /** Loads the server-rendered tax invoice as a blob and opens it in a new tab (same as the purchase PDFs). */
   viewInvoice(): void {
+    this.openPdf('invoice', window.open('', '_blank'), 'Could not open the invoice.');
+  }
+
+  /** Streams `appointment-flow/{id}/{kind}` (invoice | receipt) into `tab`; the tab is closed when there is nothing to show. */
+  private openPdf(kind: 'invoice' | 'receipt', tab: Window | null, failMessage: string): void {
     const a = this.appt();
-    if (!a?.invoice_no) return;
-    const tab = window.open('', '_blank'); // opened before the request so the popup blocker allows it
-    this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${a.id}/invoice`).subscribe({
+    if (!a || (kind === 'invoice' && !a.invoice_no)) return void tab?.close();
+    this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${a.id}/${kind}`).subscribe({
       next: (blob: Blob) => {
         const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
         if (tab) tab.location.href = url;
@@ -943,7 +990,7 @@ export class AppointmentWizard implements OnInit {
       },
       error: () => {
         tab?.close();
-        this.toast.error('Could not open the invoice.');
+        this.toast.error(failMessage);
       },
     });
   }
@@ -964,13 +1011,13 @@ export class AppointmentWizard implements OnInit {
     });
   }
 
-  private act(path: string, done: (res: any) => void): void {
+  private act(path: string, done: (res: any) => void, failed?: () => void): void {
     this.saving.set(true);
     this.api.POST(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}/${path}`, {})
       .pipe(finalize(() => this.saving.set(false)))
       .subscribe({
         next: (res: any) => { this.changed = true; this.apply(res.data); done(res); },
-        error: (err: any) => this.showError(err),
+        error: (err: any) => { failed?.(); this.showError(err); },
       });
   }
 

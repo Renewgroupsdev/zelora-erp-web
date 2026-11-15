@@ -7,11 +7,12 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { BranchOptionsService } from '../../../../../shared/common-services/branch-options.service';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
 import { Priority, PurchaseOption, lineTotals } from '../../../../../shared/models/purchase.model';
+import { SearchSelect, SelectOption } from '../../../../../shared/components/search-select/search-select';
 
 @Component({
   selector: 'app-purchase-request-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule],
+  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, SearchSelect],
   templateUrl: './purchase-request-form.html',
   styleUrl: '../../../../../shared/styles/erp-dialog.scss',
 })
@@ -42,6 +43,16 @@ export class PurchaseRequestForm {
     priority: [null as Priority | null, Validators.required],
     remarks: ['', Validators.maxLength(255)],
     items: this.fb.array([this.newItem()]),
+  });
+
+  /** Options for the searchable dropdowns. */
+  readonly branchChoices = computed<SelectOption[]>(() => this.branches().map(b => ({ value: b.key, label: b.name })));
+  readonly productChoices = computed<SelectOption[]>(() => this.products().map(p => ({ value: p.id, label: `${p.code} - ${p.name}`, hint: `stock ${p.stockQty ?? 0}` })));
+  private readonly itemsValue = toSignal(this.form.controls.items.valueChanges, { initialValue: this.form.controls.items.value });
+  /** Per row: the products already picked in the OTHER rows (greyed out in that row's list). */
+  readonly takenByRow = computed<(string[] | undefined)[]>(() => {
+    const rows = (this.itemsValue() ?? []) as { productId: string | null }[];
+    return rows.map((_, i) => rows.filter((__, j) => j !== i).map(r => r.productId).filter((id): id is string => !!id));
   });
 
   private readonly branchKey = toSignal(this.form.controls.branchKey.valueChanges, { initialValue: this.form.controls.branchKey.value });

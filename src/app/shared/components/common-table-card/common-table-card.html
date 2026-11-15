@@ -127,7 +127,6 @@
             @else if (col.type === 'badge') {
                             @if (row[col.key] !== null && row[col.key] !== undefined && row[col.key] !== '') {
                 <span class="status-badge" [ngClass]="badgeClass(row[col.key] + '')" [title]="row[col.key]">
-                  <span class="sb-ico"><i class="bi" [ngClass]="statusIcon(row[col.key] + '')"></i></span>
                   <span class="sb-text">{{ row[col.key] }}</span>
                 </span>
               }

@@ -18,6 +18,11 @@ export const EVENT_META: Record<string, { icon: string; tone: Tone }> = {
   password_changed: { icon: 'bi-key-fill', tone: 'blue' },
   password_reset: { icon: 'bi-key-fill', tone: 'blue' },
   exported: { icon: 'bi-download', tone: 'teal' },
+  transfer_requested: { icon: 'bi-send-fill', tone: 'orange' },
+  transferred: { icon: 'bi-arrow-left-right', tone: 'green' },
+  transfer_rejected: { icon: 'bi-x-octagon-fill', tone: 'red' },
+  transfer_withdrawn: { icon: 'bi-arrow-counterclockwise', tone: 'gray' },
+  rescheduled: { icon: 'bi-calendar2-week-fill', tone: 'blue' },
 };
 
 export function eventMeta(event: string): { icon: string; tone: Tone } {

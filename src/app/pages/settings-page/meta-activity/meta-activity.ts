@@ -12,6 +12,7 @@ import {
   MetaLogsPage,
 } from '../../../shared/common-services/meta-integration.service';
 import { ToastService } from '../../../shared/common-services/toast.service';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 const STATUS_META: Record<MetaEventStatus, { label: string; tone: string; icon: string }> = {
   received: { label: 'Event received', tone: 'info', icon: 'bi-inbox' },
@@ -36,7 +37,7 @@ const REASONS: Record<string, string> = {
 @Component({
   selector: 'app-meta-activity',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CanActionDirective],
+  imports: [PageLoader, CommonModule, FormsModule, RouterLink, CanActionDirective],
   templateUrl: './meta-activity.html',
   styleUrl: './meta-activity.scss',
 })

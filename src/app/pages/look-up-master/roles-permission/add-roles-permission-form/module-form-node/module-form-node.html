@@ -137,6 +137,13 @@
                 <button type="button" class="remove-row-btn" (click)="removeTab(i)" title="Remove tab">
                   <i class="bi bi-trash3-fill"></i>
                 </button>
+                <input
+                  type="text"
+                  formControlName="description"
+                  maxlength="255"
+                  class="tab-desc"
+                  placeholder="Description (one line, e.g. shown under the report's name on the Reports page)"
+                  aria-label="Tab description" />
               </div>
             } @empty {
               <div class="empty-row">No tabs added yet. Add one to show a tab strip on this module's pages.</div>
@@ -179,34 +186,45 @@
             </div>
           }
 
-          @for (actionGroup of actionsArray.controls; track $index; let i = $index) {
-            <div class="action-row" [formGroupName]="i">
-              <input
-                type="text"
-                formControlName="action_name"
-                placeholder="e.g. View"
-                [class.is-invalid]="isActionInvalid(i, 'action_name')" />
-              <input
-                type="text"
-                formControlName="slug_name"
-                placeholder="Auto-generated from action name"
-                class="slug-readonly" />
-              <input
-                type="text"
-                formControlName="url"
-                placeholder="e.g. /app/masters/settings"
-                [class.is-invalid]="isActionInvalid(i, 'url')"
-                [class.url-unknown]="unknownActionUrl(i)"
-                [title]="unknownActionUrl(i) ? 'No page at this URL - it will open the 404 page.' : ''" />
-              <app-icon-picker formControlName="logo" placeholder="Choose icon"></app-icon-picker>
-              <select formControlName="permission">
-                <option [value]="1">Allowed</option>
-                <option [value]="0">Denied</option>
-              </select>
-              <button type="button" class="remove-row-btn" (click)="removeAction(i)" title="Remove action">
-                <i class="bi bi-trash3-fill"></i>
-              </button>
+          <ng-template #actionRow let-i="i" let-child="child">
+            <div class="action-row" [class.child-row]="child" [formGroupName]="i">
+      <input
+        type="text"
+        formControlName="action_name"
+        placeholder="e.g. View"
+        [class.is-invalid]="isActionInvalid(i, 'action_name')" />
+      <input
+        type="text"
+        formControlName="slug_name"
+        placeholder="Auto-generated from action name"
+        class="slug-readonly" />
+      <input
+        type="text"
+        formControlName="url"
+        placeholder="e.g. /app/masters/settings"
+        [class.is-invalid]="isActionInvalid(i, 'url')"
+        [class.url-unknown]="unknownActionUrl(i)"
+        [title]="unknownActionUrl(i) ? 'No page at this URL - it will open the 404 page.' : ''" />
+      <app-icon-picker formControlName="logo" placeholder="Choose icon"></app-icon-picker>
+      <select formControlName="permission">
+        <option [value]="1">Allowed</option>
+        <option [value]="0">Denied</option>
+      </select>
+      <button type="button" class="remove-row-btn" (click)="removeAction(i)" title="Remove action">
+        <i class="bi bi-trash3-fill"></i>
+      </button>
             </div>
+          </ng-template>
+
+          @for (item of actionLayout; track item.index) {
+            @if (item.key) {
+              <ng-container *ngTemplateOutlet="actionRow; context: { i: item.index, child: false }"></ng-container>
+              @for (c of item.children; track c) {
+                <ng-container *ngTemplateOutlet="actionRow; context: { i: c, child: false }"></ng-container>
+              }
+            } @else {
+              <ng-container *ngTemplateOutlet="actionRow; context: { i: item.index, child: false }"></ng-container>
+            }
           } @empty {
             <div class="empty-row">No actions added yet.</div>
           }

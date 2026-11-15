@@ -86,6 +86,17 @@
       <div class="section-title"><i class="bi bi-geo-alt"></i> Geo Location</div>
       <app-geo-location-field idPrefix="br-geo" [(latitude)]="model.latitude" [(longitude)]="model.longitude"
         [address]="(model.address ? model.address + ', ' : '') + model.city + (model.state ? ', ' + model.state : '')"></app-geo-location-field>
+      <div class="form-grid cols-3">
+        <div class="form-field">
+          <label for="br-radius">Attendance radius (metres)</label>
+          <div class="input-wrap"><i class="bi bi-bullseye"></i>
+            <input id="br-radius" name="geofenceRadiusM" type="number" min="5" max="1000" step="1" [(ngModel)]="model.geofenceRadiusM"
+              [class.is-invalid]="submitted() && model.geofenceRadiusM != null && (model.geofenceRadiusM < 5 || model.geofenceRadiusM > 1000)"
+              [placeholder]="'Default: ' + (model.defaultGeofenceRadiusM ?? 10) + ' m'" />
+          </div>
+          <small class="muted">Employee app check-in is allowed only within this distance of the pin; leaving it while checked in starts the auto check-out timer. Empty = company default.</small>
+        </div>
+      </div>
 
       <div class="section-title"><i class="bi bi-person-badge"></i> Branch Head</div>
       <div class="form-grid cols-3">

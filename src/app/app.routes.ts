@@ -60,7 +60,6 @@ export const routes: Routes = [
       { path: 'inventory/purchase-returns', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/purchase-returns/purchase-returns').then(m => m.PurchaseReturns) },
       { path: 'inventory/vendor-notes', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/vendor-notes/vendor-notes').then(m => m.VendorNotes) },
       { path: 'inventory/stock', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/stock/stock-overview').then(m => m.StockOverview) },
-      { path: 'inventory/low-stock-replenishment', canActivate: [purchaseTabGuard], loadComponent: () => import('./pages/inventory/purchase/low-stock-replenishment/low-stock-replenishment').then(m => m.LowStockReplenishment) },
       // HR Management
       { path: 'hr-management', pathMatch: 'full', redirectTo: 'hr/employees' },
       { path: 'hr', pathMatch: 'full', redirectTo: 'hr/employees' },
@@ -99,10 +98,24 @@ export const routes: Routes = [
       { path: 'audit/modules', loadComponent: () => import('./pages/audit/audit-modules').then(m => m.AuditModules) },
       { path: 'audit/modules/:slug', loadComponent: () => import('./pages/audit/audit-modules').then(m => m.AuditModuleDetail) },
 
+      // Banner Management: the customer app's home banners (each page checks its own action, the API authorises every call).
+      { path: 'banners', pathMatch: 'full', loadComponent: () => import('./pages/banners/banner-list').then(m => m.BannerList) },
+      { path: 'banners/new', loadComponent: () => import('./pages/banners/banner-form').then(m => m.BannerForm) },
+      { path: 'banners/:id/edit', loadComponent: () => import('./pages/banners/banner-form').then(m => m.BannerForm) },
+      // Help & Support: report an issue, my tickets (every login); the Support Desk is for the support team (each page checks its own action, the API authorises every call).
+      { path: 'support', pathMatch: 'full', loadComponent: () => import('./pages/support/support-home').then(m => m.SupportHome) },
+      { path: 'support/report', loadComponent: () => import('./pages/support/support-report').then(m => m.SupportReport) },
+      { path: 'support/tickets', loadComponent: () => import('./pages/support/support-tickets').then(m => m.SupportTickets) },
+      { path: 'support/tickets/:no', loadComponent: () => import('./pages/support/support-ticket').then(m => m.SupportTicketPage) },
+      { path: 'support/admin', pathMatch: 'full', loadComponent: () => import('./pages/support/support-desk').then(m => m.SupportDesk) },
+      { path: 'support/admin/tickets/:no', data: { admin: true }, loadComponent: () => import('./pages/support/support-ticket').then(m => m.SupportTicketPage) },
+
       { path: 'reports', loadComponent: () => import('./pages/reports/reports').then(m => m.Reports) },
       { path: 'reports/:id', loadComponent: () => import('./pages/reports/report-detail/report-detail').then(m => m.ReportDetail) },
       { path: 'settings', loadComponent: () => import('./pages/settings-page/settings-page').then(m => m.SettingsPage) },
       // Settings -> Integrations -> Meta Lead Ads (Facebook / Instagram Lead Ads import)
+      // Settings -> WhatsApp Templates (Meta review status, active appointment message)
+      { path: 'settings/whatsapp-templates', loadComponent: () => import('./pages/settings-page/whatsapp-templates/whatsapp-templates').then(m => m.WhatsappTemplates) },
       { path: 'settings/meta-lead-ads', loadComponent: () => import('./pages/settings-page/meta-lead-ads/meta-lead-ads').then(m => m.MetaLeadAds) },
       { path: 'settings/meta-lead-ads/activity', loadComponent: () => import('./pages/settings-page/meta-activity/meta-activity').then(m => m.MetaActivity) },
       // A tab added on Roles & Permissions whose page isn't built yet opens a Work in progress page inside the

@@ -12,6 +12,7 @@ import { Employee } from '../../../shared/models/hr.model';
 import { initials } from '../../../shared/utils/format.util';
 import { EmployeeForm } from '../../hr-management/employees/employee-form/employee-form';
 import { EmployeeProfile } from '../../hr-management/employees/employee-profile/employee-profile';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 const TONES = ['blue', 'green', 'orange', 'purple', 'red'] as const;
 const DESIGNATION_ICONS: Record<string, string> = {
@@ -22,7 +23,7 @@ const DESIGNATION_ICONS: Record<string, string> = {
 @Component({
   selector: 'app-branch-employees',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, MatDialogModule, CanActionDirective],
+  imports: [PageLoader, CommonModule, FormsModule, RouterLink, MatDialogModule, CanActionDirective],
   templateUrl: './branch-employees.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', '../../../shared/styles/branch-franchise.scss'],
 })

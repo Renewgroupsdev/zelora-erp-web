@@ -2,7 +2,7 @@ import { FollowUpEntry } from '../common-services/crm-flow.service';
 
 export type DetailTrendDirection = 'up' | 'down' | 'neutral';
 
-export type DetailCardIconVariant = 'primary' | 'green' | 'orange' | 'blue' | 'purple';
+export type DetailCardIconVariant = 'primary' | 'green' | 'orange' | 'blue' | 'purple' | 'red' | 'teal';
 
 export interface DetailCardData {
   label: string;
@@ -55,6 +55,10 @@ export interface QuickAction {
   permission?: string;
   /** Stays clickable on a row another telecaller has locked (read-only actions: view, audit log). */
   keepOnLock?: boolean;
+  /** Keeps the page's own icon instead of the logo set for the action on Roles & Permissions. */
+  fixedIcon?: boolean;
+  /** Keep this label as the hover text: it is not replaced by the Roles & Permissions action name (several buttons can share one permission). */
+  fixedLabel?: boolean;
 }
 
 export interface TableColumn {

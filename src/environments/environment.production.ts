@@ -4,7 +4,7 @@ export const environment = {
   production: true,
   envName: 'production',
 
-  apiBaseUrl: 'http://api.erp.renewgroups.com:8080/api/',
+  apiBaseUrl: 'https://crm.renewhairandskincare.com/api/',
   disableDevTools: false,
   rememberMeKey: 'zelora_remember_me',
 
@@ -12,8 +12,8 @@ export const environment = {
    *  the secret stays on the server). Unreachable = the app keeps polling the API. */
   reverb: {
     key: "idd8qmlzp4wkqbartpuf",
-    host: "api.erp.renewgroups.com",
+    host: "crm.renewhairandskincare.com",
     port: 6001,
-    scheme: "http" as "http" | "https",
+    scheme: "https" as "http" | "https",
   },
 };

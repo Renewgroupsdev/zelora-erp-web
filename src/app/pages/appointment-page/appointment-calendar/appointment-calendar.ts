@@ -1,8 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
-import { FlowAppointmentRecord, FlowStatus, treatmentNames } from '../../../shared/models/appointment-flow.model';
+import { FlowAppointmentRecord, FlowStatus, statusLabel, treatmentNames } from '../../../shared/models/appointment-flow.model';
 
 export type CalendarView = 'month' | 'week' | 'day';
+
+/** Visits that are finished or only a consultation: not drawn on the calendar (it shows scheduled, in progress and cancelled visits). */
+const HIDDEN_STATUSES: ReadonlySet<string> = new Set(['Invoiced', 'Converted', 'Consultation Only']);
 
 /** Booking slot length - matches the API's appointments.slot_minutes. */
 export const SLOT_MINUTES = 30;
@@ -107,6 +110,7 @@ export class AppointmentCalendar implements OnInit, OnDestroy {
     return this.view === 'day' ? SLOT_HEIGHT.day : SLOT_HEIGHT.week;
   }
   readonly treatmentNames = treatmentNames;
+  readonly statusLabel = statusLabel;
 
   now = new Date();
   private clock?: ReturnType<typeof setInterval>;
@@ -157,6 +161,7 @@ export class AppointmentCalendar implements OnInit, OnDestroy {
   private byDate(): Map<string, FlowAppointmentRecord[]> {
     const map = new Map<string, FlowAppointmentRecord[]>();
     for (const a of this.appointments) {
+      if (HIDDEN_STATUSES.has(a.status)) continue; // the calendar shows only open (scheduled / in progress) and cancelled visits
       const list = map.get(a.appointment_date) ?? [];
       list.push(a);
       map.set(a.appointment_date, list);
@@ -311,7 +316,7 @@ export class AppointmentCalendar implements OnInit, OnDestroy {
 
   tooltip(a: FlowAppointmentRecord): string {
     const service = treatmentNames(a) || (a.category ? `${a.category} consultation` : 'Consultation');
-    return [`${this.formatTime(a.appointment_time)} · ${a.name}`, a.mobile_no, service, a.branch_name ?? a.branch?.name ?? '', a.status]
+    return [`${this.formatTime(a.appointment_time)} · ${a.name}`, a.mobile_no, service, a.branch_name ?? a.branch?.name ?? '', statusLabel(a.status)]
       .filter(Boolean).join('\n');
   }
 }

@@ -70,8 +70,18 @@
     min-height: 34px;
     text-align: center;
 
-    span { display: inline-flex; align-items: center; gap: 5px; }
+    span { display: inline-flex; align-items: center; gap: 6px; }
     &.on app-hair-grade-icon { transform: scale(1.06); }
+
+    // Radio dot: an empty ring until picked, then a solid green disc with a white tick.
+    .grade-radio {
+      width: 16px; height: 16px; border-radius: 50%; flex: none;
+      border: 1.5px solid #9aa9a2; background: #fff; color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: background 0.15s ease, border-color 0.15s ease;
+      .bi { font-size: 12px; line-height: 1; opacity: 0; -webkit-text-stroke: 0.6px #fff; }
+      &.on { background: var(--primary-dark, #0b4533); border-color: var(--primary-dark, #0b4533); .bi { opacity: 1; } }
+    }
   }
 
   app-hair-grade-icon { transition: transform 0.15s ease; }

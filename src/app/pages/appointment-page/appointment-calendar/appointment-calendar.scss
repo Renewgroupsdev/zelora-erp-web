@@ -1,13 +1,21 @@
+// The calendar fills what is left of the page and scrolls inside itself, so the page has no second scrollbar.
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .cal-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   background: var(--app-surface-solid);
   border: 1px solid var(--border-soft);
-  border-radius: 16px;
+  border-radius: 18px;
   box-shadow: var(--shadow-card);
-  padding: 14px 16px 16px;
+  padding: 16px 18px 18px;
   min-width: 0;
 }
 
@@ -28,38 +36,39 @@
 }
 
 .cal-today-btn {
-  height: 32px;
-  padding: 0 14px;
+  height: 34px;
+  padding: 0 16px;
   border: 1px solid var(--primary-border);
-  border-radius: 8px;
-  background: transparent;
+  border-radius: 999px;
+  background: var(--app-surface-solid);
   color: var(--primary-dark);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 
   &:hover { background: var(--primary-soft); }
 }
 
 .cal-icon-btn {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  border: 0;
-  border-radius: 8px;
-  background: var(--primary-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+  background: var(--app-surface-solid);
   color: var(--primary-dark);
   cursor: pointer;
 
-  &:hover { background: var(--primary-border); }
+  &:hover { background: var(--primary-soft); border-color: var(--primary-border); }
 }
 
 .cal-title {
-  margin: 0 0 0 6px;
+  margin: 0 0 0 10px;
   font-family: var(--font-family-display);
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   color: var(--text-dark);
   white-space: nowrap;
   overflow: hidden;
@@ -76,25 +85,24 @@
 
 .cal-views {
   display: inline-flex;
-  padding: 3px;
-  border-radius: 10px;
+  padding: 4px;
+  border-radius: 999px;
   background: var(--primary-soft);
 
   button {
-    height: 28px;
-    padding: 0 14px;
+    height: 30px;
+    padding: 0 18px;
     border: 0;
-    border-radius: 8px;
+    border-radius: 999px;
     background: transparent;
     color: var(--primary-dark);
     font-size: 12.5px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
 
     &.active {
-      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      background: var(--primary-dark);
       color: #fff;
-      box-shadow: 0 4px 10px var(--primary-shadow);
     }
   }
 }
@@ -103,13 +111,23 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 14px;
-  margin: 10px 0 12px;
+  gap: 8px;
+  margin: 14px 0;
   font-size: 11.5px;
   color: var(--text-muted);
 
-  span { display: inline-flex; align-items: center; gap: 5px; }
-  .cal-hint { margin-left: auto; color: var(--primary-dark); font-weight: 600; }
+  span:not(.cal-hint) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px 3px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border-soft);
+    background: var(--app-surface-solid);
+    color: var(--text-dark);
+    font-weight: 600;
+  }
+  .cal-hint { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; color: var(--primary-dark); font-weight: 600; }
 }
 
 /* ---------- Status colours ---------- */
@@ -121,28 +139,34 @@
 .ev-gray { --ev-bg: var(--status-gray-bg); --ev-fg: var(--status-gray-text); }
 
 .ev-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   background: var(--ev-fg);
 }
 
 /* ---------- Month ---------- */
 .month-grid {
   display: grid;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   border: 1px solid var(--border-soft);
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
 }
 
 .month-wd {
-  padding: 8px 6px;
+  padding: 10px 6px;
   text-align: center;
-  font-size: 11.5px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--text-muted);
-  background: var(--primary-soft);
+  background: color-mix(in srgb, var(--primary-soft) 60%, var(--app-surface-solid));
 }
 
 .month-cell {
@@ -154,7 +178,8 @@
 
   &:nth-child(7n + 1) { border-left: 0; }
   &.out { background: color-mix(in srgb, var(--status-gray-bg) 40%, transparent); .month-date { opacity: .5; } }
-  &.today .month-date { background: linear-gradient(135deg, var(--primary-dark), var(--primary)); color: #fff; }
+  &.today { background: color-mix(in srgb, var(--primary-soft) 55%, transparent); }
+  &.today .month-date { background: var(--primary-dark); color: #fff; }
 }
 
 .month-date {
@@ -183,10 +208,9 @@
 .month-ev {
   display: block;
   width: 100%;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border: 0;
-  border-left: 3px solid var(--ev-fg);
-  border-radius: 6px;
+  border-radius: 999px;
   background: var(--ev-bg);
   color: var(--ev-fg);
   font-size: 11px;
@@ -217,14 +241,15 @@
 .ev-time { font-weight: 700; opacity: .85; margin-right: 5px; }
 
 /* ---------- Week / Day time grid ---------- */
-// The time grid scrolls inside its own box (the page stays put). The sticky day header sticks to this box while the
-// hours scroll. Height = the viewport minus the page header, stat cards, filters and calendar toolbar above it.
+// The page itself does not scroll: the calendar fills the space under the filters and this box is the only vertical
+// scrollbar. The day header is sticky inside it, so it stays put while the hours scroll.
 .tg-scroll {
+  flex: 1 1 0;
+  min-height: 240px;
   overflow: auto;
-  max-height: clamp(360px, calc(100vh - 362px), 1400px);
   overscroll-behavior: contain;
   border: 1px solid var(--border-soft);
-  border-radius: 12px;
+  border-radius: 14px;
   scrollbar-width: thin;
   scrollbar-color: var(--primary-border-strong, #9bbfb3) transparent;
 
@@ -257,20 +282,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
-  padding: 6px 4px;
+  gap: 2px;
+  padding: 8px 4px 10px;
   border: 0;
   border-left: 1px solid var(--border-soft);
+  border-top: 3px solid transparent;
   background: transparent;
   cursor: pointer;
 
-  .wd { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-  .dn { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; font-size: 15px; font-weight: 700; color: var(--text-dark); }
+  .wd { font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; color: var(--text-muted); text-transform: uppercase; }
+  .dn { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; font-size: 16px; font-weight: 800; color: var(--text-dark); }
   .cnt { position: absolute; top: 6px; right: 8px; min-width: 18px; height: 18px; padding: 0 5px; display: grid; place-items: center;
     border-radius: 999px; background: var(--status-orange-bg); color: var(--status-orange-text); font-size: 10px; font-weight: 700; }
 
   &:hover { background: var(--primary-soft); }
-  &.today .dn { background: linear-gradient(135deg, var(--primary-dark), var(--primary)); color: #fff; }
+  &.today { border-top-color: var(--primary-dark); background: color-mix(in srgb, var(--primary-soft) 55%, transparent); }
+  &.today .dn { background: var(--primary-dark); color: #fff; }
   &.today .wd { color: var(--primary-dark); }
 }
 
@@ -298,8 +325,8 @@
   position: relative;
   border-left: 1px solid var(--border-soft);
 
-  &.today { background: color-mix(in srgb, var(--primary-soft) 45%, transparent); }
-  &.past { background: color-mix(in srgb, var(--status-gray-bg) 35%, transparent); }
+  &.today { background: color-mix(in srgb, var(--primary-soft) 40%, transparent); }
+  &.past { background: repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--status-gray-bg) 45%, transparent) 8px 9px); }
 }
 
 .tg-slot {
@@ -342,20 +369,28 @@
   align-items: flex-start;
   gap: 2px;
   margin-top: 1px;
-  padding: 3px 7px;
-  border: 0;
-  border-left: 3px solid var(--ev-fg);
-  border-radius: 7px;
+  padding: 4px 8px 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--ev-fg) 22%, transparent);
+  border-radius: 10px;
   background: var(--ev-bg);
   color: var(--ev-fg);
   font-size: 11px;
   text-align: left;
   overflow: hidden;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
-  transition: box-shadow .15s ease, transform .15s ease;
 
-  &:hover { z-index: 2; box-shadow: 0 6px 16px rgba(0, 0, 0, .14); transform: translateY(-1px); }
+  // accent bar on the left edge
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--ev-fg);
+  }
+
+  &:hover { z-index: 2; box-shadow: 0 4px 12px rgba(0, 0, 0, .12); }
   &.ev-red { opacity: .7; strong { text-decoration: line-through; } }
 
   .ev-line, .ev-meta { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -384,6 +419,7 @@
     height: 10px;
     border-radius: 50%;
     background: var(--status-red-text, #dc2626);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-red-text, #dc2626) 22%, transparent);
   }
 }
 

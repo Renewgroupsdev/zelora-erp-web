@@ -11,7 +11,7 @@ export const environment = {
    *  left empty, the socket stays off and the app keeps polling the API. */
   reverb: {
     key: '',
-    host: '192.168.0.202',
+    host: '192.168.0.201',
     port: 8080,
     scheme: 'http' as 'http' | 'https',
   },

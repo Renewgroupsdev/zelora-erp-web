@@ -73,6 +73,19 @@
           @if (isInvalid('vendorId')) { <small class="error-text">Select a supplier.</small> }
         </div>
 
+        <div class="form-field">
+          <label for="product-type">Type <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-boxes"></i>
+            <select id="product-type" formControlName="productType" [class.is-invalid]="isInvalid('productType')">
+              <option [ngValue]="null">Select type</option>
+              @for (type of productTypes; track type) { <option [ngValue]="type">{{ type }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+          @if (isInvalid('productType')) { <small class="error-text">Select a type.</small> }
+        </div>
+
         <div class="form-field full-width">
           <label for="product-description">Description</label>
           <div class="input-wrap textarea-wrap">

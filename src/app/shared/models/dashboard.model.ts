@@ -117,7 +117,19 @@ export interface DoctorDayData {
   pending_notes: number; completed: number; scheduled: number; upcoming_week: number; consultations_period: number;
 }
 
+export interface WalkInRow {
+  id: number; name: string; mobile: string | null; status: string; time: string | null; treatment: string | null;
+  is_regular: boolean; converted: boolean; paid: number;
+}
+
+export interface WalkInDesk {
+  total: number; converted: number; conversion_rate: number; new: number; regular: number;
+  paid_amount: number; paid_count: number; items: WalkInRow[];
+}
+
 export interface FrontDeskData {
+  /** Today's walk-ins (absent from an older API). */
+  walk_in?: WalkInDesk;
   today: VisitRow[]; appointments_today: number; walk_ins_today: number; checked_in: number;
   awaiting_terms: number; invoiced_not_converted: number; sittings_today: number; sittings_done_today: number;
   pending_payments: { count: number; amount: number; items: { id: number; customer: string; mobile: string; treatment: string; due: number }[] };
@@ -167,7 +179,8 @@ export function duration(seconds: number): string {
 export function statusTone(status: string | null | undefined): string {
   const s = (status ?? '').toLowerCase();
   if (['converted', 'completed', 'approved', 'present', 'paid', 'active', 'achieved', 'available', 'online'].some(k => s.includes(k))) return 'green';
-  if (['cancel', 'reject', 'missed', 'expired', 'overdue', 'absent', 'blocked', 'offline'].some(k => s.includes(k))) return 'red';
+  if (['cancel', 'reject', 'expired', 'absent', 'blocked', 'offline'].some(k => s.includes(k))) return 'gray';
+  if (['missed', 'overdue'].some(k => s.includes(k))) return 'orange';
   if (['pending', 'awaiting', 'late', 'draft', 'not started', 'busy', 'on call', 'break'].some(k => s.includes(k))) return 'orange';
   if (['consultation', 'progress', 'scheduled', 'invoiced'].some(k => s.includes(k))) return 'blue';
   return 'gray';

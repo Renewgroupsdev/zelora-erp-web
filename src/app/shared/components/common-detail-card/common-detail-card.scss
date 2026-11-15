@@ -1,231 +1,261 @@
+/*
+  Count / stat card used on every list page (and anywhere a figure is shown): a frosted tinted card with a tone accent on
+  the top edge, the icon in a gradient disc inside a ring (the ring fills when `ring` is set), an uppercase label in the
+  tone colour, a large value, a muted hint line and a big faint copy of the icon behind. Variants set the tone.
+*/
 :host {
   display: block;
   min-width: 0;
+  height: 100%;
+  // the card lays itself out by its OWN width (not the screen): the same card sits 2, 4, 5 or 6 to a row on different pages
+  container: detail-card / inline-size;
 }
 
 .detail-card {
+  // tone: light / dark ends of the gradient and the ink colour (variants below)
+  --tone-a: color-mix(in srgb, var(--primary) 70%, #fff);
+  --tone-b: var(--primary);
+  --tone-fg: var(--primary-dark, var(--primary));
+
   position: relative;
-  min-height: 30px;
-  background: var(--app-surface);
-  border: 1px solid var(--border-soft);
-  border-top: 2px solid var(--primary);
-  border-radius: 4px;
-  padding: 7px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  overflow: hidden;
-  transition: border-color .15s ease, background .15s ease;
-}
-
-.detail-card:not(.has-icon):hover {
-  background: var(--primary-soft);
-}
-
-.detail-card.has-icon {
-  min-height: clamp(62px, 5vw + 46px, 84px);
-  padding: clamp(8px, 0.6vw + 6px, 8px) clamp(9px, 0.7vw + 6px, 8px);
-  flex-direction: row;
-  align-items: center;
-  gap: clamp(6px, 0.8vw + 3px, 10px);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--detail-tint-border, var(--border-soft));
-  border-top: 1px solid var(--detail-tint-border, var(--border-soft));
-  background: linear-gradient(135deg, var(--detail-tint-bg, var(--app-surface)) 0%, var(--app-surface-solid) 65%);
-  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-}
-
-.detail-card.has-icon:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card-hover);
-}
-
-.detail-card.has-icon.variant-primary {
-  --detail-tint-bg: color-mix(in srgb, var(--primary) 14%, var(--app-surface-solid));
-  --detail-tint-border: color-mix(in srgb, var(--primary) 22%, var(--border-soft));
-  --detail-tint-accent: var(--primary-dark);
-}
-
-.detail-card.has-icon.variant-green {
-  --detail-tint-bg: color-mix(in srgb, var(--status-green-text) 14%, var(--app-surface-solid));
-  --detail-tint-border: color-mix(in srgb, var(--status-green-text) 22%, var(--border-soft));
-  --detail-tint-accent: var(--status-green-text);
-}
-
-.detail-card.has-icon.variant-orange {
-  --detail-tint-bg: color-mix(in srgb, var(--status-orange-text) 16%, var(--app-surface-solid));
-  --detail-tint-border: color-mix(in srgb, var(--status-orange-text) 24%, var(--border-soft));
-  --detail-tint-accent: var(--status-orange-text);
-}
-
-.detail-card.has-icon.variant-blue {
-  --detail-tint-bg: color-mix(in srgb, var(--status-blue-text) 14%, var(--app-surface-solid));
-  --detail-tint-border: color-mix(in srgb, var(--status-blue-text) 22%, var(--border-soft));
-  --detail-tint-accent: var(--status-blue-text);
-}
-
-.detail-card.has-icon.variant-purple {
-  --detail-tint-bg: color-mix(in srgb, var(--status-purple-text) 14%, var(--app-surface-solid));
-  --detail-tint-border: color-mix(in srgb, var(--status-purple-text) 22%, var(--border-soft));
-  --detail-tint-accent: var(--status-purple-text);
-}
-
-.detail-card.has-icon .detail-label {
+  isolation: isolate;
+  height: 100%;
   min-width: 0;
-  font-size: clamp(10.5px, 0.5vw + 9px, 12.5px);
-  white-space: nowrap;
+  min-height: 84px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
   overflow: hidden;
-  text-overflow: ellipsis;
+  border: 1px solid color-mix(in srgb, var(--tone-b) 18%, transparent);
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--tone-a) 24%, transparent), transparent 60%),
+    linear-gradient(135deg, color-mix(in srgb, var(--tone-a) 13%, var(--app-surface-solid, #fff)) 0%, var(--app-surface-solid, #fff) 75%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 1px 2px rgba(16, 40, 30, .05), 0 14px 28px -20px var(--tone-b);
+  transition: transform .25s cubic-bezier(.2, .8, .2, 1), box-shadow .25s ease;
+
+  // tone accent along the top edge
+  &::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    top: 0;
+    height: 3px;
+    border-radius: 0 0 4px 4px;
+    background: linear-gradient(90deg, var(--tone-a), var(--tone-b));
+    opacity: .9;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 2px 4px rgba(16, 40, 30, .05), 0 20px 34px -20px var(--tone-b);
+  }
 }
 
-.detail-card.has-icon .detail-value {
-  font-size: clamp(17px, 1.7vw + 11px, 24px);
-}
+/* ------------------------------------------------------------ tones */
+.variant-primary { --tone-a: color-mix(in srgb, var(--primary) 65%, #fff); --tone-b: var(--primary); --tone-fg: var(--primary-dark, var(--primary)); }
+.variant-green { --tone-a: #3fd07f; --tone-b: #128a52; --tone-fg: var(--status-green-text, #128a52); }
+.variant-blue { --tone-a: #56acff; --tone-b: #1f63d8; --tone-fg: var(--status-blue-text, #1f63d8); }
+.variant-purple { --tone-a: #c189ff; --tone-b: #7b35e6; --tone-fg: var(--status-purple-text, #7b35e6); }
+.variant-orange { --tone-a: #ffb453; --tone-b: #ee6a17; --tone-fg: var(--status-orange-text, #c2410c); }
+.variant-red { --tone-a: #ff8484; --tone-b: #da3434; --tone-fg: var(--status-red-text, #da3434); }
+.variant-teal { --tone-a: #2fd3b2; --tone-b: #0b8a75; --tone-fg: #0b8572; }
+.variant-gold { --tone-a: #f1cf7e; --tone-b: #b9832c; --tone-fg: var(--gold-dark, #8a5a17); }
 
-.detail-card.has-icon .detail-trend {
-  max-width: 100%;
-  font-size: clamp(10px, 0.4vw + 9px, 12px);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.detail-card.has-icon .detail-trend.trend-neutral {
-  color: var(--detail-tint-accent, var(--text-muted));
-}
-
-.detail-card.has-icon .detail-card-main {
-  flex: 1 1 auto;
-}
-
-.detail-card.hero {
-  border-top-color: var(--gold);
-  background: var(--gold-soft);
-}
-
-.detail-card.hero.has-icon {
-  border-color: color-mix(in srgb, var(--gold) 32%, var(--border-soft));
-  background: linear-gradient(135deg, var(--gold-soft) 0%, var(--app-surface-solid) 65%);
-}
-
-.hero-mark {
+/* ------------------------------------------------------------ watermark, ring and icon */
+.detail-mark {
   position: absolute;
-  right: 8px;
-  bottom: 2px;
-  font-size: 35px;
+  right: -10px;
+  bottom: -18px;
+  z-index: -1;
+  font-size: 82px;
   line-height: 1;
-  color: var(--gold);
-  opacity: .14;
+  color: var(--tone-b);
+  opacity: .07;
+  transform: rotate(-12deg);
   pointer-events: none;
 }
 
-.detail-card.hero .detail-label {
-  color: var(--gold-dark);
-  opacity: .75;
-}
+.detail-ring {
+  position: relative;
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
 
-.detail-card.hero .detail-value {
-  color: var(--gold-dark);
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 }
-
-.detail-card.hero .detail-trend {
-  color: var(--gold-dark);
-  opacity: .8;
+.detail-ring-track { fill: none; stroke: color-mix(in srgb, var(--tone-b) 15%, transparent); stroke-width: 4; }
+.detail-ring-arc {
+  fill: none;
+  stroke: var(--tone-b);
+  stroke-width: 4;
+  stroke-linecap: round;
+  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--tone-b) 45%, transparent));
+  animation: detail-ring 1.2s ease-out both;
 }
-
-.detail-card.hero .detail-trend.trend-up {
-  color: var(--gold-dark);
-}
+@keyframes detail-ring { from { stroke-dasharray: 0 100; } }
 
 .detail-icon {
-  flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute;
+  inset: 8px;
+  display: grid;
+  place-items: center;
   border-radius: 50%;
-  border: 2px solid transparent;
+  color: #fff;
+  background: linear-gradient(140deg, var(--tone-a), var(--tone-b));
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .45), 0 8px 14px -6px var(--tone-b);
 
-  i {
-    font-size: 13px;
-    font-weight: var(--fw-bold);
-    -webkit-text-stroke: 0.45px currentColor;
-  }
-
-  &.icon-primary { background: var(--primary-soft); color: var(--primary-dark); border-color: color-mix(in srgb, var(--primary) 38%, transparent); }
-  &.icon-green { background: var(--status-green-bg); color: var(--status-green-text); border-color: color-mix(in srgb, var(--status-green-text) 38%, transparent); }
-  &.icon-orange { background: var(--status-orange-bg); color: var(--status-orange-text); border-color: color-mix(in srgb, var(--status-orange-text) 38%, transparent); }
-  &.icon-blue { background: var(--status-blue-bg); color: var(--status-blue-text); border-color: color-mix(in srgb, var(--status-blue-text) 38%, transparent); }
-  &.icon-purple { background: var(--status-purple-bg); color: var(--status-purple-text); border-color: color-mix(in srgb, var(--status-purple-text) 38%, transparent); }
+  i { font-size: 17px; line-height: 1; }
 }
 
-.detail-card.has-icon .detail-icon {
-  width: clamp(26px, 2.2vw + 18px, 36px);
-  height: clamp(26px, 2.2vw + 18px, 36px);
-
-  i { font-size: clamp(12px, 0.9vw + 9px, 16px); }
-}
-
+/* ------------------------------------------------------------ text */
 .detail-card-main {
-  display: flex;
   flex: 1 1 auto;
-  flex-direction: column;
-  gap: 4px;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.detail-sparkline {
-  flex: 0 0 auto;
-  width: 60px;
-  height: 30px;
-  color: var(--detail-tint-accent, var(--primary));
-
-  .detail-sparkline-line {
-    stroke: currentColor;
-    stroke-width: 2.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-}
-
-.detail-card.has-icon .detail-sparkline {
-  flex: 0 1 auto;
-  width: clamp(38px, 4.5vw + 10px, 66px);
-  min-width: 28px;
-  height: clamp(24px, 2.2vw + 12px, 34px);
-}
-
+// the label wraps onto a second line instead of being cut ("BALANCES TO COL...")
 .detail-label {
-  font-size: 13px;
-  font-weight: var(--fw-medium);
-  color: var(--text-muted);
-  line-height: var(--lh-tight);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  line-height: 1.25;
+  text-transform: uppercase;
+  color: var(--tone-fg);
+  // break between words only ("FOLLOW-UPS", never "FOLLO / W-UP")
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .detail-value {
-  font-family: var(--font-family-display);
-  font-size: 22px;
-  line-height: var(--lh-tight);
-  font-weight: 600;
+  font-family: var(--font-family-display, inherit);
+  font-size: clamp(21px, 1.6vw + 6px, 28px);
+  font-weight: 800;
+  letter-spacing: -.8px;
+  line-height: 1.15;
   color: var(--text-dark);
-  letter-spacing: -.3px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .detail-trend {
-  position: relative;
-  z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  margin-top: 1px;
-  font-size: 13px;
-  line-height: var(--lh-tight);
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
   color: var(--text-muted);
-  font-weight: var(--fw-medium);
 
-  i { font-size: 14px; }
-  &.trend-up { color: var(--status-green-text); }
-  &.trend-down { color: var(--status-red-text); }
+  i { flex: 0 0 auto; font-size: 15px; }
+  &.trend-up { color: var(--status-green-text); font-weight: 600; }
+  &.trend-down { color: var(--status-red-text); font-weight: 600; }
+}
+.detail-trend-text { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* "%" badge in the top-right corner when the ring shows progress; the text keeps clear of it */
+.detail-badge {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--tone-fg);
+  background: color-mix(in srgb, var(--app-surface-solid, #fff) 75%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tone-b) 22%, transparent);
+  backdrop-filter: blur(4px);
+}
+.detail-card.has-badge .detail-label { padding-right: 46px; }
+
+/* ------------------------------------------------------------ card without an icon */
+.detail-card:not(.has-icon) {
+  min-height: 72px;
+  padding: 14px 16px;
+}
+
+/* ------------------------------------------------------------ dark theme */
+:host-context([data-theme='dark']) .detail-card {
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--tone-a) 18%, transparent), transparent 60%),
+    linear-gradient(135deg, color-mix(in srgb, var(--tone-b) 16%, var(--app-surface-solid, #111)) 0%, var(--app-surface-solid, #111) 75%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 14px 28px -22px var(--tone-b);
+}
+:host-context([data-theme='dark']) .detail-label { color: var(--tone-a); }
+
+/* ------------------------------------------------------------ responsive (by the card's own width) */
+// medium cards (4 - 5 to a row on a laptop): a smaller ring
+@container detail-card (max-width: 300px) {
+  .detail-card { gap: 12px; padding: 14px; }
+  .detail-ring { width: 50px; height: 50px; }
+  .detail-icon { inset: 7px; i { font-size: 16px; } }
+  .detail-value { font-size: clamp(20px, 10cqi, 26px); }
+}
+
+/*
+  narrow cards (5 - 6 to a row on a tablet, 2 to a row on a phone): compact layout -
+    [icon] LABEL (up to 2 lines)
+    VALUE (full width)
+    hint (up to 2 lines)
+*/
+@container detail-card (max-width: 240px) {
+  .detail-card.has-icon {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    grid-auto-rows: auto;
+    align-items: center;
+    column-gap: 9px;
+    row-gap: 6px;
+    padding: 14px 12px 12px;
+    border-radius: 16px;
+  }
+  .detail-card::before { left: 12px; right: 12px; }
+  .detail-card.has-icon .detail-card-main { display: contents; }
+  .detail-ring { grid-column: 1; grid-row: 1; width: 38px; height: 38px; }
+  .detail-ring-track, .detail-ring-arc { stroke-width: 3.5; }
+  .detail-icon { inset: 5px; i { font-size: 13px; } }
+  .detail-card.has-icon .detail-label { grid-column: 2; grid-row: 1; font-size: 10.5px; letter-spacing: .3px; }
+  .detail-card.has-icon .detail-value { grid-column: 1 / -1; font-size: clamp(19px, 12cqi, 24px); letter-spacing: -.5px; }
+  .detail-card.has-icon .detail-trend { grid-column: 1 / -1; margin-top: -2px; }
+  // the hint wraps (up to 2 lines) instead of "Visible ..." / "Due to..."
+  .detail-trend { font-size: 11px; align-items: flex-start; }
+  .detail-trend-text {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+  .detail-mark { font-size: 60px; right: -8px; bottom: -14px; }
+  .detail-badge { top: 8px; right: 8px; padding: 1px 7px; font-size: 10px; }
+  .detail-card.has-badge .detail-label { padding-right: 34px; }
+}
+
+// very narrow (a phone at 2 to a row in a small column): drop the watermark, tighten
+@container detail-card (max-width: 160px) {
+  .detail-card.has-icon { grid-template-columns: 32px minmax(0, 1fr); column-gap: 8px; padding: 12px 10px 10px; }
+  .detail-ring { width: 32px; height: 32px; }
+  .detail-icon { inset: 4px; i { font-size: 12px; } }
+  .detail-mark { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-card { transition: none; }
+  .detail-ring-arc { animation: none; }
 }

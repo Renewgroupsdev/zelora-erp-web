@@ -2,29 +2,63 @@
                [link]="canOpen('purchase-management') ? '/app/inventory/stock' : null" linkLabel="Stock"
                [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()">
   @if (data(); as s) {
-    <div class="dash-figures">
-      <div><span>Stock value</span><strong>{{ inrShort(s.value) }}</strong><small>{{ s.units.toLocaleString('en-IN') }} units &middot; {{ s.products }} products</small></div>
-      <div><span>Low stock</span><strong [class.txt-orange]="s.low_stock_count > 0">{{ s.low_stock_count }}</strong><small>below {{ s.threshold }} units</small></div>
-      <div><span>Expiring</span><strong [class.txt-red]="s.expiring_count > 0">{{ s.expiring_count }}</strong><small>within 30 days</small></div>
+    <!-- headline: stock value, with the two alert counts beside it -->
+    <div class="st-hero">
+      <div class="st-value">
+        <i class="bi bi-boxes st-value-mark" aria-hidden="true"></i>
+        <small><i class="bi bi-gem" aria-hidden="true"></i> Stock value</small>
+        <strong>{{ inrShort(s.value) }}</strong>
+        <span>{{ s.units.toLocaleString('en-IN') }} units &middot; {{ s.products }} products</span>
+      </div>
+      <div class="st-alerts">
+        <div class="st-alert tone-orange" [class.is-zero]="!s.low_stock_count">
+          <span class="st-alert-icon"><i class="bi bi-graph-down-arrow" aria-hidden="true"></i></span>
+          <span><b>{{ s.low_stock_count }}</b><small>Low stock &middot; below {{ s.threshold }}</small></span>
+        </div>
+        <div class="st-alert tone-red" [class.is-zero]="!s.expiring_count">
+          <span class="st-alert-icon"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span>
+          <span><b>{{ s.expiring_count }}</b><small>Expiring &middot; 30 days</small></span>
+        </div>
+      </div>
     </div>
+
     @if (!s.low_stock.length && !s.expiring.length) {
       <div class="dash-ok"><i class="bi bi-check2-circle" aria-hidden="true"></i> Stock levels are healthy - nothing low or expiring.</div>
     }
+
     @if (s.low_stock.length) {
-      <h3 class="dash-sub">Running low</h3>
-      <ul class="dash-list is-compact">
+      <h3 class="st-sub"><i class="bi bi-battery-low" aria-hidden="true"></i> Running low <em>{{ s.low_stock.length }}</em></h3>
+      <ul class="st-low">
         @for (r of s.low_stock; track $index) {
-          <li><div class="dash-list-main"><strong>{{ r.product }}</strong><small>{{ r.store }}</small></div><span class="dash-pill tone-orange">{{ r.qty }} left</span></li>
+          <li [class]="'is-' + level(r.qty, s.threshold)">
+            <span class="st-low-icon"><i class="bi" [class]="r.qty <= 0 ? 'bi-x-octagon-fill' : 'bi-box-seam-fill'" aria-hidden="true"></i></span>
+            <div class="st-low-main">
+              <div class="st-low-top">
+                <strong>{{ r.product }}</strong>
+                <span class="st-qty"><b>{{ r.qty }}</b>/{{ s.threshold }}</span>
+              </div>
+              <span class="st-gauge" role="img" [attr.aria-label]="r.qty + ' of ' + s.threshold + ' units'"><i [style.width.%]="fill(r.qty, s.threshold)"></i></span>
+              <div class="st-low-bottom">
+                <span class="st-store" [class.is-central]="isCentral(r.store)"><i class="bi" [class]="isCentral(r.store) ? 'bi-building-fill' : 'bi-geo-alt-fill'" aria-hidden="true"></i> {{ r.store }}</span>
+                <span class="st-level">{{ levelLabel(level(r.qty, s.threshold)) }}</span>
+              </div>
+            </div>
+          </li>
         }
       </ul>
     }
+
     @if (s.expiring.length) {
-      <h3 class="dash-sub">Expiring soon</h3>
-      <ul class="dash-list is-compact">
+      <h3 class="st-sub"><i class="bi bi-calendar-x" aria-hidden="true"></i> Expiring soon <em>{{ s.expiring.length }}</em></h3>
+      <ul class="st-exp">
         @for (r of s.expiring; track $index) {
-          <li>
-            <div class="dash-list-main"><strong>{{ r.product }}</strong><small>{{ r.store }} &middot; batch {{ r.batch }} &middot; {{ r.qty }} units</small></div>
-            <span class="dash-pill" [class]="r.expired ? 'tone-red' : 'tone-orange'">{{ r.expired ? 'Expired' : displayDate(r.expiry) }}</span>
+          <li [class.is-expired]="r.expired || (daysLeft(r.expiry) ?? 1) < 0">
+            <span class="st-date" [attr.title]="displayDate(r.expiry)"><b>{{ dayOf(r.expiry) }}</b><small>{{ monthOf(r.expiry) }}</small></span>
+            <div class="st-exp-main">
+              <strong>{{ r.product }}</strong>
+              <small>{{ r.store }} &middot; <i class="bi bi-upc" aria-hidden="true"></i> {{ r.batch }} &middot; {{ r.qty }} units</small>
+            </div>
+            <span class="st-countdown">{{ countdown(r.expiry, r.expired) }}</span>
           </li>
         }
       </ul>

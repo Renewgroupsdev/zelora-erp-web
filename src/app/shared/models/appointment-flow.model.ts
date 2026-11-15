@@ -2,6 +2,11 @@
 
 /** "Consultation Only": the treatment was not taken, only the consultation fee was collected (Nill Card, view only). */
 export type FlowStatus = 'Scheduled' | 'In Consultation' | 'Awaiting Terms' | 'Invoiced' | 'Converted' | 'Consultation Only' | 'Cancelled';
+/** The status as people read it everywhere in the app: the stored "In Consultation" is shown as "Consultation". */
+export function statusLabel(status: string | null | undefined): string {
+  return status === 'In Consultation' ? 'Consultation' : status ?? '';
+}
+
 /** treatment = the customer takes the treatment; consultation = only the consultation fee is paid. */
 export type PaymentType = 'treatment' | 'consultation';
 export type FlowCategory = 'Hair' | 'Skin';
@@ -22,6 +27,15 @@ export interface SittingPhoto {
   captured_at: string | null;
 }
 
+/** Where a sitting is held, and whether it was moved to another branch / franchise than its treatment's own. */
+export interface SittingTransferInfo {
+  transferred: boolean;
+  branch: string;
+  from: string | null;
+  at: string | null;
+  by: string | null;
+}
+
 export interface Sitting {
   id: number;
   sitting_no: number;
@@ -30,9 +44,35 @@ export interface Sitting {
   actual_date: string | null;
   status: 'scheduled' | 'completed';
   notes: string | null;
+  /** Set when the sitting was moved to another branch / franchise than the treatment plan's own. */
+  branch_type?: 'branch' | 'franchise' | null;
+  branch_id?: number | null;
   doctor?: { id: number; name: string } | null;
   photos: SittingPhoto[];
   requirements?: SittingRequirements;
+  transfer_info?: SittingTransferInfo | null;
+  /** A move to another branch that is still waiting for a doctor there to accept. */
+  transfer_request?: SittingTransfer | null;
+}
+
+/** A request to hold one sitting at another branch / franchise (decided by that branch's doctor). */
+export interface SittingTransfer {
+  id: number;
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled';
+  sitting_id: number;
+  sitting_no: number | null;
+  sittings_count: number | null;
+  customer: string | null;
+  treatment: string | null;
+  from_branch: string;
+  to_branch: string;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  reason: string | null;
+  requested_by: string | null;
+  requested_at: string | null;
+  doctor: string | null;
+  decision_note: string | null;
 }
 
 /** What a sitting still needs before it can be completed (computed by the API). */
@@ -45,8 +85,15 @@ export interface SittingRequirements {
   required_paid: number;
   paid: number;
   amount_due: number;
+  /** The sitting's share still to collect (optional unless is_last). */
+  suggested_due?: number;
+  /** The last sitting: completing it needs the whole balance paid. */
+  is_last?: boolean;
   balance: number;
   materials: { product_id: number; name: string; needed: number; available: number }[];
+  /** Name of the branch / franchise holding the sitting, and whether it is not the plan's own. */
+  held_at?: string;
+  held_elsewhere?: boolean;
 }
 
 export interface FlowCustomer {
@@ -79,6 +126,8 @@ export interface FlowPayment {
 
 export interface FlowAppointmentRecord {
   id: number;
+  /** Set once the appointment has become a customer. */
+  customer_id?: number | null;
   lead_id: number | null;
   status: FlowStatus;
   current_step: number;
@@ -93,6 +142,8 @@ export interface FlowAppointmentRecord {
   appointment_date: string;
   appointment_time: string;
   photo_url?: string | null;
+  /** The customer's own profile photo (Customer Management), when one was added. */
+  customer_photo_url?: string | null;
   /** Sent by the visitor from the customer app (details + selfie in `photo_url`); waits for the doctor's approval (conversion). */
   app_submitted_at?: string | null;
   bp: string | null;
@@ -128,6 +179,7 @@ export interface FlowAppointmentRecord {
   invoiced_at: string | null;
   branch?: { id: number; name: string } | null;
   branch_type?: 'branch' | 'franchise' | null;
+  branch_id?: number | null;
   /** Branch / franchise display name (a franchise reads "Name (Franchise)"). */
   branch_name?: string | null;
   counselor?: { id: number; name: string } | null;
@@ -196,6 +248,8 @@ export interface FlowTreatmentLine {
   treatment_id: number;
   sittings_count: number;
   sitting_interval_days: number;
+  /** Day of this treatment's first sitting (null = the appointment day). */
+  start_date?: string | null;
   price_per_sitting: string;
   total_amount: string;
   treatment?: { id: number; name: string } | null;
@@ -224,7 +278,7 @@ export interface TreatmentHistory {
   net_amount: number;
   paid: number;
   price_per_sitting: number;
-  sittings: { id: number; sitting_no: number; scheduled_date: string | null; scheduled_time: string | null; actual_date: string | null; status: string }[];
+  sittings: { id: number; sitting_no: number; scheduled_date: string | null; scheduled_time: string | null; actual_date: string | null; status: string; notes?: string | null; doctor?: { id: number; name: string } | null; photos?: SittingPhoto[]; transfer_info?: SittingTransferInfo | null }[];
 }
 
 export const PAYMENT_MODES: { value: PaymentMode; label: string; icon: string }[] = [

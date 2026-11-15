@@ -130,6 +130,49 @@ export interface AttendanceRecord {
   checkOutDistanceM?: number | null;
   /** Why the employee checked out (early check-out, work from home, auto check-out, ...). */
   checkOutReason?: string | null;
+  /** Employee app: GPS accuracy (metres) of the check-in / check-out fix. */
+  checkInAccuracyM?: number | null;
+  checkOutAccuracyM?: number | null;
+  /** A mock (fake) GPS reading was reported during the day. */
+  isMockLocation?: boolean;
+  /** The server closed the day (employee stayed outside the geofence, phone died on low battery). */
+  autoClosed?: boolean;
+  autoCloseReason?: string | null;
+}
+
+/** One employee app location reading of an attendance day (GET /hr/attendance/{id}/geofence). */
+export interface AttendanceTrailPoint {
+  latitude: number;
+  longitude: number;
+  accuracyM: number | null;
+  distanceM: number | null;
+  /** null = too inaccurate (or mocked) to decide. */
+  inside: boolean | null;
+  isMock: boolean;
+  source: string;
+  at: string;
+}
+
+/** A stretch outside the work location; the server owns the deadline. */
+export interface GeofenceViolation {
+  id: number;
+  status: 'open' | 'returned' | 'auto_closed' | 'cancelled' | 'review';
+  startedAt: string;
+  deadlineAt: string;
+  returnedAt: string | null;
+  autoClosedAt: string | null;
+  distanceM: number | null;
+  resolution: string | null;
+}
+
+export interface AttendanceGeofence {
+  radiusM: number;
+  branch: { name: string; latitude: number; longitude: number } | null;
+  autoClosed: boolean;
+  autoCloseReason: string | null;
+  isMockLocation: boolean;
+  violations: GeofenceViolation[];
+  points: AttendanceTrailPoint[];
 }
 
 export type LeaveType = 'Casual Leave' | 'Sick Leave' | 'Earned Leave' | 'Comp Off' | 'Loss of Pay';

@@ -28,6 +28,8 @@ export function buildActionGroup(fb: FormBuilder, action?: RolePermissionAction)
     slug_name: [{ value: action?.slug_name ?? '', disabled: true }, Validators.maxLength(100)],
     url: [action?.url ?? '', Validators.maxLength(255)],
     logo: [action?.logo ?? '', Validators.maxLength(100)],
+    display_name: [action?.display_name ?? '', Validators.maxLength(120)],
+    description: [action?.description ?? '', Validators.maxLength(255)],
     permission: [action?.permission ?? 1, Validators.required],
     role_ids: [parseRoleIds(action?.role_ids)],
   });
@@ -55,6 +57,7 @@ export function buildTabGroup(fb: FormBuilder, tab?: RolePermissionTab): FormGro
     slug_name: [{ value: tab?.slug_name ?? '', disabled: true }, Validators.maxLength(100)],
     url: [tab?.url ?? '', [Validators.required, Validators.maxLength(255)]],
     icon: [tab?.icon ?? '', Validators.maxLength(100)],
+    description: [tab?.description ?? '', Validators.maxLength(255)],
     permission: [tab?.permission ?? 1, Validators.required],
     role_ids: [parseRoleIds(tab?.role_ids)],
   });
@@ -115,6 +118,9 @@ export function extractModulePayload(group: FormGroup): any {
         slug_name: actionValue.slug_name,
         url: actionValue.url ? actionValue.url.trim() : null,
         logo: actionValue.logo ? actionValue.logo.trim() : null,
+        // report tiles only: the module API ignores these, the editor saves them through report-center/tiles right after
+        display_name: actionValue.display_name ? actionValue.display_name.trim() : null,
+        description: actionValue.description ? actionValue.description.trim() : null,
         permission: Number(actionValue.permission),
         role_ids: (actionValue.role_ids ?? []).join(','),
       };
@@ -128,6 +134,7 @@ export function extractModulePayload(group: FormGroup): any {
         slug_name: tabValue.slug_name,
         url: tabValue.url ? tabValue.url.trim() : null,
         icon: tabValue.icon ? tabValue.icon.trim() : null,
+        description: tabValue.description ? tabValue.description.trim() : null,
         permission: Number(tabValue.permission),
         role_ids: (tabValue.role_ids ?? []).join(','),
       };

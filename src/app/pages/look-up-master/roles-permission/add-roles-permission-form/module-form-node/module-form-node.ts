@@ -134,7 +134,67 @@ export class ModuleFormNode implements OnInit {
     return !isAppRoute(this.router.config, this.group.get('url')?.value);
   }
 
-  /** The action URL at this row is not a page of this app. */
+  /** Report groups left open in the actions list (keyed by the report's key). Closed by default. */
+  openReports = new Set<string>();
+
+  /**
+   * The actions list laid out for display: a report's "View ... Report" action is the parent, and its inner permissions (records,
+   * analytics, contact details, export) are its children. Every other action stays a plain row. Indexes point into the form array,
+   * so the form data and the save payload are untouched.
+   */
+  get actionLayout(): { index: number; key?: string; children: number[] }[] {
+    const controls = this.actionsArray.controls;
+    const slugs = controls.map((c) => (c.get('slug_name')?.value ?? '') as string);
+    const parentOf = new Map<string, number>();
+    slugs.forEach((s, i) => {
+      const m = /^view-(.+)-report$/.exec(s);
+      if (m && !parentOf.has(m[1])) parentOf.set(m[1], i);
+    });
+    const childKey = (s: string): string | null => {
+      const m = /^view-(.+)-(?:records|analytics|contact-details)$/.exec(s) ?? /^export-(.+)-report$/.exec(s);
+      return m && parentOf.has(m[1]) ? m[1] : null;
+    };
+    const kids = new Map<string, number[]>();
+    const out: { index: number; key?: string; children: number[] }[] = [];
+    slugs.forEach((s, i) => {
+      const k = childKey(s);
+      if (k) kids.set(k, [...(kids.get(k) ?? []), i]);
+    });
+    slugs.forEach((s, i) => {
+      if (childKey(s)) return;
+      const m = /^view-(.+)-report$/.exec(s);
+      const key = m && parentOf.get(m[1]) === i ? m[1] : undefined;
+      out.push({ index: i, key, children: key ? kids.get(key) ?? [] : [] });
+    });
+    // A group sits where its earliest member sits (so "Export Appointment Report" listed first keeps Appointment first).
+    const pos = (g: { index: number; children: number[] }) => Math.min(g.index, ...g.children);
+    // Reports follow the order of their tabs (Tabs section); other actions come after, in list order.
+    const tabSlugs = this.tabsArray.controls.map((c) => c.get('slug_name')?.value as string);
+    const rank = (g: { index: number; key?: string; children: number[] }) => {
+      const t = g.key ? tabSlugs.indexOf(`view-${g.key}-report`) : -1;
+      return t >= 0 ? t : 10000 + pos(g);
+    };
+    return out.sort((a, b) => rank(a) - rank(b));
+  }
+
+  /** A report's title in the actions list: its tab name, else its action name. */
+  reportTitle(key: string, actionIndex: number): string {
+    const tab = this.tabsArray.controls.find((c) => c.get('slug_name')?.value === `view-${key}-report`);
+    return tab?.get('tab_name')?.value || this.actionLabel(actionIndex);
+  }
+
+  reportIcon(actionIndex: number): string {
+    return this.actionsArray.at(actionIndex)?.get('logo')?.value || 'bi-bar-chart-fill';
+  }
+
+  toggleReport(key: string): void {
+    this.openReports.has(key) ? this.openReports.delete(key) : this.openReports.add(key);
+    this.openReports = new Set(this.openReports);
+  }
+
+  actionLabel(index: number): string {
+    return this.actionsArray.at(index)?.get('action_name')?.value || 'Unnamed action';
+  }
   unknownActionUrl(index: number): boolean {
     return !isAppRoute(this.router.config, this.actionsArray.at(index)?.get('url')?.value);
   }

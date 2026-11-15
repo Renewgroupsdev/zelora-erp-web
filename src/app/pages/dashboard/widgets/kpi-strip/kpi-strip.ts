@@ -5,6 +5,8 @@ import { DashWidget } from '../dash-widget';
 interface KpiCard {
   label: string; icon: string; tone: 'green' | 'blue' | 'purple' | 'orange' | 'teal' | 'indigo';
   value: string; kpi: Kpi; previous: string | null; hint: string;
+  /** Share drawn as a ring around the icon (0 - 100) with a "%" badge; null = plain ring. */
+  ring: number | null; ringLabel?: string;
 }
 
 /**
@@ -28,13 +30,14 @@ export class KpiStrip extends DashWidget<KpisData> {
     const money = (v: number) => this.inrShort(v);
     const count = (v: number) => v.toLocaleString('en-IN');
     const prev = (kpi: Kpi, fmt: (v: number) => string) => (kpi.previous === null ? null : fmt(kpi.previous));
+    const conversion = Math.max(0, Math.min(100, Math.round(Number(k.conversion_rate.value) || 0)));
     return [
-      { label: 'Total collections', icon: 'bi-cash-stack', tone: 'green', value: money(k.collections.value), kpi: k.collections, previous: prev(k.collections, money), hint: 'Payments and consultation fees' },
-      { label: 'Sales billed', icon: 'bi-receipt', tone: 'blue', value: money(k.sales.value), kpi: k.sales, previous: prev(k.sales, money), hint: 'Treatment plans started' },
-      { label: 'New leads', icon: 'bi-person-plus-fill', tone: 'purple', value: count(k.new_leads.value), kpi: k.new_leads, previous: prev(k.new_leads, count), hint: k.conversion_rate.value + '% converted' },
-      { label: 'Appointments', icon: 'bi-calendar2-check-fill', tone: 'orange', value: count(k.appointments.value), kpi: k.appointments, previous: prev(k.appointments, count), hint: k.appointments_today.value + ' scheduled today' },
-      { label: 'New customers', icon: 'bi-person-heart', tone: 'teal', value: count(k.new_customers.value), kpi: k.new_customers, previous: prev(k.new_customers, count), hint: k.active_customers.value + ' with an active treatment' },
-      { label: 'Stock value', icon: 'bi-box-seam-fill', tone: 'indigo', value: money(k.stock_value.value), kpi: k.stock_value, previous: prev(k.stock_value, money), hint: 'At purchase price, on hand' },
+      { label: 'Total collections', icon: 'bi-cash-stack', tone: 'green', value: money(k.collections.value), kpi: k.collections, previous: prev(k.collections, money), hint: 'Payments and consultation fees', ring: null },
+      { label: 'Sales billed', icon: 'bi-receipt', tone: 'blue', value: money(k.sales.value), kpi: k.sales, previous: prev(k.sales, money), hint: 'Treatment plans started', ring: null },
+      { label: 'New leads', icon: 'bi-person-plus-fill', tone: 'purple', value: count(k.new_leads.value), kpi: k.new_leads, previous: prev(k.new_leads, count), hint: k.conversion_rate.value + '% converted', ring: conversion, ringLabel: conversion + '% converted' },
+      { label: 'Appointments', icon: 'bi-calendar2-check-fill', tone: 'orange', value: count(k.appointments.value), kpi: k.appointments, previous: prev(k.appointments, count), hint: k.appointments_today.value + ' scheduled today', ring: null },
+      { label: 'New customers', icon: 'bi-person-heart', tone: 'teal', value: count(k.new_customers.value), kpi: k.new_customers, previous: prev(k.new_customers, count), hint: k.active_customers.value + ' with an active treatment', ring: null },
+      { label: 'Stock value', icon: 'bi-box-seam-fill', tone: 'indigo', value: money(k.stock_value.value), kpi: k.stock_value, previous: prev(k.stock_value, money), hint: 'At purchase price, on hand', ring: null },
     ];
   });
 

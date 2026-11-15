@@ -541,6 +541,18 @@ export class LeadManagement implements OnInit {
     });
   }
 
+  /** Lead name clicked: the lead's details, view only (no call / assign / move to follow-ups). */
+  openLeadView(row: TableRow): void {
+    this.dialog.open(LeadProfileDialog, {
+      width: '600px',
+      maxWidth: 'calc(100vw - 24px)',
+      maxHeight: '92vh',
+      autoFocus: false,
+      panelClass: 'lead-profile-dialog',
+      data: { lead: this.toFlowLead(row), stage: 'lead', telecallers: [], viewOnly: true },
+    });
+  }
+
   private openLeadProfile(row: TableRow, stage: 'lead' | 'appointment'): void {
     const dialogRef = this.dialog.open(LeadProfileDialog, {
       width: '600px',
@@ -610,6 +622,8 @@ export class LeadManagement implements OnInit {
 
   private toFlowLead(row: TableRow): FlowLead {
     const lead = row['lead'] as LeadCell;
+    const raw = this.leadsById.get(Number(row['id']));
+    const text = (v: unknown) => (v === null || v === undefined ? undefined : String(v).trim() || undefined);
     return {
       id: String(row['id'] ?? lead.subtitle ?? lead.name),
       name: lead.name,
@@ -623,8 +637,11 @@ export class LeadManagement implements OnInit {
       notes: '',
       followUpDate: '',
       status: 'Valid',
-      email: this.leadsById.get(Number(row['id']))?.email ?? undefined,
-      attribution: toLeadAttribution(this.leadsById.get(Number(row['id']))),
+      email: raw?.email ?? undefined,
+      address: text(raw?.location ?? raw?.address),
+      pincode: text(raw?.pincode),
+      reason: text(raw?.reason),
+      attribution: toLeadAttribution(raw),
     };
   }
 

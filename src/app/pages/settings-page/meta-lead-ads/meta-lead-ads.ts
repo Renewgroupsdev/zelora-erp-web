@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiDataService } from '../../../core/http/api.service';
@@ -15,6 +15,8 @@ import {
 } from '../../../shared/common-services/meta-integration.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { ToastService } from '../../../shared/common-services/toast.service';
+import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 
 interface SourceOption { id: number; source_name: string; }
 
@@ -29,11 +31,11 @@ interface MappingDraft { branchKey: string; sourceId: number | null; adAccountId
 @Component({
   selector: 'app-meta-lead-ads',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [PageLoader, CommonModule, FormsModule, RouterLink, AutoModuleTabs],
   templateUrl: './meta-lead-ads.html',
   styleUrl: './meta-lead-ads.scss',
 })
-export class MetaLeadAds implements OnInit {
+export class MetaLeadAds implements OnInit, OnDestroy {
   private readonly meta = inject(MetaIntegrationService);
   private readonly api = inject(ApiDataService);
   private readonly toast = inject(ToastService);
@@ -65,8 +67,13 @@ export class MetaLeadAds implements OnInit {
     this.api.GET(`${ApiRoutesConstants.Source_List_Options}?per_page=200`).subscribe({
       next: (res: any) => this.sources.set((res?.data?.data ?? res?.data ?? []) as SourceOption[]),
     });
+    this.listenForFacebookResult();
     this.handleReturnFromFacebook();
     this.load();
+  }
+
+  ngOnDestroy(): void {
+    this.channel?.close();
   }
 
   // ---- loading ----
@@ -103,28 +110,78 @@ export class MetaLeadAds implements OnInit {
     c.forms.forEach((f) => (this.formDrafts[f.id] = { branchKey: f.branch?.key ?? '', sourceId: f.source_id, adAccountId: '' }));
   }
 
+  /**
+   * Facebook sign-in runs in a second browser tab. When Facebook sends that tab back here with ?meta=authorized|error,
+   * it hands the result to the first tab (BroadcastChannel) and closes itself. If the first tab is gone, the
+   * returning tab handles the result itself.
+   */
+  private channel: BroadcastChannel | null = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('meta-oauth');
+
+  private listenForFacebookResult(): void {
+    if (!this.channel) return;
+    this.channel.onmessage = (e: MessageEvent) => {
+      if (e.data?.type !== 'result') return;
+      this.channel?.postMessage({ type: 'ack' });
+      this.setBusy('auth', false);
+      this.applyFacebookResult(String(e.data.result), e.data.message ?? null);
+      this.load();
+    };
+  }
+
+  /** True when another open tab took the result. */
+  private handOverToFirstTab(result: string, message: string | null): Promise<boolean> {
+    const ch = this.channel;
+    if (!ch) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => { ch.removeEventListener('message', onAck); resolve(false); }, 800);
+      const onAck = (e: MessageEvent) => {
+        if (e.data?.type !== 'ack') return;
+        clearTimeout(timer);
+        ch.removeEventListener('message', onAck);
+        resolve(true);
+      };
+      ch.addEventListener('message', onAck);
+      ch.postMessage({ type: 'result', result, message });
+    });
+  }
+
+  private applyFacebookResult(result: string, message: string | null): void {
+    if (result === 'authorized') {
+      this.toast.success('Facebook account authorised', 'Now choose the Page to connect.');
+      this.openPicker();
+    } else {
+      this.toast.error('Facebook sign-in failed', message || 'Access was not granted.');
+    }
+  }
+
   /** Facebook sends the browser back here with ?meta=authorized|error. */
   private handleReturnFromFacebook(): void {
     const q = this.route.snapshot.queryParamMap;
     const result = q.get('meta');
     if (!result) return;
+    const message = q.get('message');
 
-    if (result === 'authorized') {
-      this.toast.success('Facebook account authorised', 'Now choose the Page to connect.');
-      this.openPicker();
-    } else {
-      this.toast.error('Facebook sign-in failed', q.get('message') || 'Access was not granted.');
-    }
     this.router.navigate([], { queryParams: {}, replaceUrl: true });
+    void this.handOverToFirstTab(result, message).then((handedOver) => {
+      if (handedOver) window.close(); // this was the extra tab: the first tab continues
+      else this.applyFacebookResult(result, message);
+    });
   }
 
   // ---- authorisation + Page picker ----
 
   connectAccount(): void {
+    // Open the tab now (inside the click) so the pop-up blocker allows it; it is pointed at Facebook once the URL arrives.
+    const tab = window.open('', '_blank');
     this.setBusy('auth', true);
     this.meta.startAuthorization().subscribe({
-      next: (url) => (window.location.href = url),
+      next: (url) => {
+        this.setBusy('auth', false);
+        if (tab) tab.location.href = url;
+        else window.location.href = url; // pop-ups blocked: fall back to this tab
+      },
       error: (err) => {
+        tab?.close();
         this.setBusy('auth', false);
         this.toast.error('Cannot start Meta sign-in', err?.error?.message || 'Please try again.');
       },

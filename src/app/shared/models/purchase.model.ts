@@ -103,6 +103,8 @@ export interface PurchaseOrder {
   expectedAt: string | null;
   items: PurchaseLineItem[];
   status: PurchaseOrderStatus;
+  /** 'low_stock' = raised from Low Stock Replenishment (Central Store, least vendor price, no request / quote step). */
+  source?: string | null;
   closeReason: string | null;
   closedBy: string | null;
   closedAt: string | null;
@@ -372,18 +374,9 @@ export interface PriceRevision {
 }
 export interface RevisionLine { productId: string; productName: string; productCode: string; unitPrice: number; gstPercent: number }
 
-/** A nearby branch / franchise (same state as the requesting unit) holding a requested product. */
+/** A nearby branch / franchise holding a product (Transfer Stock). */
 export interface NearbyStoreOption {
   storeKey: string; name: string; city: string; state: string; sameCity: boolean; available: number;
-  /** Straight-line km from the requesting unit (null = a unit has no coordinates) and the zone it falls in. */
+  /** Straight-line km from the receiving store (null = a unit has no coordinates) and the zone it falls in. */
   distanceKm: number | null; zone: 'near' | 'far' | 'unknown';
-}
-/** One requested product with what is needed and the nearby stores that could send it. */
-export interface NearbyStockItem { productId: string; productName: string; productCode: string | null; needed: number; options: NearbyStoreOption[] }
-
-/** A Central Store product under the low-stock level (Low Stock Replenishment tab). */
-export interface LowStockRow {
-  productId: string; productCode: string; productName: string; hsnCode: string;
-  qty: number; onOrder: number; suggestedQty: number; unitPrice: number; gstPercent: number;
-  vendorId: number | null; vendorName: string | null; out: boolean;
 }

@@ -4,7 +4,7 @@ import Pusher from 'pusher-js';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../auth/auth.service';
 
-/** Socket link state: `connected` = live events flow; anything else = the telephony service polls. */
+/** Socket link state: `connected` = live events flow; anything else = the consumers poll. */
 export type SocketState = 'off' | 'connecting' | 'connected' | 'unavailable';
 
 /** A telephony event as broadcast by the backend (App\Events\Telephony\*, `broadcastAs()` names). */
@@ -27,10 +27,16 @@ const EVENTS = [
   'lead.changed',
 ];
 
+/** Who holds the connection open: the telephony dock and the notification bell share one socket. */
+export type SocketOwner = 'telephony' | 'bell';
+
 /**
- * WebSocket link to Laravel Reverb (Pusher protocol) for live telephony events. Private channels are authorised at
- * POST /api/broadcasting/auth with the current Bearer token (read on every authorisation, so token refreshes are
- * picked up). The telephony service decides which channels to join and still polls (slower) as a fallback.
+ * WebSocket link to Laravel Reverb (Pusher protocol). Private channels are authorised at POST /api/broadcasting/auth
+ * with the current Bearer token (read on every authorisation, so token refreshes are picked up).
+ *
+ * One connection is shared: the telephony service joins its call channels (`join()`), the notification bell listens on
+ * its own channels (`listen()`). Each opens it with `connect(owner)` and closes its part with `disconnect(owner)`; the
+ * socket itself closes when nobody uses it any more. Both still poll (slower) as a fallback when it is down.
  */
 @Injectable({ providedIn: 'root' })
 export class TelephonySocketService {
@@ -39,10 +45,24 @@ export class TelephonySocketService {
   readonly state = signal<SocketState>('off');
 
   private echo: Echo<'reverb'> | null = null;
-  private readonly joined = new Set<string>();
+  private readonly owners = new Set<SocketOwner>();
+  /** Channels joined per owner, so one owner leaving does not drop the other's channels. */
+  private readonly channels: Record<SocketOwner, Set<string>> = { telephony: new Set(), bell: new Set() };
+  /** channel|event pairs already listened to (listen() is idempotent). */
+  private readonly listening = new Set<string>();
+  private onEvent?: (event: TelephonySocketEvent) => void;
 
-  connect(onEvent: (event: TelephonySocketEvent) => void): void {
+  /**
+   * Opens the shared socket for `owner`. The telephony service passes its event handler (for the channels it `join()`s);
+   * older callers that pass only a handler are the telephony owner.
+   */
+  connect(ownerOrHandler: SocketOwner | ((event: TelephonySocketEvent) => void), onEvent?: (event: TelephonySocketEvent) => void): void {
+    const owner: SocketOwner = typeof ownerOrHandler === 'string' ? ownerOrHandler : 'telephony';
+    const handler = typeof ownerOrHandler === 'function' ? ownerOrHandler : onEvent;
+    this.owners.add(owner);
+    if (handler) this.onEvent = handler;
     if (this.echo) return;
+
     const cfg = environment.reverb;
     if (!cfg?.key || !cfg.host) {
       this.state.set('unavailable');
@@ -50,7 +70,6 @@ export class TelephonySocketService {
     }
 
     this.state.set('connecting');
-    this.onEvent = onEvent;
     this.echo = new Echo({
       broadcaster: 'reverb',
       Pusher,
@@ -88,29 +107,63 @@ export class TelephonySocketService {
     });
   }
 
-  /** Joins `private-{name}` (idempotent) and forwards its telephony events. */
+  /** Telephony: joins `private-{name}` (idempotent) and forwards its telephony events to the telephony handler. */
   join(name: string): void {
-    if (!this.echo || this.joined.has(name)) return;
-    this.joined.add(name);
-    const channel = this.echo.private(name);
+    if (!this.echo) return;
     for (const event of EVENTS) {
       // broadcastAs() names are custom, so Echo needs the leading dot (no App\Events namespace prefix).
-      channel.listen(`.${event}`, (data: any) => this.onEvent?.({ name: event, data }));
+      this.subscribe('telephony', name, event, (data: any) => this.onEvent?.({ name: event, data }));
     }
   }
 
+  /** Any owner: listens to one event of `private-{name}` (idempotent per channel + event). */
+  listen(owner: SocketOwner, name: string, event: string, handler: (data: any) => void): void {
+    if (!this.echo) return;
+    this.subscribe(owner, name, event, handler);
+  }
+
   leave(name: string): void {
-    if (!this.echo || !this.joined.delete(name)) return;
+    if (!this.echo) return;
+    this.channels.telephony.delete(name);
+    this.channels.bell.delete(name);
+    this.forget(name);
     this.echo.leave(name);
   }
 
-  disconnect(): void {
-    this.joined.clear();
+  /** Closes `owner`'s part (its channels); the socket itself closes once no owner uses it. No owner = telephony (older callers). */
+  disconnect(owner: SocketOwner = 'telephony'): void {
+    this.owners.delete(owner);
+    if (owner === 'telephony') this.onEvent = undefined;
+
+    if (this.owners.size && this.echo) {
+      const others = [...this.owners].flatMap(o => [...this.channels[o]]);
+      for (const name of this.channels[owner]) {
+        if (others.includes(name)) continue;
+        this.forget(name);
+        this.echo.leave(name);
+      }
+      this.channels[owner].clear();
+      return;
+    }
+
+    this.channels.telephony.clear();
+    this.channels.bell.clear();
+    this.listening.clear();
     this.echo?.disconnect();
     this.echo = null;
     this.onEvent = undefined;
     this.state.set('off');
   }
 
-  private onEvent?: (event: TelephonySocketEvent) => void;
+  private subscribe(owner: SocketOwner, name: string, event: string, handler: (data: any) => void): void {
+    this.channels[owner].add(name);
+    const key = `${name}|${event}`;
+    if (this.listening.has(key) || !this.echo) return;
+    this.listening.add(key);
+    this.echo.private(name).listen(`.${event}`, handler);
+  }
+
+  private forget(name: string): void {
+    for (const key of [...this.listening]) if (key.startsWith(`${name}|`)) this.listening.delete(key);
+  }
 }

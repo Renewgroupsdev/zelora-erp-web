@@ -455,65 +455,26 @@
 }
 
 /* ==========================================================================
-   Status chip: an icon medallion + the status, tinted by its colour. Each colour has its own little motion:
-   green ticks pop, orange hourglass flips, red alerts pulse, blue arrows turn; grey stays calm.
+   Status badge: simple tinted pill with a small dot, coloured by status. No animation.
    ========================================================================== */
 .status-badge {
   --t: var(--status-gray-text);
   --tb: var(--status-gray-bg);
 
-  position: relative;
-  isolation: isolate;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   max-width: 100%;
   height: 24px;
-  padding: 0 11px 0 3px;
+  padding: 0 10px;
   border-radius: var(--radius-pill);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-size: 11px;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   color: var(--t);
-  background: linear-gradient(135deg, var(--tb), color-mix(in srgb, var(--t) 13%, var(--tb)));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--t) 24%, transparent), 0 2px 4px -2px color-mix(in srgb, var(--t) 40%, transparent);
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
-
-  /* a band of light that crosses the chip on hover */
-  &::after {
-    content: '';
-    position: absolute;
-    top: -30%;
-    bottom: -30%;
-    left: -60%;
-    width: 40%;
-    z-index: 1;
-    pointer-events: none;
-    transform: skewX(-20deg);
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-    transition: left 0.5s ease;
-  }
-
-  &:hover { transform: translateY(-1px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--t) 40%, transparent), 0 6px 10px -5px color-mix(in srgb, var(--t) 60%, transparent); }
-  &:hover::after { left: 130%; }
-}
-
-.sb-ico {
-  position: relative;
-  flex: 0 0 18px;
-  width: 18px;
-  height: 18px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  font-size: 9.5px;
-  color: #fff;
-  background: linear-gradient(145deg, color-mix(in srgb, var(--t) 70%, #fff), var(--t));
-  box-shadow: 0 2px 4px -1px color-mix(in srgb, var(--t) 65%, transparent);
-
-  i { line-height: 1; transform-origin: center; }
+  background: var(--tb);
+  border: 1px solid color-mix(in srgb, var(--t) 22%, transparent);
 }
 
 .sb-text { overflow: hidden; text-overflow: ellipsis; }
@@ -523,27 +484,6 @@
 .badge-red    { --t: var(--status-red-text);    --tb: var(--status-red-bg); }
 .badge-gray   { --t: var(--status-gray-text);   --tb: var(--status-gray-bg); }
 .badge-blue   { --t: var(--status-blue-text);   --tb: var(--status-blue-bg); }
-
-/* ---- motion ---- */
-.badge-green .sb-ico i { animation: sb-pop 3.2s ease-in-out infinite; }
-.badge-orange .sb-ico i { animation: sb-flip 2.4s ease-in-out infinite; }
-.badge-red .sb-ico::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--t); animation: sb-ping 1.8s ease-out infinite; z-index: -1; }
-.badge-red .sb-ico i { animation: sb-alert 1.8s ease-in-out infinite; }
-.badge-orange .sb-ico i.bi-arrow-repeat, .badge-blue .sb-ico i.bi-arrow-repeat { animation: sb-spin 3s linear infinite; }
-.badge-blue .sb-ico i.bi-snow2 { animation: sb-spin 6s linear infinite; }
-.badge-red .sb-ico i.bi-fire { animation: sb-flicker 1.2s ease-in-out infinite; }
-
-@keyframes sb-pop { 0%, 70%, 100% { transform: scale(1); } 82% { transform: scale(1.35); } 92% { transform: scale(0.95); } }
-@keyframes sb-flip { 0%, 55% { transform: rotate(0); } 85%, 100% { transform: rotate(180deg); } }
-@keyframes sb-ping { 0% { transform: scale(1); opacity: 0.55; } 100% { transform: scale(2); opacity: 0; } }
-@keyframes sb-alert { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
-@keyframes sb-spin { to { transform: rotate(360deg); } }
-@keyframes sb-flicker { 0%, 100% { transform: scale(1) rotate(0); } 25% { transform: scale(1.15) rotate(-6deg); } 60% { transform: scale(0.95) rotate(5deg); } }
-
-@media (prefers-reduced-motion: reduce) {
-  .status-badge .sb-ico i, .status-badge .sb-ico::before { animation: none !important; }
-  .status-badge::after { display: none; }
-}
 
 .location-cell {
   display: flex;

@@ -1,6 +1,6 @@
 import { HttpErrorResponse, HttpEvent, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { EMPTY, Observable, catchError, throwError } from 'rxjs';
+import { NEVER, Observable, catchError, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 import { ScopeHeaderStore } from '../../shared/common-services/scope-header.store';
 
@@ -20,8 +20,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     catchError(error => {
       // The session already ended (idle timeout / sign-out): requests still in flight must fail quietly,
       // otherwise a page's own error popup ("Failed to load ...") lands on top of the login screen.
+      // NEVER, not EMPTY: `firstValueFrom(EMPTY)` rejects with EmptyError "no elements in sequence", which the
+      // services' catch blocks show as a "Not saved" popup over the login page. NEVER simply never answers.
       if (attachAuth && !authService.isAuthenticated()) {
-        return EMPTY;
+        return NEVER;
       }
       if (error instanceof HttpErrorResponse && error.status === 401 && attachAuth) {
         return handleUnauthorized(authService);
@@ -43,5 +45,5 @@ function withAuthHeader(req: HttpRequest<unknown>, authService: AuthService): Ht
  */
 function handleUnauthorized(authService: AuthService): Observable<HttpEvent<unknown>> {
   authService.logout();
-  return EMPTY; // the redirect to the login page is the message; no page-level error popup
+  return NEVER; // the redirect to the login page is the message; no page-level error popup (EMPTY would raise EmptyError)
 }

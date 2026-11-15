@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { finalize } from 'rxjs';
 import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
+import { RecordHistory } from '../../../shared/components/record-history/record-history';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { FlowAppointmentRecord, inr } from '../../../shared/models/appointment-flow.model';
 
@@ -14,7 +15,7 @@ import { FlowAppointmentRecord, inr } from '../../../shared/models/appointment-f
 @Component({
   selector: 'app-nill-card-view',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, PageLoader],
+  imports: [CommonModule, MatDialogModule, PageLoader, RecordHistory],
   templateUrl: './nill-card-view.html',
   styleUrls: ['../../../shared/styles/erp-dialog.scss', './nill-card-view.scss'],
 })

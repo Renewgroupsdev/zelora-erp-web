@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
+import { AuthService } from '../../../core/auth/auth.service';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { CommonChartCard } from '../../../shared/components/common-chart-card/common-chart-card';
@@ -101,10 +102,7 @@ const DATE_PRESETS: DatePreset[] = [
   { key: 'all', label: 'All Time' },
   { key: 'today', label: 'Today' },
   { key: 'yesterday', label: 'Yesterday' },
-  { key: 'this_week', label: 'This Week' },
   { key: 'this_month', label: 'This Month' },
-  { key: 'last_month', label: 'Last Month' },
-  { key: 'this_year', label: 'This Year' },
 ];
 
 @Component({
@@ -160,6 +158,11 @@ export class LeadConversionReport implements OnInit {
   isExporting = false;
   exportType: 'funnel' | 'leads' = 'funnel';
 
+  /** What Roles & Permissions gives this role inside the report (the Records tab, the Analytics tab). */
+  private readonly auth = inject(AuthService);
+  readonly canRecords = false;
+  readonly canAnalytics = this.auth.hasActionAccess('view-lead-conversion-analytics');
+
   ngOnInit(): void {
     forkJoin({
       sources: this.apiDataService.GET(ApiRoutesConstants.Source_List_Options),
@@ -180,6 +183,7 @@ export class LeadConversionReport implements OnInit {
   /** Every filter-driven panel reloads together so the funnel, KPI strip and trend chart
    *  always agree on the same filtered slice. */
   refreshAll(): void {
+    if (!this.canAnalytics) return;
     this.loadFunnel();
     this.loadSummary();
     this.loadTrend();

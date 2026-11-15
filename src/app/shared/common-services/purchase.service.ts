@@ -10,8 +10,7 @@ import {
   GoodsInward,
   InwardLine,
   LOW_STOCK_THRESHOLD,
-  LowStockRow,
-  NearbyStockItem,
+  NearbyStoreOption,
   Priority,
   PurchaseLineItem,
   PurchaseMeta,
@@ -337,51 +336,13 @@ export class PurchaseService {
     return this.orders().find(o => o.id === order.id) ?? order;
   }
 
-  // ---- low stock replenishment (Central Store under the threshold -> vendor PO; Super Admin / Admin)
-  async lowStockOrders(): Promise<{ rows: LowStockRow[]; vendors: { id: number; name: string }[]; threshold: number }> {
-    const res = await this.send('GET', `${BASE}/low-stock-orders`, null, false);
-    return {
-      threshold: Number(res?.threshold) || this.threshold(),
-      vendors: ((res?.vendors ?? []) as any[]).map(v => ({ id: Number(v.id), name: v.name })),
-      rows: ((res?.data ?? []) as any[]).map(r => ({
-        productId: String(r.product_id), productCode: r.product_code ?? '', productName: r.product_name, hsnCode: r.hsn_code ?? '',
-        qty: Number(r.qty) || 0, onOrder: Number(r.on_order) || 0, suggestedQty: Number(r.suggested_qty) || 1,
-        unitPrice: Number(r.unit_price) || 0, gstPercent: Number(r.gst_percent) || 0,
-        vendorId: r.vendor_id ? Number(r.vendor_id) : null, vendorName: r.vendor_name ?? null, out: r.severity === 'out',
-      })),
-    };
-  }
-
-  /** One purchase order to one vendor for the chosen low-stock products; the invoice goes to the vendor by e-mail / WhatsApp. */
-  async createLowStockOrder(vendorId: number, items: { productId: string; qty: number }[], expectedAt: string | null, remarks: string): Promise<PurchaseOrder | null> {
-    const res = await this.send('POST', `${BASE}/low-stock-orders`, {
-      vendor_id: vendorId, items: items.map(i => ({ product_id: Number(i.productId), qty: i.qty })), expected_at: expectedAt || null, remarks: remarks || null,
-    });
-    if (!res) return null;
-    await this.refresh('requests', 'orders');
-    const order = toOrder(res.data.order);
-    this.notifications.add({ type: 'manager', title: 'Low-stock purchase order raised', message: `${order.poNo} raised to ${order.vendorName} for the Central Store.`, link: '/app/inventory/purchase-orders' });
-    this.announceDeliveries(order.poNo, order.vendorName, ((res.data.deliveries ?? []) as any[]).map(toDelivery));
-    return order;
-  }
-
-  // ---- nearby branch / franchise stock (head office: transfer instead of ordering from a vendor)
-  async nearbyStock(id: string): Promise<NearbyStockItem[]> {
-    const res = await this.send('GET', `${BASE}/requests/${id}/nearby-stock`, null, false);
-    return ((res?.data?.items ?? []) as any[]).map(i => ({
-      productId: String(i.product_id), productName: i.product_name, productCode: i.product_code ?? null, needed: Number(i.needed) || 0,
-      options: ((i.options ?? []) as any[]).map(o => ({ storeKey: o.store_key, name: o.name, city: o.city, state: o.state, sameCity: !!o.same_city, available: Number(o.available) || 0, distanceKm: o.distance_km === null || o.distance_km === undefined ? null : Number(o.distance_km), zone: o.zone ?? 'unknown' })),
+  // ---- nearby branches / franchises holding a product (Transfer Stock): within 50 km first, nearest first
+  async nearbyStores(productId: string, toStoreKey: string): Promise<NearbyStoreOption[]> {
+    const res = await this.send('GET', `${BASE}/stock/nearby?product_id=${encodeURIComponent(productId)}&to_store_id=${encodeURIComponent(toStoreKey)}`, null, false);
+    return ((res?.data?.options ?? []) as any[]).map(o => ({
+      storeKey: o.store_key, name: o.name, city: o.city, state: o.state, sameCity: !!o.same_city, available: Number(o.available) || 0,
+      distanceKm: o.distance_km === null || o.distance_km === undefined ? null : Number(o.distance_km), zone: o.zone ?? 'unknown',
     }));
-  }
-
-  /** Sends the chosen quantities from nearby stores to the requesting unit; a fully covered request is approved. */
-  async fulfilFromStock(id: string, transfers: { storeKey: string; productId: string; qty: number }[], remarks: string): Promise<{ approved: boolean; remaining: number } | null> {
-    const res = await this.send('POST', `${BASE}/requests/${id}/fulfil-from-stock`, {
-      transfers: transfers.map(t => ({ store_key: t.storeKey, product_id: Number(t.productId), qty: t.qty })), remarks: remarks || null,
-    });
-    if (!res) return null;
-    await this.refresh('requests', 'stock');
-    return { approved: !!res.data.approved, remaining: Number(res.data.remaining) || 0 };
   }
 
   // ---- vendor proforma quotes of a request
@@ -791,7 +752,7 @@ function toOrder(o: any): PurchaseOrder {
   return {
     id: str(o.id), poNo: o.po_no, invoiceNo: o.invoice_no, requestId: str(o.request_id), requestNo: o.request_no ?? '-',
     branch: o.branch?.name ?? '-', vendorId: o.vendor_id ?? null, vendorName: o.vendor_name ?? '-', orderedAt: o.ordered_at,
-    approvedBy: o.approved_by ?? '-', expectedAt: o.expected_at ?? null, status: o.status as PurchaseOrderStatus,
+    approvedBy: o.approved_by ?? '-', expectedAt: o.expected_at ?? null, status: o.status as PurchaseOrderStatus, source: o.source ?? null,
     closeReason: o.close_reason ?? null, closedBy: o.closed_by ?? null, closedAt: o.closed_at ?? null,
     canEdit: !!o.can_edit, canEditQty: !!o.can_edit_qty, canInward: !!o.can_inward, canCancel: !!o.can_cancel, canClose: !!o.can_close,
     deliveries: ((o.deliveries ?? []) as any[]).map(toDelivery),

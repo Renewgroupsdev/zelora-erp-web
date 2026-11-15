@@ -7,14 +7,15 @@ import { DashWidget } from '../dash-widget';
 /** Visit statuses in workflow order, each with its own line colour. Unknown statuses fall back to grey. */
 const STATUSES: { key: string; label: string; color: string }[] = [
   { key: 'scheduled', label: 'Scheduled', color: '#2f7bf5' },
-  { key: 'in consultation', label: 'In consultation', color: '#ec4899' },
-  { key: 'consultation only', label: 'Consultation only', color: '#8b5cf6' },
+  { key: 'consultation only', label: 'Consultation', color: '#8b5cf6' },
   { key: 'awaiting terms', label: 'Awaiting terms', color: '#f59e0b' },
   { key: 'invoiced', label: 'Invoiced', color: '#14b8a6' },
   { key: 'converted', label: 'Converted', color: '#16a34a' },
   { key: 'cancelled', label: 'Cancelled', color: '#ef4444' },
 ];
 const OTHER_COLOR = '#94a3b8';
+/** Statuses left off the chart and legend (their visits are not counted here). */
+const SKIPPED = new Set(['in consultation']);
 
 /** Chart canvas: the width follows the card (1 unit = 1 px, so text keeps its size), the height is fixed. */
 const DEFAULT_W = 440;
@@ -75,6 +76,7 @@ export class AppointmentsWidget extends DashWidget<AppointmentsData> {
       const h = Number(/^(\d{1,2}):/.exec(v.time ?? '')?.[1]);
       if (Number.isNaN(h)) continue;
       const status = statusKey(v.status);
+      if (SKIPPED.has(status)) continue;
       const perHour = counts.get(status) ?? new Map<number, number>();
       perHour.set(h, (perHour.get(h) ?? 0) + 1);
       counts.set(status, perHour);

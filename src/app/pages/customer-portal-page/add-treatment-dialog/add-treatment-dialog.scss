@@ -1,0 +1,227 @@
+/* Add Treatment dialog: treatment history cards and the sitting timeline (with reschedule). */
+
+/* ------------------------------------------------------------ previous treatment card */
+.th-section { display: flex; flex-direction: column; gap: 12px; }
+
+.th-plan {
+  position: relative;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--primary, #0f5c4d) 14%, var(--border-soft, #e2e8e5));
+  background:
+    radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, #3fd07f 10%, transparent), transparent 55%),
+    var(--app-surface-solid, #fff);
+  box-shadow: 0 1px 2px rgba(16, 40, 30, .04), 0 14px 28px -24px rgba(16, 40, 30, .45);
+  overflow: hidden;
+  padding: 0 14px 12px;
+
+  // tone accent on the left edge: green when done, amber while sittings are pending
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 14px;
+    bottom: 14px;
+    width: 3px;
+    border-radius: 0 4px 4px 0;
+    background: linear-gradient(180deg, #3fd07f, #128a52);
+  }
+  &.is-open-items::before { background: linear-gradient(180deg, #ffb453, #ee6a17); }
+  &.is-open-items {
+    background:
+      radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, #ffb453 12%, transparent), transparent 55%),
+      var(--app-surface-solid, #fff);
+  }
+}
+
+.th-plan-head {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0 12px;
+  cursor: pointer;
+  &::-webkit-details-marker { display: none; }
+}
+.th-plan-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  font-size: 17px;
+  color: #fff;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--primary, #0f5c4d) 65%, #fff), var(--primary-dark, #0b4533));
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .35), 0 8px 14px -8px var(--primary-dark, #0b4533);
+}
+.th-plan-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  strong { font-size: 14.5px; font-weight: 800; color: var(--text-dark, #1f2937); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  small { font-size: 12px; color: var(--text-muted, #6b7280); i { margin-right: 3px; } }
+}
+.th-plan-stats { flex: none; display: flex; gap: 6px; }
+.th-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--primary, #0f5c4d) 6%, var(--app-surface-solid, #fff));
+  border: 1px solid color-mix(in srgb, var(--primary, #0f5c4d) 12%, transparent);
+  b { font-size: 13px; font-weight: 800; color: var(--text-dark, #1f2937); font-variant-numeric: tabular-nums; }
+  small { font-size: 10px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: var(--text-muted, #6b7280); }
+}
+.th-pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  &.done { color: #128a52; background: color-mix(in srgb, #3fd07f 16%, #fff); border: 1px solid color-mix(in srgb, #128a52 20%, transparent); }
+  &.warn { color: #c2410c; background: color-mix(in srgb, #ffb453 18%, #fff); border: 1px solid color-mix(in srgb, #ee6a17 22%, transparent); }
+}
+.th-caret { flex: none; color: var(--text-muted, #6b7280); transition: transform .2s ease; }
+.th-plan[open] .th-caret { transform: rotate(180deg); }
+
+/* sittings completed, as a thin bar */
+.th-progress {
+  height: 6px;
+  margin: 2px 0 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--primary, #0f5c4d) 10%, transparent);
+  i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #3fd07f, #128a52); transition: width .6s ease; }
+}
+
+/* ------------------------------------------------------------ sitting timeline */
+.th-sittings { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.th-sitting {
+  --s-a: #3fd07f; --s-b: #128a52; --s-fg: #128a52;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--s-b) 16%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--s-a) 9%, var(--app-surface-solid, #fff)), var(--app-surface-solid, #fff) 70%);
+  transition: transform .15s ease, box-shadow .15s ease;
+  &:hover { transform: translateX(2px); box-shadow: 0 8px 18px -14px var(--s-b); }
+
+  // rail joining the nodes
+  & + .th-sitting::after {
+    content: '';
+    position: absolute;
+    left: 26px;
+    top: -8px;
+    width: 2px;
+    height: 10px;
+    background: color-mix(in srgb, var(--primary, #0f5c4d) 20%, transparent);
+  }
+
+  &.is-upcoming { --s-a: #56acff; --s-b: #1f63d8; --s-fg: #1f63d8; }
+  &.is-today { --s-a: #c189ff; --s-b: #7b35e6; --s-fg: #7b35e6; }
+  &.is-overdue { --s-a: #ff8484; --s-b: #da3434; --s-fg: #da3434; }
+}
+.th-node {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(140deg, var(--s-a), var(--s-b));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--s-b) 14%, transparent), 0 6px 12px -6px var(--s-b);
+}
+.th-sitting-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  strong { font-size: 13.5px; font-weight: 800; color: var(--text-dark, #1f2937); }
+  small { font-size: 12px; color: var(--text-muted, #6b7280); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; i { margin: 0 2px 0 1px; } }
+}
+.th-state {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  color: var(--s-fg);
+  background: color-mix(in srgb, var(--s-a) 16%, #fff);
+}
+.th-resched-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-dark, #0b4533);
+  background: var(--app-surface-solid, #fff);
+  border: 1px solid color-mix(in srgb, var(--primary, #0f5c4d) 30%, transparent);
+  transition: background .15s ease, color .15s ease, transform .1s ease;
+  &:hover:not(:disabled) { background: var(--primary, #0f5c4d); color: #fff; }
+  &:active:not(:disabled) { transform: scale(.97); }
+  &.is-active { background: color-mix(in srgb, #da3434 8%, #fff); color: #da3434; border-color: color-mix(in srgb, #da3434 30%, transparent); }
+  &:disabled { opacity: .55; cursor: not-allowed; }
+}
+
+/* inline reschedule form under the sitting */
+.th-resched {
+  padding: 12px 14px;
+  margin: -2px 0 4px 42px;
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--primary, #0f5c4d) 30%, transparent);
+  background: color-mix(in srgb, var(--primary, #0f5c4d) 4%, var(--app-surface-solid, #fff));
+  animation: th-in .18s ease-out;
+}
+.th-resched-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary-dark, #0b4533);
+}
+@keyframes th-in { from { opacity: 0; transform: translateY(-4px); } }
+
+/* ------------------------------------------------------------ small screens */
+@media (max-width: 640px) {
+  .th-plan-head { flex-wrap: wrap; }
+  .th-plan-title { flex-basis: calc(100% - 60px); }
+  .th-plan-stats { order: 3; }
+  .th-caret { display: none; }
+  .th-sitting { flex-wrap: wrap; }
+  .th-sitting-main { flex-basis: calc(100% - 44px); }
+  .th-state { margin-left: 42px; }
+  .th-resched-btn { margin-left: auto; }
+  .th-resched { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .th-sitting, .th-progress i, .th-caret { transition: none; }
+  .th-resched { animation: none; }
+}

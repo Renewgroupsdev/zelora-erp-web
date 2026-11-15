@@ -75,7 +75,7 @@
     <section class="pv-section">
       <h3><i class="bi bi-graph-up"></i> Price history <span class="rule"></span></h3>
       @if (history() === null) {
-        <div class="ph-empty">Loading…</div>
+        <div class="ph-empty"><app-page-loader [inline]="true" /></div>
       } @else if (!history()!.length) {
         <div class="ph-empty">No price changes recorded yet.</div>
       } @else {
