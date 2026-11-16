@@ -201,6 +201,7 @@ export interface FollowUpSummary {
 export interface FollowUpLead {
   id: number;
   name: string;
+  updated_at?: string | null;
   mobile_no: string;
   gender: string | null;
   reason: string | null;

@@ -136,8 +136,8 @@ export class Followups implements OnInit, OnDestroy {
   pageSize = 10;
   totalRecords = 0;
   /** 'priority' is not a column: it puts the calls due soonest first (red, then orange, then the rest by time). */
-  sortActive = '';
-  sortDirection: SortDirection = 'asc';
+  sortActive = 'updated_at';
+  sortDirection: SortDirection = 'desc';
   private searchTerm = '';
 
   /** Real lead_status name -> id, so the Status filter can be sent server-side as `status_id`. */
@@ -243,6 +243,7 @@ export class Followups implements OnInit, OnDestroy {
 
     return {
       id: lead.id,
+      updated_at: lead.updated_at ?? '',
       lead: { name: lead.name, subtitle: `LD-${String(lead.id).padStart(5, '0')}` },
       contact: lead.mobile_no,
       gender: lead.gender ?? '',
@@ -579,6 +580,11 @@ export class Followups implements OnInit, OnDestroy {
 
   private getSortableValue(row: TableRow, key: string): string | number {
     const value = row[key];
+
+    if (key === 'updated_at') {
+      const timestamp = value ? new Date(String(value)).getTime() : NaN;
+      return Number.isNaN(timestamp) ? 0 : timestamp;
+    }
 
     if (key === 'lead') {
       return ((value as LeadCell)?.name ?? '').toLowerCase();

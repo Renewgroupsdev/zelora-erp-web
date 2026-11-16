@@ -2,9 +2,7 @@ export const environment = {
   production: false,
   envName: 'local',
 
-  apiBaseUrl: `http://192.168.0.202:8000/api/`,
-  // apiBaseUrl: `https://crm.renewhairandskincare.com/api/`,
-  disableDevTools: false,
+  apiBaseUrl: `http://192.168.0.204:8000/api/`,
   rememberMeKey: 'remember_me',
 
   /** Laravel Reverb (WebSockets) - live telephony events. Set key to REVERB_APP_KEY from the local backend .env;
