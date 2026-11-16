@@ -41,6 +41,7 @@
       <span>This page is for SEO employees and admins. If you work in SEO, ask HR to set your department to SEO in your employee record.</span>
     </div>
   } @else {
+    @if (store.loading()) { <app-page-loader [content]="true"></app-page-loader> }
     <div class="kpi-row">
       <div class="kpi"><small>Tasks</small><strong>{{ s.total }}</strong><span>{{ employeeCards().length }} SEO employee{{ employeeCards().length === 1 ? '' : 's' }}</span></div>
       <div class="kpi in"><small>Completed</small><strong>{{ s.percent }}%</strong><span>{{ s.done }} of {{ s.total }} done</span></div>

@@ -115,17 +115,19 @@ body{
   font-size:.72rem;letter-spacing:.3em;text-transform:uppercase;
   color:rgba(255,255,255,.7);opacity:0;
 }
+.reveal .entering b{display:inline-block;min-width:3.2em;margin-left:.6em;color:var(--gold-300);font-weight:700;letter-spacing:.12em;text-align:left}
 .reveal .progress{
-  margin:12px auto 0;width:min(260px,60vw);height:3px;border-radius:3px;
+  margin:12px auto 0;width:min(360px,70vw);height:6px;border-radius:6px;
   background:rgba(255,255,255,.15);overflow:hidden;opacity:0;
+  box-shadow:0 0 0 1px rgba(255,255,255,.08),0 6px 18px rgba(0,0,0,.35);
 }
-.reveal .progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--gold-300))}
+.reveal .progress i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,var(--cyan),var(--gold-300));box-shadow:0 0 12px rgba(255,216,107,.7)}
 
 .reveal.show .logo-plate{animation:medal-in 1.1s cubic-bezier(.2,1.2,.3,1) .0s forwards}
 .reveal.show h2{animation:pop-in 1.2s cubic-bezier(.2,1.25,.3,1) .25s forwards, glow-pulse 2.2s ease-in-out 1.5s infinite}
 .reveal.show h3{animation:rise-in 1s ease-out .85s forwards}
 .reveal.show .entering,.reveal.show .progress{animation:fade-in .8s ease-out 1.8s forwards}
-.reveal.show .progress i{animation:fill var(--celebrate-ms,4500ms) linear 1.8s forwards}
+.reveal.show .progress i{animation:fill var(--bar-ms,5200ms) linear 1.8s forwards}
 @keyframes medal-in{to{opacity:1;transform:scale(1) rotate(0)}}
 @keyframes pop-in{to{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes rise-in{to{opacity:1;transform:translateY(0)}}
@@ -519,7 +521,7 @@ noscript a{color:var(--gold-300)}
   <div class="logo-plate" id="revealLogo"><img alt="Renew+ Hair and Skin Care" data-logo></div>
   <h2>CONGRATULATIONS!</h2>
   <h3>Our clinic application is <b>officially live!</b></h3>
-  <p class="entering">Entering the application</p>
+  <p class="entering">Loading the application<b id="entPct">0%</b></p>
   <div class="progress"><i></i></div>
 </section>
 
@@ -627,7 +629,7 @@ noscript a{color:var(--gold-300)}
   var CONFIG = {
     // Where to go after the ceremony. Use the exact URL where the Angular app is hosted.
     // The app's own router + auth guards then decide: login page or dashboard.
-    appUrl: 'https://zelorainfotech.com/erp',
+    appUrl: 'https://crm.renewhairandskincare.com/',
 
     // Dramatic 3-2-1 countdown after the button is pressed (set false to start instantly).
     countdown: true,
@@ -640,8 +642,8 @@ noscript a{color:var(--gold-300)}
     logoUrl: 'launch/renewplus-full.png',
     poweredByLogoUrl: 'launch/zelora-full.png',
 
-    // How long the "CONGRATULATIONS" screen stays up before the redirect (ms). 3000-5000 recommended.
-    celebrationMs: 4500,
+    // How long the "CONGRATULATIONS" screen stays up before the redirect (ms). The loading bar fills over (this - 1800 ms), so 12000 = a slow 10 second load.
+    celebrationMs: 12000,
 
     // Sound is only ever started after the user clicks. Set false to disable audio entirely.
     soundEnabled: true,
@@ -678,6 +680,30 @@ noscript a{color:var(--gold-300)}
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   });
   document.documentElement.style.setProperty('--celebrate-ms', CONFIG.celebrationMs + 'ms');
+  // The loading bar starts 1.8s after the message appears and must be full exactly when the screen flashes into the app.
+  var BAR_DELAY_MS = 1800;
+  var BAR_MS = Math.max(2000, CONFIG.celebrationMs - BAR_DELAY_MS);
+  document.documentElement.style.setProperty('--bar-ms', BAR_MS + 'ms');
+
+  // Warm the browser cache with the app while the ceremony plays, so it opens quickly after the bar fills.
+  function preloadApp() {
+    try {
+      var origin = new URL(CONFIG.appUrl, location.href).origin;
+      var pc = document.createElement('link'); pc.rel = 'preconnect'; pc.href = origin; document.head.appendChild(pc);
+      var pf = document.createElement('link'); pf.rel = 'prefetch'; pf.href = CONFIG.appUrl; pf.as = 'document'; document.head.appendChild(pf);
+      fetch(CONFIG.appUrl, { mode: 'no-cors', credentials: 'include' }).catch(function () {});
+    } catch (e) {}
+  }
+
+  // Percentage text next to "Loading the application", in step with the bar.
+  function runLoadingPercent() {
+    var el = $('entPct'), t0 = performance.now() + BAR_DELAY_MS;
+    (function step(now) {
+      var p = Math.max(0, Math.min(1, (now - t0) / BAR_MS));
+      el.textContent = Math.round(p * 100) + '%';
+      if (p < 1) requestAnimationFrame(step);
+    })(performance.now());
+  }
 
   // Logos (with graceful fallback)
   [].forEach.call(document.querySelectorAll('img[data-logo]'), function (img) {
@@ -1022,6 +1048,7 @@ noscript a{color:var(--gold-300)}
   function ignite() {
     // 1. golden glow transformation
     btn.classList.add('fired');
+    preloadApp();
     setTimeout(function () { body.classList.add('cut'); }, 350);   // ribbon cutting
     $('btnLabel').textContent = 'Launching…';
     $('shock1').classList.add('go'); $('shock2').classList.add('go');
@@ -1047,6 +1074,7 @@ noscript a{color:var(--gold-300)}
     var msgAt = 2300;
     setTimeout(function () {
       $('reveal').classList.add('show');
+      runLoadingPercent();
       burst(W / 2, H * .3, '#ffd86b', 'willow');
       setTimeout(function () { burst(W * .5, H * .22, '#ff6b8b', 'heart'); }, 500);
       setTimeout(function () { burst(W * .3, H * .5, '#ffd86b', 'cross'); burst(W * .7, H * .5, '#ffd86b', 'cross'); }, 1100);

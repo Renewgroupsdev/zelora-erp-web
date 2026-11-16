@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import Swal from 'sweetalert2';
+import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { MatDialogModule } from '@angular/material/dialog';
 import { CommonDetailCard } from '../../../shared/components/common-detail-card/common-detail-card';
@@ -49,6 +50,8 @@ export class LeavePermission extends HrListBase implements OnInit {
   private readonly authService = inject(AuthService);
   protected readonly noun = 'requests';
   readonly view = signal<View>('Leave');
+  /** True while the leave requests / balances load: the table shows the logo loader. */
+  readonly loading = signal(false);
 
   override filters = [
     { key: 'status', label: 'Status', options: ['Pending', 'Approved', 'Rejected'] },
@@ -77,8 +80,11 @@ export class LeavePermission extends HrListBase implements OnInit {
       this.filters = this.filters.map(f => (f.key === 'branch' ? { ...f, options: branches.map(b => b.name) } : f));
     });
     this.hr.loadEmployees().subscribe({ error: () => undefined }); // the Apply form's employee list
-    this.hr.loadLeaves().subscribe({ error: err => this.fail(err, 'Could not load leave requests') });
-    this.hr.loadLeaveBalances().subscribe({ error: () => undefined });
+    this.loading.set(true);
+    forkJoin([
+      this.hr.loadLeaves().pipe(catchError(err => { this.fail(err, 'Could not load leave requests'); return of(null); })),
+      this.hr.loadLeaveBalances().pipe(catchError(() => of(null))),
+    ]).pipe(finalize(() => this.loading.set(false))).subscribe();
   }
 
   private fail(err: any, title: string): void {
@@ -109,7 +115,9 @@ export class LeavePermission extends HrListBase implements OnInit {
     const canApprove = this.hr.canApprove();
     return this.hr.leaves().filter(l => l.kind === this.view()).map(l => {
       const e = l.employee;
-      const actions: QuickAction[] = l.status === 'Pending' && canApprove ? [{ key: 'review', icon: 'bi-check2-square', label: 'Approve / Reject', variant: 'primary' }] : [];
+      const actions: QuickAction[] = [];
+      if (l.status === 'Pending' && canApprove) actions.push({ key: 'review', icon: 'bi-check2-square', label: 'Approve / Reject', variant: 'primary' });
+      if (l.status === 'Pending') actions.push({ key: 'withdraw', icon: 'bi-trash3', label: 'Withdraw request', variant: 'danger' });
       const days = this.hr.leaveDays(l);
       return {
         id: l.id,
@@ -144,6 +152,15 @@ export class LeavePermission extends HrListBase implements OnInit {
   }
 
   async onQuickAction(event: { row: TableRow; action: string }): Promise<void> {
+    if (event.action === 'withdraw') {
+      const ask = await Swal.fire({ icon: 'warning', title: `Withdraw ${event.row['requestNo']}?`, text: 'The request is removed and cannot be reviewed any more.', showCancelButton: true, confirmButtonText: 'Withdraw', confirmButtonColor: '#d33' });
+      if (!ask.isConfirmed) return;
+      this.hr.withdrawLeave(String(event.row['id'])).subscribe({
+        next: () => Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Request withdrawn', showConfirmButton: false, timer: 3000 }),
+        error: err => this.fail(err, 'Could not withdraw the request'),
+      });
+      return;
+    }
     const decision = await reviewPrompt(`${event.row['requestNo']} · ${event.row['employee']}`, `${event.row['type']}: ${event.row['from']} → ${event.row['to']} (${event.row['duration']}). ${event.row['reason']}`);
     if (decision) {
       this.hr.reviewLeave(String(event.row['id']), decision.approve, decision.remarks).subscribe({

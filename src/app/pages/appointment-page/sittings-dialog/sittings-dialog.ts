@@ -52,6 +52,12 @@ export class SittingsDialog implements OnInit, OnDestroy {
   readonly branches = signal<{ key: string; name: string }[]>([]);
 
   readonly inr = inr;
+
+  /** Share of the invoice already paid (0-100), for the payment bar. */
+  payPercent(a: { paid_amount?: number | string | null; total_amount?: number | string | null }): number {
+    const total = Number(a.total_amount) || 0;
+    return total ? Math.max(0, Math.min(100, Math.round(((Number(a.paid_amount) || 0) / total) * 100))) : 0;
+  }
   readonly appt = signal<FlowAppointmentRecord | null>(null);
   /** The sittings shown: those of the treatment picked in the tabs (a consultation can have several treatments). */
   readonly sittings = signal<Sitting[]>([]);

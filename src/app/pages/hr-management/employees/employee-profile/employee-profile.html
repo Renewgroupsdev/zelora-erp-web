@@ -1,16 +1,23 @@
 @let e = employee();
 @let b = breakup();
-<div class="lead-modal">
-  <div class="modal-header-custom">
-    <div class="modal-title-wrap">
-      <div class="avatar">@if (e.photo) { <img [src]="e.photo" alt="" /> } @else { {{ initials(e.name) }} }</div>
-      <div class="title-content">
-        <h2>{{ e.name }} <span class="pill" [ngClass]="statusClass(e.status)">{{ e.status }}</span></h2>
-        <p>{{ e.empCode }} · {{ e.designation }} · {{ e.department }} · {{ e.branch }}</p>
+<div class="lead-modal profile-modal">
+  <div class="modal-header-custom profile-hero">
+    <button type="button" class="modal-close-btn hero-close" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+    <div class="hero-avatar">@if (e.photo) { <img [src]="e.photo" alt="" /> } @else { <span>{{ initials(e.name) }}</span> }<i class="hero-dot" [class.on]="e.status === 'Active'" [title]="e.status"></i></div>
+    <div class="hero-main">
+      <div class="hero-name"><h2>{{ e.name }}</h2><span class="hero-status" [class.on]="e.status === 'Active'">{{ e.status }}</span></div>
+      <p class="hero-role">{{ e.designation }}<span> · </span>{{ e.department }}</p>
+      <div class="hero-chips">
+        <span><i class="bi bi-upc-scan"></i>{{ e.empCode }}</span>
+        <span><i class="bi bi-geo-alt-fill"></i>{{ e.branch }}</span>
+        <span><i class="bi bi-briefcase-fill"></i>{{ e.employmentType }}</span>
+        <span><i class="bi bi-calendar-check"></i>Since {{ displayDate(e.joinDate) }}</span>
       </div>
     </div>
-    <app-record-history type="HrEmployee" [recordId]="e.id" [title]="e.name" />
-    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+    <div class="hero-contact">
+      @if (e.phone) { <a [href]="'tel:' + e.phone"><i class="bi bi-telephone-fill"></i>{{ e.phone }}</a> }
+      @if (e.email) { <a [href]="'mailto:' + e.email"><i class="bi bi-envelope-fill"></i>{{ e.email }}</a> }
+    </div>
   </div>
 
   <div class="profile-tabs" role="tablist">
@@ -24,52 +31,70 @@
   <div class="modal-body-custom">
     @switch (tab()) {
       @case ('overview') {
-        <div class="kpis">
-          <div><small>Tenure</small><strong>{{ tenure() }}</strong></div>
-          <div><small>Monthly Gross</small><strong>₹{{ b.gross | number:'1.0-0' }}</strong></div>
-          <div><small>Present this month</small><strong>{{ monthSummary().present + monthSummary().late }}</strong></div>
-          <div><small>Leave balance (EL)</small><strong>{{ balance()[2].balance }}</strong></div>
+        <div class="kpis kpi-cards">
+          <div class="kpi k-tenure"><i class="bi bi-hourglass-split"></i><small>Tenure</small><strong>{{ tenure() }}</strong></div>
+          <div class="kpi k-gross"><i class="bi bi-currency-rupee"></i><small>Monthly Gross</small><strong>₹{{ b.gross | number:'1.0-0' }}</strong></div>
+          <div class="kpi k-present"><i class="bi bi-calendar-check"></i><small>Present this month</small><strong>{{ monthSummary().present + monthSummary().late }}</strong></div>
+          <div class="kpi k-leave"><i class="bi bi-umbrella"></i><small>Leave balance (EL)</small><strong>{{ balance()[2].balance }}</strong></div>
         </div>
-        <div class="section-title"><i class="bi bi-person"></i> Personal</div>
-        <div class="info-grid">
-          <div><small>Gender</small><strong>{{ e.gender }}</strong></div>
-          <div><small>Date of Birth</small><strong>{{ displayDate(e.dob) }}</strong></div>
-          <div><small>Blood Group</small><strong>{{ e.bloodGroup || '-' }}</strong></div>
-          <div><small>Mobile</small><strong>{{ e.phone }}</strong></div>
-          <div><small>Email</small><strong>{{ e.email }}</strong></div>
-          <div><small>Secondary Mobile</small><strong>{{ e.secondaryPhone || '-' }}</strong></div>
-          <div><small>Emergency</small><strong>{{ e.emergencyContact || '-' }}</strong></div>
-          <div class="full-width"><small>Address</small><strong>{{ e.address || '-' }}</strong></div>
-        </div>
-        <div class="section-title"><i class="bi bi-people"></i> Referral</div>
-        <div class="info-grid">
-          <div><small>Source</small><strong>{{ e.referralSource || '-' }}</strong></div>
-          <div><small>Referred By</small><strong>{{ e.referredBy || '-' }}</strong></div>
-          <div><small>Referrer Mobile</small><strong>{{ e.referralPhone || '-' }}</strong></div>
-        </div>
-        <div class="section-title"><i class="bi bi-file-earmark-lock2"></i> KYC Documents</div>
-        <div class="info-grid">
-          @for (d of e.kycDocuments ?? []; track d.id) {
-            <div><small>{{ d.type }}{{ d.number ? ' · ' + kycNo(d) : '' }}</small><strong><a href="javascript:void(0)" (click)="hr.viewKycDocument(e.id, d)">{{ d.fileName }}</a></strong></div>
-          } @empty {
-            <div class="full-width"><small>No documents uploaded. Use Edit to add them.</small></div>
-          }
-        </div>
-        <div class="section-title"><i class="bi bi-briefcase"></i> Job</div>
-        <div class="info-grid">
-          <div><small>Employee Code</small><strong>{{ e.empCode }}</strong></div>
-          <div><small>Joining Date</small><strong>{{ displayDate(e.joinDate) }}</strong></div>
-          <div><small>Employment Type</small><strong>{{ e.employmentType }}</strong></div>
-          <div><small>Reporting To</small><strong>{{ e.reportingTo || '-' }}</strong></div>
-        </div>
-        <div class="section-title"><i class="bi bi-bank"></i> Statutory &amp; Bank</div>
-        <div class="info-grid">
-          <div><small>PAN</small><strong>{{ e.pan || '-' }}</strong></div>
-          <div><small>Aadhaar</small><strong>{{ e.aadhaarLast4 ? 'XXXX-XXXX-' + e.aadhaarLast4 : '-' }}</strong></div>
-          <div><small>UAN</small><strong>{{ e.uan || '-' }}</strong></div>
-          <div><small>Bank</small><strong>{{ e.bankName || '-' }}</strong></div>
-          <div><small>Account No</small><strong>{{ e.accountNo ? '••••••' + e.accountNo.slice(-4) : '-' }}</strong></div>
-          <div><small>IFSC</small><strong>{{ e.ifsc || '-' }}</strong></div>
+
+        <div class="pcard-grid">
+          <section class="pcard">
+            <header><i class="bi bi-person-fill"></i><h3>Personal</h3></header>
+            <div class="fields">
+              <div><small>Gender</small><strong>{{ e.gender }}</strong></div>
+              <div><small>Date of Birth</small><strong>{{ displayDate(e.dob) }}</strong></div>
+              <div><small>Blood Group</small><strong>{{ e.bloodGroup || '-' }}</strong></div>
+              <div><small>Mobile</small><strong>{{ e.phone }}</strong></div>
+              <div><small>Secondary Mobile</small><strong>{{ e.secondaryPhone || '-' }}</strong></div>
+              <div class="wide"><small>Email</small><strong>{{ e.email }}</strong></div>
+              <div class="wide"><small>Emergency</small><strong>{{ e.emergencyContact || '-' }}</strong></div>
+              <div class="wide"><small>Address</small><strong>{{ e.address || '-' }}</strong></div>
+            </div>
+          </section>
+
+          <section class="pcard">
+            <header><i class="bi bi-briefcase-fill"></i><h3>Job</h3></header>
+            <div class="fields">
+              <div><small>Employee Code</small><strong>{{ e.empCode }}</strong></div>
+              <div><small>Joining Date</small><strong>{{ displayDate(e.joinDate) }}</strong></div>
+              <div><small>Employment Type</small><strong>{{ e.employmentType }}</strong></div>
+              <div><small>Reporting To</small><strong>{{ e.reportingTo || '-' }}</strong></div>
+            </div>
+            <header class="sub"><i class="bi bi-people-fill"></i><h3>Referral</h3></header>
+            <div class="fields">
+              <div><small>Source</small><strong>{{ e.referralSource || '-' }}</strong></div>
+              <div><small>Referred By</small><strong>{{ e.referredBy || '-' }}</strong></div>
+              <div class="wide"><small>Referrer Mobile</small><strong>{{ e.referralPhone || '-' }}</strong></div>
+            </div>
+          </section>
+
+          <section class="pcard">
+            <header><i class="bi bi-bank2"></i><h3>Statutory &amp; Bank</h3></header>
+            <div class="fields">
+              <div><small>PAN</small><strong class="mono">{{ e.pan || '-' }}</strong></div>
+              <div><small>Aadhaar</small><strong class="mono">{{ e.aadhaarLast4 ? 'XXXX-XXXX-' + e.aadhaarLast4 : '-' }}</strong></div>
+              <div><small>UAN</small><strong class="mono">{{ e.uan || '-' }}</strong></div>
+              <div><small>Bank</small><strong>{{ e.bankName || '-' }}</strong></div>
+              <div><small>Account No</small><strong class="mono">{{ e.accountNo ? '••••••' + e.accountNo.slice(-4) : '-' }}</strong></div>
+              <div><small>IFSC</small><strong class="mono">{{ e.ifsc || '-' }}</strong></div>
+            </div>
+          </section>
+
+          <section class="pcard">
+            <header><i class="bi bi-shield-lock-fill"></i><h3>KYC Documents</h3><span class="count">{{ (e.kycDocuments ?? []).length }}</span></header>
+            <div class="docs">
+              @for (d of e.kycDocuments ?? []; track d.id) {
+                <button type="button" class="doc" (click)="hr.viewKycDocument(e.id, d)" [title]="'Open ' + d.fileName">
+                  <span class="doc-ico" [class.img]="d.mime !== 'application/pdf'"><i class="bi" [ngClass]="d.mime === 'application/pdf' ? 'bi-file-earmark-pdf-fill' : 'bi-file-earmark-image-fill'"></i></span>
+                  <span class="doc-text"><strong>{{ d.type }}{{ d.number ? ' · ' + kycNo(d) : '' }}</strong><small>{{ d.fileName }}</small></span>
+                  <i class="bi bi-box-arrow-up-right doc-go"></i>
+                </button>
+              } @empty {
+                <p class="docs-empty"><i class="bi bi-folder2-open"></i>No documents uploaded. Use Edit to add them.</p>
+              }
+            </div>
+          </section>
         </div>
       }
 

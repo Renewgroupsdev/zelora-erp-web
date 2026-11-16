@@ -373,7 +373,8 @@ export class PurchaseService {
 
   async removeRequestQuote(id: string, quoteId: number): Promise<boolean> {
     try {
-      await firstValueFrom(this.api.Delete(`${BASE}/requests/${id}/quotes/${quoteId}`, {}) as Observable<any>);
+      const res = await firstValueFrom(this.api.Delete(`${BASE}/requests/${id}/quotes/${quoteId}`, {}) as Observable<any>);
+      void this.confirmed(res?.message || 'Quote removed successfully');
       return true;
     } catch (e) {
       Swal.fire({ icon: 'error', title: 'Not removed', html: errorHtml(e), confirmButtonColor: '#6C63FF' });
@@ -663,14 +664,18 @@ export class PurchaseService {
     );
   }
 
-  /** Runs a request; shows the server's success toast or error (incl. validation messages). Null on failure. */
+  /** Centred success popup (same look as ToastService.success): resolves once the user presses OK. */
+  private confirmed(title: string): Promise<unknown> {
+    return Swal.fire({ icon: 'success', title, confirmButtonText: 'OK', confirmButtonColor: '#6C63FF' });
+  }
+
+  /** Runs a request; shows the server's success popup or error (incl. validation messages). Null on failure. */
   private async send(method: 'GET' | 'POST' | 'PUT', path: string, body: unknown, toast = true): Promise<any | null> {
     try {
       const call = method === 'GET' ? this.api.GET(path) : method === 'POST' ? this.api.POST(path, body) : this.api.PUT(path, body);
       const res = await firstValueFrom(call as Observable<any>);
-      if (toast && res?.message) {
-        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: res.message, showConfirmButton: false, timer: 3500, timerProgressBar: true });
-      }
+      // Every save / update / delete / status change confirms in the same centred popup as the rest of the app (icon, title, OK).
+      if (toast && method !== 'GET') void this.confirmed(res?.message || 'Saved successfully');
       return res;
     } catch (e) {
       Swal.fire({ icon: 'error', title: 'Not saved', html: errorHtml(e), confirmButtonColor: '#6C63FF' });

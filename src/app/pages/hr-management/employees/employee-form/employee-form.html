@@ -287,8 +287,9 @@
         <div class="form-field">
           <label for="em-kycno">{{ kycType === 'Aadhaar' ? 'Aadhaar No (12 digits)' : kycType === 'PAN' ? 'PAN No' : 'Document No (optional)' }}</label>
           <div class="input-wrap"><i class="bi bi-123"></i>
-            <input id="em-kycno" name="kycNumber" [attr.maxlength]="kycType === 'Aadhaar' ? 14 : 30" [(ngModel)]="kycNumber" [placeholder]="kycType === 'Aadhaar' ? '1234 5678 9012' : kycType === 'PAN' ? 'ABCDE1234F' : 'ID number'" />
+            <input id="em-kycno" name="kycNumber" autocomplete="off" [attr.maxlength]="kycType === 'Aadhaar' ? 12 : kycType === 'PAN' ? 10 : 30" [attr.inputmode]="kycType === 'Aadhaar' ? 'numeric' : 'text'" [class.is-invalid]="!!kycNumberHint" [ngModel]="kycNumber" (ngModelChange)="onKycNumberChange($event)" [placeholder]="kycType === 'Aadhaar' ? '123456789012' : kycType === 'PAN' ? 'ABCDE1234F' : 'ID number'" />
           </div>
+          @if (kycNumberHint) { <small class="error-text">{{ kycNumberHint }}</small> }
           @if (kycType === 'Aadhaar' || kycType === 'PAN') { <small class="muted">Required. Statutory &amp; Bank is filled from this.</small> }
         </div>
         <div class="form-field">

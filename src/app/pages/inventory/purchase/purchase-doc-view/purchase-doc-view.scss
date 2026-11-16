@@ -176,20 +176,18 @@
   &::after {
     content: "";
     position: absolute;
-    top: 30px;
+    top: 29px;
     left: 12.5%;
-    height: 4px;
-    border-radius: 99px;
+    height: 6px;
   }
 
-  &::before { right: 12.5%; background: repeating-linear-gradient(90deg, #dfe7e3 0 8px, transparent 8px 14px); }
+  // dotted rail (round dots) between the first and last node centres
+  &::before { right: 12.5%; background: radial-gradient(circle, #cdd8d3 2.5px, transparent 3px) 0 50% / 10px 6px repeat-x; }
 
-  // filled part up to this document, with a moving shimmer
+  // dotted part up to this document, in the accent colour
   &::after {
     width: calc(75% * var(--fill) / 100);
-    background:
-      repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.35) 0 6px, transparent 6px 14px),
-      linear-gradient(90deg, var(--dv-accent-dark), var(--dv-accent));
+    background: radial-gradient(circle, var(--dv-accent-dark) 2.5px, transparent 3px) 0 50% / 10px 6px repeat-x;
   }
 
   li {
@@ -549,9 +547,9 @@ td.prod {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 10px;
 
-    &::before, &::after { top: 32px; bottom: 32px; left: 23px; right: auto; width: 4px; height: auto; }
-    &::before { background: repeating-linear-gradient(180deg, #dfe7e3 0 8px, transparent 8px 14px); }
-    &::after { bottom: auto; height: calc((100% - 64px) * var(--fill) / 100); animation: none; background: linear-gradient(180deg, var(--dv-accent-dark), var(--dv-accent)); }
+    &::before, &::after { top: 32px; bottom: 32px; left: 22px; right: auto; width: 6px; height: auto; }
+    &::before { background: radial-gradient(circle, #cdd8d3 2.5px, transparent 3px) 50% 0 / 6px 10px repeat-y; }
+    &::after { bottom: auto; height: calc((100% - 64px) * var(--fill) / 100); animation: none; background: radial-gradient(circle, var(--dv-accent-dark) 2.5px, transparent 3px) 50% 0 / 6px 10px repeat-y; }
 
     li {
       display: grid;

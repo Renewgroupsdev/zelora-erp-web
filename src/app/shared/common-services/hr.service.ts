@@ -1,4 +1,4 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import Swal from 'sweetalert2';
 import { Observable, forkJoin, map, of, switchMap, tap } from 'rxjs';
 import { ApiDataService } from '../../core/http/api.service';
@@ -48,12 +48,10 @@ import {
   structureFromGross,
   workedHours,
 } from '../models/hr.model';
-import { addDays, daysInMonth, isoDate, loadState, monthKey, saveState, seqNo, uid } from '../utils/format.util';
+import { addDays, daysInMonth, isoDate, monthKey, seqNo, uid } from '../utils/format.util';
 import { NotificationService } from './notification.service';
 import { BranchOption, BranchOptionsService } from './branch-options.service';
 import { DepartmentOptionsService } from './department-options.service';
-
-const STORAGE_KEY = 'zelora_hr_store_v1';
 
 interface HrState {
   employees: Employee[];
@@ -98,8 +96,8 @@ export type NewAppraisalInput = Omit<Appraisal, 'id' | 'status' | 'createdAt' | 
 };
 
 /**
- * Front-end store for HR Management (design stage - no API yet). State lives in signals and is
- * mirrored to localStorage; swap each mutator for an API call once the backend endpoints exist.
+ * Front-end store for HR Management. Every list is filled from the hr/* API (nothing is seeded or kept in localStorage);
+ * the signals only cache what the server last returned.
  */
 @Injectable({ providedIn: 'root' })
 export class HrService {
@@ -110,7 +108,7 @@ export class HrService {
   private readonly uploads = inject(FileUploadService);
   private readonly branchList = inject(BranchOptionsService);
   private readonly departmentList = inject(DepartmentOptionsService);
-  private readonly state = signal<HrState>(loadState(STORAGE_KEY, seedState));
+  private readonly state = signal<HrState>(emptyState());
 
   readonly employees = computed(() => this.state().employees);
   /** Employee stat-card counts from the list API's `summary` (overall, not search/page dependent). */
@@ -139,7 +137,6 @@ export class HrService {
   readonly canApprove = computed(() => !isTelecallerRole(this.auth.currentUser()));
 
   constructor() {
-    effect(() => saveState(STORAGE_KEY, this.state()));
     this.branchList.ensure();
     this.departmentList.ensure();
   }
@@ -157,10 +154,6 @@ export class HrService {
   }
 
   // ---- Employees ----
-  addEmployee(input: NewEmployeeInput, candidateId?: string): Employee {
-    return this.registerEmployee({ ...input, id: uid('EMP'), empCode: this.nextEmpCode(), status: 'Onboarding' }, candidateId);
-  }
-
   /** Puts a new employee in the store and starts their onboarding checklist. */
   private registerEmployee(employee: Employee, candidateId?: string): Employee {
     const onboarding: Onboarding = {
@@ -267,7 +260,14 @@ export class HrService {
 
   /** Opens a KYC document in a new tab: a freshly picked file from memory, a saved one streamed from the API. */
   viewKycDocument(empId: string, doc: KycDocument): void {
-    if (doc.dataUrl || doc.url) return void window.open(doc.dataUrl || doc.url, '_blank', 'noopener');
+    // A file picked in the form is opened from a blob: URL - browsers block top-level navigation to data: URLs (blank page).
+    if (doc.file) {
+      const url = URL.createObjectURL(doc.file);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+      return;
+    }
+    // A saved document is streamed through the authenticated download endpoint (its stored `url` can point at another host).
     const tab = window.open('', '_blank');
     (this.api.GET_BLOB(`${ApiRoutesConstants.HR_EMPLOYEES}/${empId}/kyc-documents/${doc.id}/download`) as Observable<Blob>).subscribe({
       next: blob => {
@@ -339,38 +339,6 @@ export class HrService {
     if (photo) f.append('profile_photo', photo);
     else if (removePhoto) f.append('remove_profile_photo', '1');
     return f;
-  }
-
-  /**
-   * The employee record behind a login (matched by email, then name). Logins without one get an Active
-   * record created from their account so they can punch attendance; HR completes the rest in Employees.
-   */
-  ensureEmployeeForLogin(user: { name: string; email?: string; phone_no?: string | null; role?: { name: string } | null }): Employee {
-    const email = user.email?.trim().toLowerCase();
-    const name = user.name.trim().toLowerCase();
-    const live = this.employees().filter(e => e.status !== 'Exited');
-    const found = live.find(e => !!email && e.email.trim().toLowerCase() === email) ?? live.find(e => e.name.trim().toLowerCase() === name);
-    if (found) return found;
-
-    const employee: Employee = {
-      id: uid('EMP'), empCode: this.nextEmpCode(), status: 'Active',
-      name: user.name.trim(), gender: 'Other', dob: null, phone: user.phone_no ?? '', email: user.email ?? '', address: '', bloodGroup: '',
-      designation: user.role?.name ?? 'Staff', department: this.departments[0] ?? '', branch: this.branches[0] ?? '', reportingTo: 'Branch Head',
-      joinDate: isoDate(), employmentType: 'Full Time', pan: '', aadhaarLast4: '', uan: '', bankName: '', accountNo: '', ifsc: '',
-      emergencyContact: '', salary: structureFromGross(0),
-    };
-    this.patch({ employees: [employee, ...this.employees()] });
-    this.notifications.add({ type: 'hr', title: 'Employee record created', message: `${employee.name} (${employee.empCode}) was added from their login. Complete the details in Employees.`, link: '/app/hr/employees' });
-    return employee;
-  }
-
-  updateEmployee(id: string, patch: Partial<Employee>): void {
-    this.patch({ employees: this.front(this.employees().map(e => (e.id === id ? { ...e, ...patch } : e)), id) });
-  }
-
-  private nextEmpCode(): string {
-    const max = this.employees().reduce((m, e) => Math.max(m, Number(e.empCode.replace(/\D/g, '')) || 0), 1000);
-    return `RP${max + 1}`;
   }
 
   // ---- Attendance ----
@@ -603,6 +571,13 @@ export class HrService {
   /** Approves / rejects (POST /hr/leave-requests/{id}/review); the server posts approved days onto the attendance register. */
   reviewLeave(id: string, approve: boolean, remarks: string): Observable<unknown> {
     return (this.api.POST(`${ApiRoutesConstants.HR_LEAVE_REQUESTS}/${id}/review`, { approve, remarks }) as Observable<unknown>).pipe(
+      switchMap(() => forkJoin([this.loadLeaves(), this.loadLeaveBalances()])),
+    );
+  }
+
+  /** DELETE /hr/leave-requests/{id}: withdraws a request nobody has reviewed yet. */
+  withdrawLeave(id: string): Observable<unknown> {
+    return (this.api.Delete(`${ApiRoutesConstants.HR_LEAVE_REQUESTS}/${id}`, {}) as Observable<unknown>).pipe(
       switchMap(() => forkJoin([this.loadLeaves(), this.loadLeaveBalances()])),
     );
   }
@@ -1189,114 +1164,6 @@ export class HrService {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Helpers + seed data
-// ---------------------------------------------------------------------------
-
-export function buildPayslip(e: Employee, month: string, workingDays: number, lopDays: number, bonus: number): Payslip {
-  const s = e.salary;
-  const b = salaryBreakup(s);
-  const lop = Math.round((b.gross / workingDays) * lopDays);
-  const earnings = { basic: s.basic, hra: s.hra, conveyance: s.conveyance, special: s.special, bonus };
-  const deductions = { pf: b.pf, esi: b.esi, professionalTax: b.professionalTax, lop, advance: 0 };
-  const gross = b.gross + bonus;
-  const totalDeductions = deductions.pf + deductions.esi + deductions.professionalTax + lop;
-  return {
-    id: uid('PAY'), month, empId: e.id, workingDays, paidDays: workingDays - lopDays, lopDays,
-    earnings, deductions, gross, totalDeductions, net: gross - totalDeductions, status: 'Processed',
-  };
-}
-
-/** Small deterministic PRNG so the seed looks the same on every fresh load. */
-function mulberry32(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const FIRST = ['Arun', 'Divya', 'Karthik', 'Meena', 'Rahul', 'Sneha', 'Vignesh', 'Pooja', 'Suresh', 'Lakshmi', 'Naveen', 'Kavya', 'Prakash', 'Revathi', 'Ajay', 'Nithya'];
-const LAST = ['Kumar', 'Raman', 'Sharma', 'Iyer', 'Krishnan', 'Nair', 'Reddy', 'Pillai', 'Subramanian', 'Menon', 'Rao', 'Joseph'];
-const COMPANIES = ['Kaya Clinic', 'VLCC', 'Apollo Cosmetic', 'Lakme Salon', 'Oliva Clinic', 'Naturals', 'Freelance', 'Dr. Batra\'s'];
-const CITIES = ['Chennai', 'Coimbatore', 'Madurai', 'Bengaluru', 'Trichy'];
-
-function makeCandidate(v: ManpowerRequest, source: Candidate['source'], rand: () => number, daysAgo: number): Candidate {
-  const pick = <T>(list: T[]) => list[Math.floor(rand() * list.length)];
-  const name = `${pick(FIRST)} ${pick(LAST)}`;
-  const slug = name.toLowerCase().replace(/\s+/g, '-');
-  const exp = Math.round(rand() * 8 * 10) / 10;
-  const current = Math.round((v.budgetMin * (0.7 + rand() * 0.5)) / 500) * 500;
-  const profileUrl = source === 'LinkedIn' ? `https://www.linkedin.com/in/${slug}` : source === 'Naukri' ? `https://www.naukri.com/profile/${slug}` : source === 'Indeed' ? `https://profile.indeed.com/p/${slug}` : '';
-  return {
-    id: uid('CND'),
-    vacancyId: v.id,
-    name,
-    email: `${slug.replace('-', '.')}@gmail.com`,
-    phone: `9${Math.floor(100000000 + rand() * 899999999)}`,
-    source,
-    profileUrl,
-    location: pick(CITIES),
-    experienceYears: exp,
-    currentCompany: pick(COMPANIES),
-    currentCtc: current,
-    expectedCtc: Math.round((current * (1.1 + rand() * 0.25)) / 500) * 500,
-    noticeDays: pick([0, 15, 30, 60]),
-    skills: v.skills,
-    education: pick(['B.Sc', 'Diploma', 'B.Com', 'MBA', 'BDS', 'B.Pharm']),
-    appliedAt: new Date(Date.now() - daysAgo * 86400000).toISOString(),
-    stage: 'Applied',
-    rating: 0,
-    resumeFile: `${name.replace(/\s+/g, '_')}_Resume.pdf`,
-  };
-}
-
-function seedState(): HrState {
-  const rand = mulberry32(42);
-  const today = isoDate();
-  const ago = (days: number) => addDays(today, -days);
-  const at = (date: string, h: number, m: number) => new Date(`${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`).toISOString();
-
-  const year = new Date().getFullYear();
-  const manpower: ManpowerRequest[] = [
-    { id: 'MR-seed-2', requestNo: `MR-${year}-0002`, branch: 'Adyar', department: 'Front Office', designation: 'Front Office Executive', positions: 1, employmentType: 'Full Time', experience: '1-3 years', budgetMin: 18000, budgetMax: 22000, skills: 'Customer handling, billing, English & Tamil', justification: 'Weekend footfall increased by 40%.', replacementFor: '', requiredBy: addDays(today, 20), requestedBy: 'Anitha Mohan', requestedAt: at(ago(1), 11, 0), status: 'Pending', postedTo: [], hired: 0 },
-    { id: 'MR-seed-1', requestNo: `MR-${year}-0001`, branch: 'Velachery', department: 'Clinical', designation: 'Skin Therapist', positions: 2, employmentType: 'Full Time', experience: '2-5 years', budgetMin: 20000, budgetMax: 28000, skills: 'Chemical peels, laser, HydraFacial', justification: 'New laser room opening + replacement for Suresh Reddy.', replacementFor: 'Suresh Reddy', requiredBy: addDays(today, 10), requestedBy: 'Dr. Priya Sharma', requestedAt: at(ago(10), 10, 0), status: 'Approved', reviewedBy: 'Lakshmi Pillai', reviewRemarks: 'Approved within budget', vacancyStatus: 'Open', postedTo: ['Indeed', 'LinkedIn', 'Naukri'], hired: 0 },
-  ];
-
-  const candidates: Candidate[] = [];
-  (['Indeed', 'LinkedIn', 'Naukri', 'Naukri', 'LinkedIn', 'Indeed', 'Referral'] as Candidate['source'][]).forEach((src, i) => {
-    const c = makeCandidate(manpower[1], src, rand, 8 - i);
-    c.stage = (['Interview', 'Shortlisted', 'Applied', 'Offered', 'Applied', 'Rejected', 'Shortlisted'] as CandidateStage[])[i];
-    c.rating = [4, 3, 0, 5, 0, 2, 4][i];
-    if (c.stage === 'Interview') {
-      c.interviewAt = at(addDays(today, 1), 11, 30);
-      c.interview = { scheduledAt: c.interviewAt, interviewer: 'Dr. Priya Sharma', mode: 'In-person', scheduledBy: 'Lakshmi Pillai' };
-    }
-    if (c.stage === 'Shortlisted' || c.stage === 'Interview' || c.stage === 'Offered') {
-      c.shortlistedBy = 'Lakshmi Pillai';
-      c.shortlistedAt = at(ago(6), 10, 30);
-    }
-    if (c.stage === 'Offered') {
-      const when = at(ago(4), 12, 0);
-      c.interview = { scheduledAt: at(ago(5), 11, 0), interviewer: 'Dr. Priya Sharma', mode: 'In-person', scheduledBy: 'Lakshmi Pillai', interviewedAt: at(ago(5), 11, 0), performanceRating: 5, interviewNotes: 'Strong hands-on laser experience.' };
-      c.review = { reviewedBy: 'Dr. Priya Sharma', reviewedAt: at(ago(5), 13, 0), rating: 5, comments: 'Confident, good with clients. Recommended.', decision: 'Selected' };
-      c.verification = {
-        startedAt: at(ago(4), 10, 0), startedBy: 'Lakshmi Pillai', backgroundCheck: 'Clear', backgroundRemarks: 'Previous employer confirmed.',
-        completedAt: when, completedBy: 'Lakshmi Pillai',
-        documents: VERIFICATION_DOCUMENTS.filter(d => d.required).map(d => ({ type: d.type, fileName: `${d.type.split(' ')[0]}.pdf`, uploadedAt: at(ago(4), 11, 0), uploadedBy: 'Lakshmi Pillai', status: 'Verified' as const, verifiedBy: 'Lakshmi Pillai', verifiedAt: when })),
-      };
-      c.offer = { offerNo: `OFR-${year}-0001`, releasedAt: at(ago(2), 10, 0), releasedBy: 'Lakshmi Pillai', monthlyGross: Math.min(manpower[1].budgetMax, Math.max(manpower[1].budgetMin, c.expectedCtc)), joiningDate: addDays(today, 15), validUntil: addDays(today, 5), response: 'Pending' };
-    }
-    if (c.stage === 'Rejected') {
-      c.rejectedBy = 'Lakshmi Pillai';
-      c.rejectedAt = at(ago(5), 15, 0);
-      c.rejectionReason = 'Experience below requirement.';
-      c.rejectedAtStage = 'Applied';
-    }
-    candidates.push(c);
-  });
-
-  return { employees: [], attendance: [], leaves: [], manpower, candidates, payslips: [], appraisals: [], bonuses: [], onboarding: [], exits: [] };
+function emptyState(): HrState {
+  return { employees: [], attendance: [], leaves: [], manpower: [], candidates: [], payslips: [], appraisals: [], bonuses: [], onboarding: [], exits: [] };
 }

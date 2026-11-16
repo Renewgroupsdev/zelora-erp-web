@@ -19,11 +19,13 @@ $Port = 47321
 $AllowedOrigins = @(
   'https://10.123.72.16:4200',
   'http://10.123.72.16:4200',
+  'https://192.168.0.202:4200',
   'http://localhost:4200',
   'https://localhost:4200',
   'https://crm.renewhairandskincare.com',
-  'https://zelorainfotech.com/erp'
+  'https://zelorainfotech.com/uat'
 )
+# (a browser's Origin header never has a path, so "https://zelorainfotech.com/uat" would never match: list the host only)
 
 Add-Type -TypeDefinition @'
 using System;

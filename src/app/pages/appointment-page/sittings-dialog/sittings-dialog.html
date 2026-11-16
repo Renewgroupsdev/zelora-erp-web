@@ -1,4 +1,4 @@
-<div class="lead-modal">
+<div class="lead-modal st-modal">
   <div class="modal-header-custom">
     <div class="modal-title-wrap">
       <div class="title-icon"><i class="bi bi-collection-fill"></i></div>
@@ -15,8 +15,19 @@
   <div class="modal-body-custom">
     @if (appt(); as a) {
       @if (activePlan(); as plan) {
-        <div class="st-top">
-          <small class="st-progress-text">{{ sittings().length }} sittings · Invoice {{ a.invoice_no }} · Paid {{ inr(a.paid_amount) }} of {{ inr(a.total_amount) }}</small>
+        <div class="st-hero">
+          <div class="st-ring" [style.--pct]="percent()"><b>{{ percent() }}%</b></div>
+          <div class="st-hero-main">
+            <strong>{{ completed() }} of {{ sittings().length }} sittings completed</strong>
+            <div class="st-hero-meta">
+              <span><i class="bi bi-receipt"></i> Invoice {{ a.invoice_no }}</span>
+              <span><i class="bi bi-collection"></i> {{ sittings().length }} sittings</span>
+            </div>
+          </div>
+          <div class="st-pay">
+            <div class="st-pay-top"><small>Paid</small><strong>{{ inr(a.paid_amount) }}</strong><small>of {{ inr(a.total_amount) }}</small></div>
+            <div class="st-pay-bar"><i [style.width.%]="payPercent(a)"></i></div>
+          </div>
 
           @if (plan.status === 'active') {
             <ng-container *appCan="'add-appointment'">
@@ -167,7 +178,7 @@
                 <div class="st-thumbs">
                   @for (p of photos(s, $any(type)); track p.id; let i = $index) {
                     <div class="st-thumb">
-                      <img [src]="p.url" [alt]="type + ' photo ' + (i + 1)" title="Click to view" (click)="openViewer(photos(s, $any(type)), i)" />
+                      <img [src]="p.url" [alt]="type + ' photo ' + (i + 1)" title="Click to view" (click)="openViewer(photos(s, $any(type)), i)" (error)="$any($event.target).classList.add('broken')" />
                       @if (photosEditable(s)) {
                         <button type="button" aria-label="Remove photo" (click)="deletePhoto(s, p)"><i class="bi bi-x"></i></button>
                       }

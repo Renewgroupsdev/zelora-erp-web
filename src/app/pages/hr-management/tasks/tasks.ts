@@ -3,6 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { HrService } from '../../../shared/common-services/hr.service';
+import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { WorkTaskService } from '../../../shared/common-services/work-task.service';
 import { ModuleTabs } from '../../../shared/components/module-tabs/module-tabs';
 import { ALL_WORK_TASK_TYPES, WORK_TASK_STATUSES, WorkTask, isTaskOverdue } from '../../../shared/models/work-task.model';
@@ -19,7 +20,7 @@ type Period = 'thisweek' | 'thismonth' | 'lastmonth' | 'all';
 @Component({
   selector: 'app-hr-tasks',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, ModuleTabs, CanActionDirective, RecordHistory],
+  imports: [CommonModule, FormsModule, MatDialogModule, ModuleTabs, CanActionDirective, RecordHistory, PageLoader],
   templateUrl: './tasks.html',
   styleUrls: ['../../../shared/styles/erp-page.scss', './tasks.scss'],
 })

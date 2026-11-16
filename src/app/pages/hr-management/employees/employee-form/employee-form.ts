@@ -231,6 +231,24 @@ export class EmployeeForm implements OnInit {
     reader.readAsDataURL(file);
   }
 
+  /** Keeps the typed number in format: Aadhaar = 12 digits only, PAN = 10 upper-case letters / digits (ABCDE1234F). */
+  onKycNumberChange(value: string): void {
+    const raw = String(value ?? '');
+    this.kycError.set(null);
+    if (this.kycType === 'Aadhaar') this.kycNumber = raw.replace(/D/g, '').slice(0, 12);
+    else if (this.kycType === 'PAN') this.kycNumber = raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+    else this.kycNumber = raw.slice(0, 30);
+  }
+
+  /** Inline format hint under the number box while it is typed (empty = fine). */
+  get kycNumberHint(): string {
+    const n = this.kycNumber;
+    if (!n) return '';
+    if (this.kycType === 'Aadhaar') return n.length === 12 ? '' : `Aadhaar needs 12 digits (${n.length}/12).`;
+    if (this.kycType === 'PAN') return /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(n) ? '' : 'PAN format: 5 letters, 4 digits, 1 letter (ABCDE1234F).';
+    return '';
+  }
+
   /** Aadhaar (full 12 digits) and PAN are typed here once; Statutory & Bank only mirrors them. */
   private kycNumberValue(): string | null {
     const raw = this.kycNumber.trim().toUpperCase();

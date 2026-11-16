@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { AuthService } from '../../../core/auth/auth.service';
 import { MatDialogModule } from '@angular/material/dialog';
 import Swal from 'sweetalert2';
+import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { CommonDetailCard } from '../../../shared/components/common-detail-card/common-detail-card';
 import { CommonFilterCard } from '../../../shared/components/common-filter-card/common-filter-card';
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
@@ -51,6 +52,8 @@ export class Appraisals extends HrListBase implements OnInit {
   private readonly authService = inject(AuthService);
   protected readonly noun = 'records';
   readonly view = signal<View>('appraisals');
+  /** True while appraisals / bonuses load: the table shows the logo loader. */
+  readonly loading = signal(false);
 
   columns: TableColumn[] = APPRAISAL_COLUMNS;
   override filters = this.filtersFor('appraisals');
@@ -76,8 +79,11 @@ export class Appraisals extends HrListBase implements OnInit {
       this.filters = this.filters.map(f => (f.key === 'branch' ? { ...f, options: branches.map(b => b.name) } : f));
     });
     this.hr.loadEmployees().subscribe({ error: () => undefined }); // the New Appraisal / Add Bonus employee lists
-    this.hr.loadAppraisals().subscribe({ error: err => this.fail(err, 'Could not load appraisals') });
-    this.hr.loadBonuses().subscribe({ error: err => this.fail(err, 'Could not load bonuses') });
+    this.loading.set(true);
+    forkJoin([
+      this.hr.loadAppraisals().pipe(catchError(err => { this.fail(err, 'Could not load appraisals'); return of(null); })),
+      this.hr.loadBonuses().pipe(catchError(err => { this.fail(err, 'Could not load bonuses'); return of(null); })),
+    ]).pipe(finalize(() => this.loading.set(false))).subscribe();
   }
 
   private fail(err: any, title: string): void {

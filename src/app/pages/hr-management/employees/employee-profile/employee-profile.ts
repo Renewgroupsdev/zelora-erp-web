@@ -10,7 +10,6 @@ import { displayDate, displayTime, initials, monthKey, monthLabel } from '../../
 import { PayslipView } from '../../payroll/payslip-view/payslip-view';
 import { TaskForm } from '../../tasks/task-form/task-form';
 import { EmployeeForm } from '../employee-form/employee-form';
-import { RecordHistory } from '../../../../shared/components/record-history/record-history';
 
 type ProfileTab = 'overview' | 'salary' | 'attendance' | 'leave' | 'payslips' | 'appraisals' | 'tasks';
 
@@ -18,7 +17,7 @@ type ProfileTab = 'overview' | 'salary' | 'attendance' | 'leave' | 'payslips' | 
 @Component({
   selector: 'app-employee-profile',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CanActionDirective, RecordHistory],
+  imports: [CommonModule, MatDialogModule, CanActionDirective],
   templateUrl: './employee-profile.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', './employee-profile.scss'],
 })
