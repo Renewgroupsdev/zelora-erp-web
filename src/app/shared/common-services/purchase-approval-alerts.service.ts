@@ -67,7 +67,7 @@ export class PurchaseApprovalAlertsService {
           break;
         }
         const result = await firstValueFrom(this.dialog.open(PurchaseRequestReview, {
-          width: '820px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, restoreFocus: true, disableClose: true,
+          width: '1100px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, restoreFocus: true, disableClose: true,
           data: { requestId: ids[i], queue: ids.length > 1 ? { index: i + 1, total: ids.length } : undefined },
         }).afterClosed());
         if (!result) break;
@@ -131,6 +131,39 @@ export class PurchaseApprovalAlertsService {
     setTimeout(() => this.refresh(), 1500); // the first call can run before the session is ready: check again almost at once
   }
 
+  /**
+   * Central Store low-stock notification clicked: the "Create Purchase Order - Central Store" form opens with that product, its
+   * suggested qty and the least-price vendor pre-selected. No purchase request: the order is raised straight to the vendor (its
+   * invoice goes by e-mail + WhatsApp), then the invoice opens. The other low products can be added to the same order.
+   */
+  async createRestockOrder(a: { productId: string; productName: string; qty: number; threshold: number }): Promise<void> {
+    try {
+      const [{ LowStockOrderForm }, { PurchaseInvoice }, data] = await Promise.all([
+        import('../../pages/inventory/purchase/low-stock-order-form/low-stock-order-form'),
+        import('../../pages/inventory/purchase/purchase-orders/purchase-invoice/purchase-invoice'),
+        this.purchase.lowStockOrders(),
+      ]);
+      // only when the list really loaded and the product is not in it (a failed load throws and lands in catch below)
+      if (!data.rows.some(r => r.productId === a.productId)) {
+        await Swal.fire({ icon: 'info', title: 'Stock is back up', text: `${a.productName} is no longer below the minimum stock in the Central Store.`, confirmButtonColor: '#0f4c3a' });
+        return;
+      }
+      const orders = await firstValueFrom(this.dialog.open(LowStockOrderForm, {
+        width: '1100px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, restoreFocus: true,
+        data: { rows: data.rows, vendors: data.vendors, threshold: data.threshold, productIds: [a.productId] },
+      }).afterClosed()) as { id: string }[] | undefined;
+
+      // one order: show its invoice (several vendors: the summary alert lists them, they are in Purchase Orders)
+      if (orders?.length === 1) {
+        this.dialog.open(PurchaseInvoice, { width: '860px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, data: { orderId: orders[0].id } });
+      }
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Could not open the purchase order form', text: e instanceof Error ? e.message : 'Please try again.', confirmButtonColor: '#0f4c3a' });
+    } finally {
+      this.refresh('low-stock');
+    }
+  }
+
   stop(): void {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
@@ -161,7 +194,7 @@ export class PurchaseApprovalAlertsService {
             // shared key with the Stock & Transfer page alert: only one low-stock card is ever shown
             tone: 'info', icon: 'bi-box-seam-fill', duration: 9000, key: 'low-stock',
             title: fresh === 1 ? 'Central Store product running low' : `${fresh} Central Store products running low`,
-            text: 'Open Stock & Transfer from the bell to move stock from a nearby branch.',
+            text: 'Open the notification bell and click the alert to create a purchase order.',
           });
         }
       },

@@ -99,7 +99,8 @@ export class PurchaseRequests extends PurchaseListBase {
       return;
     }
 
-    this.openDialog<PurchaseRequestReview, ReviewResult>(PurchaseRequestReview, { requestId: request.id })
+    // wide: the products table has a vendor dropdown per product
+    this.openDialog<PurchaseRequestReview, ReviewResult>(PurchaseRequestReview, { requestId: request.id }, '1100px')
       .afterClosed()
       .subscribe(result => {
         // Approving confirms the PO - show the generated invoice straight away.

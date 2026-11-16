@@ -176,7 +176,7 @@
           <div class="notification-header">
             <div>
               <strong>Notifications</strong>
-              <small>You have {{ notifications.unreadCount() }} new updates</small>
+              <small>@if (notifications.unreadCount() > 0) { You have {{ notifications.unreadCount() }} new update{{ notifications.unreadCount() === 1 ? '' : 's' }} } @else { No new updates }</small>
             </div>
             <span class="notification-count">{{ notifications.unreadCount() }} new</span>
           </div>

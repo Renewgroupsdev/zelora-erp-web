@@ -692,3 +692,53 @@
   .po-strip, .rv-section, .dl-item, .rv-form, .rev-ticket { animation: none; }
   .dot-pending, .rv-ghost .spin { animation: none; }
 }
+
+/* ---------- New prices: old PO (read only) -> vendor's new quotation, each with unit price + GST ---------- */
+.price-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto minmax(0, 1.25fr);
+  align-items: center;
+}
+.pr-side {
+  display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 8px 10px; border-radius: 10px;
+  &.old { background: #f5f7f6; border: 1px dashed var(--rv-line-strong); }
+  &.new { background: #fffaf2; border: 1px solid #f6dcb0; .changed & { border-color: var(--rv-amber); } }
+}
+.pr-side-label {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+  .old > & { color: #64748b; }
+  .new > & { color: var(--rv-amber); }
+}
+.pr-pair { display: grid; grid-template-columns: minmax(0, 1fr) 82px; gap: 8px; }
+.pr-field {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  small { font-size: 10px; font-weight: 700; color: var(--rv-muted); }
+}
+.pr-box {
+  display: flex; align-items: center; gap: 4px; height: 36px; padding: 0 8px; border: 1.5px solid var(--rv-line-strong); border-radius: 9px; background: #fff;
+  transition: border-color .15s ease, box-shadow .15s ease;
+  &:focus-within { border-color: var(--rv-amber); box-shadow: 0 0 0 3px rgba(217, 119, 6, .14); }
+  .cur { font-weight: 800; color: var(--rv-amber); }
+  .suf { font-size: 12px; font-weight: 800; color: #94a3b8; }
+  input {
+    flex: 1 1 auto; min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; font-size: 13.5px; font-weight: 800; color: var(--rv-dark);
+    -moz-appearance: textfield; appearance: textfield;
+    &::-webkit-outer-spin-button, &::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  }
+  &.disabled {
+    background: #eef2f1; border-color: #dde5e2; border-style: dashed; cursor: not-allowed;
+    .cur { color: #94a3b8; }
+    input { color: #64748b; cursor: not-allowed; }
+  }
+  &.edited { border-color: var(--rv-amber); }
+}
+.pr-landed {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; color: var(--rv-dark);
+  em { font-style: normal; font-weight: 500; color: var(--rv-muted); }
+  .old > & { color: #64748b; }
+}
+.pct.gst-chip { background: var(--rv-amber-bg); color: var(--rv-amber); }
+
+@media (max-width: 767.98px) {
+  .price-row { grid-template-columns: 1fr; }
+  .pr-arrow { transform: rotate(90deg); justify-self: center; }
+}

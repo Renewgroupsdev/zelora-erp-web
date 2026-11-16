@@ -1,0 +1,304 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-cart-plus-fill"></i></div>
+      <div class="title-content">
+        <h2>Create Purchase Order - Central Store</h2>
+        <p>Order straight from a vendor - no purchase request needed. The least-price vendor is pre-selected; one purchase order is raised per vendor.</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <form (ngSubmit)="submit()" novalidate>
+    <div class="modal-body-custom">
+
+      @if (focusRow(); as r) {
+        <div class="ls-banner" [class.out]="r.out" role="status">
+          <i class="bi bi-box-seam-fill"></i>
+          <div>
+            <strong>Central Store: {{ r.productName }} {{ r.out ? 'is out of stock' : 'is running low (' + r.qty + ' left)' }}</strong>
+            <small>Minimum stock is {{ data.threshold }} units.@if (r.onOrder > 0) { {{ r.onOrder }} unit{{ r.onOrder === 1 ? ' is' : 's are' }} already on order and still to be received. }</small>
+          </div>
+        </div>
+      }
+
+      <!-- ===== Order details ===== -->
+      <div class="section-title"><i class="bi bi-info-circle"></i> Order Details</div>
+      <div class="ls-details">
+        <div class="form-field">
+          <label for="ls-store">Deliver To</label>
+          <div class="input-wrap">
+            <i class="bi bi-building"></i>
+            <input id="ls-store" type="text" value="Central Store" readonly />
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="ls-expected">Expected Delivery</label>
+          <div class="input-wrap">
+            <i class="bi bi-calendar-event"></i>
+            <input id="ls-expected" name="expectedAt" type="date" [min]="today" [(ngModel)]="expectedAt" />
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Purchase Orders</label>
+          <div class="input-wrap">
+            <i class="bi bi-receipt"></i>
+            <input type="text" readonly [value]="groups().length + ' vendor' + (groups().length === 1 ? '' : 's') + ' / ' + lines().length + ' product' + (lines().length === 1 ? '' : 's')" />
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Products ===== -->
+      <div class="section-title">
+        <i class="bi bi-box-seam"></i> Products
+        <span class="spacer"></span>
+        <button type="button" class="link-btn" (click)="useLeastPrices()"><i class="bi bi-trophy"></i> Use least prices</button>
+        <button type="button" class="link-btn" (click)="addLine()" [disabled]="lines().length >= rows().length"><i class="bi bi-plus-lg"></i> Add Product</button>
+      </div>
+
+      <div class="items-table-wrap ls-table-wrap">
+        <table class="items-table ls-table">
+          <thead>
+            <tr>
+              <th class="c-no">#</th>
+              <th class="c-product">Product</th>
+              <th class="c-hsn">HSN</th>
+              <th class="num c-stock">Central Store<br /><small>Stock in Hand</small></th>
+              <th class="c-vendor">Vendor <small>(least price first)</small></th>
+              <th class="c-qty">Order Qty</th>
+              <th class="num c-price">Unit Price</th>
+              <th class="num c-gst">GST</th>
+              <th class="num c-amount">Amount</th>
+              <th class="c-act"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of lines(); track l.key; let i = $index) {
+              <tr [class.row-error]="submitted() && lineError(l)">
+                <td class="c-no"><span class="ls-no">{{ i + 1 }}</span></td>
+
+                <!-- product -->
+                <td class="c-product">
+                  <div class="input-wrap" [class.is-invalid]="submitted() && !l.productId">
+                    <i class="bi bi-box-seam"></i>
+                    <select [name]="'p' + l.key" [ngModel]="l.productId" (ngModelChange)="setProduct(l, $event)" aria-label="Product">
+                      <option [ngValue]="null">Select product</option>
+                      @for (r of rows(); track r.productId) {
+                        <option [ngValue]="r.productId" [disabled]="isTaken(r.productId, l)">{{ r.productName }}{{ isTaken(r.productId, l) ? ' (already added)' : '' }}</option>
+                      }
+                    </select>
+                    <i class="bi bi-chevron-down select-arrow"></i>
+                  </div>
+                  @if (row(l); as r) { <div class="muted">{{ r.productCode }}</div> }
+                  @if (submitted() && !l.productId) { <small class="error-text">Select the product.</small> }
+                </td>
+
+                <td class="c-hsn">{{ row(l)?.hsnCode || '-' }}</td>
+
+                <!-- central store stock -->
+                <td class="num c-stock">
+                  @if (row(l); as r) {
+                    <span class="pill" [class.red]="r.qty < data.threshold" [class.green]="r.qty >= data.threshold">{{ r.qty }}</span>
+                    @if (r.onOrder > 0) { <div class="muted">{{ r.onOrder }} on order</div> }
+                  } @else { - }
+                </td>
+
+                <!-- vendor + proforma -->
+                <td class="c-vendor">
+                  <div class="input-wrap" [class.is-invalid]="submitted() && l.productId && !l.vendorId">
+                    <i class="bi bi-shop"></i>
+                    <select [name]="'v' + l.key" [ngModel]="l.vendorId" (ngModelChange)="setVendor(l, $event)" [disabled]="!l.productId" aria-label="Vendor">
+                      <option [ngValue]="null">Select vendor</option>
+                      @for (v of vendorOptions(l); track v.id) { <option [ngValue]="v.id">{{ v.label }}</option> }
+                    </select>
+                    <i class="bi bi-chevron-down select-arrow"></i>
+                  </div>
+                  @if (l.productId && l.vendorId) {
+                    <div class="ls-vendor-meta">
+                      @if (isLeast(l)) { <span class="ls-tag good"><i class="bi bi-trophy-fill"></i> Least price</span> }
+                      @else if (row(l)?.quotes?.length) { <span class="ls-tag warn" [title]="'Least: ' + row(l)!.quotes[0].vendorName">Least {{ inr(row(l)!.quotes[0].amount) }}</span> }
+                      @else { <span class="ls-tag warn">Product master price</span> }
+
+                      @if (quote(l)?.hasFile) {
+                        <button type="button" class="ls-pf-btn view" (click)="viewProforma(l)" title="Opens in a new tab">
+                          <i class="bi bi-file-earmark-pdf-fill"></i> View proforma <i class="bi bi-box-arrow-up-right"></i>
+                        </button>
+                      } @else if (proforma()?.lineKey !== l.key) {
+                        <button type="button" class="ls-pf-btn add" (click)="openProforma(l)"><i class="bi bi-paperclip"></i> Add proforma</button>
+                      }
+                    </div>
+                  }
+                  @if (submitted() && l.productId && !l.vendorId) { <small class="error-text">Select the vendor.</small> }
+                </td>
+
+                <!-- qty stepper -->
+                <td class="c-qty">
+                  <div class="ls-stepper" [class.is-invalid]="submitted() && (!l.qty || l.qty < 1)">
+                    <button type="button" (click)="stepQty(l, -1)" [disabled]="l.qty <= 1" aria-label="Decrease quantity"><i class="bi bi-dash-lg"></i></button>
+                    <input type="number" min="1" [max]="maxQty" step="1" inputmode="numeric" [name]="'q' + l.key" [ngModel]="l.qty" (ngModelChange)="setQty(l, $event)" aria-label="Order quantity" />
+                    <button type="button" (click)="stepQty(l, 1)" [disabled]="l.qty >= maxQty" aria-label="Increase quantity"><i class="bi bi-plus-lg"></i></button>
+                  </div>
+                  @if (row(l); as r) { <div class="muted ls-center">Suggested {{ r.suggestedQty }}</div> }
+                  @if (submitted() && (!l.qty || l.qty < 1)) { <small class="error-text">Min 1.</small> }
+                </td>
+
+                <td class="num c-price">
+                  {{ inr(price(l).unitPrice) }}
+                  @if (price(l).source) { <div class="muted">{{ price(l).source }}</div> }
+                </td>
+                <td class="num c-gst">{{ price(l).gstPercent }}%</td>
+                <td class="num c-amount"><strong>{{ inr(amount(l)) }}</strong></td>
+                <td class="c-act">
+                  <button type="button" class="icon-btn" [disabled]="lines().length === 1" (click)="removeLine(l)" aria-label="Remove product" title="Remove product"><i class="bi bi-trash3"></i></button>
+                </td>
+              </tr>
+
+              <!-- add proforma: a full-width row under its product -->
+              @if (proforma(); as d) {
+                @if (d.lineKey === l.key) {
+                  <tr class="ls-pf-row">
+                    <td colspan="10">
+                      <div class="pf-card">
+                        <!-- header -->
+                        <div class="pf-head">
+                          <div class="pf-head-icon"><i class="bi bi-file-earmark-text-fill"></i></div>
+                          <div class="pf-head-text">
+                            <span class="pf-eyebrow">Vendor proforma quotation</span>
+                            <h4>{{ vendorName(l.vendorId) }}</h4>
+                            <p><i class="bi bi-box-seam"></i> {{ row(l)?.productName }} <span>·</span> {{ row(l)?.productCode }}</p>
+                          </div>
+                          <button type="button" class="pf-close" (click)="closeProforma()" aria-label="Close" title="Close"><i class="bi bi-x-lg"></i></button>
+                        </div>
+
+                        <div class="pf-body">
+                          <!-- details -->
+                          <div class="pf-fields">
+                            <div class="pf-group-label"><span>1</span> Quotation details</div>
+                            <div class="pf-grid">
+                              <div class="pf-field">
+                                <label [attr.for]="'pfno' + l.key">Quotation No <b>*</b></label>
+                                <div class="pf-input"><i class="bi bi-hash"></i><input [id]="'pfno' + l.key" type="text" maxlength="60" [name]="'pfno' + l.key" [ngModel]="d.quoteNo" (ngModelChange)="patchProforma({ quoteNo: $event })" placeholder="e.g. PI-2026-118" autocomplete="off" /></div>
+                              </div>
+                              <div class="pf-field">
+                                <label [attr.for]="'pfdt' + l.key">Quotation Date <b>*</b></label>
+                                <div class="pf-input"><i class="bi bi-calendar3"></i><input [id]="'pfdt' + l.key" type="date" [max]="today" [name]="'pfdt' + l.key" [ngModel]="d.quoteDate" (ngModelChange)="patchProforma({ quoteDate: $event })" /></div>
+                              </div>
+                              <div class="pf-field">
+                                <label [attr.for]="'pfvt' + l.key">Valid Till <em>optional</em></label>
+                                <div class="pf-input"><i class="bi bi-calendar-check"></i><input [id]="'pfvt' + l.key" type="date" [min]="today" [name]="'pfvt' + l.key" [ngModel]="d.validTill" (ngModelChange)="patchProforma({ validTill: $event })" /></div>
+                              </div>
+                            </div>
+
+                            <div class="pf-group-label"><span>2</span> Quoted price <small>per unit</small></div>
+                            <div class="pf-grid">
+                              <div class="pf-field">
+                                <label [attr.for]="'pfpr' + l.key">Unit Price <b>*</b></label>
+                                <div class="pf-input"><i class="bi bi-currency-rupee"></i><input [id]="'pfpr' + l.key" type="number" min="0" step="0.01" [name]="'pfpr' + l.key" [ngModel]="d.unitPrice" (ngModelChange)="patchProforma({ unitPrice: $event })" placeholder="0.00" /></div>
+                              </div>
+                              <div class="pf-field">
+                                <label [attr.for]="'pfgst' + l.key">GST</label>
+                                <div class="pf-input pf-suffix"><i class="bi bi-receipt"></i><input [id]="'pfgst' + l.key" type="number" min="0" max="100" step="0.01" [name]="'pfgst' + l.key" [ngModel]="d.gstPercent" (ngModelChange)="patchProforma({ gstPercent: $event })" /><span>%</span></div>
+                              </div>
+                              <div class="pf-field">
+                                <label>Landed Price <em>incl. GST</em></label>
+                                <div class="pf-landed" [class.empty]="pfLanded(d) === null">
+                                  @if (pfLanded(d); as landed) {
+                                    <strong>{{ inr(landed) }}</strong>
+                                    @if (landed < currentLanded(l)) {
+                                      <span class="pf-delta good"><i class="bi bi-arrow-down"></i> {{ inr(currentLanded(l) - landed) }} lower</span>
+                                    } @else if (landed > currentLanded(l)) {
+                                      <span class="pf-delta bad"><i class="bi bi-arrow-up"></i> {{ inr(landed - currentLanded(l)) }} higher</span>
+                                    } @else {
+                                      <span class="pf-delta">same as now</span>
+                                    }
+                                  } @else {
+                                    <span>Enter the unit price</span>
+                                  }
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- file -->
+                          <div class="pf-file-col">
+                            <div class="pf-group-label"><span>3</span> Proforma file <b>*</b></div>
+                            @if (d.file; as f) {
+                              <div class="pf-file-card">
+                                <div class="pf-file-badge">{{ fileKind(f) }}</div>
+                                <div class="pf-file-info">
+                                  <strong [title]="f.name">{{ f.name }}</strong>
+                                  <small><i class="bi bi-check-circle-fill"></i> Ready to upload · {{ fileSize(f.size) }}</small>
+                                </div>
+                                <label class="pf-file-change" title="Choose another file">
+                                  <i class="bi bi-arrow-repeat"></i>
+                                  <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="pickProformaFile($event)" hidden />
+                                </label>
+                                <button type="button" class="pf-file-remove" (click)="clearProformaFile()" aria-label="Remove file" title="Remove file"><i class="bi bi-trash3"></i></button>
+                              </div>
+                            } @else {
+                              <label class="pf-drop" [class.dragging]="pfDragging()"
+                                     (dragover)="onProformaDragOver($event)" (dragleave)="onProformaDragLeave($event)" (drop)="onProformaDrop($event)">
+                                <span class="pf-drop-icon"><i class="bi bi-cloud-arrow-up-fill"></i></span>
+                                <strong>{{ pfDragging() ? 'Drop the file here' : 'Drag & drop the proforma' }}</strong>
+                                <span>or <u>browse</u> from your computer</span>
+                                <small>PDF, JPG, PNG or WEBP · up to 4 MB</small>
+                                <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="pickProformaFile($event)" hidden />
+                              </label>
+                            }
+                          </div>
+                        </div>
+
+                        @if (d.error) {
+                          <div class="pf-error" role="alert"><i class="bi bi-exclamation-triangle-fill"></i> {{ d.error }}</div>
+                        }
+
+                        <!-- footer -->
+                        <div class="pf-foot">
+                          <span class="pf-note"><i class="bi bi-info-circle-fill"></i> Once saved, this becomes {{ vendorName(l.vendorId) }}'s price for this product and the proforma can be opened from the order.</span>
+                          <button type="button" class="pf-btn ghost" (click)="closeProforma()">Cancel</button>
+                          <button type="button" class="pf-btn primary" (click)="saveProforma(l)" [disabled]="d.saving">
+                            @if (d.saving) { <span class="pf-spin"></span> Saving... } @else { <i class="bi bi-cloud-check-fill"></i> Save proforma }
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ===== Summary ===== -->
+      <div class="ls-summary">
+        <div class="totals">
+          <div><span>Sub Total</span><span>{{ inr(totals().subTotal) }}</span></div>
+          <div><span>GST</span><span>{{ inr(totals().gst) }}</span></div>
+          <div class="grand"><span>Order Total</span><span>{{ inr(totals().grandTotal) }}</span></div>
+        </div>
+      </div>
+
+      <div class="form-field full-width">
+        <label for="ls-notes">Notes</label>
+        <div class="input-wrap textarea-wrap">
+          <i class="bi bi-card-text"></i>
+          <textarea id="ls-notes" name="notes" rows="2" maxlength="300" [(ngModel)]="notes" placeholder="Optional note for the vendor / records"></textarea>
+        </div>
+      </div>
+
+      @if (error()) { <small class="error-text">{{ error() }}</small> }
+    </div>
+
+    <div class="modal-footer-custom">
+      <span class="footer-note"><i class="bi bi-whatsapp"></i> Each invoice is sent to its vendor by e-mail + WhatsApp.</span>
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn" [disabled]="saving() || !!proforma()?.saving">
+        <i class="bi bi-send-check"></i>
+        {{ saving() ? 'Creating...' : groups().length > 1 ? 'Create ' + groups().length + ' Purchase Orders' : 'Create Purchase Order' }}
+      </button>
+    </div>
+  </form>
+</div>
