@@ -6,7 +6,7 @@ import { AbstractControl, FormArray, FormBuilder, ReactiveFormsModule, Validator
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { BranchOptionsService } from '../../../../../shared/common-services/branch-options.service';
 import { PurchaseService } from '../../../../../shared/common-services/purchase.service';
-import { Priority, PurchaseOption, lineTotals } from '../../../../../shared/models/purchase.model';
+import { CENTRAL_STORE, CENTRAL_STORE_KEY, Priority, PurchaseOption, lineTotals } from '../../../../../shared/models/purchase.model';
 import { SearchSelect, SelectOption } from '../../../../../shared/components/search-select/search-select';
 
 @Component({
@@ -46,7 +46,11 @@ export class PurchaseRequestForm {
   });
 
   /** Options for the searchable dropdowns. */
-  readonly branchChoices = computed<SelectOption[]>(() => this.branches().map(b => ({ value: b.key, label: b.name })));
+  readonly branchChoices = computed<SelectOption[]>(() => [
+    { value: CENTRAL_STORE_KEY, label: CENTRAL_STORE },
+    ...this.branches().map(b => ({ value: b.key, label: b.name })),
+  ]);
+  readonly priorityChoices: SelectOption[] = (['Normal', 'High', 'Urgent'] as Priority[]).map(p => ({ value: p, label: p }));
   readonly productChoices = computed<SelectOption[]>(() => this.products().map(p => ({ value: p.id, label: `${p.code} - ${p.name}` })));
   private readonly itemsValue = toSignal(this.form.controls.items.valueChanges, { initialValue: this.form.controls.items.value });
   /** Per row: the products already picked in the OTHER rows (greyed out in that row's list). */
@@ -92,8 +96,6 @@ export class PurchaseRequestForm {
       control.setValue((mine ?? branches[0]).key);
     });
   }
-
-  readonly priorities: Priority[] = ['Low', 'Normal', 'High', 'Urgent'];
 
   /** Keep only digits and place the dashes as the user types: 05112026 -> 05-11-2026 (day, month, 4-digit year). */
   onPoDateInput(event: Event): void {
