@@ -498,9 +498,9 @@
             </div>
           } @else {
             <div class="form-field">
-              <label for="wz-paid">{{ pay.payment_mode === 'EMI' ? 'Down payment' : 'Amount paying now' }}</label>
-              <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input id="wz-paid" type="number" [min]="pay.payment_mode === 'Cash' ? cashMinimum : 0" [max]="total" name="paid" [(ngModel)]="pay.paid_amount" /></div>
-              @if (pay.payment_mode === 'Cash') { <small class="wz-hint" [class.bad]="(pay.paid_amount || 0) < cashMinimum">Cash: at least {{ inr(cashMinimum) }}</small> }
+              <label for="wz-paid">@if (needsMinAdvance) { Advance amount <span>*</span> } @else { Down payment }</label>
+              <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input id="wz-paid" type="number" [min]="needsMinAdvance ? cashMinimum : 0" [max]="total" name="paid" [(ngModel)]="pay.paid_amount" /></div>
+              @if (needsMinAdvance) { <small class="wz-hint" [class.bad]="(pay.paid_amount || 0) < cashMinimum">Minimum advance: {{ inr(cashMinimum) }}</small> }
             </div>
           }
 

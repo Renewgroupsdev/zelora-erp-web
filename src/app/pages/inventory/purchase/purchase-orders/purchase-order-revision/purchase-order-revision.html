@@ -111,17 +111,50 @@
             <div class="price-rows">
               @for (l of lines(); track l.productId) {
                 @let d = delta(l.unitPrice, form.prices[l.productId]);
-                <div class="price-row" [class.changed]="d !== 0">
+                @let gstChanged = newGst(l) !== l.gstPercent;
+                @let nl = newLanded(l);
+                <div class="price-row" [class.changed]="d !== 0 || gstChanged">
                   <div class="pr-prod">
                     <span class="pr-icon"><i class="bi bi-box-seam"></i></span>
                     <div><strong>{{ l.productName }}</strong><small>{{ l.productCode }}</small></div>
                   </div>
-                  <div class="pr-old"><small>PO price</small><span>₹{{ l.unitPrice | number:'1.2-2' }}</span></div>
+
+                  <!-- old purchase order: read only -->
+                  <div class="pr-side old">
+                    <span class="pr-side-label"><i class="bi bi-receipt"></i> Old PO</span>
+                    <div class="pr-pair">
+                      <div class="pr-field">
+                        <small>Unit price</small>
+                        <div class="pr-box disabled"><span class="cur">₹</span><input type="number" [value]="l.unitPrice" disabled [attr.aria-label]="'PO unit price of ' + l.productName" /></div>
+                      </div>
+                      <div class="pr-field gst">
+                        <small>GST</small>
+                        <div class="pr-box disabled"><input type="number" [value]="l.gstPercent" disabled [attr.aria-label]="'PO GST of ' + l.productName" /><span class="suf">%</span></div>
+                      </div>
+                    </div>
+                    <span class="pr-landed">₹{{ oldLanded(l) | number:'1.2-2' }} <em>incl. GST</em></span>
+                  </div>
+
                   <i class="bi bi-arrow-right pr-arrow" aria-hidden="true"></i>
-                  <div class="pr-new">
-                    <span class="cur">₹</span>
-                    <input type="number" min="0" step="0.01" [(ngModel)]="form.prices[l.productId]" [attr.aria-label]="'Vendor new price of ' + l.productName" />
-                    @if (d !== 0) { <span class="pct" [class.up]="d > 0" [class.down]="d < 0">{{ d > 0 ? '+' : '' }}{{ d | number:'1.0-1' }}%</span> }
+
+                  <!-- vendor's new quotation -->
+                  <div class="pr-side new">
+                    <span class="pr-side-label"><i class="bi bi-file-earmark-text"></i> New quotation</span>
+                    <div class="pr-pair">
+                      <div class="pr-field">
+                        <small>Unit price</small>
+                        <div class="pr-box"><span class="cur">₹</span><input type="number" min="0" step="0.01" [(ngModel)]="form.prices[l.productId]" [attr.aria-label]="'Vendor new unit price of ' + l.productName" /></div>
+                      </div>
+                      <div class="pr-field gst">
+                        <small>GST</small>
+                        <div class="pr-box" [class.edited]="gstChanged"><input type="number" min="0" max="100" step="0.01" [(ngModel)]="form.gst[l.productId]" [attr.aria-label]="'Vendor new GST of ' + l.productName" /><span class="suf">%</span></div>
+                      </div>
+                    </div>
+                    <span class="pr-landed">
+                      @if (nl !== null) { ₹{{ nl | number:'1.2-2' }} <em>incl. GST</em> } @else { <em>Enter the unit price</em> }
+                      @if (d !== 0) { <span class="pct" [class.up]="d > 0" [class.down]="d < 0">{{ d > 0 ? '+' : '' }}{{ d | number:'1.0-1' }}%</span> }
+                      @if (gstChanged) { <span class="pct gst-chip">GST {{ l.gstPercent }}% → {{ newGst(l) }}%</span> }
+                    </span>
                   </div>
                 </div>
               }
@@ -181,6 +214,7 @@
                   <i class="bi bi-arrow-right" aria-hidden="true"></i>
                   <strong class="rev-now" [class.up]="d > 0" [class.down]="d < 0">₹{{ i.newPrice | number:'1.2-2' }}</strong>
                   @if (d !== 0) { <span class="pct" [class.up]="d > 0" [class.down]="d < 0">{{ d > 0 ? '+' : '' }}{{ d | number:'1.0-1' }}%</span> }
+                  @if (i.gstPercent !== null) { <span class="pct gst-chip">GST {{ i.gstPercent }}%</span> }
                 </div>
               }
             </div>

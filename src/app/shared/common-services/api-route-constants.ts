@@ -155,8 +155,9 @@ export class ApiRoutesConstants {
    //Targets & incentives (Accounts Management -> Targets)
    public static TARGETS = "targets";
 
-   //Direct file uploads (POST/DELETE uploads/{folder})
-   public static UPLOADS = "uploads";
+   //Direct file uploads (POST/DELETE file-uploads/{folder}). Not "uploads/{folder}": on the live server that URL is
+   //also the real public/uploads/<folder> directory, so it gets a 301 redirect, turns into a GET and fails with 404.
+   public static UPLOADS = "file-uploads";
    public static BRANCHES = "branches";
    public static BRANCH_OPTIONS = "branches/options";
    /** Branches + franchises for the header filter and every branch / franchise dropdown (see BranchOptionsService). */

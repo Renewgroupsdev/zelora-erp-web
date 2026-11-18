@@ -443,7 +443,7 @@ export class AppointmentWizard implements OnInit {
     this.categoryId = null;
     this.category = '';
     this.c.grade = '';
-    this.plan.lines.forEach(l => (l.treatment_id = null));
+    if (this.plan.lines[0]) this.plan.lines[0].treatment_id = null;
   }
 
   /** Hair / Skin / Combo / Other of the picked category (older appointments only saved "Hair" / "Skin"). */
@@ -465,11 +465,10 @@ export class AppointmentWizard implements OnInit {
     if (!this.showHairExam || !(cat.kind === 'Hair' || cat.kind === 'Combo')) this.c.grade = '';
     this.category = cat.name;
     this.categoryId = cat.id;
-    // A treatment of another category no longer applies.
-    this.plan.lines.forEach(l => {
-      const t = this.treatmentOf(l);
-      if (t && t.category_id !== cat.id) l.treatment_id = null;
-    });
+    // The service request (first row) of another category no longer applies; added rows may be of any category.
+    const first = this.plan.lines[0];
+    const t = this.treatmentOf(first);
+    if (first && t && t.category_id !== cat.id) first.treatment_id = null;
   }
 
   /** Picks the service category from the saved service request, else the saved / lead's category name, else Hair / Skin. */
@@ -517,24 +516,76 @@ export class AppointmentWizard implements OnInit {
     this.plan.lines[0].treatment_id = id;
   }
 
-  /** Treatments a row can pick: the category's, minus the ones other rows already have (each treatment only once). */
+  /**
+   * Treatments a row can pick, minus the ones other rows already have (each treatment only once). The first row is the
+   * service request, so it keeps to the picked category; rows added with "Add treatment" may pick any active treatment
+   * (e.g. a skin treatment on a hair consultation) - otherwise a category with a single treatment could never add one.
+   */
   optionsFor(index: number): TreatmentOption[] {
     const taken = new Set(this.plan.lines.filter((_, i) => i !== index).map(l => Number(l.treatment_id)));
     const own = this.treatmentOf(this.plan.lines[index]);
-    const base = this.filteredTreatments;
+    const base = index === 0 ? this.filteredTreatments : this.extraTreatments;
     return (own && !base.includes(own) ? [own, ...base] : base).filter(t => !taken.has(t.id));
   }
 
+  /** Added rows: the picked category's treatments first, then every other category's. */
+  private get extraTreatments(): TreatmentOption[] {
+    const own = this.filteredTreatments;
+    return [...own, ...this.treatments().filter(t => !own.includes(t))];
+  }
+
+  /** The button stays clickable; addLine() explains in an alert why a row cannot be added. */
   get canAddLine(): boolean {
-    return this.plan.lines.length < MAX_TREATMENTS && this.filteredTreatments.some(t => !this.plan.lines.some(l => Number(l.treatment_id) === t.id));
+    return this.treatments().length > 0;
+  }
+
+  /** Puts the cursor on a row's treatment dropdown (after the alert / new row has rendered). */
+  private focusLine(index: number): void {
+    setTimeout(() => document.getElementById(`wz-treat-${index}`)?.focus());
   }
 
   addLine(): void {
-    if (this.canAddLine) this.plan.lines.push(blankLine());
+    const lines = this.plan.lines;
+    const empty = lines.findIndex(l => !l.treatment_id);
+    if (empty >= 0) {
+      const row = lines.length > 1 ? `Treatment ${empty + 1}` : 'the current treatment';
+      this.toast.warning(
+        'Treatment not selected',
+        `Please select a treatment for ${row} before adding another one.`,
+      );
+      return this.focusLine(empty);
+    }
+    if (lines.length >= MAX_TREATMENTS) {
+      return void this.toast.info(
+        'Treatment limit reached',
+        `A consultation can include up to ${MAX_TREATMENTS} treatments. Remove one to add a different treatment.`,
+      );
+    }
+    if (!this.treatments().some(t => !lines.some(l => Number(l.treatment_id) === t.id))) {
+      return void this.toast.info(
+        'No more treatments available',
+        'All active treatments have already been added to this consultation. New treatments can be created in Treatment Management.',
+      );
+    }
+    lines.push(blankLine());
+    this.focusLine(lines.length - 1);
   }
 
-  removeLine(index: number): void {
-    if (this.plan.lines.length > 1) this.plan.lines.splice(index, 1);
+  async removeLine(index: number): Promise<void> {
+    if (this.plan.lines.length <= 1) return;
+    const line = this.plan.lines[index];
+    if (line.treatment_id) {
+      const name = this.treatmentOf(line)?.name ?? `Treatment ${index + 1}`;
+      const ok = await this.toast.confirm(
+        'Remove this treatment?',
+        `"${name}" and its sitting schedule will be removed from this consultation.`,
+        'Yes, remove it',
+      );
+      // the row list may have changed while the alert was open
+      index = this.plan.lines.indexOf(line);
+      if (!ok || index < 0 || this.plan.lines.length <= 1) return;
+    }
+    this.plan.lines.splice(index, 1);
   }
 
   /** A saved start date is kept while it is today or later; an empty / past one becomes today. */
@@ -645,9 +696,18 @@ export class AppointmentWizard implements OnInit {
     }
   }
 
-  /** Least a cash treatment payment may be: the configured minimum, or the whole total when that is smaller. */
+  /** Least advance a treatment payment may be: the configured minimum (₹1,000), or the whole total when that is smaller. */
   get cashMinimum(): number {
     return Math.min(this.payOptions().cash_min_amount, this.total);
+  }
+
+  /** Every mode but EMI needs the minimum advance; EMI's amount is the down payment (the finance partner pays the rest). */
+  get needsMinAdvance(): boolean {
+    return this.pay.payment_mode !== 'EMI';
+  }
+
+  private focusAmount(): void {
+    setTimeout(() => document.getElementById('wz-paid')?.focus());
   }
 
   get emiPartnerUrl(): string | null {
@@ -691,8 +751,23 @@ export class AppointmentWizard implements OnInit {
     if (consultation) {
       if (!(amount > 0)) return void this.error.set('Enter the consultation fee.');
     } else {
-      if (!(amount >= 0) || amount > this.total) return void this.error.set(`Amount must be between 0 and ${inr(this.total)}.`);
-      if (mode === 'Cash' && amount < this.cashMinimum) return void this.error.set(`A cash payment must be at least ${inr(this.cashMinimum)}.`);
+      if (amount > this.total) {
+        this.toast.warning(
+          'Amount exceeds total payable',
+          `The amount entered (${inr(amount)}) is more than the total payable of ${inr(this.total)}. Please enter an amount up to ${inr(this.total)}.`,
+        );
+        return this.focusAmount();
+      }
+      if (this.needsMinAdvance && !(amount >= this.cashMinimum)) {
+        this.toast.warning(
+          'Minimum advance required',
+          `A minimum advance of ${inr(this.cashMinimum)} is required to confirm the treatment. ` +
+            (amount > 0 ? `The amount entered is ${inr(amount)}; ` : '') +
+            `please collect at least ${inr(this.cashMinimum)} to continue.`,
+        );
+        return this.focusAmount();
+      }
+      if (!(amount >= 0)) return void this.error.set('Enter the down payment amount (0 if none).');
       if (mode === 'EMI' && !this.pay.finance_partner) return void this.error.set('Choose the EMI finance partner.');
     }
     if (this.needsReference && !this.pay.transaction_no.trim()) {

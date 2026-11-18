@@ -383,3 +383,28 @@ export interface NearbyStoreOption {
   /** Straight-line km from the receiving store (null = a unit has no coordinates) and the zone it falls in. */
   distanceKm: number | null; zone: 'near' | 'far' | 'unknown';
 }
+
+/** One vendor's price for a low-stock product: its latest quote, else its last PO price, else the product master price. */
+export interface LowStockVendorQuote {
+  vendorId: number; vendorName: string; unitPrice: number; gstPercent: number;
+  /** Unit price incl. GST - what the vendors are compared on. */
+  amount: number;
+  /** Where the price came from, e.g. "Quote Q-12", "Last PO PO-2026-0007", "Product master". */
+  source: string; date: string | null;
+  /** The vendor quote behind the price (null for a PO / product master price) and whether its proforma file is attached. */
+  quoteId: number | null; hasFile: boolean;
+}
+
+/** A Central Store product under the low-stock level (ordered straight from a vendor from the bell alert). */
+export interface LowStockRow {
+  productId: string; productCode: string; productName: string; hsnCode: string;
+  qty: number; onOrder: number; suggestedQty: number;
+  /** Least vendor price (the pre-selected vendor's). */
+  unitPrice: number; gstPercent: number;
+  /** Least-price vendor (pre-selected). */
+  vendorId: number | null; vendorName: string | null;
+  usualVendorId: number | null; usualVendorName: string | null;
+  /** Vendor prices, least first. */
+  quotes: LowStockVendorQuote[];
+  out: boolean;
+}

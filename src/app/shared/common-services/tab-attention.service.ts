@@ -52,6 +52,7 @@ export class TabAttentionService {
     const ask = () => {
       document.removeEventListener('click', ask, true);
       if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => undefined);
+      this.askLocalNetworkAccess();
     };
     document.addEventListener('click', ask, true);
 
@@ -101,6 +102,23 @@ export class TabAttentionService {
   }
 
   private flashBusy = false;
+
+  /**
+   * Chrome (142+) only lets a site on a public address (the live domain) call this PC's localhost helper after the
+   * person allows "Local network access" for that site. The prompt can only show while the page is in front, but the
+   * flash call is made while it is in the background - so it would wait for an answer nobody can give and be dropped.
+   * Calling /health once on the first click, while the person is on the page, lets Chrome ask; after "Allow" the
+   * background flash calls go through. The LAN / localhost addresses mostly do not need this, which is why the flash
+   * worked there but not on the live site.
+   */
+  private askLocalNetworkAccess(): void {
+    const ctrl = new AbortController();
+    // long enough for the person to answer Chrome's prompt
+    const timer = setTimeout(() => ctrl.abort(), 60_000);
+    fetch(`${FLASH_HELPER_URL}/health`, { signal: ctrl.signal, cache: 'no-store' })
+      .catch(() => undefined)
+      .finally(() => clearTimeout(timer));
+  }
 
   /**
    * Flashes Chrome's pinned taskbar button (orange, until Chrome is clicked) through the Windows helper

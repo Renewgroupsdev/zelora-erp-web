@@ -32,243 +32,238 @@
       <p class="muted" style="margin: 0; font-size: 12px">{{ r.remarks }}</p>
     }
 
-    <div class="section-title"><i class="bi bi-box-seam"></i> Requested Products</div>
-    <div class="items-table-wrap">
-      <table class="items-table">
+    <div class="section-title">
+      <i class="bi bi-box-seam"></i> Requested Products
+      @if (canReview()) {
+        <span class="spacer"></span>
+        <button type="button" class="link-btn" (click)="useLeastPrices()"><i class="bi bi-trophy"></i> Use least prices</button>
+      }
+    </div>
+    @if (canReview()) {
+      <p class="rp-intro"><i class="bi bi-diagram-3"></i> Choose a vendor for each product - least price first. Products from different vendors are split into one purchase order per vendor.</p>
+    }
+
+    <div class="items-table-wrap rp-scroll">
+      <table class="items-table rp-table" [class.with-vendor]="canReview()">
         <thead>
           <tr>
-            <th>Product</th>
-            <th>HSN</th>
-            <th class="num">Central Store<br /><small>Stock in Hand</small></th>
-            <th class="num">Branch Store<br /><small>Stock in Hand</small></th>
-            <th class="num">Request Qty</th>
-            <th class="num">Unit Price</th>
-            <th class="num">GST</th>
-            <th class="num">Amount</th>
+            <th class="c-no">#</th>
+            <th class="c-product">Product</th>
+            <th class="c-hsn">HSN</th>
+            <th class="num c-stock">Central Store<br /><small>Stock in Hand</small></th>
+            <th class="num c-stock">Branch Store<br /><small>Stock in Hand</small></th>
+            @if (canReview()) { <th class="c-vendor">Vendor <small>(least price first)</small></th> }
+            <th class="num c-qty">Request Qty</th>
+            <th class="num c-price">Unit Price</th>
+            <th class="num c-gst">GST</th>
+            <th class="num c-amount">Amount</th>
           </tr>
         </thead>
         <tbody>
-          @for (item of r.items; track item.productId) {
-            <tr>
-              <td><strong>{{ item.productName }}</strong><div class="muted">{{ item.productCode }}</div>              </td>
-              <td>{{ item.hsnCode || '-' }}</td>
-              <td class="num"><span class="pill" [class.red]="centralQty(item.productId) < 10" [class.green]="centralQty(item.productId) >= 10">{{ centralQty(item.productId) }}</span></td>
-              <td class="num"><span class="pill" [class.red]="branchQty(item.productId) < 10" [class.green]="branchQty(item.productId) >= 10">{{ branchQty(item.productId) }}</span></td>
-              <td class="num"><strong>{{ item.requestedQty }}</strong></td>
-              <td class="num">₹{{ item.unitPrice | number:'1.2-2' }}</td>
-              <td class="num">{{ item.gstPercent }}%</td>
-              <td class="num">₹{{ item.unitPrice * item.requestedQty * (1 + item.gstPercent / 100) | number:'1.2-2' }}</td>
+          @for (item of r.items; track item.productId; let i = $index) {
+            @let o = offer(item.productId);
+            <tr class="rp-row" [style.--i]="i" [class.flash]="flashRow() === item.productId">
+              <td class="c-no"><span class="rp-no">{{ i + 1 }}</span></td>
+              <td class="c-product"><strong>{{ item.productName }}</strong><div class="muted">{{ item.productCode }}</div></td>
+              <td class="c-hsn">{{ item.hsnCode || '-' }}</td>
+              <td class="num c-stock"><span class="pill" [class.red]="centralQty(item.productId) < 10" [class.green]="centralQty(item.productId) >= 10">{{ centralQty(item.productId) }}</span></td>
+              <td class="num c-stock"><span class="pill" [class.red]="branchQty(item.productId) < 10" [class.green]="branchQty(item.productId) >= 10">{{ branchQty(item.productId) }}</span></td>
+
+              <!-- vendor of this product + its proforma -->
+              @if (canReview()) {
+                <td class="c-vendor">
+                  <div class="input-wrap" [class.is-invalid]="vendorErrors() && !lineVendor()[item.productId]">
+                    <i class="bi bi-truck"></i>
+                    <select [ngModel]="vendorOf(item.productId)" (ngModelChange)="setLineVendor(item.productId, $event)" [attr.aria-label]="'Vendor for ' + item.productName">
+                      <option [ngValue]="null">Select vendor</option>
+                      @for (v of offersFor(item.productId); track v.vendorId; let first = $first) {
+                        <option [ngValue]="v.vendorId">{{ v.vendorName }}  ·  {{ inrText(v.landed) }}{{ first ? '  ★ Least' : '' }}{{ v.quoted ? '  · quoted' : '' }}</option>
+                      }
+                    </select>
+                    <i class="bi bi-chevron-down select-arrow"></i>
+                  </div>
+                  @if (vendorErrors() && !lineVendor()[item.productId]) { <small class="error-text">Choose the vendor for this product.</small> }
+                  @if (o) {
+                    <div class="rp-actions">
+                      @if (isLeast(item.productId)) { <span class="ls-tag good"><i class="bi bi-trophy-fill"></i> Least price</span> }
+                      @else { <span class="ls-tag warn" [title]="'Least: ' + offers()[item.productId][0].vendorName">Least {{ inrText(offers()[item.productId][0].landed) }}</span> }
+                      @if (o.hasFile) {
+                        <button type="button" class="ls-pf-btn view" (click)="viewQuoteFile(o.quoteId)" title="Opens in a new tab">
+                          <i class="bi bi-file-earmark-pdf-fill"></i> View proforma <i class="bi bi-box-arrow-up-right"></i>
+                        </button>
+                      }
+                      @if (canManageQuotes() && proformaRow() !== item.productId) {
+                        <button type="button" class="ls-pf-btn add" (click)="openRowProforma(item.productId)">
+                          <i class="bi" [class.bi-paperclip]="!o.hasFile" [class.bi-arrow-repeat]="o.hasFile"></i> {{ o.hasFile ? 'Replace proforma' : 'Add proforma' }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </td>
+              }
+
+              <td class="num c-qty"><strong>{{ item.requestedQty }}</strong></td>
+              <td class="num c-price">
+                @if (canReview() && o) {
+                  <span class="rp-price">₹{{ o.price | number:'1.2-2' }}</span>
+                  @if (delta(item.productId) > 0.05 || delta(item.productId) < -0.05) {
+                    <span class="vq-pct" [class.up]="delta(item.productId) > 0" [class.down]="delta(item.productId) < 0">{{ delta(item.productId) > 0 ? '+' : '' }}{{ delta(item.productId) | number:'1.0-1' }}%</span>
+                  }
+                  <div class="muted">{{ o.source }}</div>
+                  @if (o.price !== item.unitPrice) { <div class="muted rp-was">Request ₹{{ item.unitPrice | number:'1.2-2' }}</div> }
+                } @else {
+                  ₹{{ item.unitPrice | number:'1.2-2' }}<div class="muted">Request price</div>
+                }
+              </td>
+              <td class="num c-gst">{{ canReview() && o ? o.gst : item.gstPercent }}%</td>
+              <td class="num c-amount"><strong>₹{{ (canReview() ? lineAmount(item) : item.unitPrice * item.requestedQty * (1 + item.gstPercent / 100)) | number:'1.2-2' }}</strong></td>
             </tr>
+
+            <!-- add proforma: a full-width row under its product -->
+            @if (proformaRow() === item.productId) {
+              @let existing = pfExistingQuote();
+              <tr class="ls-pf-row">
+                <td [attr.colspan]="canReview() ? 10 : 9">
+                  <div class="pf-card">
+                    <div class="pf-head">
+                      <div class="pf-head-icon"><i class="bi bi-file-earmark-text-fill"></i></div>
+                      <div class="pf-head-text">
+                        <span class="pf-eyebrow">Vendor proforma quotation</span>
+                        <h4>{{ pfVendorName() }}</h4>
+                        <p><i class="bi bi-box-seam"></i> {{ item.productName }} <span>·</span> {{ item.productCode }} <span>·</span> Qty {{ item.requestedQty }}</p>
+                      </div>
+                      <button type="button" class="pf-close" (click)="closeRowProforma()" aria-label="Close" title="Close"><i class="bi bi-x-lg"></i></button>
+                    </div>
+
+                    <div class="pf-body">
+                      <div class="pf-fields">
+                        <div class="pf-group-label"><span>1</span> Quotation details</div>
+                        <div class="pf-grid">
+                          <div class="pf-field">
+                            <label for="rq-no">Quotation No <b>*</b></label>
+                            <div class="pf-input"><i class="bi bi-hash"></i><input id="rq-no" type="text" maxlength="60" [(ngModel)]="quoteForm.quoteNo" placeholder="e.g. PI-2026-118" autocomplete="off" /></div>
+                          </div>
+                          <div class="pf-field">
+                            <label for="rq-date">Quotation Date <b>*</b></label>
+                            <div class="pf-input"><i class="bi bi-calendar3"></i><input id="rq-date" type="date" [max]="today" [(ngModel)]="quoteForm.quoteDate" /></div>
+                          </div>
+                          <div class="pf-field">
+                            <label for="rq-valid">Valid Till <em>optional</em></label>
+                            <div class="pf-input"><i class="bi bi-calendar-check"></i><input id="rq-valid" type="date" [min]="quoteForm.quoteDate || today" [(ngModel)]="quoteForm.validTill" /></div>
+                          </div>
+                        </div>
+
+                        <div class="pf-group-label"><span>2</span> Quoted price <small>per unit</small></div>
+                        <div class="pf-grid">
+                          <div class="pf-field">
+                            <label for="rq-price">Unit Price <b>*</b></label>
+                            <div class="pf-input"><i class="bi bi-currency-rupee"></i><input id="rq-price" type="number" min="0" step="0.01" [(ngModel)]="quoteForm.prices[item.productId]" placeholder="0.00" /></div>
+                          </div>
+                          <div class="pf-field">
+                            <label>GST</label>
+                            <div class="pf-input pf-suffix pf-readonly"><i class="bi bi-receipt"></i><input type="number" [value]="item.gstPercent" readonly tabindex="-1" aria-label="GST" /><span>%</span></div>
+                          </div>
+                          <div class="pf-field">
+                            <label>Landed Price <em>incl. GST</em></label>
+                            @let landed = quoteLanded(item.productId);
+                            @let was = requestLanded(item.productId);
+                            <div class="pf-landed" [class.empty]="landed === null">
+                              @if (landed !== null) {
+                                <strong>{{ inrText(landed) }}</strong>
+                                @if (landed < was - 0.005) {
+                                  <span class="pf-delta good"><i class="bi bi-arrow-down"></i> {{ inrText(was - landed) }} below request</span>
+                                } @else if (landed > was + 0.005) {
+                                  <span class="pf-delta bad"><i class="bi bi-arrow-up"></i> {{ inrText(landed - was) }} above request</span>
+                                } @else {
+                                  <span class="pf-delta">same as request</span>
+                                }
+                              } @else {
+                                <span>Enter the unit price</span>
+                              }
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- other products this vendor supplies on this request go on the same quotation -->
+                        @if (pfProducts().length > 1) {
+                          <div class="pf-others">
+                            <div class="pf-others-head"><i class="bi bi-list-check"></i> Also from {{ pfVendorName() }} in this request <small>its price for each</small></div>
+                            @for (p of pfProducts(); track p.productId) {
+                              @if (p.productId !== item.productId) {
+                                <div class="pf-other">
+                                  <span><strong>{{ p.productName }}</strong><small>{{ p.productCode }} · Qty {{ p.requestedQty }} · GST {{ p.gstPercent }}%</small></span>
+                                  <div class="pf-input sm"><i class="bi bi-currency-rupee"></i><input type="number" min="0" step="0.01" [(ngModel)]="quoteForm.prices[p.productId]" [attr.aria-label]="'Vendor price of ' + p.productName" /></div>
+                                </div>
+                              }
+                            }
+                          </div>
+                        }
+                        <div class="pf-sum"><span>Quotation total (incl. GST)</span><strong>{{ inrText(quoteFormTotal()) }}</strong></div>
+                      </div>
+
+                      <div class="pf-file-col">
+                        <div class="pf-group-label"><span>3</span> Proforma file <b>*</b></div>
+                        @if (quoteFileName()) {
+                          <div class="pf-file-card">
+                            <div class="pf-file-badge">{{ quoteFileKind() }}</div>
+                            <div class="pf-file-info">
+                              <strong [title]="quoteFileName()">{{ quoteFileName() }}</strong>
+                              <small><i class="bi bi-check-circle-fill"></i> Ready to upload · {{ fileSize(quoteFileSize()) }}</small>
+                            </div>
+                            <label class="pf-file-change" title="Choose another file">
+                              <i class="bi bi-arrow-repeat"></i>
+                              <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="onQuoteFile($event)" hidden />
+                            </label>
+                            <button type="button" class="pf-file-remove" (click)="clearQuoteFile()" aria-label="Remove file" title="Remove file"><i class="bi bi-trash3"></i></button>
+                          </div>
+                        } @else {
+                          <label class="pf-drop" [class.dragging]="pfDragging()"
+                                 (dragover)="onProformaDragOver($event)" (dragleave)="onProformaDragLeave($event)" (drop)="onProformaDrop($event)">
+                            <span class="pf-drop-icon"><i class="bi bi-cloud-arrow-up-fill"></i></span>
+                            <strong>{{ pfDragging() ? 'Drop the file here' : 'Drag & drop the proforma' }}</strong>
+                            <span>or <u>browse</u> from your computer</span>
+                            <small>PDF, JPG, PNG or WEBP · up to 4 MB</small>
+                            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="onQuoteFile($event)" hidden />
+                          </label>
+                        }
+                      </div>
+                    </div>
+
+                    @if (quoteError()) {
+                      <div class="pf-error" role="alert"><i class="bi bi-exclamation-triangle-fill"></i> {{ quoteError() }}</div>
+                    }
+
+                    <div class="pf-foot">
+                      <span class="pf-note"><i class="bi bi-info-circle-fill"></i> Once saved, these become {{ pfVendorName() }}'s quoted prices{{ existing ? ' (replacing its earlier quotation)' : '' }} and the order is raised at them.</span>
+                      <button type="button" class="pf-btn ghost" (click)="closeRowProforma()">Cancel</button>
+                      <button type="button" class="pf-btn primary" (click)="saveQuote()" [disabled]="quoteSaving()">
+                        @if (quoteSaving()) { <span class="pf-spin"></span> Saving... } @else { <i class="bi bi-cloud-check-fill"></i> Save proforma }
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
           }
         </tbody>
       </table>
     </div>
 
+    @let t = canReview() ? orderTotals() : totals();
     <div class="totals">
-      <div><span>Sub Total</span><span>₹{{ totals().subTotal | number:'1.2-2' }}</span></div>
-      <div><span>GST</span><span>₹{{ totals().gst | number:'1.2-2' }}</span></div>
-      <div class="grand"><span>Total</span><span>₹{{ totals().grandTotal | number:'1.2-2' }}</span></div>
+      <div><span>Sub Total</span><span>₹{{ t.subTotal | number:'1.2-2' }}</span></div>
+      <div><span>GST</span><span>₹{{ t.gst | number:'1.2-2' }}</span></div>
+      <div class="grand"><span>{{ canReview() ? 'Order Total' : 'Total' }}</span><span>₹{{ t.grandTotal | number:'1.2-2' }}</span></div>
     </div>
 
     @if (canReview()) {
-      <div class="section-title"><i class="bi bi-truck"></i> Approve with a vendor</div>
-      <div class="pl-card">
-        <p class="muted" style="margin: 0 0 8px; font-size: 12px">Vendors that sent a quote are listed first, least quote first. A vendor without a quote still shows its price-list amount (last quote, product price or master price), least first, so every vendor can be compared and chosen. The invoice goes to the vendor by e-mail and WhatsApp.</p>
-        <div class="form-field">
-          <label for="rv-vendor">Vendor <span>*</span></label>
-          <app-search-select inputId="rv-vendor" icon="bi-truck" placeholder="Select vendor" searchPlaceholder="Search vendor..."
-                             [options]="vendorChoices()" [invalid]="vendorError()" [ngModel]="choice()" (ngModelChange)="onChoice($event)" />
-          @if (vendorError()) { <small class="error-text">Choose a vendor to approve with.</small> }
+      <div class="form-field rp-remarks">
+        <label for="rv-remarks">Remarks <span>(required to reject)</span></label>
+        <div class="input-wrap">
+          <i class="bi bi-chat-left-dots"></i>
+          <input id="rv-remarks" type="text" maxlength="255" placeholder="Add a note for the requester" [(ngModel)]="remarks" (input)="remarksError.set(false)" [class.is-invalid]="remarksError()" />
         </div>
-
-        @if (chosenVendorId() !== null) {
-          @let vq = vendorQuote();
-          @let pv = priceView();
-          <section class="vq-panel" [class.is-quote]="pv?.kind === 'quote'" [class.is-estimate]="pv?.kind === 'estimate'" [class.is-editing]="showQuoteForm()">
-
-            <!-- Header: vendor + source + total -->
-            <header class="vq-head">
-              <div class="vq-badge"><i class="bi" [class.bi-patch-check-fill]="vq" [class.bi-tags-fill]="!vq && pv" [class.bi-file-earmark-plus]="!vq && !pv"></i></div>
-              <div class="vq-title">
-                <small>Vendor quotation</small>
-                <strong [title]="vendorName()">{{ vendorName() || 'Selected vendor' }}</strong>
-                <div class="vq-chips">
-                  @if (vq) {
-                    <span class="vq-chip strong"><i class="bi bi-hash"></i>{{ vq.quoteNo }}</span>
-                    @if (vq.lowest) { <span class="vq-chip good"><i class="bi bi-trophy-fill"></i> Lowest</span> }
-                    @if (vq.expired) { <span class="vq-chip bad"><i class="bi bi-hourglass-bottom"></i> Expired</span> }
-                    @else if (!vq.complete) { <span class="vq-chip warn"><i class="bi bi-exclamation-circle"></i> Incomplete</span> }
-                    @else { <span class="vq-chip info"><i class="bi bi-check2-circle"></i> {{ vq.status }}</span> }
-                  } @else if (pv) {
-                    <span class="vq-chip warn"><i class="bi bi-info-circle"></i> No quotation · price list</span>
-                  } @else {
-                    <span class="vq-chip muted"><i class="bi bi-dash-circle"></i> No quotation</span>
-                  }
-                </div>
-              </div>
-              @if (pv && !showQuoteForm()) {
-                <div class="vq-total">
-                  <small>{{ pv.kind === 'quote' ? 'Quote total' : 'Price-list total' }}</small>
-                  <strong>₹{{ pv.total | number:'1.2-2' }}</strong>
-                  @if (pv.requestTotal > 0 && pv.total !== pv.requestTotal) {
-                    <span class="vq-delta" [class.up]="pv.total > pv.requestTotal" [class.down]="pv.total < pv.requestTotal">
-                      <i class="bi" [class.bi-arrow-up-right]="pv.total > pv.requestTotal" [class.bi-arrow-down-right]="pv.total < pv.requestTotal"></i>
-                      ₹{{ (pv.total > pv.requestTotal ? pv.total - pv.requestTotal : pv.requestTotal - pv.total) | number:'1.2-2' }} vs request
-                    </span>
-                  } @else {
-                    <span class="vq-delta same"><i class="bi bi-dash"></i> Same as request</span>
-                  }
-                </div>
-              }
-            </header>
-
-            @if (showQuoteForm()) {
-              <!-- Quotation form: 3 steps -->
-              <div class="vq-form">
-                <p class="vq-hint"><i class="bi bi-lightbulb"></i> Enter the price {{ vendorName() }} quoted for every product and attach its proforma. Prices start from {{ vq ? 'its current quotation' : 'its last quote, else the request prices' }}. Saving selects this quotation for approval{{ vq ? ' and replaces the earlier one' : '' }}.</p>
-
-                <div class="vq-step">
-                  <div class="vq-step-head"><span class="vq-step-no">1</span> Quote details</div>
-                  <div class="vq-fields">
-                    <div class="form-field">
-                      <label for="rq-no">Quote no <span>*</span></label>
-                      <div class="input-wrap"><i class="bi bi-hash"></i><input id="rq-no" type="text" maxlength="60" placeholder="e.g. QT-1024" [(ngModel)]="quoteForm.quoteNo" /></div>
-                    </div>
-                    <div class="form-field">
-                      <label for="rq-date">Quote date <span>*</span></label>
-                      <div class="input-wrap"><i class="bi bi-calendar-event"></i><input id="rq-date" type="date" [max]="today" [(ngModel)]="quoteForm.quoteDate" /></div>
-                    </div>
-                    <div class="form-field">
-                      <label for="rq-valid">Valid till</label>
-                      <div class="input-wrap"><i class="bi bi-calendar-check"></i><input id="rq-valid" type="date" [min]="quoteForm.quoteDate" [(ngModel)]="quoteForm.validTill" /></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="vq-step">
-                  <div class="vq-step-head"><span class="vq-step-no">2</span> Product prices <span class="spacer"></span><small class="muted">Request price → vendor's price</small></div>
-                  <div class="vq-rows">
-                    @for (item of r.items; track item.productId) {
-                      @let d = quoteDelta(item.productId);
-                      <div class="vq-row edit">
-                        <div class="vq-prod">
-                          <span class="vq-prod-icon"><i class="bi bi-box-seam"></i></span>
-                          <div><strong>{{ item.productName }}</strong><small>{{ item.productCode }} · Qty {{ item.requestedQty }} · GST {{ item.gstPercent }}%</small></div>
-                        </div>
-                        <div class="vq-was"><small>Request</small><span>₹{{ item.unitPrice | number:'1.2-2' }}</span></div>
-                        <div class="vq-input">
-                          <span class="cur">₹</span>
-                          <input type="number" min="0" step="0.01" [(ngModel)]="quoteForm.prices[item.productId]" [attr.aria-label]="'Vendor price of ' + item.productName" />
-                          @if (d !== 0) { <span class="vq-pct" [class.up]="d > 0" [class.down]="d < 0">{{ d > 0 ? '+' : '' }}{{ d | number:'1.0-1' }}%</span> }
-                        </div>
-                        <div class="vq-amt"><small>Amount</small><strong>₹{{ quoteLineAmount(item.productId) | number:'1.2-2' }}</strong></div>
-                      </div>
-                    }
-                  </div>
-                  <div class="vq-sum"><span>Quote total (incl. GST)</span><strong>₹{{ quoteFormTotal() | number:'1.2-2' }}</strong></div>
-                </div>
-
-                <div class="vq-step">
-                  <div class="vq-step-head"><span class="vq-step-no">3</span> Proforma &amp; notes</div>
-                  <div class="vq-fields two">
-                    <div class="form-field">
-                      <label for="rq-file">Proforma file <span>*</span></label>
-                      <label class="vq-drop" for="rq-file" [class.has-file]="quoteFileName()">
-                        <i class="bi" [class.bi-cloud-arrow-up]="!quoteFileName()" [class.bi-file-earmark-check-fill]="quoteFileName()"></i>
-                        <span><strong>{{ quoteFileName() ? 'Change file' : 'Choose proforma' }}</strong><small>{{ quoteFileName() || 'PDF / JPG / PNG / WEBP · max 4 MB' }}</small></span>
-                      </label>
-                      <input id="rq-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" (change)="onQuoteFile($event)" hidden />
-                      @if (quoteFileName()) {
-                        <div class="file-rename"><i class="bi bi-pencil-square"></i><input type="text" maxlength="100" [(ngModel)]="quoteFileBase" aria-label="File name" placeholder="File name" /><span class="ext">{{ quoteFileExt }}</span></div>
-                      }
-                    </div>
-                    <div class="form-field">
-                      <label for="rq-remarks">Remarks</label>
-                      <div class="input-wrap"><i class="bi bi-chat-left-text"></i><input id="rq-remarks" type="text" maxlength="500" [(ngModel)]="quoteForm.remarks" placeholder="Delivery terms, notes..." /></div>
-                    </div>
-                  </div>
-                </div>
-
-                @if (quoteError()) { <div class="vq-error"><i class="bi bi-exclamation-triangle-fill"></i> {{ quoteError() }}</div> }
-                <div class="vq-actions">
-                  <button type="button" class="cancel-btn" (click)="showQuoteForm.set(false)">Cancel</button>
-                  <button type="button" class="save-btn" [disabled]="quoteSaving()" (click)="saveQuote()"><i class="bi bi-save"></i> {{ quoteSaving() ? 'Saving...' : 'Save quotation' }}</button>
-                </div>
-              </div>
-            } @else {
-              @if (pv) {
-                <!-- Product-wise prices: saved quotation, else the vendor's price list -->
-                <div class="vq-rows">
-                  @for (row of pv.rows; track row.productId) {
-                    <div class="vq-row">
-                      <div class="vq-prod">
-                        <span class="vq-prod-icon"><i class="bi bi-box-seam"></i></span>
-                        <div>
-                          <strong>{{ row.name }}</strong>
-                          <small>{{ row.code }} · Qty {{ row.qty }} · GST {{ row.gst }}%</small>
-                          @if (row.source) { <span class="vq-src" [class.warn]="row.source.startsWith('master')">{{ sourceLabel(row.source) }}</span> }
-                        </div>
-                      </div>
-                      <div class="vq-was"><small>Request</small><span>₹{{ row.requestPrice | number:'1.2-2' }}</span></div>
-                      <div class="vq-now">
-                        <small>{{ pv.kind === 'quote' ? 'Quoted' : 'Vendor price' }}</small>
-                        <strong>₹{{ row.price | number:'1.2-2' }}</strong>
-                        @if (row.delta !== 0) { <span class="vq-pct" [class.up]="row.delta > 0" [class.down]="row.delta < 0">{{ row.delta > 0 ? '+' : '' }}{{ row.delta | number:'1.0-1' }}%</span> }
-                      </div>
-                      <div class="vq-amt"><small>Amount</small><strong>₹{{ row.amount | number:'1.2-2' }}</strong></div>
-                    </div>
-                  }
-                </div>
-              }
-
-              @if (vq) {
-                <div class="vq-meta">
-                  <span><i class="bi bi-calendar-event"></i> {{ displayDate(vq.quoteDate) }}</span>
-                  @if (vq.validTill) { <span><i class="bi bi-calendar-check"></i> Valid till {{ displayDate(vq.validTill) }}</span> }
-                  @if (vq.addedBy) { <span><i class="bi bi-person"></i> {{ vq.addedBy }}</span> }
-                  @if (vq.remarks) { <span class="note"><i class="bi bi-chat-left-text"></i> {{ vq.remarks }}</span> }
-                </div>
-                @if (vq.expired || !vq.complete) {
-                  <div class="vq-error"><i class="bi bi-exclamation-triangle-fill"></i> This quotation is {{ vq.expired ? 'expired' : 'missing some products' }}, so the order uses the vendor's price list. Replace it with a current quotation to order at quoted prices.</div>
-                }
-              } @else {
-                <div class="vq-empty">
-                  <i class="bi bi-file-earmark-plus"></i>
-                  <span>{{ vendorName() || 'This vendor' }} has not sent a quotation for this request.
-                    {{ pv ? 'Prices above are from its price list.' : 'The order goes at the product prices.' }}
-                    @if (canManageQuotes()) { Add its quotation to order at the quoted prices. }</span>
-                </div>
-              }
-
-              <footer class="vq-foot">
-                @if (vq?.hasFile) { <button type="button" class="vq-ghost" (click)="viewQuoteFile(vq!.id)"><i class="bi bi-file-earmark-pdf"></i> View proforma</button> }
-                <span class="spacer"></span>
-                @if (canManageQuotes()) {
-                  <button type="button" class="vq-cta" (click)="openQuoteForm()">
-                    <i class="bi" [class.bi-cloud-upload]="!vq" [class.bi-arrow-repeat]="vq"></i> {{ vq ? 'Replace quotation' : 'Add quotation' }}
-                  </button>
-                }
-              </footer>
-            }
-          </section>
-        }
-      </div>
-
-      <div class="section-title"><i class="bi bi-person-check"></i> Head Office Decision</div>
-      @if (choice() !== null) {
-        <div class="chosen-vendor"><i class="bi bi-truck"></i><div><small>Approve and raise purchase order</small><strong>{{ vendorName() }}</strong><small>The order is raised for {{ vendorName() }} at ₹{{ choiceTotal() | number:'1.2-2' }} ({{ choiceBasis() }}) and its invoice is sent to the vendor.</small></div></div>
-      } @else {
-        <div class="chosen-vendor warn"><i class="bi bi-info-circle"></i><div><strong>Choose a vendor</strong><small>Pick the vendor above, then approve to raise the purchase order.</small></div></div>
-      }
-      <div class="form-grid">
-        <div class="form-field">
-          <label for="rv-remarks">Remarks <span>(required to reject)</span></label>
-          <div class="input-wrap">
-            <i class="bi bi-chat-left-dots"></i>
-            <input id="rv-remarks" type="text" maxlength="255" placeholder="Add a note for the requester" [(ngModel)]="remarks" (input)="remarksError.set(false)" [class.is-invalid]="remarksError()" />
-          </div>
-          @if (remarksError()) { <small class="error-text">Give a reason for rejecting this request.</small> }
-        </div>
+        @if (remarksError()) { <small class="error-text">Give a reason for rejecting this request.</small> }
       </div>
     } @else if (r.reviewedBy) {
       <div class="section-title"><i class="bi bi-person-check"></i> Review</div>
@@ -283,10 +278,15 @@
   </div>
 
   <div class="modal-footer-custom">
+    @if (canReview() && vendorErrors()) { <span class="footer-note warn"><i class="bi bi-exclamation-circle"></i> Choose a vendor for every product.</span> }
     <button type="button" class="cancel-btn" (click)="close()">Close</button>
     @if (canReview()) {
       <button *appCan="'reject-purchase-request'; let action" type="button" class="danger-btn" [disabled]="saving()" (click)="reject()"><i [class]="'bi ' + (action.logo || 'bi-x-circle')"></i> {{ action.action_name || 'Reject' }}</button>
-      <button *appCan="'approve-purchase-request'; let action" type="button" class="save-btn" [disabled]="saving()" [title]="choice() !== null ? 'Approve and raise the purchase order' : 'Choose a vendor first'" (click)="approve()"><i [class]="'bi ' + (action.logo || 'bi-check2-circle')"></i> {{ saving() ? 'Approving...' : 'Approve &amp; raise PO' }}</button>
+      <button *appCan="'approve-purchase-request'; let action" type="button" class="save-btn approve-btn" [class.is-sending]="saving()" [class.ready]="allChosen()" [disabled]="saving()"
+              [title]="allChosen() ? 'Approve and raise the purchase orders' : 'Choose a vendor for every product first'" (click)="approve()">
+        <span class="approve-icon"><i [class]="'bi ' + (saving() ? 'bi-truck' : (action.logo || 'bi-check2-circle'))"></i></span>
+        {{ saving() ? 'Raising ' + (poGroups().length > 1 ? poGroups().length + ' POs' : 'PO') + '...' : poGroups().length > 1 ? 'Approve & raise ' + poGroups().length + ' POs' : 'Approve & raise PO' }}
+      </button>
     }
   </div>
 </div>

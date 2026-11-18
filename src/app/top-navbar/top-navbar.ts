@@ -227,6 +227,12 @@ export class TopNavbar {
       return;
     }
 
+    if (notification.action?.kind === 'central-restock') {
+      this.navLayout.closeNotifications();
+      void this.purchaseAlerts.createRestockOrder(notification.action);
+      return;
+    }
+
     if (notification.link) {
       this.navLayout.closeNotifications();
       this.router.navigate([notification.link]);

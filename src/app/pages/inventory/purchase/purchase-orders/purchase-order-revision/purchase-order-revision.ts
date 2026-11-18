@@ -40,7 +40,7 @@ export class PurchaseOrderRevision {
   readonly error = signal('');
   readonly hasPending = computed(() => this.revisions().some(r => r.status === 'Pending'));
 
-  form = { quoteNo: '', quoteDate: this.today, remarks: '', prices: {} as Record<string, number | null> };
+  form = { quoteNo: '', quoteDate: this.today, remarks: '', prices: {} as Record<string, number | null>, gst: {} as Record<string, number | null> };
   private file: File | null = null;
   private changed = false;
 
@@ -67,7 +67,11 @@ export class PurchaseOrderRevision {
 
   openForm(): void {
     this.showForm.set(true);
-    this.form = { quoteNo: '', quoteDate: this.today, remarks: '', prices: Object.fromEntries(this.lines().map(l => [l.productId, l.unitPrice])) };
+    this.form = {
+      quoteNo: '', quoteDate: this.today, remarks: '',
+      prices: Object.fromEntries(this.lines().map(l => [l.productId, l.unitPrice])),
+      gst: Object.fromEntries(this.lines().map(l => [l.productId, l.gstPercent])),
+    };
     this.file = null;
     this.fileName.set('');
     this.error.set('');
@@ -99,26 +103,49 @@ export class PurchaseOrderRevision {
   /** Deliveries that failed (shown as a warning count in the header). */
   readonly failedDeliveries = computed(() => (this.order()?.deliveries ?? []).filter(d => d.status === 'failed').length);
 
-  /** Lines whose price the vendor changed. */
+  /** True when a typed value differs from the PO's (empty = unchanged). */
+  private differs(value: number | string | null | undefined, old: number): boolean {
+    return value !== null && value !== undefined && String(value) !== '' && Math.round(Number(value) * 100) !== Math.round(old * 100);
+  }
+
+  /** Lines whose unit price or GST the vendor changed. */
   changedLines(): RevisionLine[] {
-    return this.lines().filter(l => {
-      const v = this.form.prices[l.productId];
-      return v !== null && v !== undefined && String(v) !== '' && Math.round(Number(v) * 100) !== Math.round(l.unitPrice * 100);
-    });
+    return this.lines().filter(l => this.differs(this.form.prices[l.productId], l.unitPrice) || this.differs(this.form.gst[l.productId], l.gstPercent));
+  }
+
+  /** GST % of a line on the new quotation (the PO's when left empty). */
+  newGst(l: RevisionLine): number {
+    const g = this.form.gst[l.productId];
+    return g === null || g === undefined || String(g) === '' ? l.gstPercent : Number(g);
+  }
+
+  /** Unit price incl. GST on the PO. */
+  oldLanded(l: RevisionLine): number {
+    return l.unitPrice * (1 + l.gstPercent / 100);
+  }
+
+  /** Unit price incl. GST on the new quotation (null until a price is entered). */
+  newLanded(l: RevisionLine): number | null {
+    const p = this.form.prices[l.productId];
+    return p === null || p === undefined || String(p) === '' ? null : Number(p) * (1 + this.newGst(l) / 100);
   }
 
   async submit(): Promise<void> {
     if (!this.form.quoteNo.trim()) return void this.error.set("Enter the vendor's revised quote number.");
     if (!this.file) return void this.error.set("Attach the vendor's revised proforma quote.");
     const changed = this.changedLines();
-    if (!changed.length) return void this.error.set('Change at least one product price to the vendor\'s new price.');
+    if (!changed.length) return void this.error.set("Change at least one product's unit price or GST to the vendor's new quotation.");
+    const badPrice = changed.find(l => !(Number(this.form.prices[l.productId]) >= 0) || String(this.form.prices[l.productId] ?? '') === '');
+    if (badPrice) return void this.error.set(`Enter the new unit price of ${badPrice.productName}.`);
+    const badGst = changed.find(l => this.newGst(l) < 0 || this.newGst(l) > 100);
+    if (badGst) return void this.error.set(`GST of ${badGst.productName} must be between 0 and 100%.`);
     this.error.set('');
 
     const body = new FormData();
     body.append('quote_no', this.form.quoteNo.trim());
     body.append('quote_date', this.form.quoteDate);
     if (this.form.remarks.trim()) body.append('remarks', this.form.remarks.trim());
-    body.append('items', JSON.stringify(changed.map(l => ({ product_id: Number(l.productId), new_price: Number(this.form.prices[l.productId]) }))));
+    body.append('items', JSON.stringify(changed.map(l => ({ product_id: Number(l.productId), new_price: Number(this.form.prices[l.productId]), gst_percent: this.newGst(l) }))));
     body.append('file', this.file, this.uploadName());
 
     this.saving.set(true);

@@ -10,6 +10,7 @@ import {
   GoodsInward,
   InwardLine,
   LOW_STOCK_THRESHOLD,
+  LowStockRow,
   NearbyStoreOption,
   Priority,
   PurchaseLineItem,
@@ -336,6 +337,36 @@ export class PurchaseService {
     return this.orders().find(o => o.id === order.id) ?? order;
   }
 
+  /**
+   * Approval with a vendor per product: one purchase order per vendor (each product at that vendor's quotation price, else the price
+   * passed in). Every invoice goes to its vendor by e-mail + WhatsApp. Returns the raised orders.
+   */
+  async approveRequestSplit(id: string, lines: { productId: string; vendorId: number; price: number | null }[], remarks: string): Promise<PurchaseOrder[] | null> {
+    const res = await this.send('POST', `${BASE}/requests/${id}/approve`, {
+      lines: lines.map(l => ({ product_id: Number(l.productId), vendor_id: l.vendorId, price: l.price })),
+      remarks: remarks || null,
+    });
+    if (!res) return null;
+    await this.refresh('requests', 'orders');
+    const orders = ((res.data.orders ?? (res.data.order ? [res.data.order] : [])) as any[]).map(toOrder);
+    const deliveries = (res.data.deliveries ?? []) as any[];
+    const sent = orders.map(order => ({ order, list: deliveries.filter(d => !d.po_no || d.po_no === order.poNo).map(toDelivery) }));
+    for (const { order } of sent) {
+      this.notifications.add({ type: 'manager', title: 'Purchase order confirmed', message: `${order.poNo} raised to ${order.vendorName}.`, link: '/app/inventory/purchase-orders' });
+    }
+    if (sent.length === 1) {
+      this.announceDeliveries(sent[0].order.poNo, sent[0].order.vendorName, sent[0].list);
+    } else if (sent.length > 1) {
+      const line = (d: VendorDelivery) => `${d.channel === 'mail' ? 'E-mail' : 'WhatsApp'}: ${d.status === 'sent' ? `sent to ${d.recipient}` : `not sent (${d.error ?? 'failed'})`}`;
+      const ok = sent.every(s => s.list.every(d => d.status === 'sent'));
+      Swal.fire({
+        icon: ok ? 'success' : 'warning', title: `${sent.length} purchase orders raised`, confirmButtonColor: '#6C63FF',
+        html: sent.map(s => `<b>${s.order.poNo} - ${s.order.vendorName}</b><br>${s.list.map(line).join('<br>') || 'No delivery recorded'}`).join('<br><br>'),
+      });
+    }
+    return orders.map(o => this.orders().find(x => x.id === o.id) ?? o);
+  }
+
   // ---- nearby branches / franchises holding a product (Transfer Stock): within 50 km first, nearest first
   async nearbyStores(productId: string, toStoreKey: string): Promise<NearbyStoreOption[]> {
     const res = await this.send('GET', `${BASE}/stock/nearby?product_id=${encodeURIComponent(productId)}&to_store_id=${encodeURIComponent(toStoreKey)}`, null, false);
@@ -405,6 +436,79 @@ export class PurchaseService {
 
   async rejectRevision(id: number, remarks: string): Promise<boolean> {
     return !!(await this.send('POST', `${BASE}/price-revisions/${id}/reject`, { remarks }));
+  }
+
+  // ---- Central Store low / out-of-stock -> purchase order straight to a vendor (Super Admin / Admin / Head Office)
+  /**
+   * A vendor's proforma quotation for Central Store products, added from the purchase order form (multipart: vendor_id, quote_no,
+   * quote_date, valid_till, remarks, file, items = JSON [{product_id, quoted_price, gst_percent}]). Shows the saved / error popup.
+   */
+  async addLowStockProforma(form: FormData): Promise<boolean> {
+    return !!(await this.send('POST', `${BASE}/low-stock-orders/proforma`, form));
+  }
+
+  /** Throws when the list cannot be loaded, so a failure is never mistaken for "nothing is low". */
+  async lowStockOrders(): Promise<{ rows: LowStockRow[]; vendors: { id: number; name: string }[]; threshold: number }> {
+    let res: any;
+    try {
+      res = await firstValueFrom(this.api.GET(`${BASE}/low-stock-orders`) as Observable<any>);
+    } catch (e) {
+      const status = e instanceof HttpErrorResponse ? e.status : 0;
+      throw new Error(
+        status === 404 ? 'The purchase order service is not available on the server yet. Please update the backend and try again.'
+        : status === 403 ? 'Only the Head Office, an Admin or a Super Admin can create Central Store purchase orders.'
+        : (e instanceof HttpErrorResponse && e.error?.message) || 'The low-stock products could not be loaded. Please try again.',
+      );
+    }
+    return {
+      threshold: Number(res?.threshold) || this.threshold(),
+      vendors: ((res?.vendors ?? []) as any[]).map(v => ({ id: Number(v.id), name: v.name })),
+      rows: ((res?.data ?? []) as any[]).map(r => ({
+        productId: String(r.product_id), productCode: r.product_code ?? '', productName: r.product_name, hsnCode: r.hsn_code ?? '',
+        qty: Number(r.qty) || 0, onOrder: Number(r.on_order) || 0, suggestedQty: Number(r.suggested_qty) || 1,
+        unitPrice: Number(r.unit_price) || 0, gstPercent: Number(r.gst_percent) || 0,
+        vendorId: r.vendor_id ? Number(r.vendor_id) : null, vendorName: r.vendor_name ?? null,
+        usualVendorId: r.usual_vendor_id ? Number(r.usual_vendor_id) : null, usualVendorName: r.usual_vendor_name ?? null,
+        quotes: ((r.quotes ?? []) as any[]).map(q => ({
+          vendorId: Number(q.vendor_id), vendorName: q.vendor_name ?? '', unitPrice: Number(q.unit_price) || 0, gstPercent: Number(q.gst_percent) || 0,
+          amount: Number(q.amount) || 0, source: q.source ?? '', date: q.date ?? null,
+          quoteId: q.quote_id ? Number(q.quote_id) : null, hasFile: !!q.has_file,
+        })),
+        out: r.severity === 'out',
+      })),
+    };
+  }
+
+  /**
+   * Purchase order(s) for the chosen Central Store low-stock products: one per vendor (each product goes to the vendor picked on
+   * its row, by default the least-price one). No request / quote step; every invoice goes to its vendor by e-mail + WhatsApp and
+   * the orders show in the Purchase Orders tab.
+   */
+  async createLowStockOrder(items: { productId: string; qty: number; vendorId: number }[], expectedAt: string | null, remarks: string): Promise<PurchaseOrder[] | null> {
+    const res = await this.send('POST', `${BASE}/low-stock-orders`, {
+      items: items.map(i => ({ product_id: Number(i.productId), qty: i.qty, vendor_id: i.vendorId })), expected_at: expectedAt || null, remarks: remarks || null,
+    });
+    if (!res) return null;
+    await this.refresh('orders');
+    const orders = ((res.data.orders ?? (res.data.order ? [res.data.order] : [])) as any[]).map(toOrder);
+    const deliveries = (res.data.deliveries ?? []) as any[];
+    // deliveries carry the PO they belong to
+    const sent = orders.map(order => ({ order, list: deliveries.filter(d => !d.po_no || d.po_no === order.poNo).map(toDelivery) }));
+    for (const { order } of sent) {
+      this.notifications.add({ type: 'purchase', title: 'Purchase order raised', message: `${order.poNo} raised to ${order.vendorName} for the Central Store.`, link: '/app/inventory/purchase-orders' });
+    }
+    if (sent.length === 1) {
+      this.announceDeliveries(sent[0].order.poNo, sent[0].order.vendorName, sent[0].list);
+    } else if (sent.length > 1) {
+      // one summary for every vendor (a second Swal would replace the first)
+      const line = (d: VendorDelivery) => `${d.channel === 'mail' ? 'E-mail' : 'WhatsApp'}: ${d.status === 'sent' ? `sent to ${d.recipient}` : `not sent (${d.error ?? 'failed'})`}`;
+      const ok = sent.every(s => s.list.every(d => d.status === 'sent'));
+      Swal.fire({
+        icon: ok ? 'success' : 'warning', title: `${sent.length} purchase orders raised`, confirmButtonColor: '#6C63FF',
+        html: sent.map(s => `<b>${s.order.poNo} - ${s.order.vendorName}</b><br>${s.list.map(line).join('<br>') || 'No delivery recorded'}`).join('<br><br>'),
+      });
+    }
+    return orders;
   }
 
   /** Send (or re-send) the PO invoice to the vendor by e-mail and WhatsApp. */

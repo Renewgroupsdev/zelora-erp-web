@@ -13,7 +13,8 @@ export interface AppNotification {
   /** Route to navigate to when the notification is clicked, if any. */
   link?: string;
   /** Something other than a route to do when it is clicked (the navbar handles it), e.g. open a discount request to decide it. */
-  action?: { kind: 'discount-review'; id: number } | { kind: 'sitting-transfer'; transfer: SittingTransfer } | { kind: 'reassign-leads'; telecallerId: number; telecallerName: string; leadIds: number[] };
+  action?: { kind: 'discount-review'; id: number } | { kind: 'sitting-transfer'; transfer: SittingTransfer } | { kind: 'reassign-leads'; telecallerId: number; telecallerName: string; leadIds: number[] }
+    | { kind: 'central-restock'; productId: string; productName: string; qty: number; threshold: number };
 }
 
 const ICONS: Record<NotificationType, string> = {
@@ -49,7 +50,8 @@ const COLORS: Record<NotificationType, string> = {
   providedIn: 'root',
 })
 export class NotificationService {
-  private readonly _notifications = signal<AppNotification[]>(this.buildSeed());
+  /** Starts empty: only real alerts (pushed with add() or synced from the API) appear in the bell. */
+  private readonly _notifications = signal<AppNotification[]>([]);
 
   readonly notifications = this._notifications.asReadonly();
   readonly unreadCount = computed(() => this._notifications().filter((n) => !n.read).length);
@@ -134,10 +136,12 @@ export class NotificationService {
       id: `LSC-${i.productId}`,
       type: 'stock',
       title: i.qty <= 0 ? `Central Store: ${i.productName} is out of stock` : `Central Store low stock: ${i.productName}`,
-      message: `${i.qty} unit${i.qty === 1 ? '' : 's'} left (below ${threshold}). Move stock from a nearby branch or raise a purchase request.`,
+      message: (i.qty <= 0 ? 'No units left' : `Only ${i.qty} unit${i.qty === 1 ? '' : 's'} left`)
+        + ` (minimum ${threshold}). Click to create a purchase order and restock it.`,
       timestamp: at,
       read,
-      link: '/app/inventory/stock',
+      // opens the purchase request form for this product; approving it raises the purchase order
+      action: { kind: 'central-restock', productId: i.productId, productName: i.productName, qty: i.qty, threshold },
     });
 
     this._notifications.update(list => [
@@ -243,55 +247,5 @@ export class NotificationService {
 
     const days = Math.floor(hours / 24);
     return `${days} day${days === 1 ? '' : 's'} ago`;
-  }
-
-  private buildSeed(): AppNotification[] {
-    const now = Date.now();
-
-    return [
-      {
-        id: 'NTF-seed-1',
-        type: 'lead',
-        title: 'New lead added',
-        message: 'Arjun Nair was added to the pipeline from Velachery.',
-        timestamp: new Date(now - 2 * 60 * 1000),
-        read: false,
-        link: '/app/lead-management',
-      },
-      {
-        id: 'NTF-seed-2',
-        type: 'discount',
-        title: 'Discount request',
-        message: "Priya Sharma requested a 15% discount on Ananya Sharma's Bridal Package booking.",
-        timestamp: new Date(now - 18 * 60 * 1000),
-        read: false,
-        link: '/app/appointments',
-      },
-      {
-        id: 'NTF-seed-3',
-        type: 'stock',
-        title: 'Low stock alert',
-        message: 'Hyaluronic Acid Serum is running low at Anna Nagar branch (4 units left).',
-        timestamp: new Date(now - 55 * 60 * 1000),
-        read: false,
-      },
-      {
-        id: 'NTF-seed-4',
-        type: 'manager',
-        title: 'Branch manager notified',
-        message: 'Anna Nagar branch manager has been notified about the pending discount approval.',
-        timestamp: new Date(now - 60 * 60 * 1000),
-        read: true,
-      },
-      {
-        id: 'NTF-seed-5',
-        type: 'appointment',
-        title: 'Appointment reminder',
-        message: 'Ananya Sharma has an appointment today at 9:30 AM.',
-        timestamp: new Date(now - 2 * 60 * 60 * 1000),
-        read: true,
-        link: '/app/appointments',
-      },
-    ];
   }
 }
