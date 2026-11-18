@@ -4,7 +4,7 @@
       <div class="title-icon"><i class="bi bi-list-check"></i></div>
       <div class="title-content">
         <h2>{{ readOnly ? 'Task details' : isEdit ? 'Update task' : 'Log task' }}</h2>
-        <p>{{ owner ? owner.name + ' · ' + owner.designation : 'SEO task' }}{{ readOnly ? ' · view only' : '' }}</p>
+        <p>{{ owner ? owner.name + ' · ' + owner.designation : 'Task' }}{{ readOnly ? ' · view only' : '' }}</p>
       </div>
     </div>
     @if (existing) { <app-record-history type="HrWorkTask" [recordId]="existing.id" [title]="existing.title" /> }

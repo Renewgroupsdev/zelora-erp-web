@@ -14,6 +14,7 @@ import { BfBarDatum, BfColumnDatum, BfDatum } from '../../../shared/components/b
 import { BfColumns } from '../../../shared/components/bf-charts/bf-columns/bf-columns';
 import { BfDonut } from '../../../shared/components/bf-charts/bf-donut/bf-donut';
 import { FranchiseRecord, inrShort } from '../../../shared/models/branch-franchise.model';
+import { Employee } from '../../../shared/models/hr.model';
 import { HScroll } from '../../../shared/directives/h-scroll';
 import { daysBetween, displayDate, initials, inr, isoDate } from '../../../shared/utils/format.util';
 import { FranchiseForm } from '../franchise-form/franchise-form';
@@ -24,7 +25,7 @@ import { WipPanel } from '../../../shared/components/wip-panel/wip-panel';
 import { RecordHistory } from '../../../shared/components/record-history/record-history';
 
 /** Sections this page can render - which of them show, and their names / icons / order, come from the API. */
-const TAB_KEYS = ['overview', 'agreement', 'customers', 'sales', 'inventory', 'reports'] as const;
+const TAB_KEYS = ['overview', 'agreement', 'employees', 'attendance', 'leads', 'customers', 'appointments', 'treatments', 'sales', 'inventory', 'reports'] as const;
 type Tab = typeof TAB_KEYS[number];
 type Period = 'day' | 'month' | 'year';
 
@@ -73,6 +74,11 @@ export class FranchiseDetails {
   readonly initials = initials;
   readonly displayDate = displayDate;
 
+  private readonly employeeList = signal<Employee[]>([]);
+  private readonly attendanceData = signal<any>(null);
+  private readonly leadData = signal<any>(null);
+  private readonly appointmentData = signal<any>(null);
+  private readonly treatmentData = signal<any>(null);
   private readonly salesData = signal<any>(null);
   private readonly customerData = signal<any>(null);
   private readonly inventoryData = signal<any>(null);
@@ -112,8 +118,11 @@ export class FranchiseDetails {
     const done = () => this.tabLoading.set(false);
     const fail = (err: any) => { done(); this.toast.error(err?.error?.message || 'Failed to load this tab. Please try again.'); };
 
+    if (tab === 'employees') return void this.store.employees(id).subscribe({ next: r => { this.employeeList.set(r.employees); done(); }, error: fail });
+
     if (tab === 'sales') this.store.invoices(id).subscribe({ next: r => { this.invoices.set(r.invoices); this.invoiceTotals.set(r.totals); }, error: fail });
-    const target = ({ sales: this.salesData, customers: this.customerData, inventory: this.inventoryData, reports: this.reportData } as const)[tab];
+    const target = ({ attendance: this.attendanceData, leads: this.leadData, appointments: this.appointmentData, treatments: this.treatmentData,
+      sales: this.salesData, customers: this.customerData, inventory: this.inventoryData, reports: this.reportData } as const)[tab];
     this.store.tab(id, tab, tab === 'reports' ? { period: this.period() } : {}).subscribe({ next: data => { target.set(data); done(); }, error: fail });
   }
 
@@ -146,11 +155,53 @@ export class FranchiseDetails {
     return [{ label: `Franchise (${share}%)`, value: share }, { label: `Renew (${Math.round((100 - share) * 100) / 100}%)`, value: 100 - share }];
   });
 
+  // ---- Employees ----
+  readonly employees = this.employeeList.asReadonly();
+  readonly employeesByRole = computed<BfDatum[]>(() => {
+    const m = new Map<string, number>();
+    this.employeeList().forEach(e => m.set(e.designation || 'Unassigned', (m.get(e.designation || 'Unassigned') ?? 0) + 1));
+    return topGroups([...m].map(([label, value]) => ({ label, value })));
+  });
+  readonly employeeStatus = computed(() => {
+    const list = this.employeeList();
+    return { active: list.filter(e => e.status === 'Active').length, onboarding: list.filter(e => e.status === 'Onboarding').length, notice: list.filter(e => e.status === 'On Notice').length };
+  });
+
+  // ---- Attendance (today) ----
+  readonly attendance = computed<any[]>(() => this.attendanceData()?.rows ?? []);
+  readonly attendanceStats = computed(() => this.attendanceData()?.stats ?? { total: 0, present: 0, late: 0, half_day: 0, on_leave: 0, absent: 0, not_marked: 0, rate: 0 });
+  readonly attendanceChart = computed<BfDatum[]>(() => {
+    const s = this.attendanceStats();
+    return [{ label: 'Present', value: s.present }, { label: 'Late', value: s.late }, { label: 'Half day', value: s.half_day }, { label: 'On leave', value: s.on_leave }, { label: 'Absent', value: s.absent }, { label: 'Not marked', value: s.not_marked }];
+  });
+
+  // ---- Leads ----
+  readonly leadRows = computed<any[]>(() => this.leadData()?.rows ?? []);
+  readonly leadStats = computed(() => this.leadData()?.stats ?? { total: 0, converted: 0, open: 0, rate: 0 });
+  readonly leadsByTreatment = computed<BfDatum[]>(() => topGroups(this.leadData()?.by_treatment ?? []));
+  readonly leadsBySource = computed<BfBarDatum[]>(() => (this.leadData()?.by_source ?? []).slice(0, 8));
+
+  // ---- Appointments ----
+  readonly appointmentRows = computed<any[]>(() => this.appointmentData()?.rows ?? []);
+  readonly appointmentStats = computed(() => this.appointmentData()?.stats ?? { total: 0, paid: 0, pending: 0, value: 0 });
+  readonly appointmentsByTreatment = computed<BfDatum[]>(() => topGroups(this.appointmentData()?.by_treatment ?? []));
+  readonly appointmentsByStatus = computed<BfBarDatum[]>(() => this.appointmentData()?.by_status ?? []);
+
+  // ---- Treatments ----
+  readonly treatments = computed<any[]>(() => this.treatmentData()?.rows ?? []);
+  readonly treatmentStats = computed(() => this.treatmentData()?.stats ?? { count: 0, sessions: 0, revenue: 0, best: null });
+  readonly treatmentRevenue = computed<BfDatum[]>(() => topGroups(this.treatments().map(t => ({ label: t.name, value: t.revenue }))));
+  readonly treatmentSessions = computed<BfDatum[]>(() => this.treatments().slice().sort((a, b) => b.sessions - a.sessions).slice(0, 7).map(t => ({ label: t.name, value: t.sessions })));
+
+  attendanceClass(status: string): string {
+    return status === 'Present' ? 'active' : status === 'Absent' ? 'inactive' : 'pending';
+  }
+
   // ---- Customers ----
   readonly customers = computed<any[]>(() => this.customerData()?.rows ?? []);
   readonly customerStats = computed(() => this.customerData()?.stats ?? { total: 0, repeat: 0, billed: 0, average: 0 });
-  readonly customersByProduct = computed<BfDatum[]>(() => topGroups(this.customerData()?.customers_by_product ?? []));
-  readonly customerRevenue = computed<BfDatum[]>(() => topGroups(this.customerData()?.revenue_by_product ?? []));
+  readonly customersByTreatment = computed<BfDatum[]>(() => topGroups(this.customerData()?.by_treatment ?? []));
+  readonly customerRevenue = computed<BfDatum[]>(() => topGroups(this.customerData()?.revenue_by_treatment ?? []));
 
   // ---- Sales ----
   readonly salesStats = computed(() => this.salesData()?.stats ?? { this_month: 0, last_month: 0, total: 0, unpaid: 0, franchise_share: 0, renew_share: 0 });
@@ -158,9 +209,12 @@ export class FranchiseDetails {
   readonly shareSplit = computed<BfDatum[]>(() => this.salesData()?.share_split ?? []);
   readonly productSales = computed<BfDatum[]>(() => topGroups(this.salesData()?.by_product ?? []));
 
-  // ---- Inventory (stock value reported by the partner) ----
-  readonly stockValue = computed(() => this.inventoryData()?.inventory_value ?? this.franchise()?.inventoryValue ?? 0);
-  readonly staffCount = computed(() => this.inventoryData()?.employees ?? this.franchise()?.employees ?? 0);
+  // ---- Inventory: stock held at the franchise store, product by product ----
+  readonly stock = computed<any[]>(() => this.inventoryData()?.rows ?? []);
+  readonly stockTotal = computed(() => this.inventoryData()?.total_value ?? 0);
+  readonly stockStats = computed(() => this.inventoryData()?.stats ?? { products: 0, units: 0, expiring: 0, expired: 0 });
+  readonly stockValueData = computed<BfDatum[]>(() => topGroups(this.stock().map(p => ({ label: p.name, value: p.value }))));
+  readonly stockQtyData = computed<BfDatum[]>(() => this.stock().slice().sort((a, b) => b.qty - a.qty).slice(0, 8).map(p => ({ label: p.name, value: p.qty })));
 
   // ---- Reports: day / month / year ----
   readonly report = computed<FranchiseSeriesPoint[]>(() => this.reportData()?.rows ?? []);

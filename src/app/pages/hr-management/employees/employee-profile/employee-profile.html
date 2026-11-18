@@ -206,8 +206,8 @@
           <div><small>In progress</small><strong>{{ ts.inProgress }}</strong></div>
           <div><small>Overdue</small><strong>{{ ts.overdue }}</strong></div>
         </div>
-        <div class="section-title"><i class="bi bi-list-check"></i> SEO tasks
-          @if (work.canEdit({ empId: e.id })) { <ng-container *appCan="'add-hr-task'"><button type="button" class="save-btn" style="margin-left: auto" (click)="openTask()"><i class="bi bi-plus-lg"></i> Log task</button></ng-container> }
+        <div class="section-title"><i class="bi bi-list-check"></i> Tasks
+          @if (work.canEdit({ empId: e.id })) { <ng-container *appCan="'add-hr-task'"><button type="button" class="save-btn" style="margin-left: auto" (click)="openTask()"><i class="bi bi-plus-lg"></i> Add Tasks</button></ng-container> }
         </div>
         <div class="items-table-wrap">
           <table class="items-table">

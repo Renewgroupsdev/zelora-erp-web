@@ -58,8 +58,8 @@
             <div class="step-head"><i class="bi bi-bookmark-check"></i><div><h3>Shortlist this candidate?</h3><p>Review the profile and resume, then shortlist to move to the interview, or reject.</p></div></div>
             @if (canAct) {
               <div class="actions">
-                <button type="button" class="save-btn" (click)="shortlist()"><i class="bi bi-bookmark-check"></i> Shortlist</button>
-                <button type="button" class="danger-btn" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
+                <button type="button" class="save-btn" [disabled]="busy()" (click)="shortlist()"><i class="bi bi-bookmark-check"></i> Shortlist</button>
+                <button type="button" class="danger-btn" [disabled]="busy()" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
               </div>
             }
           }
@@ -85,9 +85,14 @@
                   </div>
                 </div>
               </div>
+              @if (mode === 'Video call') {
+                <p class="hint-text"><i class="bi bi-google"></i> A Google Meet link is created for this date and time and emailed to the candidate with the interview details.</p>
+              } @else {
+                <p class="hint-text"><i class="bi bi-envelope"></i> The candidate is emailed the date, time and interviewer.</p>
+              }
               <div class="actions">
-                <button type="button" class="save-btn" (click)="schedule()"><i class="bi bi-calendar-check"></i> Schedule interview</button>
-                <button type="button" class="danger-btn" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
+                <button type="button" class="save-btn" [disabled]="busy()" (click)="schedule()"><i class="bi" [ngClass]="busy() ? 'bi-arrow-repeat spin' : 'bi-calendar-check'"></i> {{ busy() ? (mode === 'Video call' ? 'Creating Meet link…' : 'Scheduling…') : 'Schedule interview' }}</button>
+                <button type="button" class="danger-btn" [disabled]="busy()" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
               </div>
             }
           }
@@ -98,6 +103,9 @@
               <div>
                 <h3>Interview scheduled - record how it went</h3>
                 <p>{{ (c.interview?.scheduledAt || c.interviewAt) | date:'EEE, d MMM y, h:mm a' }} · {{ c.interview?.interviewer || 'Interviewer not recorded' }} · {{ c.interview?.mode || 'In-person' }}</p>
+                @if (c.interview?.meetLink; as meetLink) {
+                  <p><i class="bi bi-camera-video"></i> <a [href]="meetLink" target="_blank" rel="noopener noreferrer">Join Google Meet</a> · {{ meetLink }}</p>
+                }
               </div>
             </div>
             @if (canAct) {
@@ -121,9 +129,9 @@
                 </div>
               </div>
               <div class="actions">
-                <button type="button" class="save-btn" (click)="markInterviewed()"><i class="bi bi-check2-circle"></i> Mark as interviewed</button>
+                <button type="button" class="save-btn" [disabled]="busy()" (click)="markInterviewed()"><i class="bi bi-check2-circle"></i> Mark as interviewed</button>
                 <button type="button" class="cancel-btn" (click)="reschedule()"><i class="bi bi-arrow-repeat"></i> Reschedule</button>
-                <button type="button" class="danger-btn" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
+                <button type="button" class="danger-btn" [disabled]="busy()" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
               </div>
             }
           }
@@ -147,8 +155,8 @@
                 </div>
               </div>
               <div class="actions">
-                <button type="button" class="save-btn" (click)="decide(true)"><i class="bi bi-patch-check"></i> Select</button>
-                <button type="button" class="danger-btn" (click)="decide(false)"><i class="bi bi-x-circle"></i> Reject</button>
+                <button type="button" class="save-btn" [disabled]="busy()" (click)="decide(true)"><i class="bi bi-patch-check"></i> Select</button>
+                <button type="button" class="danger-btn" [disabled]="busy()" (click)="decide(false)"><i class="bi bi-x-circle"></i> Reject</button>
               </div>
             }
           }
@@ -157,8 +165,8 @@
             <div class="step-head"><i class="bi bi-shield-check"></i><div><h3>Start background verification</h3><p>Collect the candidate's certificates and let HR verify them before the offer.</p></div></div>
             @if (canAct) {
               <div class="actions">
-                <button type="button" class="save-btn" (click)="startVerification()"><i class="bi bi-shield-check"></i> Start verification</button>
-                <button type="button" class="danger-btn" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
+                <button type="button" class="save-btn" [disabled]="busy()" (click)="startVerification()"><i class="bi bi-shield-check"></i> Start verification</button>
+                <button type="button" class="danger-btn" [disabled]="busy()" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
               </div>
             }
           }
@@ -232,7 +240,7 @@
                 @if (!c.verification?.completedAt) {
                   <button type="button" class="save-btn" [disabled]="gaps().length > 0" (click)="completeVerification()"><i class="bi bi-shield-fill-check"></i> Mark verified by HR</button>
                 }
-                <button type="button" class="danger-btn" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
+                <button type="button" class="danger-btn" [disabled]="busy()" (click)="showReject.set(true)"><i class="bi bi-x-circle"></i> Reject</button>
               </div>
             }
 
@@ -302,7 +310,7 @@
           <div class="input-wrap"><i class="bi bi-chat-left-text"></i><input id="cp-rej" type="text" maxlength="200" placeholder="Why is the candidate rejected?" [(ngModel)]="rejectReason" /></div>
         </div>
         <div class="actions">
-          <button type="button" class="danger-btn" (click)="confirmReject()"><i class="bi bi-x-circle"></i> Confirm reject</button>
+          <button type="button" class="danger-btn" [disabled]="busy()" (click)="confirmReject()"><i class="bi bi-x-circle"></i> Confirm reject</button>
           <button type="button" class="cancel-btn" (click)="showReject.set(false)">Cancel</button>
         </div>
       </div>

@@ -299,6 +299,8 @@ export interface CandidateInterview {
   scheduledAt: string;
   interviewer: string;
   mode: InterviewMode;
+  /** Google Meet link of a "Video call" interview (the candidate is emailed it too). */
+  meetLink?: string;
   scheduledBy: string;
   /** Set once the interview has taken place. */
   interviewedAt?: string;
@@ -371,6 +373,9 @@ export interface Candidate {
   interviewAt?: string | null;
   notes?: string;
   resumeFile: string;
+  photoUrl?: string;
+  /** A resume file was uploaded (or fetched from the portal) for this applicant: the Download icon gets that file. */
+  hasOriginalResume?: boolean;
   shortlistedBy?: string;
   shortlistedAt?: string;
   interview?: CandidateInterview;

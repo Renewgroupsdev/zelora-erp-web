@@ -4,7 +4,7 @@ import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angu
 import { EmployeeHistory, HrService } from '../../../../shared/common-services/hr.service';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 import { WorkTaskService } from '../../../../shared/common-services/work-task.service';
-import { isSeoEmployee, isTaskOverdue } from '../../../../shared/models/work-task.model';
+import { isTaskOverdue } from '../../../../shared/models/work-task.model';
 import { hoursLabel, kycNumberLabel, salaryBreakup, workedHours } from '../../../../shared/models/hr.model';
 import { displayDate, displayTime, initials, monthKey, monthLabel } from '../../../../shared/utils/format.util';
 import { PayslipView } from '../../payroll/payslip-view/payslip-view';
@@ -38,8 +38,8 @@ export class EmployeeProfile implements OnInit {
     { key: 'payslips', label: 'Payslips', icon: 'bi-file-earmark-text' },
     { key: 'appraisals', label: 'Appraisals & Bonus', icon: 'bi-award' },
   ];
-  /** SEO employees get an extra Tasks tab with their task tracker. */
-  readonly tabs = this.baseTabs.concat(isSeoEmployee(this.hr.employee(this.data.empId) ?? { department: '', designation: '' }) ? [{ key: 'tasks' as ProfileTab, label: 'Tasks', icon: 'bi-list-check' }] : []);
+  /** Every employee gets a Tasks tab with their task tracker. */
+  readonly tabs = this.baseTabs.concat([{ key: 'tasks' as ProfileTab, label: 'Tasks', icon: 'bi-list-check' }]);
 
   readonly displayDate = displayDate;
   readonly displayTime = displayTime;

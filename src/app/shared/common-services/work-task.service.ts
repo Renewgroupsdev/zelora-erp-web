@@ -4,7 +4,7 @@ import { ApiDataService } from '../../core/http/api.service';
 import { isAdmin } from '../../core/auth/auth.model';
 import { AuthService } from '../../core/auth/auth.service';
 import { Employee } from '../models/hr.model';
-import { WorkTask, isSeoEmployee, isTaskOverdue, taskStats } from '../models/work-task.model';
+import { WorkTask, isTaskOverdue, taskStats } from '../models/work-task.model';
 import { isoDate } from '../utils/format.util';
 import { ApiRoutesConstants } from './api-route-constants';
 import { BranchContextService } from './branch-context.service';
@@ -14,9 +14,9 @@ import { HrService } from './hr.service';
 export type WorkTaskInput = Omit<WorkTask, 'id' | 'empId' | 'createdAt' | 'updatedAt'>;
 
 export interface WorkTaskAccess {
-  /** admin = dashboard only; seo = logs and updates own tasks; none = no access. */
-  role: 'admin' | 'seo' | 'none';
-  /** The signed-in user's own HR record (SEO role). */
+  /** admin = dashboard of everyone; employee = logs and updates own tasks; none = no access (no HR record linked to the login). */
+  role: 'admin' | 'employee' | 'none';
+  /** The signed-in user's own HR record (null for an admin who has none). Whoever has one can log tasks of their own. */
   employee: Employee | null;
 }
 
@@ -27,8 +27,8 @@ export function apiErrorMessage(err: any, fallback: string): string {
 }
 
 /**
- * SEO task tracker, stored on the server (GET/POST/PUT/DELETE hr/tasks). Admin / super admin only view the dashboard; an SEO
- * employee adds and updates their own tasks. Every change goes to the API first and the signal is filled from its response,
+ * Task tracker, stored on the server (GET/POST/PUT/DELETE hr/tasks). Admin / super admin see the dashboard of every employee; every
+ * employee (any department) adds and updates their own tasks. Every change goes to the API first and the signal is filled from its response,
  * so ids are the database ids and the audit trail sees each write.
  */
 @Injectable({ providedIn: 'root' })
@@ -42,22 +42,25 @@ export class WorkTaskService {
 
   readonly tasks = computed(() => this.list());
   readonly loading = signal(false);
-  readonly seoEmployees = computed(() => this.hr.activeEmployees().filter(isSeoEmployee));
+  /** True once the first load (employees + tasks) has finished, so a page never judges access before it knows who the user is. */
+  readonly loaded = signal(false);
+  /** Every active employee, whatever the department (the dashboard's employee cards). */
+  readonly trackedEmployees = computed(() => this.hr.activeEmployees());
 
   readonly access = computed<WorkTaskAccess>(() => {
     const user = this.auth.currentUser();
     const slug = user?.role?.slug ?? '';
-    if (isAdmin(user?.role_id) || ['admin', 'super_admin'].includes(slug)) return { role: 'admin', employee: null };
-    const me = this.hr.employees().find(e => e.email.toLowerCase() === (user?.email ?? '').toLowerCase() || e.name.toLowerCase() === (user?.name ?? '').toLowerCase());
-    if (me && isSeoEmployee(me)) return { role: 'seo', employee: me };
+    const me = this.hr.employees().find(e => e.email.toLowerCase() === (user?.email ?? '').toLowerCase() || e.name.toLowerCase() === (user?.name ?? '').toLowerCase()) ?? null;
+    if (isAdmin(user?.role_id) || ['admin', 'super_admin'].includes(slug)) return { role: 'admin', employee: me };
+    if (me) return { role: 'employee', employee: me };
     return { role: 'none', employee: null };
   });
 
-  /** Tasks the signed-in user may see: everyone's (admin) or their own (SEO). */
+  /** Tasks the signed-in user may see: everyone's (admin) or their own (employee). */
   readonly visibleTasks = computed(() => {
     const a = this.access();
     if (a.role === 'admin') return this.tasks();
-    if (a.role === 'seo') return this.tasks().filter(t => t.empId === a.employee!.id);
+    if (a.role === 'employee') return this.tasks().filter(t => t.empId === a.employee!.id);
     return [];
   });
 
@@ -84,8 +87,8 @@ export class WorkTaskService {
         return rest.pipe(map(more => [first, ...more].flatMap(r => (r?.data ?? []) as any[])));
       }),
     ).subscribe({
-      next: rows => { this.list.set(rows.map(r => this.fromApi(r))); this.loading.set(false); },
-      error: err => { console.error('GET hr/tasks failed', err); this.loading.set(false); },
+      next: rows => { this.list.set(rows.map(r => this.fromApi(r))); this.loading.set(false); this.loaded.set(true); },
+      error: err => { console.error('GET hr/tasks failed', err); this.loading.set(false); this.loaded.set(true); },
     });
   }
 
@@ -97,17 +100,17 @@ export class WorkTaskService {
     return taskStats(list, isoDate());
   }
 
-  /** Only the SEO employee themselves may add or edit tasks. */
+  /** An employee (any department) adds and edits only their own tasks; an admin without an employee record only views. */
   canEdit(task: Pick<WorkTask, 'empId'> | null = null): boolean {
     const a = this.access();
-    return a.role === 'seo' && (!task || task.empId === a.employee!.id);
+    return !!a.employee && (!task || task.empId === a.employee.id);
   }
 
   /** POST hr/tasks. Emits the saved task; errors carry a readable message. */
   add(input: WorkTaskInput): Observable<WorkTask> {
     const a = this.access();
-    if (a.role !== 'seo') return throwError(() => new Error('Only an SEO employee can log tasks.'));
-    return (this.api.POST(ApiRoutesConstants.HR_TASKS, { ...this.body(input), employee_id: Number(a.employee!.id) }) as Observable<any>).pipe(
+    if (!a.employee) return throwError(() => new Error('Your login is not linked to an employee record, so you cannot log tasks.'));
+    return (this.api.POST(ApiRoutesConstants.HR_TASKS, { ...this.body(input), employee_id: Number(a.employee.id) }) as Observable<any>).pipe(
       map(res => this.fromApi(res.data)),
       tap(task => this.list.update(l => [task, ...l])),
       catchError(err => throwError(() => new Error(apiErrorMessage(err, 'Could not save the task.')))),

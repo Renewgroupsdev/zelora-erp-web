@@ -18,6 +18,7 @@ import { CandidateProcess } from './candidate-process/candidate-process';
 import { EmployeeForm } from '../employees/employee-form/employee-form';
 import { ManpowerForm } from './manpower-form/manpower-form';
 import { downloadResume, exportCandidates } from './resume';
+import { VacancyApplyForm } from './vacancy-apply-form/vacancy-apply-form';
 import { VacancyDetail } from './vacancy-detail/vacancy-detail';
 
 type View = 'requests' | 'vacancies' | 'candidates';
@@ -194,6 +195,17 @@ export class Recruitment extends HrListBase implements OnInit {
     this.openDialog(ManpowerForm, null, '860px');
   }
 
+  /** Header button: opens the manual applicant (vacancy apply) form with photo + resume upload. */
+  newVacancyRequest(): void {
+    this.openDialog<VacancyApplyForm, boolean>(VacancyApplyForm, null, '900px').afterClosed().subscribe(saved => {
+      if (!saved) return;
+      // The record is already saved (and at the top of the candidates list); pull the server's applicant counts / vacancy status and show it.
+      this.hr.loadRecruitment().subscribe({ error: () => undefined });
+      this.setView('candidates');
+      Swal.fire({ icon: 'success', title: 'Application saved', text: 'The applicant was added to the vacancy.', timer: 1800, showConfirmButton: false });
+    });
+  }
+
   async onQuickAction(event: { row: TableRow; action: string }): Promise<void> {
     const id = String(event.row['id']);
     switch (event.action) {
@@ -214,7 +226,9 @@ export class Recruitment extends HrListBase implements OnInit {
         break;
       case 'resume': {
         const c = this.hr.candidates().find(x => x.id === id);
-        if (c) downloadResume(c, this.hr.manpower().find(m => m.id === c.vacancyId));
+        // The file uploaded with the application when there is one; otherwise a resume generated from the candidate's details.
+        if (c?.hasOriginalResume) this.hr.downloadOriginalResume(c);
+        else if (c) downloadResume(c, this.hr.manpower().find(m => m.id === c.vacancyId));
         break;
       }
       case 'hold':

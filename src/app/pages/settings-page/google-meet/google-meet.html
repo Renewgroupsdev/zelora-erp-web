@@ -1,0 +1,78 @@
+<div class="meta-page">
+  <div class="page-heading">
+    <h1><i class="bi bi-google"></i> Google Meet</h1>
+    <div class="heading-actions">
+      <a class="btn-secondary" routerLink="/app/settings"><i class="bi bi-arrow-left"></i> Settings</a>
+    </div>
+  </div>
+
+  <app-auto-module-tabs></app-auto-module-tabs>
+
+  <section class="card">
+    <h2 class="card-title"><span class="title-main"><i class="bi bi-camera-video"></i> Interview video calls</span>
+      @if (connection(); as c) {
+        <span class="chip" [ngClass]="c.connected ? 'ok' : 'warn'">{{ c.connected ? 'Connected' + (c.source === 'env' ? ' (.env)' : '') : (c.client_id ? 'Not signed in' : 'Not set up') }}</span>
+      }
+    </h2>
+
+    <p class="muted gm-lead">When HR schedules an interview as a <strong>Video call</strong>, a Google Meet link is created for that date and time and emailed to the candidate with the interview details.</p>
+
+    @if (editing()) {
+      <ol class="gm-steps">
+        <li>In <strong>Google Cloud Console</strong> enable the <strong>Google Calendar API</strong>, then go to <strong>APIs &amp; Services -> Credentials -> Create credentials -> OAuth client ID</strong> (type <strong>Web application</strong>).</li>
+        <li>Under <strong>Authorized redirect URIs</strong> add exactly:
+          <span class="gm-uri"><code>{{ connection()?.redirect_uri }}</code> <button type="button" class="btn-secondary" (click)="copy(connection()?.redirect_uri || '')"><i class="bi bi-clipboard"></i> Copy</button></span>
+        </li>
+        <li>Paste the <strong>Client ID</strong> and <strong>Client secret</strong> below and save, then click <strong>Connect with Google</strong> and sign in with the HR Google account.</li>
+      </ol>
+
+      <div class="field-grid">
+        <label class="field">Client ID
+          <input class="input" [(ngModel)]="form.client_id" name="gm-client" placeholder="1234567890-abc.apps.googleusercontent.com" autocomplete="off" />
+        </label>
+        <label class="field">Client secret
+          <span class="gm-secret">
+            <input class="input" [type]="showSecret() ? 'text' : 'password'" [(ngModel)]="form.client_secret" name="gm-secret" autocomplete="new-password"
+                   [placeholder]="connection()?.secret_saved ? 'Leave empty to keep the saved secret' : 'GOCSPX-…'" />
+            <button type="button" class="btn-secondary" (click)="showSecret.set(!showSecret())" [attr.aria-label]="showSecret() ? 'Hide secret' : 'Show secret'"><i class="bi" [ngClass]="showSecret() ? 'bi-eye-slash' : 'bi-eye'"></i></button>
+          </span>
+        </label>
+        <label class="field">Calendar
+          <input class="input" [(ngModel)]="form.calendar_id" name="gm-cal" placeholder="primary" autocomplete="off" />
+        </label>
+        <label class="field">Refresh token <small class="muted">(optional - "Connect with Google" fills it in)</small>
+          <input class="input" [(ngModel)]="form.refresh_token" name="gm-refresh" autocomplete="off" placeholder="1//0g…" />
+        </label>
+      </div>
+      @if (error(); as e) { <div class="notice bad"><i class="bi bi-exclamation-octagon-fill"></i><span>{{ e }}</span></div> }
+      <div class="gm-actions">
+        <span class="muted">The secret and token are stored encrypted and are never shown again.</span>
+        <span class="gm-buttons">
+          @if (connection()?.client_id) { <button type="button" class="btn-secondary" (click)="editing.set(false)">Cancel</button> }
+          <button type="button" class="btn-primary" (click)="save()" [disabled]="saving() || !form.client_id.trim() || (!connection()?.secret_saved && !form.client_secret.trim())">
+            <i class="bi" [ngClass]="saving() ? 'bi-arrow-repeat spin' : 'bi-save'"></i> {{ saving() ? 'Saving…' : 'Save' }}
+          </button>
+        </span>
+      </div>
+    } @else if (connection(); as c) {
+      <dl class="gm-grid">
+        <div><dt>Google account</dt><dd>{{ c.google_email || (c.connected ? 'Signed in' : 'Not signed in') }}</dd></div>
+        <div><dt>Client ID</dt><dd>{{ c.client_id || '-' }}</dd></div>
+        <div><dt>Calendar</dt><dd>{{ c.calendar_id }}</dd></div>
+        <div><dt>Last verified</dt><dd>{{ formatDateTime(c.verified_at) }}</dd></div>
+      </dl>
+      <p class="muted">Redirect URI registered on the OAuth client: <code>{{ c.redirect_uri }}</code></p>
+      <div class="gm-actions">
+        <span class="muted">{{ c.source === 'env' ? 'Using the .env settings. Save the details here to replace them.' : 'Meet links are created under this Google account.' }}</span>
+        <span class="gm-buttons">
+          <button type="button" class="btn-primary" (click)="connect()" [disabled]="isBusy('connect')">
+            <i class="bi" [ngClass]="isBusy('connect') ? 'bi-arrow-repeat spin' : 'bi-google'"></i> {{ isBusy('connect') ? 'Opening Google…' : (c.google_email ? 'Reconnect with Google' : 'Connect with Google') }}
+          </button>
+          <button type="button" class="btn-secondary" (click)="test()" [disabled]="isBusy('test') || !c.connected"><i class="bi bi-activity"></i> {{ isBusy('test') ? 'Testing…' : 'Test connection' }}</button>
+          <button type="button" class="btn-secondary" (click)="edit()"><i class="bi bi-pencil-square"></i> Edit</button>
+          @if (c.connected && c.source === 'settings') { <button type="button" class="btn-secondary danger" (click)="disconnect()" [disabled]="isBusy('off')"><i class="bi bi-x-circle"></i> Disconnect</button> }
+        </span>
+      </div>
+    }
+  </section>
+</div>

@@ -2,8 +2,10 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, map, tap } from 'rxjs';
 import { ApiDataService } from '../../core/http/api.service';
 import { FranchiseRecord, FranchiseStatus } from '../models/branch-franchise.model';
+import { Employee } from '../models/hr.model';
 import { ApiRoutesConstants } from './api-route-constants';
 import { BranchOptionsService } from './branch-options.service';
+import { HrService } from './hr.service';
 
 /** The five cards on the list page (GET /franchises -> stats). */
 export interface FranchiseOverview {
@@ -87,6 +89,7 @@ export function apiError(err: any, fallback = 'Something went wrong. Please try 
 export class FranchiseService {
   private readonly api = inject(ApiDataService);
   private readonly branchOptions = inject(BranchOptionsService);
+  private readonly hr = inject(HrService);
 
   private readonly list = signal<FranchiseRecord[]>([]);
   private readonly overviewState = signal<FranchiseOverview | null>(null);
@@ -153,7 +156,22 @@ export class FranchiseService {
     );
   }
 
-  /** Data of one details tab: sales | customers | inventory | reports. */
+  /** Franchise team from HR (GET /franchises/{id}/employees) as the HR Employee model, with the designation summary. */
+  employees(id: string, query: { search?: string; designation?: string; status?: string } = {}): Observable<{ employees: Employee[]; summary: { total: number; byDesignation: { designation: string; count: number }[] } }> {
+    const qs = new URLSearchParams({ per_page: '200' });
+    Object.entries(query).forEach(([k, v]) => v && qs.set(k, v));
+    return (this.api.GET(`${ApiRoutesConstants.FRANCHISES}/${id}/employees?${qs}`) as Observable<any>).pipe(
+      map(res => ({
+        employees: ((res.data ?? []) as any[]).map(r => this.hr.employeeFromApi(r)),
+        summary: {
+          total: res.summary?.total ?? 0,
+          byDesignation: (res.summary?.by_designation ?? []) as { designation: string; count: number }[],
+        },
+      })),
+    );
+  }
+
+  /** Data of one details tab: attendance | leads | appointments | treatments | sales | customers | inventory | reports. */
   tab<T = any>(id: string, tab: string, params: Record<string, string> = {}): Observable<T> {
     const qs = new URLSearchParams(params).toString();
     return (this.api.GET(`${ApiRoutesConstants.FRANCHISES}/${id}/${tab}${qs ? `?${qs}` : ''}`) as Observable<any>).pipe(map(res => res.data as T));

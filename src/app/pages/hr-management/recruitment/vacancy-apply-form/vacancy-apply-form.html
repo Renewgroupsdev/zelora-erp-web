@@ -1,0 +1,150 @@
+<div class="lead-modal">
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon"><i class="bi bi-person-vcard"></i></div>
+      <div class="title-content">
+        <h2>Add Vacancy Request</h2>
+        <p>Enter an applicant for an open vacancy. They join the hiring process as "Applied".</p>
+      </div>
+    </div>
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <form #f="ngForm" (ngSubmit)="save(f)" novalidate>
+    <div class="modal-body-custom">
+      <div class="section-title"><i class="bi bi-briefcase"></i> Vacancy</div>
+      <div class="form-grid cols-2">
+        <div class="form-field">
+          <label for="va-vacancy">Applying For <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-kanban"></i>
+            <select id="va-vacancy" name="vacancyId" required [(ngModel)]="model.vacancyId" #vac="ngModel" [class.is-invalid]="submitted() && !model.vacancyId">
+              <option value="" disabled>Select open vacancy</option>
+              @for (v of vacancies; track v.id) { <option [value]="v.id">{{ v.requestNo }} · {{ v.designation }} · {{ v.branch }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+          @if (submitted() && !model.vacancyId) { <small class="error-text">Select the vacancy.</small> }
+          @if (!vacancies.length) { <small class="error-text">There is no open vacancy. Approve a manpower request first.</small> }
+        </div>
+        <div class="form-field">
+          <label for="va-source">Source</label>
+          <div class="input-wrap"><i class="bi bi-megaphone"></i>
+            <select id="va-source" name="source" [(ngModel)]="model.source">@for (s of sources; track s) { <option [value]="s">{{ s }}</option> }</select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title"><i class="bi bi-person"></i> Applicant Details</div>
+      <div class="photo-upload">
+        <div class="photo-preview">
+          @if (photoPreview()) { <img [src]="photoPreview()" alt="Profile photo preview" /> } @else { <span>{{ initials() }}</span> }
+        </div>
+        <div class="photo-actions">
+          <label class="photo-btn">
+            <i class="bi bi-camera"></i> {{ photoPreview() ? 'Change photo' : 'Upload profile photo' }}
+            <input type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" hidden #photoInput (change)="onPhotoSelected(photoInput)" />
+          </label>
+          @if (photoPreview()) { <button type="button" class="photo-btn remove" (click)="removePhoto()"><i class="bi bi-trash"></i> Remove</button> }
+          <small>JPG, PNG or WebP, up to 5 MB.</small>
+          @if (photoError(); as err) { <small class="error-text">{{ err }}</small> }
+        </div>
+      </div>
+      <div class="form-grid cols-3">
+        <div class="form-field">
+          <label for="va-first">First Name <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-person"></i>
+            <input id="va-first" name="firstName" required maxlength="75" [(ngModel)]="model.firstName" #fn="ngModel" [class.is-invalid]="submitted() && fn.invalid" placeholder="First name" />
+          </div>
+          @if (submitted() && fn.invalid) { <small class="error-text">First name is required.</small> }
+        </div>
+        <div class="form-field">
+          <label for="va-last">Last Name <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-person"></i>
+            <input id="va-last" name="lastName" required maxlength="75" [(ngModel)]="model.lastName" #ln="ngModel" [class.is-invalid]="submitted() && ln.invalid" placeholder="Last name" />
+          </div>
+          @if (submitted() && ln.invalid) { <small class="error-text">Last name is required.</small> }
+        </div>
+        <div class="form-field">
+          <label for="va-phone">Phone <span>*</span></label>
+          <div class="input-wrap"><i class="bi bi-telephone"></i>
+            <input appPhone id="va-phone" name="phone" required pattern="[6-9][0-9]{9}" [(ngModel)]="model.phone" #ph="ngModel" [class.is-invalid]="submitted() && ph.invalid" placeholder="10-digit mobile" />
+          </div>
+          @if (submitted() && ph.invalid) { <small class="error-text">Enter a valid 10-digit mobile.</small> }
+        </div>
+        <div class="form-field">
+          <label for="va-email">Email</label>
+          <div class="input-wrap"><i class="bi bi-envelope"></i>
+            <input id="va-email" type="email" name="email" email maxlength="150" [(ngModel)]="model.email" #em="ngModel" [class.is-invalid]="submitted() && em.invalid" placeholder="name@example.com" />
+          </div>
+          @if (submitted() && em.invalid) { <small class="error-text">Enter a valid email.</small> }
+        </div>
+        <div class="form-field">
+          <label for="va-location">Location</label>
+          <div class="input-wrap"><i class="bi bi-geo-alt"></i><input id="va-location" name="location" maxlength="100" [(ngModel)]="model.location" placeholder="City" /></div>
+        </div>
+        <div class="form-field">
+          <label for="va-edu">Education</label>
+          <div class="input-wrap"><i class="bi bi-mortarboard"></i><input id="va-edu" name="education" maxlength="150" [(ngModel)]="model.education" placeholder="e.g. B.Sc Nursing" /></div>
+        </div>
+        <div class="form-field">
+          <label for="va-profile">LinkedIn Profile Link</label>
+          <div class="input-wrap"><i class="bi bi-linkedin"></i><input id="va-profile" type="url" name="profileUrl" maxlength="500" [(ngModel)]="model.profileUrl" placeholder="https://www.linkedin.com/in/username" /></div>
+        </div>
+      </div>
+
+      <div class="section-title"><i class="bi bi-currency-rupee"></i> Experience &amp; Pay</div>
+      <div class="form-grid cols-3">
+        <div class="form-field">
+          <label for="va-exp">Experience (years)</label>
+          <div class="input-wrap"><i class="bi bi-bar-chart-steps"></i><input id="va-exp" type="number" name="experienceYears" min="0" max="60" step="0.5" [(ngModel)]="model.experienceYears" /></div>
+        </div>
+        <div class="form-field">
+          <label for="va-company">Current Company</label>
+          <div class="input-wrap"><i class="bi bi-building"></i><input id="va-company" name="currentCompany" maxlength="150" [(ngModel)]="model.currentCompany" /></div>
+        </div>
+        <div class="form-field">
+          <label for="va-notice">Notice Period (days)</label>
+          <div class="input-wrap"><i class="bi bi-hourglass-split"></i><input id="va-notice" type="number" name="noticeDays" min="0" max="365" [(ngModel)]="model.noticeDays" /></div>
+        </div>
+        <div class="form-field">
+          <label for="va-cctc">Current CTC (₹ / month)</label>
+          <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input appAmount id="va-cctc" name="currentCtc" [(ngModel)]="model.currentCtc" placeholder="0" /></div>
+        </div>
+        <div class="form-field">
+          <label for="va-ectc">Expected CTC (₹ / month)</label>
+          <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input appAmount id="va-ectc" name="expectedCtc" [(ngModel)]="model.expectedCtc" placeholder="0" /></div>
+        </div>
+        <div class="form-field">
+          <label for="va-skills">Key Skills</label>
+          <div class="input-wrap"><i class="bi bi-stars"></i><input id="va-skills" name="skills" [(ngModel)]="model.skills" placeholder="Comma separated" /></div>
+        </div>
+      </div>
+
+      <div class="section-title"><i class="bi bi-paperclip"></i> Resume &amp; Notes</div>
+      <div class="form-grid">
+        <div class="form-field full-width">
+          <label>Resume <small>(PDF, DOC or DOCX, up to 5 MB)</small></label>
+          <div class="photo-actions">
+            <label class="photo-btn">
+              <i class="bi bi-upload"></i> {{ resumeName() ? 'Change resume' : 'Upload resume' }}
+              <input type="file" accept=".pdf,.doc,.docx,application/pdf" hidden #resumeInput (change)="onResumeSelected(resumeInput)" />
+            </label>
+            @if (resumeName()) { <span><i class="bi bi-file-earmark-text"></i> {{ resumeName() }}</span> <button type="button" class="photo-btn remove" (click)="removeResume()"><i class="bi bi-trash"></i> Remove</button> }
+            @if (resumeError(); as err) { <small class="error-text">{{ err }}</small> }
+          </div>
+        </div>
+        <div class="form-field full-width">
+          <label for="va-notes">Notes</label>
+          <div class="input-wrap"><i class="bi bi-chat-left-text"></i><input id="va-notes" name="notes" maxlength="500" [(ngModel)]="model.notes" placeholder="Anything HR should know" /></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <span class="footer-note"><i class="bi bi-info-circle"></i> Duplicate emails for the same vacancy are rejected.</span>
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn" [disabled]="saving() || !vacancies.length"><i class="bi bi-send"></i> {{ saving() ? 'Submitting…' : 'Submit Application' }}</button>
+    </div>
+  </form>
+</div>

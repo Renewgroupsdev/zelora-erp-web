@@ -1,0 +1,17 @@
+@use '../meta-lead-ads/meta-shared';
+
+code { padding: 1px 5px; border-radius: 5px; background: var(--app-surface-soft); font-size: 11.5px; word-break: break-all; }
+
+.spin { animation: gm-spin 0.9s linear infinite; display: inline-block; }
+@keyframes gm-spin { to { transform: rotate(360deg); } }
+
+.gm-lead { margin: 0 0 12px; line-height: 1.55; }
+.gm-steps { margin: 0 0 14px 18px; padding: 0; display: grid; gap: 4px; font-size: 13px; line-height: 1.5; }
+.gm-uri { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 14px; }
+.gm-secret { display: flex; gap: 8px; align-items: center; }
+.gm-secret .input { flex: 1; min-width: 0; }
+.gm-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
+.gm-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.gm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 18px; margin: 0 0 6px; }
+.gm-grid dt { font-size: 11.5px; color: var(--app-text-muted, #6a837d); margin-bottom: 2px; }
+.gm-grid dd { margin: 0; font-weight: 600; word-break: break-all; }

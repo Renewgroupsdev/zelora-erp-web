@@ -16,7 +16,7 @@ import { TaskForm } from './task-form/task-form';
 
 type Period = 'thisweek' | 'thismonth' | 'lastmonth' | 'all';
 
-/** SEO task dashboard: admin views every SEO employee; an SEO employee logs and updates their own tasks. */
+/** Task dashboard: admin views every employee; every employee logs and updates their own tasks. */
 @Component({
   selector: 'app-hr-tasks',
   standalone: true,
@@ -80,12 +80,12 @@ export class Tasks {
     this.locationOpen.set(false);
   }
 
-  /** One card per branch: progress, members and who is responsible (SEO employees working or based there). */
+  /** One card per branch: progress, members and who is responsible (employees working or based there). */
   readonly locationCards = computed(() => this.hr.branchNames().map(branch => {
     const list = this.periodScoped().filter(t => t.branch === branch);
     const all = this.store.visibleTasks().filter(t => t.branch === branch);
     const names = new Set<string>(all.map(t => this.employeeName(t.empId)));
-    for (const e of this.store.seoEmployees()) if (e.branch === branch) names.add(e.name);
+    for (const e of this.store.trackedEmployees()) if (e.branch === branch) names.add(e.name);
     return { branch, stats: this.store.stats(list), members: new Set(list.map(t => t.empId)).size, responsible: [...names].sort() };
   }));
 
@@ -105,10 +105,10 @@ export class Tasks {
 
   readonly stats = computed(() => this.store.stats(this.scoped()));
 
-  /** One card per SEO employee (admin) or just the signed-in employee (SEO). */
+  /** One card per employee (admin) or just the signed-in employee. */
   readonly employeeCards = computed(() => {
     const a = this.access();
-    const people = a.role === 'admin' ? this.store.seoEmployees() : a.employee ? [a.employee] : [];
+    const people = a.role === 'admin' ? this.store.trackedEmployees() : a.employee ? [a.employee] : [];
     return people
       .filter(e => !this.employeeId() || e.id === this.employeeId())
       .map(e => ({ employee: e, stats: this.store.stats(this.scoped().filter(t => t.empId === e.id)) }));
@@ -156,8 +156,8 @@ export class Tasks {
   }
 
   exportExcel(): void {
-    downloadExcel(`seo-tasks-${this.today}`, [{
-      name: 'SEO Tasks',
+    downloadExcel(`tasks-${this.today}`, [{
+      name: 'Tasks',
       columns: [
         { header: 'Employee', key: 'emp' }, { header: 'Branch', key: 'branch' }, { header: 'Task type', key: 'type' }, { header: 'Task', key: 'title' },
         { header: 'Planned start', key: 'start' }, { header: 'Due date', key: 'due' }, { header: 'Status', key: 'status' }, { header: 'Completed on', key: 'done' },

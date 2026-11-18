@@ -63,7 +63,10 @@ export class RolePermissionMatrix implements OnInit {
       next: (roles: any[]) => {
         this.roles = roles.map((role) => ({ id: role.id, name: role.name ?? `Role #${role.id}` }));
         if (this.selectedRoleId == null && this.roles.length) {
-          this.selectedRoleId = this.roles[0].id;
+          // Start on the role of whoever is signed in (Super Admin sees Super Admin, HR sees HR, ...); the first role is only the fallback.
+          const user = this.authService.currentUser();
+          const ownRoleId = Number(user?.role_id ?? user?.role?.id);
+          this.selectedRoleId = this.roles.find(role => Number(role.id) === ownRoleId)?.id ?? this.roles[0].id;
         }
       },
       error: (err: any) => {

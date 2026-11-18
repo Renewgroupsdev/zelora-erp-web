@@ -9,7 +9,7 @@ import { WorkTaskInput, WorkTaskService } from '../../../../shared/common-servic
 import { WORK_TASK_RESULTS, WORK_TASK_STATUSES, WORK_TASK_TYPES, WorkTask } from '../../../../shared/models/work-task.model';
 import { addDays, isoDate } from '../../../../shared/utils/format.util';
 
-/** Log or update one SEO task. Read-only for admins (they only view the dashboard). */
+/** Log or update one task. Read-only when it is not the signed-in employee's own task. */
 @Component({
   selector: 'app-task-form',
   standalone: true,
@@ -37,7 +37,7 @@ export class TaskForm {
   model: WorkTaskInput = this.existing
     ? structuredClone((({ id, empId, createdAt, updatedAt, ...rest }) => rest)(this.existing))
     : {
-      branch: this.owner?.branch ?? this.hr.branches[0] ?? '', type: WORK_TASK_TYPES['SEO'][0], title: '', status: 'Not started', result: 'Pending',
+      branch: this.owner?.branch ?? this.hr.branches[0] ?? '', type: (this.owner?.department === 'SEO' ? WORK_TASK_TYPES['SEO'] : WORK_TASK_TYPES['General'])[0], title: '', status: 'Not started', result: 'Pending',
       metric: '', plannedDate: isoDate(), dueDate: addDays(isoDate(), 3), completedDate: '', notes: '',
     };
 

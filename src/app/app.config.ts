@@ -3,8 +3,7 @@ import { NavigationError, provideRouter, withNavigationErrorHandler } from '@ang
 import { routes } from './app.routes';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from './core/auth/auth.interceptor';
-import { timeFormatInterceptor } from './core/http/time-format.interceptor';
-import { BranchContextService } from './shared/common-services/branch-context.service';
+import { timeFormatInterceptor } from './core/http/time-format.interceptor';import { BranchContextService } from './shared/common-services/branch-context.service';
 
 const CHUNK_RELOAD_KEY = 'chunk_reload_at';
 const CHUNK_ERROR = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError/i;

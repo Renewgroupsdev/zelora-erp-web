@@ -48,6 +48,7 @@ import {
   structureFromGross,
   workedHours,
 } from '../models/hr.model';
+import { saveBlob } from '../utils/export.util';
 import { addDays, daysInMonth, isoDate, monthKey, seqNo, uid } from '../utils/format.util';
 import { NotificationService } from './notification.service';
 import { BranchOption, BranchOptionsService } from './branch-options.service';
@@ -693,13 +694,17 @@ export class HrService {
     );
   }
 
-  /** Adds a walk-in / referral by hand (POST /hr/candidates). */
-  addCandidate(candidate: Omit<Candidate, 'id' | 'appliedAt' | 'stage' | 'resumeFile'>): Observable<Candidate> {
-    const body = {
+  /** Adds an applicant by hand (POST /hr/candidates, multipart so the profile photo and resume - up to 5 MB - travel with it). */
+  addCandidate(candidate: Omit<Candidate, 'id' | 'appliedAt' | 'stage' | 'resumeFile'>, files: { photo?: File | null; resume?: File | null } = {}): Observable<Candidate> {
+    const fields: Record<string, unknown> = {
       vacancy_id: Number(candidate.vacancyId), name: candidate.name, email: candidate.email, phone: candidate.phone, source: candidate.source,
       profile_url: candidate.profileUrl, location: candidate.location, experience_years: candidate.experienceYears, current_company: candidate.currentCompany,
       current_ctc: candidate.currentCtc, expected_ctc: candidate.expectedCtc, notice_days: candidate.noticeDays, skills: candidate.skills, education: candidate.education, notes: candidate.notes,
     };
+    const body = new FormData();
+    Object.entries(fields).forEach(([key, value]) => { if (value !== undefined && value !== null && value !== '') body.append(key, String(value)); });
+    if (files.photo) body.append('photo', files.photo);
+    if (files.resume) body.append('resume', files.resume);
     return (this.api.POST(ApiRoutesConstants.HR_CANDIDATES, body) as Observable<any>).pipe(map(res => this.putCandidate(this.candidateFromApi(res.data))));
   }
 
@@ -731,11 +736,11 @@ export class HrService {
       id: String(r.id), vacancyId: String(r.vacancy_id), name: r.name ?? '', email: r.email ?? '', phone: r.phone ?? '', source: r.source,
       profileUrl: r.profile_url ?? '', location: r.location ?? '', experienceYears: n(r.experience_years), currentCompany: r.current_company ?? '',
       currentCtc: n(r.current_ctc), expectedCtc: n(r.expected_ctc), noticeDays: n(r.notice_days), skills: r.skills ?? '', education: r.education ?? '',
-      appliedAt: r.applied_at ?? '', stage: r.stage, rating: n(r.rating), notes: r.notes ?? undefined, resumeFile: r.resume_file ?? '',
+      appliedAt: r.applied_at ?? '', stage: r.stage, rating: n(r.rating), notes: r.notes ?? undefined, resumeFile: r.resume_file ?? '', photoUrl: r.photo_url ?? prev?.photoUrl, hasOriginalResume: r.has_original_resume ?? prev?.hasOriginalResume,
       interviewAt: iv?.scheduled_at ?? null,
       shortlistedAt: r.shortlisted_at ?? undefined, shortlistedBy: r.shortlisted_at ? by(/^Shortlisted/) : undefined,
       interview: iv ? {
-        scheduledAt: iv.scheduled_at ?? iv.interviewed_at, interviewer: iv.interviewer ?? '', mode: iv.mode ?? 'In-person', scheduledBy: by(/^Interview (re)?scheduled/),
+        scheduledAt: iv.scheduled_at ?? iv.interviewed_at, interviewer: iv.interviewer ?? '', mode: iv.mode ?? 'In-person', meetLink: iv.meet_link ?? undefined, scheduledBy: by(/^Interview (re)?scheduled/),
         interviewedAt: iv.interviewed_at ?? undefined, performanceRating: iv.performance_rating ?? undefined, interviewNotes: iv.notes ?? undefined,
       } : undefined,
       review: rv ? { reviewedBy: by(/after interview/), reviewedAt: rv.reviewed_at, rating: n(rv.rating), comments: rv.comments ?? '', decision: rv.decision } : undefined,
@@ -810,6 +815,14 @@ export class HrService {
   verifyCandidateDocument(id: string, type: string, verified: boolean, remarks: string): Observable<Candidate> {
     const doc = this.candidates().find(c => c.id === id)?.verification?.documents.find(d => d.type === type);
     return this.candidateAction(id, `documents/${doc?.id}/verify`, { verified, remarks });
+  }
+
+  /** Downloads the resume file that was uploaded with the application (GET /hr/candidates/{id}/resume; the file is behind the API token). */
+  downloadOriginalResume(c: Candidate): void {
+    (this.api.GET_BLOB(`${ApiRoutesConstants.HR_CANDIDATES}/${c.id}/resume`) as Observable<Blob>).subscribe({
+      next: blob => saveBlob(blob, c.resumeFile || `${c.name.replace(/\s+/g, '_')}_Resume.pdf`),
+      error: () => Swal.fire({ icon: 'error', title: 'Could not download the resume', text: 'The uploaded file is no longer available.', confirmButtonColor: '#6C63FF' }),
+    });
   }
 
   /** Opens an uploaded verification document in a new tab (the file is behind the API token). */

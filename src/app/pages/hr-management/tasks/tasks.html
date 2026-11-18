@@ -6,13 +6,13 @@
       <h6 class="page-title"><i class="bi bi-list-check"></i> Task and Tracker</h6>
       <p class="page-subtitle">
         @switch (access().role) {
-          @case ('admin') { Dashboard of every SEO employee's tasks. View only: tasks are logged by the SEO employee. }
-          @case ('seo') { Log your tasks and keep their status and results up to date. Admin sees them on the dashboard. }
-          @default { Only SEO employees and admins can open this page. }
+          @case ('admin') { Dashboard of every employee's tasks. Each employee logs their own tasks; admin views the dashboard. }
+          @case ('employee') { Log your tasks and keep their status and results up to date. Admin sees them on the dashboard. }
+          @default { @if (store.loaded()) { Your login is not linked to an employee record. } }
         }
       </p>
     </div>
-    @if (access().role !== 'none') {
+    @if (store.loaded() && access().role !== 'none') {
       <div class="header-actions">
         <select class="date-input" aria-label="Period" [ngModel]="period()" (ngModelChange)="period.set($event)">
           <option value="thisweek">This week</option>
@@ -25,8 +25,8 @@
           @for (b of branches; track b) { <option [value]="b">{{ b }}</option> }
         </select>
         <button *appCan="'export-hr-tasks'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
-        @if (access().role === 'seo') {
-          <button *appCan="'add-hr-task'" type="button" class="add-lead-btn" (click)="open()"><i class="bi bi-plus-lg"></i> Log task</button>
+        @if (access().employee) {
+          <button *appCan="'add-hr-task'" type="button" class="add-lead-btn" (click)="open()"><i class="bi bi-plus-lg"></i> Add Tasks</button>
         }
       </div>
     }
@@ -34,16 +34,18 @@
 
   <app-module-tabs [tabs]="tabs()" label="HR Management"></app-module-tabs>
 
-  @if (access().role === 'none') {
+  @if (!store.loaded()) {
+    <app-page-loader [content]="true"></app-page-loader>
+  } @else if (access().role === 'none') {
     <div class="card-block empty-state">
       <i class="bi bi-lock"></i>
       <strong>No access</strong>
-      <span>This page is for SEO employees and admins. If you work in SEO, ask HR to set your department to SEO in your employee record.</span>
+      <span>Your login is not linked to an employee record. Ask HR to add you under Employees (with the same email) to log tasks.</span>
     </div>
   } @else {
     @if (store.loading()) { <app-page-loader [content]="true"></app-page-loader> }
     <div class="kpi-row">
-      <div class="kpi"><small>Tasks</small><strong>{{ s.total }}</strong><span>{{ employeeCards().length }} SEO employee{{ employeeCards().length === 1 ? '' : 's' }}</span></div>
+      <div class="kpi"><small>Tasks</small><strong>{{ s.total }}</strong><span>{{ employeeCards().length }} employee{{ employeeCards().length === 1 ? '' : 's' }}</span></div>
       <div class="kpi in"><small>Completed</small><strong>{{ s.percent }}%</strong><span>{{ s.done }} of {{ s.total }} done</span></div>
       <div class="kpi"><small>In progress</small><strong>{{ s.inProgress }}</strong><span>{{ s.notStarted }} not started</span></div>
       <div class="kpi" [class.alert]="s.overdue"><small>Overdue</small><strong>{{ s.overdue }}</strong><span>{{ s.blocked }} blocked</span></div>
@@ -109,7 +111,7 @@
         </div>
       } @else {
     <div class="card-block">
-      <h4><i class="bi bi-people-fill"></i> {{ access().role === 'admin' ? 'SEO employees' : 'My progress' }}</h4>
+      <h4><i class="bi bi-people-fill"></i> {{ access().role === 'admin' ? 'Employees' : 'My progress' }}</h4>
       <div class="emp-grid">
         @for (c of employeeCards(); track c.employee.id) {
           <button type="button" class="emp-card" (click)="access().role === 'admin' ? employeeId.set(employeeId() === c.employee.id ? '' : c.employee.id) : null" [class.active]="employeeId() === c.employee.id">
@@ -130,7 +132,7 @@
             </div>
           </button>
         } @empty {
-          <p class="muted-note">No SEO employees yet. Add an employee with department SEO under Employees.</p>
+          <p class="muted-note">No employees yet. Add employees under Employees.</p>
         }
       </div>
     </div>
@@ -192,7 +194,7 @@
               </tr>
             } @empty {
               <tr><td colspan="8" class="empty">
-                @if (access().role === 'seo') { No tasks yet. Click “Log task” to add your first one. } @else { No tasks match these filters. }
+                @if (access().employee) { No tasks yet. Click “Add Tasks” to add your first one. } @else { No tasks match these filters. }
               </td></tr>
             }
           </tbody>

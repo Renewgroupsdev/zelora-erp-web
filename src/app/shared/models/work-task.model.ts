@@ -1,7 +1,7 @@
 /**
- * Work tasks (SEO team tracker):
- *  - SEO employees log and update their own tasks (branch, task type, dates, status, result).
- *  - Admin / super admin only view the dashboard across every SEO employee.
+ * Work tasks (Task & Tracker):
+ *  - Every employee logs and updates their own tasks (branch, task type, dates, status, result).
+ *  - Admin / super admin view the dashboard across every employee (and log their own when they have an employee record).
  */
 
 export type WorkTaskStatus = 'Not started' | 'In progress' | 'Completed' | 'Blocked';
@@ -13,6 +13,7 @@ export const WORK_TASK_RESULTS: WorkTaskResult[] = ['Pending', 'Achieved', 'Part
 export const WORK_TASK_TYPES: Record<string, string[]> = {
   SEO: ['On-page SEO', 'Off-page / Backlinks', 'Technical SEO', 'Content / Blog', 'Local SEO / Google Business', 'Keyword research'],
   'Digital marketing': ['Social media', 'Paid ads (Google / Meta)', 'Email / WhatsApp', 'Creative / Design', 'Analytics & reporting'],
+  General: ['Meeting', 'Customer follow-up', 'Reporting', 'Training', 'Admin / operations', 'Project work'],
   Other: ['Other'],
 };
 export const ALL_WORK_TASK_TYPES = Object.values(WORK_TASK_TYPES).flat();
