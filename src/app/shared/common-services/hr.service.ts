@@ -6,7 +6,6 @@ import { ApiRoutesConstants } from './api-route-constants';
 import { FileUploadService } from './file-upload.service';
 import { AlertStackService } from './alert-stack.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { isTelecallerRole } from '../../core/auth/auth.model';
 import {
   Appraisal,
   AttendanceBreak,
@@ -134,8 +133,8 @@ export class HrService {
   readonly vacancies = computed(() => this.manpower().filter(m => m.status === 'Approved'));
   readonly pendingLeaves = computed(() => this.leaves().filter(l => l.status === 'Pending').length);
   readonly pendingManpower = computed(() => this.manpower().filter(m => m.status === 'Pending').length);
-  /** HR / branch heads / admins approve; other staff only raise requests. */
-  readonly canApprove = computed(() => !isTelecallerRole(this.auth.currentUser()));
+  /** Whoever Assign Permissions ticks on an HR approve action approves; the role type decides nothing. */
+  readonly canApprove = computed(() => ['approve-leave', 'approve-manpower-request', 'approve-appraisal', 'approve-attendance-correction'].some(a => this.auth.hasActionAccess(a)));
 
   constructor() {
     this.branchList.ensure();

@@ -1,7 +1,6 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of, switchMap, tap, throwError } from 'rxjs';
 import { ApiDataService } from '../../core/http/api.service';
-import { isAdmin } from '../../core/auth/auth.model';
 import { AuthService } from '../../core/auth/auth.service';
 import { Employee } from '../models/hr.model';
 import { WorkTask, isTaskOverdue, taskStats } from '../models/work-task.model';
