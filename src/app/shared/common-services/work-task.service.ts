@@ -1,7 +1,6 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of, switchMap, tap, throwError } from 'rxjs';
 import { ApiDataService } from '../../core/http/api.service';
-import { isAdmin } from '../../core/auth/auth.model';
 import { AuthService } from '../../core/auth/auth.service';
 import { Employee } from '../models/hr.model';
 import { WorkTask, isSeoEmployee, isTaskOverdue, taskStats } from '../models/work-task.model';
@@ -46,8 +45,8 @@ export class WorkTaskService {
 
   readonly access = computed<WorkTaskAccess>(() => {
     const user = this.auth.currentUser();
-    const slug = user?.role?.slug ?? '';
-    if (isAdmin(user?.role_id) || ['admin', 'super_admin'].includes(slug)) return { role: 'admin', employee: null };
+    // Assign Permissions decides: any HR task action / tab shows every employee's tasks.
+    if (['view-hr-tasks-records', 'add-hr-task', 'export-hr-tasks'].some(a => this.auth.hasActionAccess(a))) return { role: 'admin', employee: null };
     const me = this.hr.employees().find(e => e.email.toLowerCase() === (user?.email ?? '').toLowerCase() || e.name.toLowerCase() === (user?.name ?? '').toLowerCase());
     if (me && isSeoEmployee(me)) return { role: 'seo', employee: me };
     return { role: 'none', employee: null };

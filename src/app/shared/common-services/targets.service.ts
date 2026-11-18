@@ -2,7 +2,6 @@ import { Injectable, computed, effect, inject, signal, untracked } from '@angula
 import { Observable, Subject, catchError, concatMap, EMPTY, forkJoin, map, of, tap } from 'rxjs';
 import { ApiDataService } from '../../core/http/api.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { isAdmin } from '../../core/auth/auth.model';
 import {
   BranchPerformance, BranchTarget, CategoryResult, DEFAULT_RULES, EmployeePerformance, EmployeeTarget, IncentiveRules, IncentiveSlab,
   TREATMENT_CATEGORIES, TreatmentCategory, billCategory, emptyAmounts, isTreatmentStaff, slabRate, targetStatus,
@@ -72,9 +71,11 @@ export class TargetsService {
   readonly access = computed<TargetAccess>(() => {
     const user = this.auth.currentUser();
     const slug = user?.role?.slug ?? '';
-    if (isAdmin(user?.role_id) || ['admin', 'super_admin'].includes(slug)) return { level: 'all', branch: null, employeeId: null, canEdit: true };
+    // Assign Permissions decides: Set Targets = every branch + employee and may edit; the targets table tab = every branch, read only.
+    const canEdit = this.auth.hasActionAccess('set-target');
+    if (canEdit || this.auth.hasActionAccess('view-branch-targets-records')) return { level: 'all', branch: null, employeeId: null, canEdit };
     const me = this.hr.employees().find(e => e.email.toLowerCase() === (user?.email ?? '').toLowerCase() || e.name.toLowerCase() === (user?.name ?? '').toLowerCase());
-    const level = ['branch_manager', 'branch_head'].includes(slug) ? 'branch' : 'self';
+    const level = ['branch_manager', 'branch_head'].includes(user?.role?.slug ?? '') ? 'branch' : 'self';
     return { level, branch: me?.branch ?? null, employeeId: me?.id ?? null, canEdit: false };
   });
 

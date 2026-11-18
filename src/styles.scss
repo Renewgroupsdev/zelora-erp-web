@@ -1199,3 +1199,10 @@ input.ndp-input.ndp-bad { border-color: #dc2626 !important; }
   .as-chip { opacity: 1; }
   .as-ring { display: none; }
 }
+
+/* Save in progress (submit-lock.interceptor): the button stays visible but cannot be clicked until the API answers. */
+button.submit-locked {
+  pointer-events: none;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
