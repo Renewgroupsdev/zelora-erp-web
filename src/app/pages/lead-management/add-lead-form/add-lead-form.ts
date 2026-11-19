@@ -1,6 +1,6 @@
 import { PhoneInput } from '../../../shared/directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
-import { Component, Inject, OnInit, inject } from '@angular/core';
+import { Component, Inject, OnInit, computed, inject, signal } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -18,7 +18,7 @@ import { forkJoin } from 'rxjs/internal/observable/forkJoin';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { TelephonyService } from '../../../core/telephony/telephony.service';
 import { TelecallerRow } from '../../../core/telephony/telephony.models';
-import { BranchOptionsService, parseUnitKey, unitKey } from '../../../shared/common-services/branch-options.service';
+import { BranchOption, BranchOptionsService, parseUnitKey, unitKey } from '../../../shared/common-services/branch-options.service';
 import { catchError, map } from 'rxjs/operators';
 import { of } from 'rxjs/internal/observable/of';
 import { Observable } from 'rxjs';
@@ -63,6 +63,23 @@ export class AddLeadForm implements OnInit{
   private readonly telephony = inject(TelephonyService);
   readonly branchOptions = inject(BranchOptionsService);
 
+  /** "Belongs To" toggle: which kind of unit the Branch / Franchise dropdown lists. */
+  readonly unitTypes: { value: 'branch' | 'franchise'; label: string; icon: string }[] = [
+    { value: 'branch', label: 'Branch', icon: 'bi-diagram-3' },
+    { value: 'franchise', label: 'Franchise', icon: 'bi-shop' },
+  ];
+  readonly unitType = signal<'branch' | 'franchise'>('branch');
+  /** Every active branch + franchise from the masters. */
+  readonly allUnits = signal<BranchOption[]>([]);
+  readonly unitList = computed(() => this.allUnits().filter(o => o.type === this.unitType()));
+
+  setUnitType(type: 'branch' | 'franchise'): void {
+    if (type === this.unitType()) return;
+    this.unitType.set(type);
+    const control = this.leadForm.get('branch_key');
+    if (parseUnitKey(control?.value)?.type !== type) control?.setValue(this.unitList()[0]?.key ?? '');
+  }
+
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<AddLeadForm>,
@@ -70,8 +87,9 @@ export class AddLeadForm implements OnInit{
     private toast: ToastService,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
+    if (data?.branch_type === 'franchise') this.unitType.set('franchise');
 
-    this.leadForm = this.fb.group({
+    this.leadForm =this.fb.group({
       name: [data?.name ?? '', [Validators.required, Validators.maxLength(100)]],
       mobile_no: [data?.mobile_no ?? '',[Validators.required, Validators.pattern(/^[0-9]{10}$/)],],
       location: [data?.location ?? '', Validators.maxLength(250)],
@@ -89,13 +107,31 @@ export class AddLeadForm implements OnInit{
   }
 
   ngOnInit(): void {
-    // A new lead starts on the login's own branch / franchise (the API files a non-admin's lead there anyway).
-    this.branchOptions.load().subscribe(options => {
-      const control = this.leadForm.get('branch_key');
-      if (control?.value) return;
-      const own = this.branchOptions.scope()?.unit;
-      const pick = (own ? this.branchOptions.byRef(own.type, own.id) : undefined) ?? (options.length === 1 ? options[0] : undefined);
-      if (pick) control?.setValue(pick.key);
+    // The dropdown lists every active branch / franchise of the masters (?every=1), not only the login's own.
+    // A new lead starts on the login's own branch / franchise.
+    this.branchOptions.load().subscribe(() => {
+      this.apiDataService.GET(`${ApiRoutesConstants.SCOPE_OPTIONS}?every=1`).subscribe({
+        next: (res: any) => {
+          const data = res?.data ?? {};
+          const toRows = (rows: any[], type: 'branch' | 'franchise'): BranchOption[] =>
+            (rows ?? []).filter(r => Number(r?.id) > 0).map(r => ({
+              id: Number(r.id), type, key: unitKey(type, r.id), name: r.name, shortName: r.short_name ?? r.name, code: r.code ?? '',
+            }));
+          const options = [...toRows(data.branches, 'branch'), ...toRows(data.franchises, 'franchise')];
+          this.allUnits.set(options);
+
+          const control = this.leadForm.get('branch_key');
+          if (control?.value) return;
+          const own = this.branchOptions.scope()?.unit;
+          const pick = (own ? options.find(o => o.key === unitKey(own.type, own.id)) : undefined)
+            ?? (options.length === 1 ? options[0] : undefined);
+          if (pick) {
+            control?.setValue(pick.key);
+            this.unitType.set(pick.type);
+          }
+        },
+        error: () => this.toast.error('Could not load the branch / franchise list.'),
+      });
     });
     this.loadTelecallers();
     this.applyPreloadedLookups();
