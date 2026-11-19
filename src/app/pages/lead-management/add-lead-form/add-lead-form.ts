@@ -74,14 +74,14 @@ export class AddLeadForm implements OnInit{
     this.leadForm = this.fb.group({
       name: [data?.name ?? '', [Validators.required, Validators.maxLength(100)]],
       mobile_no: [data?.mobile_no ?? '',[Validators.required, Validators.pattern(/^[0-9]{10}$/)],],
-      location: [data?.location ?? '', Validators.maxLength(250)],
-      pincode: [data?.pincode ?? '', Validators.maxLength(100)],
+      location: [data?.location ?? '', Validators.maxLength(200)],
+      pincode: [data?.pincode ?? '', Validators.pattern(/^[0-9]{6}$/)],
       source: [data?.source_id ?? '', Validators.required],
       gender: [data?.gender ?? '', Validators.required],
       type: [data?.service_category_id ?? data?.category_id ?? '', Validators.required],
       sub_category: [data?.treatment_id ?? ''],
       status: [data?.status_id ?? '', Validators.required],
-      reason: [data?.reason ?? '', Validators.maxLength(250)],
+      reason: [data?.reason ?? '', Validators.maxLength(1000)],
       // "branch:9" / "franchise:7"; sent as branch_type + branch_id.
       branch_key: [unitKey(data?.branch_type, data?.branch_id), Validators.required],
       assigned_to: [data?.assigned_to ?? null],
@@ -201,17 +201,18 @@ export class AddLeadForm implements OnInit{
   }
 
   private patchEditDropdowns(): void {
-    const source = this.resolveOptionId(this.sourceOptions, this.data?.source_id, 'source_name');
+    // Match by id first, then by the saved name (the list row may only carry the name).
+    const source = this.resolveOptionId(this.sourceOptions, this.data?.source_id ?? this.data?.source_name ?? this.data?.source, 'source_name');
     if (source !== null) {
       this.leadForm.get('source')?.setValue(source);
     }
 
-    const type = this.resolveOptionId(this.typeOptions, this.data?.service_category_id ?? this.data?.category_id, 'name');
+    const type = this.resolveOptionId(this.typeOptions, this.data?.service_category_id ?? this.data?.category_id ?? this.data?.service_category_name ?? this.data?.category, 'name');
     if (type !== null) {
       this.leadForm.get('type')?.setValue(type);
     }
 
-    const status = this.resolveOptionId(this.statusOptions, this.data?.status_id, 'name');
+    const status = this.resolveOptionId(this.statusOptions, this.data?.status_id ?? this.data?.status_name ?? this.data?.status, 'name');
     if (status !== null) {
       this.leadForm.get('status')?.setValue(status);
     }
@@ -236,6 +237,8 @@ export class AddLeadForm implements OnInit{
   saveLead(): void {
     if (this.leadForm.invalid) {
       this.leadForm.markAllAsTouched();
+      // Errors show inline (red fields + messages); jump to the first invalid one.
+      setTimeout(() => (document.querySelector('.lead-modal .is-invalid') as HTMLElement | null)?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
       return;
     }
 
@@ -266,6 +269,11 @@ export class AddLeadForm implements OnInit{
         console.error('Failed to save lead:', err);
       },
     });
+  }
+
+  /** Characters used / allowed, for the counter under the Address and Reason boxes. */
+  charCount(controlName: string): number {
+    return String(this.leadForm.get(controlName)?.value ?? '').length;
   }
 
   close(): void {

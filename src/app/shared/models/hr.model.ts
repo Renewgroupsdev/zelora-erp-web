@@ -94,6 +94,8 @@ export interface KycDocument {
   dataUrl?: string;
   /** Server URL of a saved document (uploads/employee_kyc). */
   url?: string;
+  /** Carried over from the candidate's hiring verification (the number still has to be confirmed for Aadhaar / PAN). */
+  fromVerification?: boolean;
   /** The picked file, uploaded when the employee is saved. */
   file?: File;
   uploadedAt: string;

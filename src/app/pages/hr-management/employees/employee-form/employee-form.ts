@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { catchError, finalize, of } from 'rxjs';
+import { catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 import { ToastService } from '../../../../shared/common-services/toast.service';
 import { ApiDataService } from '../../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../../shared/common-services/api-route-constants';
@@ -118,6 +118,7 @@ export class EmployeeForm implements OnInit {
 
   ngOnInit(): void {
     this.model.userType ??= 'Staff';
+    if (this.candidateId && !this.data.employee) this.loadCandidateDocuments(this.candidateId);
     this.model.deviceType ||= 'sip';
     // List rows mask the bank account and omit KYC files, so an edit starts from the full record.
     if (this.data.employee) {
@@ -200,6 +201,69 @@ export class EmployeeForm implements OnInit {
   /** Re-splits the structure from a new monthly gross; components stay editable afterwards. */
   applyGross(): void {
     this.model.salary = structureFromGross(Number(this.monthlyGross) || 0, this.model.salary);
+  }
+
+  // ---- Documents the candidate submitted during hiring verification, carried over as KYC documents ----
+  readonly docsLoading = signal(false);
+  readonly prefillNote = signal<string | null>(null);
+
+  private static readonly VERIFICATION_TO_KYC: Record<string, KycDocType> = {
+    'Photo ID (Aadhaar / Passport)': 'Aadhaar',
+    'PAN Card': 'PAN',
+    'Address Proof': 'Address Proof',
+    'Education Certificates': 'Education Certificate',
+    'Experience / Relieving Letter': 'Experience Letter',
+    'Last 3 Payslips': 'Other',
+    'Professional License / Registration': 'Other',
+  };
+
+  /** Converting a hired candidate: their uploaded (not rejected) verification documents are loaded into the KYC step. */
+  private loadCandidateDocuments(candidateId: string): void {
+    this.docsLoading.set(true);
+    this.hr.fetchCandidate(candidateId).pipe(
+      switchMap(candidate => {
+        const docs = (candidate.verification?.documents ?? []).filter(d => d.id && d.status !== 'Rejected');
+        if (!docs.length) return of([] as { doc: typeof docs[number]; file: File | null }[]);
+        return forkJoin(docs.map(doc => this.hr.candidateDocumentFile(candidateId, doc).pipe(
+          map(file => ({ doc, file: file as File | null })),
+          catchError(() => of({ doc, file: null as File | null })),
+        )));
+      }),
+      finalize(() => this.docsLoading.set(false)),
+    ).subscribe({
+      next: results => {
+        const skipped: string[] = [];
+        let added = 0;
+        for (const { doc, file } of results) {
+          if (!file || file.size > KYC_MAX_BYTES) { skipped.push(doc.type); continue; }
+          if (this.kycDocs.some(k => k.fromVerification && k.fileName === file.name && k.type === (EmployeeForm.VERIFICATION_TO_KYC[doc.type] ?? 'Other'))) continue;
+          this.kycDocs.push({
+            id: uid('KYC'), type: EmployeeForm.VERIFICATION_TO_KYC[doc.type] ?? 'Other', number: '', fileName: file.name,
+            mime: file.type, size: file.size, file, fromVerification: true, uploadedAt: doc.uploadedAt || new Date().toISOString(),
+          });
+          added++;
+        }
+        const parts: string[] = [];
+        if (added) parts.push(`${added} document${added > 1 ? 's' : ''} loaded from the candidate's verification.`);
+        if (skipped.length) parts.push(`Not carried over (missing or larger than 1 MB - upload again): ${skipped.join(', ')}.`);
+        this.prefillNote.set(parts.join(' ') || null);
+        this.syncStatutory();
+      },
+      error: () => this.prefillNote.set("The candidate's verification documents could not be loaded. Upload the KYC documents here."),
+    });
+  }
+
+  /** Aadhaar / PAN number typed on a carried-over document (the file does not give us the number). */
+  setKycNumber(doc: KycDocument, value: string): void {
+    const raw = String(value ?? '');
+    doc.number = doc.type === 'Aadhaar' ? raw.replace(/\D/g, '').slice(0, 12) : raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+    this.syncStatutory();
+  }
+
+  kycNumberError(doc: KycDocument): string {
+    if (!doc.number) return doc.type === 'Aadhaar' ? 'Enter the 12-digit Aadhaar number.' : 'Enter the PAN number.';
+    if (doc.type === 'Aadhaar') return doc.number.replace(/\s/g, '').length === 12 ? '' : `Aadhaar needs 12 digits (${doc.number.length}/12).`;
+    return /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(doc.number) ? '' : 'PAN format: ABCDE1234F.';
   }
 
   get kycDocs(): KycDocument[] {
@@ -340,8 +404,9 @@ export class EmployeeForm implements OnInit {
       telecaller: this.isTelecaller(),
     }).pipe(finalize(() => this.isSaving.set(false))).subscribe({
       next: () => {
-        this.toast.success(this.isEdit ? 'Employee updated successfully' : 'Employee added successfully');
+        // Close the form first so only the success message shows (a hire also closes the candidate dialog behind it).
         this.dialogRef.close(true);
+        this.toast.success(this.isEdit ? 'Employee updated successfully' : 'Employee added successfully');
       },
       error: (err: any) => {
         const firstError = err?.error?.errors ? (Object.values(err.error.errors)[0] as string[])?.[0] : null;

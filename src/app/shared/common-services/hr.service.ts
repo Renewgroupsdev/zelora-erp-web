@@ -781,8 +781,8 @@ export class HrService {
     return this.candidateAction(id, 'shortlist');
   }
 
-  scheduleInterview(id: string, input: { scheduledAt: string; interviewer: string; mode: InterviewMode }): Observable<Candidate> {
-    return this.candidateAction(id, 'schedule-interview', { scheduled_at: input.scheduledAt, interviewer: input.interviewer, mode: input.mode });
+  scheduleInterview(id: string, input: { scheduledAt: string; interviewer: string; mode: InterviewMode; message?: string }): Observable<Candidate> {
+    return this.candidateAction(id, 'schedule-interview', { scheduled_at: input.scheduledAt, interviewer: input.interviewer, mode: input.mode, message: input.message || undefined });
   }
 
   /** The interview took place: store the interviewer's performance rating and notes. */
@@ -822,6 +822,15 @@ export class HrService {
       next: blob => saveBlob(blob, c.resumeFile || `${c.name.replace(/\s+/g, '_')}_Resume.pdf`),
       error: () => Swal.fire({ icon: 'error', title: 'Could not download the resume', text: 'The uploaded file is no longer available.', confirmButtonColor: '#6C63FF' }),
     });
+  }
+
+  /** A candidate's uploaded verification document as a File (used to carry it over to the new employee's KYC documents). */
+  candidateDocumentFile(candidateId: string, doc: CandidateDocument): Observable<File> {
+    const ext = (doc.fileName.split('.').pop() ?? '').toLowerCase();
+    const mime = ext === 'pdf' ? 'application/pdf' : ext === 'png' ? 'image/png' : /^jpe?g$/.test(ext) ? 'image/jpeg' : '';
+    return (this.api.GET_BLOB(`${ApiRoutesConstants.HR_CANDIDATES}/${candidateId}/documents/${doc.id}/download`) as Observable<Blob>).pipe(
+      map(blob => new File([blob], doc.fileName, { type: mime || blob.type })),
+    );
   }
 
   /** Opens an uploaded verification document in a new tab (the file is behind the API token). */

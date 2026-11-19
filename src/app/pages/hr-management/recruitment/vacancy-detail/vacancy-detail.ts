@@ -80,7 +80,9 @@ export class VacancyDetail {
   }
 
   resume(c: Candidate): void {
-    downloadResume(c, this.vacancy());
+    // The file uploaded with the application (manual vacancy entry) when there is one; otherwise a resume generated from the candidate's details.
+    if (c.hasOriginalResume) this.hr.downloadOriginalResume(c);
+    else downloadResume(c, this.vacancy());
   }
 
   exportExcel(): void {

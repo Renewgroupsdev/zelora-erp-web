@@ -290,6 +290,13 @@
   box-shadow: none;
 }
 
+// Red outline around the gender choices when none is picked on save.
+.gender-options.is-invalid {
+  padding: 2px;
+  border: 1px solid #dc3545;
+  border-radius: 12px;
+}
+
 .gender-options {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -434,4 +441,21 @@
   .gender-option-content i {
     font-size: 13px;
   }
+}
+
+.char-count {
+  display: block;
+  margin-top: 2px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-muted);
+
+  &.at-limit {
+    color: var(--status-red-text);
+    font-weight: 600;
+  }
+}
+
+.textarea-wrap textarea.is-invalid {
+  border-color: var(--status-red-text);
 }

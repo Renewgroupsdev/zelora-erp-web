@@ -45,7 +45,7 @@
               [class.is-invalid]="isInvalid('name')" />
           </div>
           @if (isInvalid('name')) {
-            <small class="error-text">Name is required.</small>
+            <small class="error-text">{{ leadForm.get('name')?.errors?.['maxlength'] ? 'Name can be at most 100 characters.' : 'Name is required.' }}</small>
           }
         </div>
 
@@ -62,7 +62,7 @@
               [class.is-invalid]="isInvalid('mobile_no')"/>
           </div>
           @if (isInvalid('mobile_no')) {
-            <small class="error-text">Enter a valid phone number.</small>
+            <small class="error-text">{{ leadForm.get('mobile_no')?.errors?.['required'] ? 'Phone number is required.' : 'Enter a valid 10-digit mobile number.' }}</small>
           }
         </div>
 
@@ -74,8 +74,14 @@
               id="lead-location"
               type="text"
               formControlName="pincode"
-              placeholder="Enter pincode" />
+              inputmode="numeric"
+              maxlength="6"
+              placeholder="Enter 6-digit pincode"
+              [class.is-invalid]="isInvalid('pincode')" />
           </div>
+          @if (isInvalid('pincode')) {
+            <small class="error-text">Pin code must be exactly 6 digits.</small>
+          }
         </div>
 
         <div class="form-field">
@@ -93,6 +99,9 @@
             </select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
+          @if (isInvalid('source')) {
+            <small class="error-text">Please select the lead source.</small>
+          }
         </div>
 
         <div class="form-field">
@@ -137,6 +146,9 @@
             </select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
+          @if (isInvalid('type')) {
+            <small class="error-text">Please select the service category type.</small>
+          }
         </div>
 
         @if (leadForm.get('type')?.value) {
@@ -167,6 +179,9 @@
             </select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
+          @if (isInvalid('status')) {
+            <small class="error-text">Please select the lead status.</small>
+          }
         </div>
 
         <div class="form-field">
@@ -181,6 +196,9 @@
             </select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
+          @if (isInvalid('branch_key')) {
+            <small class="error-text">Please select the branch or franchise.</small>
+          }
         </div>
 
         @if (showAssign) {
@@ -208,8 +226,11 @@
               id="lead-address"
               formControlName="location"
               rows="2"
+              maxlength="200"
+              [class.is-invalid]="isInvalid('location')"
               placeholder="Enter complete address"></textarea>
           </div>
+          <small class="char-count" [class.at-limit]="charCount('location') >= 200">{{ charCount('location') }}/200</small>
         </div>
 
         <div class="form-field full-width">
@@ -220,8 +241,11 @@
               id="lead-reason"
               formControlName="reason"
               rows="2"
+              maxlength="1000"
+              [class.is-invalid]="isInvalid('reason')"
               placeholder="Enter reason or additional notes"></textarea>
           </div>
+          <small class="char-count" [class.at-limit]="charCount('reason') >= 1000">{{ charCount('reason') }}/1000</small>
         </div>
 
       </div>

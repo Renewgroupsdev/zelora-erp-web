@@ -85,6 +85,11 @@
                   </div>
                 </div>
               </div>
+              <div class="form-field full-width">
+                <label for="cp-msg">Message to candidate <small>(optional)</small></label>
+                <div class="input-wrap textarea-wrap"><i class="bi bi-chat-left-text"></i><textarea id="cp-msg" rows="3" maxlength="1000" placeholder="Anything the candidate should know - documents to bring, venue directions, dress code" [(ngModel)]="interviewMessage"></textarea></div>
+                <small class="char-count">{{ interviewMessage.length }}/1000 · shown in the email above the meeting link</small>
+              </div>
               @if (mode === 'Video call') {
                 <p class="hint-text"><i class="bi bi-google"></i> A Google Meet link is created for this date and time and emailed to the candidate with the interview details.</p>
               } @else {
@@ -103,24 +108,57 @@
               <div>
                 <h3>Interview scheduled - record how it went</h3>
                 <p>{{ (c.interview?.scheduledAt || c.interviewAt) | date:'EEE, d MMM y, h:mm a' }} · {{ c.interview?.interviewer || 'Interviewer not recorded' }} · {{ c.interview?.mode || 'In-person' }}</p>
-                @if (c.interview?.meetLink; as meetLink) {
-                  <p><i class="bi bi-camera-video"></i> <a [href]="meetLink" target="_blank" rel="noopener noreferrer">Join Google Meet</a> · {{ meetLink }}</p>
-                }
               </div>
             </div>
+            @if (c.interview?.meetLink; as meetLink) {
+              <div class="meet-card">
+                <span class="meet-icon" aria-hidden="true"><i class="bi bi-camera-video-fill"></i></span>
+                <div class="meet-info">
+                  <span class="meet-badge"><i class="bi bi-google"></i> Google Meet</span>
+                  <strong class="meet-when">{{ (c.interview?.scheduledAt || c.interviewAt) | date:'EEE, d MMM y · h:mm a' }}</strong>
+                  <span class="meet-code" [title]="meetLink"><i class="bi bi-link-45deg"></i> {{ meetCode(meetLink) }}</span>
+                </div>
+                <div class="meet-actions">
+                  <a class="meet-join" [href]="meetLink" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i> Join meeting</a>
+                  <button type="button" class="meet-copy" [class.copied]="linkCopied()" (click)="copyMeetLink(meetLink)"><i class="bi" [ngClass]="linkCopied() ? 'bi-check2' : 'bi-clipboard'"></i> {{ linkCopied() ? 'Copied' : 'Copy link' }}</button>
+                </div>
+              </div>
+            }
             @if (canAct) {
               <div class="form-grid">
                 <div class="form-field">
                   <label for="cp-done">Interviewed on <span>*</span></label>
                   <div class="input-wrap"><i class="bi bi-calendar-check"></i><input id="cp-done" type="datetime-local" [(ngModel)]="doneAt" /></div>
                 </div>
-                <div class="form-field">
-                  <label>Performance rating <span>*</span></label>
-                  <div class="rating-pick">
-                    @for (s of stars; track s) {
-                      <button type="button" [attr.aria-label]="'Rate ' + s" (click)="setRating('performance', s)"><i class="bi" [class.bi-star-fill]="s <= performance" [class.bi-star]="s > performance"></i></button>
+                <div class="form-field full-width">
+                  <div class="eval-head">
+                    <label>Interview evaluation <span>*</span></label>
+                    <span class="eval-progress">{{ answeredCount() }} / {{ evaluationQuestions.length }} answered</span>
+                  </div>
+                  <div class="eval-list">
+                    @for (q of evaluationQuestions; track q.key; let i = $index) {
+                      <div class="eval-row" [class.answered]="answers[q.key] > 0" [class.missing]="evalAttempted && !(answers[q.key] > 0)">
+                        <span class="eval-no">{{ i + 1 }}</span>
+                        <div class="eval-text">
+                          <strong>{{ q.label }}</strong>
+                          <span>{{ q.question }}</span>
+                        </div>
+                        <div class="rating-pick" role="radiogroup" [attr.aria-label]="q.label">
+                          @for (s of stars; track s) {
+                            <button type="button" role="radio" [attr.aria-checked]="s === answers[q.key]" [attr.aria-label]="q.label + ': ' + s + ' of 5'" [title]="scoreLabel(s)" (click)="setAnswer(q.key, s)"><i class="bi" [class.bi-star-fill]="s <= (answers[q.key] || 0)" [class.bi-star]="s > (answers[q.key] || 0)"></i></button>
+                          }
+                        </div>
+                        <span class="eval-label">{{ answers[q.key] ? scoreLabel(answers[q.key]) : '' }}</span>
+                      </div>
                     }
-                    <span class="muted">{{ performance ? performance + ' / 5' : 'Not rated' }}</span>
+                  </div>
+                  <div class="eval-total">
+                    <span>Overall performance rating</span>
+                    <span class="eval-stars" aria-hidden="true">
+                      @for (s of stars; track s) { <i class="bi" [class.bi-star-fill]="s <= performance" [class.bi-star]="s > performance"></i> }
+                    </span>
+                    <strong>{{ answeredCount() ? averageScore().toFixed(1) + ' / 5' : 'Not rated' }}</strong>
+                    @if (answeredCount()) { <span class="eval-label">{{ scoreLabel(performance) }}</span> }
                   </div>
                 </div>
                 <div class="form-field full-width">
@@ -183,7 +221,10 @@
                     <tr>
                       <td><strong>{{ d.type }}</strong>@if (d.required) { <span class="req"> *</span> }</td>
                       <td>
-                        @if (up) { <i class="bi bi-file-earmark-check"></i> {{ up.fileName }}<div class="muted">{{ up.uploadedBy }} · {{ displayDate(up.uploadedAt) }}</div> }
+                        @if (up) {
+                          <button type="button" class="doc-open" (click)="viewDoc(up)" [title]="'Open ' + up.fileName"><span class="doc-open-name">{{ up.fileName }}</span><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></button>
+                          <div class="muted">{{ up.uploadedBy }} · {{ displayDate(up.uploadedAt) }}</div>
+                        }
                         @else { <span class="muted">Not uploaded</span> }
                       </td>
                       <td>
@@ -196,13 +237,14 @@
                         } @else { <span class="muted">{{ up?.remarks || '-' }}</span> }
                       </td>
                       <td class="row-actions">
-                        <label class="link-btn upload">
-                          <i class="bi bi-upload"></i> {{ up ? 'Replace' : 'Upload' }}
-                          <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png" (change)="upload(d.type, $event)" />
+                        <label class="link-btn upload" [class.is-uploading]="uploadingType() === d.type" [class.is-disabled]="!!uploadingType()" [attr.aria-busy]="uploadingType() === d.type">
+                          <i class="bi" [ngClass]="uploadingType() === d.type ? 'bi-arrow-repeat spin' : 'bi-upload'"></i>
+                          {{ uploadingType() === d.type ? 'Uploading…' : (up ? 'Replace' : 'Upload') }}
+                          <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png" [disabled]="!!uploadingType()" (change)="upload(d.type, $event)" />
                         </label>
                         @if (up && canAct && up.status !== 'Verified') {
-                          <button type="button" class="icon-btn add" title="Verify" aria-label="Verify document" (click)="verifyDoc(d.type, true)"><i class="bi bi-check-lg"></i></button>
-                          <button type="button" class="icon-btn" title="Reject document" aria-label="Reject document" (click)="verifyDoc(d.type, false)"><i class="bi bi-x-lg"></i></button>
+                          <button type="button" class="icon-btn add" title="Verify" aria-label="Verify document" [disabled]="busy()" (click)="verifyDoc(d.type, true)"><i class="bi bi-check-lg"></i></button>
+                          <button type="button" class="icon-btn" title="Reject document" aria-label="Reject document" [disabled]="busy()" (click)="verifyDoc(d.type, false)"><i class="bi bi-x-lg"></i></button>
                         }
                       </td>
                     </tr>
@@ -262,7 +304,8 @@
                     <div class="input-wrap"><i class="bi bi-hourglass-split"></i><input id="cp-valid" type="date" [min]="today" [(ngModel)]="validUntil" /></div>
                   </div>
                 </div>
-                <div class="actions"><button *appCan="'release-offer-letter'" type="button" class="save-btn" (click)="releaseOffer()"><i class="bi bi-send-check"></i> Release offer letter</button></div>
+                <p class="hint-text"><i class="bi bi-envelope-paper"></i> The offer letter is emailed to {{ c.email }} as a PDF, with Accept and Decline buttons the candidate can use.</p>
+                <div class="actions"><button *appCan="'release-offer-letter'" type="button" class="save-btn" [disabled]="busy()" (click)="releaseOffer()"><i class="bi" [ngClass]="busy() ? 'bi-arrow-repeat spin' : 'bi-send-check'"></i> {{ busy() ? 'Releasing and emailing…' : 'Release offer letter' }}</button></div>
               }
             }
           }
@@ -335,7 +378,7 @@
           </div>
         }
         @if (c.interview) {
-          <div class="record">
+          <div class="record" [class.wide]="!!c.interview.interviewedAt">
             <small>Interview</small>
             <strong>{{ c.interview.interviewer }} · {{ c.interview.mode }}</strong>
             <span>Scheduled {{ c.interview.scheduledAt | date:'d MMM y, h:mm a' }}</span>
@@ -344,7 +387,24 @@
               <span class="stars-ro" [attr.aria-label]="'Performance ' + c.interview.performanceRating + ' of 5'">
                 @for (s of stars; track s) { <i class="bi" [class.bi-star-fill]="s <= (c.interview.performanceRating || 0)" [class.bi-star]="s > (c.interview.performanceRating || 0)"></i> }
               </span>
-              @if (c.interview.interviewNotes) { <span class="note">"{{ c.interview.interviewNotes }}"</span> }
+              @if (parseEvaluation(c.interview.interviewNotes); as ev) {
+                @if (ev.items.length) {
+                  <div class="eval-view">
+                    <div class="eval-view-head"><b>Interview evaluation</b><span>Average {{ ev.average.toFixed(1) }} / 5 · {{ scoreLabel(ev.average) }}</span></div>
+                    @for (item of ev.items; track item.label; let i = $index) {
+                      <div class="eval-view-row">
+                        <span class="eval-no">{{ i + 1 }}</span>
+                        <div class="eval-text"><strong>{{ item.label }}</strong>@if (item.question) { <span>{{ item.question }}</span> }</div>
+                        <span class="stars-ro" [attr.aria-label]="item.label + ' ' + item.score + ' of 5'">
+                          @for (s of stars; track s) { <i class="bi" [class.bi-star-fill]="s <= item.score" [class.bi-star]="s > item.score"></i> }
+                        </span>
+                        <b class="eval-score">{{ item.score }}/5</b>
+                      </div>
+                    }
+                  </div>
+                }
+                @if (ev.notes) { <span class="note">"{{ ev.notes }}"</span> }
+              }
             }
           </div>
         }
@@ -381,12 +441,20 @@
     <div class="section-title"><i class="bi bi-clock-history"></i> History</div>
     @if (history().length) {
       <ul class="timeline">
-        @for (e of history(); track $index) {
-          <li>
-            <span class="dot"></span>
-            <div>
-              <strong>{{ e.action }}</strong>
-              <small>{{ e.by }} · {{ e.at | date:'d MMM y, h:mm a' }}</small>
+        @for (e of history(); track $index; let first = $first) {
+          @let m = historyMeta(e.action);
+          <li [ngClass]="'tone-' + m.tone" [class.latest]="first">
+            <span class="dot" aria-hidden="true"><i class="bi" [ngClass]="m.icon"></i></span>
+            <div class="tl-card">
+              <div class="tl-top">
+                <strong>{{ e.action }}</strong>
+                @if (first) { <span class="tl-new">Latest</span> }
+              </div>
+              <div class="tl-meta">
+                <span class="tl-by"><b>{{ (e.by || '?').charAt(0).toUpperCase() }}</b>{{ e.by || 'System' }}</span>
+                <span class="tl-time"><i class="bi bi-calendar3"></i> {{ e.at | date:'d MMM y' }}</span>
+                <span class="tl-time"><i class="bi bi-clock"></i> {{ e.at | date:'h:mm a' }}</span>
+              </div>
               @if (e.note) { <span class="note">{{ e.note }}</span> }
             </div>
           </li>
@@ -398,7 +466,7 @@
   </div>
 
   <div class="modal-footer-custom">
-    <button *appCan="'download-candidate-resume'" type="button" class="link-btn" (click)="resume(c)"><i class="bi bi-download"></i> Resume</button>
+    <button *appCan="'download-candidate-resume'" type="button" class="link-btn" (click)="resume(c)"><i class="bi bi-download"></i> Download Candidate Resume</button>
     <span class="spacer"></span>
     <button type="button" class="cancel-btn" (click)="close()">Close</button>
   </div>

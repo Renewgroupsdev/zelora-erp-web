@@ -302,15 +302,30 @@
         </div>
       </div>
       @if (kycError(); as err) { <small class="error-text">{{ err }}</small> }
+      @if (docsLoading()) {
+        <div class="kyc-note loading"><i class="bi bi-arrow-repeat spin"></i> Loading the documents the candidate submitted during verification…</div>
+      } @else if (prefillNote(); as note) {
+        <div class="kyc-note"><i class="bi bi-patch-check"></i> {{ note }}</div>
+      }
       @for (d of kycDocs; track d.id) {
-        <div class="kyc-row">
+        <div class="kyc-row" [class.from-verification]="d.fromVerification">
           <i class="bi" [class.bi-file-earmark-pdf]="d.mime === 'application/pdf'" [class.bi-file-earmark-image]="d.mime !== 'application/pdf'"></i>
-          <span><strong>{{ d.type }}</strong>{{ d.number ? ' · ' + kycNo(d) : '' }}<small>{{ d.fileName }} · {{ d.size / 1024 | number:'1.0-0' }} KB</small></span>
+          <span>
+            <strong>{{ d.type }}</strong>{{ d.number && !d.fromVerification ? ' · ' + kycNo(d) : '' }}
+            @if (d.fromVerification) { <em class="kyc-badge"><i class="bi bi-shield-check"></i> From verification</em> }
+            <small>{{ d.fileName }} · {{ d.size / 1024 | number:'1.0-0' }} KB</small>
+            @if (d.fromVerification && (d.type === 'Aadhaar' || d.type === 'PAN')) {
+              <input class="kyc-no" type="text" autocomplete="off" [attr.inputmode]="d.type === 'Aadhaar' ? 'numeric' : 'text'" [attr.maxlength]="d.type === 'Aadhaar' ? 12 : 10"
+                [name]="'kycNo-' + d.id" [ngModelOptions]="{ standalone: true }" [ngModel]="d.number" (ngModelChange)="setKycNumber(d, $event)"
+                [placeholder]="d.type === 'Aadhaar' ? 'Enter Aadhaar number (12 digits)' : 'Enter PAN number (ABCDE1234F)'" [class.is-invalid]="!!kycNumberError(d)" />
+              @if (kycNumberError(d); as e) { <small class="error-text">{{ e }}</small> }
+            }
+          </span>
           <a href="javascript:void(0)" (click)="viewKyc(d)">View</a>
           <button type="button" class="kyc-remove" aria-label="Remove document" (click)="removeKyc(d.id)"><i class="bi bi-trash"></i></button>
         </div>
       } @empty {
-        <small class="muted">No KYC documents uploaded yet.</small>
+        @if (!docsLoading()) { <small class="muted">No KYC documents uploaded yet.</small> }
       }
       </div>
 

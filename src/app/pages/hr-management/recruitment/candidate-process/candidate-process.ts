@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { Observable } from 'rxjs';
+import { Observable, finalize } from 'rxjs';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { HrService } from '../../../../shared/common-services/hr.service';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
@@ -74,11 +74,16 @@ export class CandidateProcess {
   readonly error = signal<string | null>(null);
   readonly showReject = signal(false);
   readonly busy = signal(false);
+  /** Document type whose file is uploading right now (its Upload button shows a spinner; the others are disabled). */
+  readonly uploadingType = signal<string | null>(null);
+  readonly linkCopied = signal(false);
 
   // Interview scheduling
   schedAt = `${addDays(isoDate(), 1)}T11:00`;
   interviewer = '';
   mode: InterviewMode = 'In-person';
+  /** Optional note HR adds to the interview email (shown above the meeting link). */
+  interviewMessage = '';
   // Interview feedback
   doneAt = `${isoDate()}T${new Date().toTimeString().slice(0, 5)}`;
   performance = 0;
@@ -114,6 +119,79 @@ export class CandidateProcess {
     return this.candidate().verification?.documents.find(d => d.type === type);
   }
 
+  /** Interview evaluation: each question is rated 1-5 stars; the overall performance rating is their average. */
+  readonly evaluationQuestions = [
+    { key: 'communication', label: 'Communication', question: 'How clearly and confidently did the candidate communicate?' },
+    { key: 'knowledge', label: 'Role knowledge', question: 'How well does the candidate know the skills this role needs?' },
+    { key: 'experience', label: 'Relevant experience', question: "How relevant is the candidate's past experience to this vacancy?" },
+    { key: 'problem', label: 'Problem solving', question: 'How well did the candidate handle situational / scenario questions?' },
+    { key: 'attitude', label: 'Attitude & teamwork', question: 'How positive, polite and team-oriented was the candidate?' },
+    { key: 'commitment', label: 'Commitment', question: 'How committed is the candidate to joining and staying with the company?' },
+  ];
+  answers: Record<string, number> = {};
+  /** Set after a failed submit so the unrated questions turn red. */
+  evalAttempted = false;
+
+  setAnswer(key: string, value: number): void {
+    this.answers[key] = value;
+    this.performance = this.averageScore() ? Math.min(5, Math.max(1, Math.round(this.averageScore()))) : 0;
+  }
+
+  /** Average of the answered questions (0 when none), e.g. 4.2. */
+  averageScore(): number {
+    const given = this.evaluationQuestions.map(q => this.answers[q.key] ?? 0).filter(v => v > 0);
+    return given.length ? given.reduce((a, b) => a + b, 0) / given.length : 0;
+  }
+
+  answeredCount(): number {
+    return this.evaluationQuestions.filter(q => (this.answers[q.key] ?? 0) > 0).length;
+  }
+
+  /**
+   * Splits the saved interview notes into HR's own notes and the question-by-question evaluation that
+   * markInterviewed() appends ("Evaluation (average 3.3/5): Communication 1/5 · Role knowledge 2/5 ...").
+   */
+  parseEvaluation(raw?: string | null): { notes: string; average: number; items: { label: string; question: string; score: number }[] } {
+    const text = (raw ?? '').trim();
+    const match = text.match(/Evaluation \(average ([\d.]+)\/5\):\s*([\s\S]+)$/);
+    if (!match) return { notes: text, average: 0, items: [] };
+    const items = match[2].split('·').map(part => part.trim().match(/^(.+?)\s+(\d)\/5$/)).filter((m): m is RegExpMatchArray => !!m)
+      .map(m => ({ label: m[1], question: this.evaluationQuestions.find(q => q.label === m[1])?.question ?? '', score: Number(m[2]) }));
+    return { notes: text.slice(0, match.index).trim(), average: Number(match[1]), items };
+  }
+
+  /** Icon + colour for a history entry, picked from its action text (most specific rules first). */
+  historyMeta(action: string): { icon: string; tone: 'green' | 'blue' | 'orange' | 'red' | 'purple' | 'grey' } {
+    const a = (action ?? '').toLowerCase();
+    const rules: [RegExp, string, 'green' | 'blue' | 'orange' | 'red' | 'purple' | 'grey'][] = [
+      [/email.*(could not|not sent)|(could not|not sent).*email/, 'bi-envelope-x-fill', 'red'],
+      [/declin|withdr|cancel/, 'bi-x-circle-fill', 'red'],
+      [/reject/, 'bi-x-octagon-fill', 'red'],
+      [/email/, 'bi-envelope-check-fill', 'purple'],
+      [/reschedul/, 'bi-arrow-repeat', 'orange'],
+      [/schedul/, 'bi-calendar-event-fill', 'blue'],
+      [/shortlist/, 'bi-bookmark-check-fill', 'green'],
+      [/uploaded/, 'bi-cloud-arrow-up-fill', 'blue'],
+      [/verification started/, 'bi-shield-exclamation', 'orange'],
+      [/verification completed|verified/, 'bi-shield-fill-check', 'green'],
+      [/background/, 'bi-person-lines-fill', 'blue'],
+      [/document/, 'bi-file-earmark-check-fill', 'blue'],
+      [/selected|select/, 'bi-patch-check-fill', 'green'],
+      [/interview/, 'bi-chat-square-text-fill', 'green'],
+      [/offer.*(accepted|hired)|hired/, 'bi-person-check-fill', 'green'],
+      [/offer/, 'bi-send-fill', 'purple'],
+      [/employee|onboard|joined/, 'bi-person-badge-fill', 'green'],
+      [/received|applied|added/, 'bi-person-plus-fill', 'blue'],
+    ];
+    const hit = rules.find(([re]) => re.test(a));
+    return hit ? { icon: hit[1], tone: hit[2] } : { icon: 'bi-clock-history', tone: 'grey' };
+  }
+
+  /** Short label under the stars: Poor ... Excellent. */
+  scoreLabel(value: number): string {
+    return ['', 'Poor', 'Below average', 'Average', 'Good', 'Excellent'][Math.round(value)] ?? '';
+  }
+
   setRating(field: 'performance' | 'reviewRating', value: number): void {
     this[field] = value;
   }
@@ -128,10 +206,10 @@ export class CandidateProcess {
   }
 
   /** Runs a server action; a failure shows the API's message in the dialog's error line. */
-  private run(source: Observable<unknown>, done?: () => void): void {
+  private run<T = unknown>(source: Observable<T>, done?: (result: T) => void): void {
     this.busy.set(true);
     source.subscribe({
-      next: () => { this.busy.set(false); done?.(); },
+      next: result => { this.busy.set(false); done?.(result); },
       error: err => {
         this.busy.set(false);
         const errors = err?.error?.errors as Record<string, string[]> | undefined;
@@ -150,14 +228,43 @@ export class CandidateProcess {
     this.begin();
     if (!this.schedAt || new Date(this.schedAt).getTime() < Date.now() - 60000) return void this.fail('Pick a future interview date and time.');
     if (!this.interviewer.trim()) return void this.fail('Enter who will interview the candidate.');
-    this.run(this.hr.scheduleInterview(this.candidate().id, { scheduledAt: new Date(this.schedAt).toISOString(), interviewer: this.interviewer.trim(), mode: this.mode }));
+    const videoCall = this.mode === 'Video call';
+    this.run(this.hr.scheduleInterview(this.candidate().id, { scheduledAt: new Date(this.schedAt).toISOString(), interviewer: this.interviewer.trim(), mode: this.mode, message: this.interviewMessage.trim() }), updated => {
+      this.interviewMessage = '';
+      // The interview is saved either way; tell HR when Google could not create the Meet link so it is not missed silently.
+      if (videoCall && !(updated as Candidate | undefined)?.interview?.meetLink) {
+        this.error.set('Interview scheduled, but the Google Meet link could not be created. Check Settings → Google Meet, then reschedule.');
+      }
+    });
+  }
+
+  /** "awt-rysw-ghn" out of https://meet.google.com/awt-rysw-ghn (the meeting code shown on the card). */
+  meetCode(link: string): string {
+    return link.replace(/^https?:\/\/(www\.)?/i, '').replace(/^meet\.google\.com\//i, '').split('?')[0];
+  }
+
+  /** Copies the Google Meet link of the scheduled interview. */
+  copyMeetLink(link: string): void {
+    navigator.clipboard?.writeText(link).then(() => {
+      this.linkCopied.set(true);
+      setTimeout(() => this.linkCopied.set(false), 1500);
+    }, () => undefined);
   }
 
   markInterviewed(): void {
     this.begin();
     if (!this.doneAt) return void this.fail('Enter when the interview took place.');
-    if (!this.performance) return void this.fail('Give the candidate a performance rating (1-5).');
-    this.run(this.hr.recordInterview(this.candidate().id, { interviewedAt: new Date(this.doneAt).toISOString(), performanceRating: this.performance, notes: this.interviewNotes.trim() }), () => (this.reviewRating = this.performance));
+    const unanswered = this.evaluationQuestions.filter(q => !(this.answers[q.key] > 0));
+    this.evalAttempted = unanswered.length > 0;
+    if (unanswered.length) {
+      // Inline message (the unrated questions also turn red); scroll to the first one.
+      setTimeout(() => document.querySelector('.eval-row.missing')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+      return void this.fail(`Please rate all ${this.evaluationQuestions.length} interview questions with 1 to 5 stars. ${unanswered.length} still to rate: ${unanswered.map(q => q.label).join(', ')}.`);
+    }
+    // The star answers are kept with the notes so the evaluation stays on the candidate's record.
+    const breakdown = `Evaluation (average ${this.averageScore().toFixed(1)}/5): ${this.evaluationQuestions.map(q => `${q.label} ${this.answers[q.key]}/5`).join(' · ')}`;
+    const notes = [this.interviewNotes.trim(), breakdown].filter(Boolean).join('\n\n');
+    this.run(this.hr.recordInterview(this.candidate().id, { interviewedAt: new Date(this.doneAt).toISOString(), performanceRating: this.performance, notes }), () => (this.reviewRating = this.performance));
   }
 
   decide(selected: boolean): void {
@@ -190,6 +297,11 @@ export class CandidateProcess {
     this.run(this.hr.startVerification(this.candidate().id));
   }
 
+  /** Opens the uploaded file of a verification document in a new tab. */
+  viewDoc(d: CandidateDocument): void {
+    this.hr.viewCandidateDocument(this.candidate().id, d);
+  }
+
   upload(type: string, event: Event): void {
     this.begin();
     const input = event.target as HTMLInputElement;
@@ -198,7 +310,8 @@ export class CandidateProcess {
     if (!file) return;
     if (file.size > MAX_FILE_BYTES) return void this.fail(`${file.name} is larger than 5 MB.`);
     if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) return void this.fail('Upload a PDF, JPG or PNG file.');
-    this.run(this.hr.uploadCandidateDocument(this.candidate().id, type, file));
+    this.uploadingType.set(type);
+    this.run(this.hr.uploadCandidateDocument(this.candidate().id, type, file).pipe(finalize(() => this.uploadingType.set(null))));
   }
 
   verifyDoc(type: string, verified: boolean): void {
@@ -239,7 +352,9 @@ export class CandidateProcess {
 
   /** Opens the Add Employee form prefilled from the application and offer; saving it completes the hire. */
   addEmployee(): void {
-    this.dialog.open(EmployeeForm, { width: '900px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, restoreFocus: true, disableClose: true, data: { employee: null, candidateId: this.candidate().id } });
+    this.dialog.open(EmployeeForm, { width: '900px', maxWidth: 'calc(100vw - 32px)', maxHeight: '92vh', autoFocus: false, restoreFocus: true, disableClose: true, data: { employee: null, candidateId: this.candidate().id } })
+      // Employee saved: this hiring dialog closes too, so only the success message is left on screen.
+      .afterClosed().subscribe(saved => { if (saved) this.dialogRef.close(true); });
   }
 
   offerLetter(c: Candidate): void {
@@ -247,7 +362,9 @@ export class CandidateProcess {
   }
 
   resume(c: Candidate): void {
-    downloadResume(c, this.vacancy());
+    // The file uploaded with the application (manual vacancy entry) when there is one; otherwise a resume generated from the candidate's details.
+    if (c.hasOriginalResume) this.hr.downloadOriginalResume(c);
+    else downloadResume(c, this.vacancy());
   }
 
   close(): void {
