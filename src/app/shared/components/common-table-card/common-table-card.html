@@ -10,6 +10,8 @@
       </div>
     </div>
 
+    <ng-content select="[tableActions]"></ng-content>
+
     @if (bulkActionsLabel && allowed('bulkActions')) {
       <button type="button" class="bulk-actions-btn" (click)="bulkActionsClick.emit()">
         {{ bulkActionsLabel }}

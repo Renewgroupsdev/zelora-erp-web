@@ -27,8 +27,7 @@
     (searchChange)="onSearch($event)"
     (filterClick)="onFilterClick($event)"
     (filtersChange)="onFiltersChange($event)"
-    [showExport]="can('export-follow-ups')"
-    (exportClick)="onExport()"
+    [showExport]="false"
   ></app-common-filter-card>
 
   <div class="table-col">
@@ -50,7 +49,25 @@
       (rowActionClick)="onRowAction($event)"
       (quickActionClick)="onQuickAction($event)"
       (profileClick)="viewLead($event)"
-    ></app-common-table-card>
+    >
+      @if (can('export-follow-ups')) {
+        <div tableActions class="export-wrapper">
+          <button type="button" class="export-btn" [class.active]="exportMenuOpen" (click)="exportMenuOpen = !exportMenuOpen; $event.stopPropagation()">
+            Export <i class="bi bi-box-arrow-down"></i>
+          </button>
+          @if (exportMenuOpen) {
+            <div class="export-menu" (click)="$event.stopPropagation()">
+              <div class="export-menu-title">Export as</div>
+              @for (option of exportOptions; track option.format) {
+                <button type="button" class="export-option" (click)="onExport(option.format)">
+                  <i class="bi" [ngClass]="option.icon"></i> {{ option.label }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+    </app-common-table-card>
   </div>
 
 </div>

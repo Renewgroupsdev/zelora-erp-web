@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import { downloadExcel, escapeHtml, fileStamp, printDocument, saveBlob } from '../../shared/utils/export.util';
 import { BranchOptionsService } from '../../shared/common-services/branch-options.service';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { Sort, SortDirection } from '@angular/material/sort';
@@ -10,6 +11,7 @@ import {
   CallerAvatar,
   CallerLogEntry,
   DetailCardData,
+  ExportFormat,
   FilterOption,
   LeadCell,
   QuickAction,
@@ -112,18 +114,18 @@ export class Followups implements OnInit, OnDestroy {
   private readonly FOLLOW_UP_TYPE_LABELS = ['General', 'Cool', 'Hot'];
 
   columns: TableColumn[] = [
-    { key: 'lead', header: 'Name', type: 'lead',width: '14%' },
-    { key: 'contact', header: 'Contact', type: 'text' },
-    { key: 'gender', header: 'Gender', type: 'text' },
-    { key: 'source', header: 'Source', type: 'text' },
-    { key: 'service_category', header: 'Service Category', type: 'text' },
-    { key: 'service_request', header: 'Service Request', type: 'text'},
-    { key: 'followup_count', header: 'Follow-Up Count', type: 'text' },
-    { key: 'follow_up_date', header: 'Follow-Up Date', type: 'text' },
-    { key: 'branch', header: 'Branch', type: 'branch' },
-    { key: 'telecaller', header: 'Telecaller Assigned', type: 'avatarGroup', sortable: false, width: '140px' },
-    { key: 'follow_up_type_label', header: 'Status', type: 'badge' },
-    { key: 'action', header: 'Action', type: 'quickActions', sortable: false, width: '120px' },
+    { key: 'lead', header: 'Name', type: 'lead', width: '13%' },
+    { key: 'contact', header: 'Contact', type: 'text', width: '9%' },
+    { key: 'gender', header: 'Gender', type: 'text', width: '5%' },
+    { key: 'source', header: 'Source', type: 'text', width: '7%' },
+    { key: 'service_category', header: 'Service Category', type: 'text', width: '10%' },
+    { key: 'telecaller', header: 'Telecaller Assigned', type: 'avatarGroup', sortable: false, width: '9%' },
+    { key: 'service_request', header: 'Service Request', type: 'text', width: '9%' },
+    { key: 'followup_count', header: 'Follow-Up Count', type: 'text', width: '6%' },
+    { key: 'follow_up_date', header: 'Follow-Up Date', type: 'text', width: '8%' },
+    { key: 'branch', header: 'Branch', type: 'branch', width: '9%' },
+    { key: 'follow_up_type_label', header: 'Status', type: 'badge', width: '7%' },
+    { key: 'action', header: 'Action', type: 'quickActions', sortable: false, width: '8%' },
   ];
 
   readonly pageSizeOptions = [10, 30, 50, 100];
@@ -328,8 +330,57 @@ export class Followups implements OnInit, OnDestroy {
     return this.auth.hasActionAccess(slug);
   }
 
-  onExport(): void {
-    // Trigger export as needed.
+  exportMenuOpen = false;
+
+  readonly exportOptions: { format: ExportFormat; label: string; icon: string }[] = [
+    { format: 'csv', label: 'CSV', icon: 'bi-filetype-csv' },
+    { format: 'xlsx', label: 'Excel', icon: 'bi-filetype-xlsx' },
+    { format: 'pdf', label: 'PDF', icon: 'bi-filetype-pdf' },
+  ];
+
+  @HostListener('document:click')
+  closeExportMenu(): void {
+    this.exportMenuOpen = false;
+  }
+
+  /** Exports every follow-up matching the current search / filters (not just the visible page). */
+  onExport(format: ExportFormat): void {
+    this.exportMenuOpen = false;
+    const rows = this.getSortedRows(this.getFilteredRows());
+    if (!rows.length) {
+      this.toast.warning('No follow-ups to export.');
+      return;
+    }
+
+    const columns = this.columns
+      .filter(c => c.type !== 'quickActions' && c.type !== 'rowActions' && c.type !== 'action')
+      .map(c => ({ header: c.header, key: c.key }));
+
+    const cellText = (row: TableRow, key: string): string | number => {
+      const cell = row[key] as unknown;
+      if (Array.isArray(cell)) return cell.map((c: { name?: string }) => c?.name ?? '').filter(Boolean).join(', ');
+      if (cell && typeof cell === 'object' && 'name' in cell) {
+        const lead = cell as { name: string; subtitle?: string };
+        return lead.subtitle ? `${lead.name} (${lead.subtitle})` : lead.name;
+      }
+      return typeof cell === 'number' ? cell : String(cell ?? '');
+    };
+    const data = rows.map(r => Object.fromEntries(columns.map(c => [c.key, cellText(r, c.key)])));
+
+    const title = 'Follow-Ups';
+    const file = `follow-ups-${fileStamp()}`;
+
+    if (format === 'xlsx') {
+      downloadExcel(file, [{ name: title, columns, rows: data }]);
+    } else if (format === 'csv') {
+      const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const lines = [columns.map(c => esc(c.header)).join(','), ...data.map(r => columns.map(c => esc(r[c.key])).join(','))];
+      saveBlob(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }), `${file}.csv`);
+    } else {
+      const head = columns.map(c => `<th>${escapeHtml(c.header)}</th>`).join('');
+      const body = data.map(r => `<tr>${columns.map(c => `<td>${escapeHtml(r[c.key])}</td>`).join('')}</tr>`).join('');
+      printDocument(title, `<div class="doc-head"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(fileStamp())}</p></div><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`);
+    }
   }
 
   get recordCountText(): string {

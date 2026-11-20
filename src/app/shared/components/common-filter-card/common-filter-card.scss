@@ -1,6 +1,6 @@
 :host { display:block; min-width:0; }
 .filter-card { position:relative; background:var(--app-surface); border:1px solid var(--border-soft); border-radius:10px; padding:6px 10px; gap:8px; z-index:20; }
-.export-wrapper { position:relative; }
+.export-wrapper { position:relative; margin-left:auto; }
 .export-wrapper .filter-menu { left:auto; right:0; min-width:150px; }
 .export-menu .option-btn { display:flex; align-items:center; gap:8px; i{font-size:14px;color:var(--text-muted)} }
 .search-box { flex:1 1 220px; min-width:170px; height:30px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border-soft-strong); padding:0 2px; i{color:var(--text-muted);font-size: 14px} input{width:100%;border:0;outline:0;background:transparent;font:14px var(--font-family-base);color:var(--text-dark)} &:focus-within{border-bottom-color:var(--primary)} }

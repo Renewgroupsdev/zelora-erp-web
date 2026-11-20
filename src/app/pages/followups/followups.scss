@@ -36,6 +36,76 @@ app-common-table-card {
   flex: 1 1 auto;
 }
 
+.export-wrapper {
+  position: relative;
+  margin-left: auto;
+}
+
+.export-btn {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--primary);
+  background: transparent;
+  color: var(--primary-dark);
+  font: 600 13px var(--font-family-base);
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover,
+  &.active {
+    background: var(--primary-soft);
+  }
+}
+
+.export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 150px;
+  padding: 10px;
+  background: var(--app-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+  z-index: 1000;
+}
+
+.export-menu-title {
+  padding: 2px 4px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.export-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  font: 13px var(--font-family-base);
+  color: var(--text-dark);
+  cursor: pointer;
+
+  i {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  &:hover {
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+  }
+}
+
 .page-header {
   position: relative;
   gap: 8px;
