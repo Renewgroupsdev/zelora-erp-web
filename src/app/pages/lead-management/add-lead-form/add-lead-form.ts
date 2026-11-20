@@ -153,6 +153,15 @@ export class AddLeadForm implements OnInit{
   private loadSubCategories(): void {
     this.apiDataService.GetAllPages(ApiRoutesConstants.SERVICE_CATEGORY_TREE_LIST).subscribe({
       next: (categories: any[]) => {
+        // The category dropdown = every parent category of the master (all pages), not the paged options list.
+        if (categories.length) {
+          const saved = this.leadForm.get('type')?.value;
+          const savedRow = this.typeOptions.find((t: any) => String(t.id) === String(saved));
+          this.typeOptions = categories.map((c: any) => ({ id: c.id, name: c.name }));
+          if (savedRow && !this.typeOptions.some((t: any) => String(t.id) === String(saved))) this.typeOptions.push(savedRow);
+          if (this.isEdit) this.patchEditDropdowns();
+        }
+
         categories.forEach((category: any) =>
           this.treatmentsByCategory.set(
             String(category.id),
