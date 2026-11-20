@@ -85,23 +85,20 @@
         </div>
 
         <div class="form-field">
-          <label for="lead-source">Source <span class="required-asterisk">*</span></label>
+          <label for="lead-source">Source</label>
           <div class="input-wrap select-wrap">
             <i class="bi bi-megaphone"></i>
             <select
               id="lead-source"
               formControlName="source"
               [class.is-invalid]="isInvalid('source')">
-              <option value="">Select source</option>
+              <option value="">None</option>
               @for (source of sourceOptions; track source) {
                 <option [value]="source.id">{{ source.source_name }}</option>
               }
             </select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
-          @if (isInvalid('source')) {
-            <small class="error-text">Please select the lead source.</small>
-          }
         </div>
 
         <div class="form-field">
@@ -132,23 +129,20 @@
         </div>
 
         <div class="form-field">
-          <label for="lead-type">Service Category Type <span class="required-asterisk">*</span></label>
+          <label for="lead-type">Service Category Type</label>
           <div class="input-wrap select-wrap">
             <i class="bi bi-tags"></i>
             <select
               id="lead-type"
               formControlName="type"
               [class.is-invalid]="isInvalid('type')">
-              <option value="">Select type</option>
+              <option value="">None</option>
               @for (type of typeOptions; track type) {
                 <option [value]="type.id">{{ type.name }}</option>
               }
             </select>
             <i class="bi bi-chevron-down select-arrow"></i>
           </div>
-          @if (isInvalid('type')) {
-            <small class="error-text">Please select the service category type.</small>
-          }
         </div>
 
         @if (leadForm.get('type')?.value) {
