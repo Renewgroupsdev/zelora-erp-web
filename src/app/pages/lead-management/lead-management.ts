@@ -300,7 +300,8 @@ export class LeadManagement implements OnInit {
       source: lead.source_name ?? '',
       service_category: lead.service_category_name ?? '',
       service_request: lead.service_request_name ?? '',
-      branch: lead.branch_name ?? lead.location ?? '',
+      // Leads filed without a branch show a common label (display only; nothing is stored).
+      branch: lead.branch_name || 'Common',
       status: lead.status_name || 'Lead',
       // A telecaller checks each lead assigned to them (the API only returns theirs) before following it up.
       editDeleteOnly: String(lead.status_name ?? '').trim().toLowerCase() === 'invalid' ? 1 : 0,

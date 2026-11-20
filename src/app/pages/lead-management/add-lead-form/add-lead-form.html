@@ -33,7 +33,7 @@
       <div class="form-grid">
 
         <div class="form-field">
-          <label for="lead-name">Name <span class="required-asterisk">*</span></label>
+          <label for="lead-name">Name</label>
           <div class="input-wrap">
             <i class="bi bi-person"></i>
             <input
@@ -45,7 +45,7 @@
               [class.is-invalid]="isInvalid('name')" />
           </div>
           @if (isInvalid('name')) {
-            <small class="error-text">{{ leadForm.get('name')?.errors?.['maxlength'] ? 'Name can be at most 100 characters.' : 'Name is required.' }}</small>
+            <small class="error-text">{{ leadForm.get('name')?.errors?.['maxlength'] ? 'Name can be at most 100 characters.' : '' }}</small>
           }
         </div>
 
@@ -185,7 +185,7 @@
         </div>
 
         <div class="form-field">
-          <label id="lead-unit-type-label">Belongs To <span class="required-asterisk">*</span></label>
+          <label id="lead-unit-type-label">Belongs To</label>
           <div class="unit-type-toggle" role="radiogroup" aria-labelledby="lead-unit-type-label">
             @for (t of unitTypes; track t.value) {
               <button type="button" role="radio" class="unit-type-option" [class.active]="unitType() === t.value"
@@ -197,7 +197,7 @@
         </div>
 
         <div class="form-field">
-          <label for="lead-branch">{{ unitType() === 'franchise' ? 'Franchise' : 'Branch' }} <span class="required-asterisk">*</span></label>
+          <label for="lead-branch">{{ unitType() === 'franchise' ? 'Franchise' : 'Branch' }}</label>
           <div class="input-wrap select-wrap">
             <i class="bi" [ngClass]="unitType() === 'franchise' ? 'bi-shop' : 'bi-building'"></i>
             <select id="lead-branch" formControlName="branch_key" [class.is-invalid]="isInvalid('branch_key')">
@@ -219,7 +219,9 @@
             <div class="input-wrap select-wrap">
               <i class="bi bi-headset"></i>
               <select id="lead-assigned-to" formControlName="assigned_to">
-                <option [ngValue]="null">Unassigned</option>
+                @if (!ownTelecaller()) {
+                  <option [ngValue]="null">Unassigned</option>
+                }
                 @for (telecaller of telecallerOptions; track telecaller.id) {
                   <option [ngValue]="telecaller.id">{{ telecaller.name }}{{ telecaller.branch ? ' · ' + telecaller.branch.name : '' }}</option>
                 }

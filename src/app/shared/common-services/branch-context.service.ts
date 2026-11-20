@@ -37,7 +37,8 @@ export class BranchContextService {
   readonly enabled = computed(() => isStaff(this.auth.currentUser()));
   readonly canSwitch = computed(() => {
     const user = this.auth.currentUser();
-    return !!(user?.scope?.can_switch ?? this.options.scope()?.can_switch);
+    // The scope fetched on load beats the copy saved at login, so a newly granted permission applies without re-login.
+    return !!(this.options.scope()?.can_switch ?? user?.scope?.can_switch);
   });
   /**
    * Sees every branch / franchise (the permission). false while canSwitch() = a login with several units of its own:
@@ -45,7 +46,7 @@ export class BranchContextService {
    */
   readonly allAccess = computed(() => {
     const user = this.auth.currentUser();
-    return !!(user?.scope?.all_access ?? this.options.scope()?.all_access);
+    return !!(this.options.scope()?.all_access ?? user?.scope?.all_access);
   });
   /** The login's own branch / franchise (what a login without the permission is held to). */
   readonly ownUnit = computed(() => this.auth.currentUser()?.scope?.unit ?? this.options.scope()?.unit ?? null);

@@ -17,6 +17,7 @@ import { ApiDataService } from '../../../core/http/api.service';
 import { forkJoin } from 'rxjs/internal/observable/forkJoin';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { TelephonyService } from '../../../core/telephony/telephony.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import { TelecallerRow } from '../../../core/telephony/telephony.models';
 import { BranchOption, BranchOptionsService, parseUnitKey, unitKey } from '../../../shared/common-services/branch-options.service';
 import { catchError, map } from 'rxjs/operators';
@@ -61,6 +62,7 @@ export class AddLeadForm implements OnInit{
    telecallerOptions: TelecallerRow[] = [];
 
   private readonly telephony = inject(TelephonyService);
+  private readonly auth = inject(AuthService);
   readonly branchOptions = inject(BranchOptionsService);
 
   /** "Belongs To" toggle: which kind of unit the Branch / Franchise dropdown lists. */
@@ -90,7 +92,7 @@ export class AddLeadForm implements OnInit{
     if (data?.branch_type === 'franchise') this.unitType.set('franchise');
 
     this.leadForm =this.fb.group({
-      name: [data?.name ?? '', [Validators.required, Validators.maxLength(100)]],
+      name: [data?.name ?? '', [Validators.maxLength(100)]],
       mobile_no: [data?.mobile_no ?? '',[Validators.required, Validators.pattern(/^[0-9]{10}$/)],],
       location: [data?.location ?? '', Validators.maxLength(200)],
       pincode: [data?.pincode ?? '', Validators.pattern(/^[0-9]{6}$/)],
@@ -101,7 +103,7 @@ export class AddLeadForm implements OnInit{
       status: [data?.status_id ?? '', Validators.required],
       reason: [data?.reason ?? '', Validators.maxLength(1000)],
       // "branch:9" / "franchise:7"; sent as branch_type + branch_id.
-      branch_key: [unitKey(data?.branch_type, data?.branch_id), Validators.required],
+      branch_key: [unitKey(data?.branch_type, data?.branch_id)],
       assigned_to: [data?.assigned_to ?? null],
     })
   }
@@ -121,7 +123,7 @@ export class AddLeadForm implements OnInit{
           this.allUnits.set(options);
 
           const control = this.leadForm.get('branch_key');
-          if (control?.value) return;
+          if (control?.value || this.ownTelecaller() || this.telephony.isTelecaller()) return;
           const own = this.branchOptions.scope()?.unit;
           const pick = (own ? options.find(o => o.key === unitKey(own.type, own.id)) : undefined)
             ?? (options.length === 1 ? options[0] : undefined);
@@ -201,7 +203,9 @@ export class AddLeadForm implements OnInit{
 
   private setLookups(sources: any[], types: any[], statuses: any[]): void {
     this.sourceOptions = sources;
-    this.typeOptions = types;
+    // Service Category Type lists only the master's parent categories (a lead's saved one stays selectable on edit).
+    const savedType = String(this.data?.service_category_id ?? this.data?.category_id ?? '');
+    this.typeOptions = types.filter((t: any) => !t?.parent_id || String(t.id) === savedType);
     this.statusOptions = statuses;
 
     if (this.isEdit) {
@@ -216,12 +220,33 @@ export class AddLeadForm implements OnInit{
   }
 
   get showAssign(): boolean {
-    return !this.telephony.isTelecaller() && this.telecallerOptions.length > 0;
+    // Every role sees the field (the agents list is already limited to the login's own unit unless it has every-unit access).
+    return true;
   }
 
+  /** True when a telecaller is logged in: they can only file leads under themselves. */
+  readonly ownTelecaller = signal(false);
+
   private loadTelecallers(): void {
+    const me = this.auth.currentUser();
+
     this.telephony.telecallers().subscribe({
-      next: rows => (this.telecallerOptions = rows),
+      next: rows => {
+        if (this.telephony.isTelecaller() && me?.id) {
+          this.ownTelecaller.set(true);
+          this.telecallerOptions = rows.filter(r => Number(r.id) === Number(me.id));
+          if (!this.telecallerOptions.length) {
+            this.telecallerOptions = [{ id: me.id, name: me.name } as TelecallerRow];
+          }
+          if (!this.isEdit) {
+            this.leadForm.get('assigned_to')?.setValue(me.id);
+            this.leadForm.get('assigned_to')?.disable();
+          }
+          // Branch is optional for a telecaller: no default unit.
+          return;
+        }
+        this.telecallerOptions = rows;
+      },
       error: () => (this.telecallerOptions = []),
     });
   }
