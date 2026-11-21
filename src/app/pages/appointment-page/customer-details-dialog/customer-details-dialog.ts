@@ -5,7 +5,7 @@ import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ToastService } from '../../../shared/common-services/toast.service';
-import { FlowAppointmentRecord, FlowDocument, SittingPhoto, SittingTransferInfo, inr, statusLabel } from '../../../shared/models/appointment-flow.model';
+import { FlowAppointmentRecord, FlowDocument, SittingPhoto, SittingTransferInfo, inr, statusLabel, treatmentNames } from '../../../shared/models/appointment-flow.model';
 import { PageLoader } from '../../../shared/components/page-loader/page-loader';
 import { HairGradeIcon } from '../../../shared/components/hair-grade-icon/hair-grade-icon';
 
@@ -65,6 +65,24 @@ export class CustomerDetailsDialog implements OnInit {
   readonly statusLabel = statusLabel;
   readonly appt = signal<FlowAppointmentRecord | null>(null);
   readonly viewer = signal<{ photos: SittingPhoto[]; index: number } | null>(null);
+  /** The person's earlier Nill Card (Consultation Only) visit, when this appointment is a new one for the same number - view only. */
+  readonly previous = signal<FlowAppointmentRecord | null>(null);
+
+  readonly previousVisit = computed<DetailItem[]>(() => {
+    const p = this.previous();
+    if (!p) return [];
+    const fee = Number(p.consultation_fee ?? 0);
+    const doctor = (p as unknown as { doctor?: string | { name?: string } | null }).doctor;
+    return this.present([
+      ['Consultation', `${this.formatDate(p.appointment_date)} ${this.formatTime(p.appointment_time)}`.trim()],
+      ['Branch / Franchise', p.branch_name ?? p.branch?.name],
+      ['Doctor', typeof doctor === 'string' ? doctor : doctor?.name],
+      ['Handled by (counselor)', p.counselor?.name],
+      ['Treatments suggested', treatmentNames(p)],
+      ['Consultation fee', fee > 0 ? inr(fee) : 'Free consultation'],
+      ['Status', 'Treatment not taken yet'],
+    ]);
+  });
 
   /**
    * Every treatment the customer has had, current first: each with its sittings and their before / after photos.
@@ -155,11 +173,29 @@ export class CustomerDetailsDialog implements OnInit {
 
   ngOnInit(): void {
     this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}`).subscribe({
-      next: (res: any) => this.appt.set(res.data),
+      next: (res: any) => {
+        this.appt.set(res.data);
+        this.loadPreviousVisit(res.data);
+      },
       error: (err: any) => {
         this.toast.error(err?.error?.message || 'Could not load the customer details.');
         this.dialogRef.close();
       },
+    });
+  }
+
+  /** Looks for an earlier Consultation Only visit of the same mobile number (not this appointment) to show beside the new one. */
+  private loadPreviousVisit(current: FlowAppointmentRecord | null): void {
+    const mobile = current?.mobile_no;
+    if (!mobile || current?.status === 'Consultation Only') return;
+    const params = new URLSearchParams({ per_page: '10', search: mobile });
+    params.append('status[]', 'Consultation Only');
+    this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}?${params}`).subscribe({
+      next: (res: any) => {
+        const list: FlowAppointmentRecord[] = res?.data?.data ?? [];
+        this.previous.set(list.find(a => a.id !== this.appointmentId && a.status === 'Consultation Only' && a.mobile_no === mobile) ?? null);
+      },
+      error: () => this.previous.set(null), // the extra card is optional
     });
   }
 

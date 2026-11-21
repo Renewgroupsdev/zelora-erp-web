@@ -125,6 +125,28 @@
 
       <!-- ================= Step 2: Clinical examination ================= -->
       @if (step() === 1 && steps()[1].allowed) {
+        <!-- The doctor of the visit: shown when chosen at booking, else picked here from the branch / franchise doctors -->
+        <div class="section-title"><i class="bi bi-person-badge"></i> Consulting Doctor</div>
+        <div class="form-grid">
+          <div class="form-field full-width">
+            @if (doctors().length) {
+              <label for="wz-doctor">Doctor <span>*</span></label>
+              <div class="input-wrap"><i class="bi bi-person-badge"></i>
+                <select id="wz-doctor" name="consultDoctor" [(ngModel)]="doctorId">
+                  <option [ngValue]="null">Select the consulting doctor</option>
+                  @for (d of doctors(); track d.id) { <option [ngValue]="d.id" [disabled]="!d.available">{{ d.name }}{{ d.available ? '' : ' (not free at this time)' }}</option> }
+                </select>
+                <i class="bi bi-chevron-down select-arrow"></i>
+              </div>
+              <small class="muted">Doctors of this branch / franchise; those busy at the appointment time are disabled.</small>
+            } @else if (assignedDoctor) {
+              <div class="input-wrap"><i class="bi bi-person-badge"></i><input [value]="assignedDoctor" disabled aria-label="Consulting doctor" /></div>
+            } @else {
+              <small class="muted"><i class="bi bi-info-circle"></i> No doctor is set up for this branch / franchise, so the visit stays without one.</small>
+            }
+          </div>
+        </div>
+
         <div class="section-title"><i class="bi bi-ui-checks"></i> Examination For</div>
         <div class="wz-choice-row">
           <div class="wz-seg">

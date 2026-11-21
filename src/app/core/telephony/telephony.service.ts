@@ -128,7 +128,7 @@ export class TelephonyService {
 
   /* ---------------- calls ---------------- */
 
-  dial(target: { lead_id?: number; phone_number?: string }): Observable<CallLog> {
+  dial(target: { lead_id?: number; phone_number?: string; appointment_id?: number }): Observable<CallLog> {
     return this.post(ApiRoutesConstants.CALL_OUTBOUND, target, true);
   }
 

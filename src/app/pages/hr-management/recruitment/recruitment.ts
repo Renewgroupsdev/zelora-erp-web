@@ -192,7 +192,12 @@ export class Recruitment extends HrListBase implements OnInit {
   }
 
   newRequest(): void {
-    this.openDialog(ManpowerForm, null, '860px');
+    this.openDialog<ManpowerForm, boolean>(ManpowerForm, null, '860px').afterClosed().subscribe(saved => {
+      if (!saved) return;
+      this.hr.loadRecruitment().subscribe({ error: () => undefined });
+      this.setView('requests');
+      Swal.fire({ icon: 'success', title: 'Request submitted', text: 'The manpower request is waiting for HR budget approval.', timer: 1800, showConfirmButton: false });
+    });
   }
 
   /** Header button: opens the manual applicant (vacancy apply) form with photo + resume upload. */

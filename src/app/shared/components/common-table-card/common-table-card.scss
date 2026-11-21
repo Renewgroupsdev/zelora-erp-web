@@ -1086,3 +1086,21 @@ $purple: var(--status-purple-text, #7c3aed), var(--status-purple-bg, #f0e9fd);
 @keyframes row-lock-pulse {
   50% { opacity: .55; }
 }
+
+.empty-cell { color: var(--text-muted); }
+
+.lead-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #8a5a10;
+  background: #fff3d6;
+  border: 1px solid #f1d9a0;
+  white-space: nowrap;
+}

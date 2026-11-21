@@ -111,19 +111,25 @@
                     <span class="lead-name" [title]="asLeadCell(row[col.key]).name">{{ asLeadCell(row[col.key]).name }}</span>
                   }
                   @if (asLeadCell(row[col.key]).subtitle) {
-                    <span class="lead-subtitle">{{ asLeadCell(row[col.key]).subtitle }}</span>
+                    <span class="lead-subtitle">{{ asLeadCell(row[col.key]).subtitle }}@if (asLeadCell(row[col.key]).badge) { <span class="lead-badge"><i class="bi bi-card-checklist"></i> {{ asLeadCell(row[col.key]).badge }}</span> }</span>
+                  } @else if (asLeadCell(row[col.key]).badge) {
+                    <span class="lead-badge"><i class="bi bi-card-checklist"></i> {{ asLeadCell(row[col.key]).badge }}</span>
                   }
                 </span>
               </div>
             }
 
             @else if (col.type === 'branch') {
-              <div class="location-cell">
-                <i class="bi bi-geo-alt-fill location-icon" aria-hidden="true"></i>
-                <span class="location-text" [title]="row[col.key]">
-                  {{ row[col.key] }}
-                </span>
-              </div>
+              @if (isBlank(row[col.key])) {
+                <span class="text-cell empty-cell">-</span>
+              } @else {
+                <div class="location-cell">
+                  <i class="bi bi-geo-alt-fill location-icon" aria-hidden="true"></i>
+                  <span class="location-text" [title]="row[col.key]">
+                    {{ row[col.key] }}
+                  </span>
+                </div>
+              }
             }
 
             @else if (col.type === 'badge') {
@@ -159,10 +165,7 @@
                   </span>
                 }
                 @if (!asCallerAvatars(row[col.key]).length) {
-                  <span class="unassigned-cell">
-                    <i class="bi bi-person-plus"></i>
-                    Unassigned
-                  </span>
+                  <span class="text-cell empty-cell">-</span>
                 }
               </div>
             }
@@ -364,7 +367,7 @@
             }
 
             @else {
-              <span class="text-cell" [title]="row[col.key]">{{ row[col.key] }}</span>
+              <span class="text-cell" [class.empty-cell]="isBlank(row[col.key])" [title]="isBlank(row[col.key]) ? '' : row[col.key]">{{ isBlank(row[col.key]) ? '-' : row[col.key] }}</span>
             }
 
           </td>

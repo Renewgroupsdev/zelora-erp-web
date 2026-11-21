@@ -3,7 +3,7 @@
     <div>
       <span class="eyebrow">
         <i class="bi" [ngClass]="call.direction === 'inbound' ? 'bi-telephone-inbound' : 'bi-telephone-outbound'"></i>
-        {{ call.direction === 'inbound' ? 'Incoming' : 'Outgoing' }} call · {{ call.answered_at ? duration : 'not answered' }}
+        {{ call.direction === 'inbound' ? 'Incoming' : 'Outgoing' }} call · {{ call.answered_at || callLive() ? durationText() : 'not answered' }}
       </span>
       <h2>Call outcome</h2>
       <p class="sub">{{ leadName || 'Unknown caller' }} · {{ number }}</p>
@@ -30,7 +30,7 @@
             <div><dt>Gender / location</dt><dd>{{ lead.gender || '-' }} · {{ lead.location || '-' }}</dd></div>
           }
           @if (profile()?.next_follow_up; as fu) {
-            <div><dt>Next follow-up</dt><dd>{{ fu.follow_up_date }} {{ fu.follow_up_time || '' }}</dd></div>
+            <div><dt>Next follow-up</dt><dd>{{ nextFollowUpAt(fu) | date: 'dd MMM yyyy, hh:mm a' }}</dd></div>
           }
         </dl>
         @if (lead.reason) {
@@ -40,10 +40,15 @@
           <summary><i class="bi bi-journal-text"></i> Previous follow-up notes ({{ profile()?.follow_up_notes?.length || 0 }})</summary>
           @if (profile()?.follow_up_notes?.length) {
             <ul>
-              @for (n of profile()!.follow_up_notes!; track n.id) {
-                <li><p>{{ n.notes }}</p><small>{{ n.telecaller || 'Staff' }} · {{ n.created_at | date: 'dd MMM yyyy, hh:mm a' }}</small></li>
+              @for (n of visibleNotes(); track n.id) {
+                <li><p>{{ n.notes }}</p><small>{{ n.telecaller || 'Staff' }} · {{ (n.follow_up_at || n.created_at) | date: 'dd MMM yyyy, hh:mm a' }}@if (n.follow_up_at) { (follow-up) }</small></li>
               }
             </ul>
+            @if ((profile()!.follow_up_notes!.length) > 2) {
+              <button type="button" class="link-btn notes-toggle" (click)="showAllNotes.set(!showAllNotes())">
+                {{ showAllNotes() ? 'Show less' : 'Show all ' + profile()!.follow_up_notes!.length + ' notes' }}
+              </button>
+            }
           } @else {
             <p class="empty-notes">No earlier conversations - this is the first call.</p>
           }
@@ -76,7 +81,7 @@
         <button type="button" class="outcome" [class.selected]="selectedCode() === d.code"
                 [attr.aria-pressed]="selectedCode() === d.code" (click)="select(d.code)">
           <i class="bi" [ngClass]="icon(d)"></i>
-          <span>{{ d.label }}</span>
+          <span>{{ label(d) }}</span>
         </button>
       }
     </fieldset>
@@ -91,7 +96,19 @@
             @if (errors()['follow_up_date']) { <span class="field-error">{{ errors()['follow_up_date'] }}</span> }
           </label>
           <label>Time
-            <input type="time" [(ngModel)]="followUpTime" />
+            <div class="time12">
+              <select [ngModel]="fuHour" (ngModelChange)="setFollowUpTime('h', $event)" aria-label="Hour">
+                @for (n of hours12; track n) { <option [ngValue]="n">{{ n }}</option> }
+              </select>
+              <select [ngModel]="fuMinute" (ngModelChange)="setFollowUpTime('m', $event)" aria-label="Minute">
+                @for (m of minutes5; track m) { <option [value]="m">{{ m }}</option> }
+              </select>
+              <select [ngModel]="fuMeridiem" (ngModelChange)="setFollowUpTime('p', $event)" aria-label="AM or PM">
+                <option value="AM">AM</option>
+                <option value="PM">PM</option>
+              </select>
+            </div>
+            @if (errors()['follow_up_time']) { <span class="field-error">{{ errors()['follow_up_time'] }}</span> }
           </label>
         </div>
         @if (action() === 'follow_up') {
@@ -112,19 +129,68 @@
         <h3><i class="bi bi-calendar2-check"></i> Appointment</h3>
         <div class="grid">
           <label>Date
-            <input type="date" [(ngModel)]="appointmentDate" [min]="today" />
+            <input type="date" [(ngModel)]="appointmentDate" [min]="today" (ngModelChange)="appointmentDate = $event; loadSlots()" />
             @if (errors()['appointment_date']) { <span class="field-error">{{ errors()['appointment_date'] }}</span> }
           </label>
-          <label>Time
-            <input type="time" [(ngModel)]="appointmentTime" />
-            @if (errors()['appointment_time']) { <span class="field-error">{{ errors()['appointment_time'] }}</span> }
-          </label>
-          <label class="full">Counselor
-            <select [(ngModel)]="counselorId">
-              <option [ngValue]="null">Select counselor</option>
-              @for (c of counselors(); track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
+          <div class="full slot-field">
+            <span class="slot-label">Appointment time</span>
+            @if (!leadId) {
+              <p class="slot-hint"><i class="bi bi-info-circle"></i> Create the lead to see the free slots.</p>
+            } @else if (!appointmentDate) {
+              <p class="slot-hint"><i class="bi bi-info-circle"></i> Pick a date to see the free slots.</p>
+            } @else if (slotsLoading()) {
+              <p class="slot-hint"><i class="bi bi-arrow-repeat spin"></i> Checking free slots…</p>
+            } @else {
+              <div class="slot-legend">
+                <span><i class="dot free"></i> Available</span>
+                <span><i class="dot picked"></i> Selected</span>
+                <span><i class="dot booked"></i> Unavailable</span>
+              </div>
+              <div class="slot-panel" [class.is-invalid]="errors()['appointment_time']">
+                @for (group of slotGroups(); track group.key) {
+                  <div class="slot-group">
+                    <div class="slot-group-head">
+                      <span><i class="bi" [ngClass]="group.icon"></i> {{ group.label }}</span>
+                      <small>{{ group.free }} free</small>
+                    </div>
+                    <div class="slot-grid" role="listbox" [attr.aria-label]="group.label + ' slots'">
+                      @for (slot of group.slots; track slot.time) {
+                        <button type="button" class="slot-chip" role="option"
+                                [class.selected]="appointmentTime === slot.time"
+                                [class.booked]="!slot.available"
+                                [disabled]="!slot.available"
+                                [attr.aria-selected]="appointmentTime === slot.time"
+                                [title]="slot.reason || 'Available'"
+                                (click)="selectSlot(slot)">
+                          <span class="slot-time">{{ slotLabel(slot.time) }}</span>
+                          @if (!slot.available) { <span class="slot-note">{{ slot.reason }}</span> }
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+              @if (selectedSlotRange()) {
+                <div class="slot-selected"><i class="bi bi-check-circle-fill"></i> Selected: <strong>{{ selectedSlotRange() }}</strong></div>
+              }
+              @if (slotsError()) {
+                <p class="slot-hint warn"><i class="bi bi-exclamation-circle"></i> {{ slotsError() }}</p>
+              } @else if (slots().length) {
+                <p class="slot-hint"><i class="bi bi-info-circle"></i> Each visit takes {{ slotMinutes }} minutes. Greyed slots are already booked or have no doctor free.</p>
+              }
+            }
+            @if (errors()['appointment_time'] && !slotsLoading()) { <span class="field-error">{{ errors()['appointment_time'] }}</span> }
+          </div>
+          <label class="full">Doctor (optional)
+            <select [(ngModel)]="doctorId" [disabled]="doctorsLoading() || !doctors().length">
+              <option [ngValue]="null">{{ doctorsLoading() ? 'Checking availability...' : (doctors().length ? 'Any available doctor' : (appointmentTime ? 'No doctor set up for this branch' : 'Pick a time first')) }}</option>
+              @for (d of doctors(); track d.id) { <option [ngValue]="d.id">{{ d.name }}</option> }
             </select>
-            @if (errors()['counselor_id']) { <span class="field-error">{{ errors()['counselor_id'] }}</span> }
+          </label>
+          <label class="full">Telecaller (handling this appointment)
+            <select disabled>
+              <option>{{ handlingTelecaller() || 'Assigned telecaller' }}</option>
+            </select>
           </label>
           <label class="full">Reason / treatment interest
             <input type="text" [(ngModel)]="appointmentReason" maxlength="1000" placeholder="e.g. Hair loss consultation" />
@@ -137,10 +203,6 @@
       <p class="hint"><i class="bi bi-info-circle"></i> The lead will be marked <strong>Invalid</strong>, unassigned and returned to Lead Management.</p>
     }
 
-    @if (action() === 'converted') {
-      <p class="hint"><i class="bi bi-info-circle"></i> The lead will be marked as <strong>Customer</strong>.</p>
-    }
-
     <label class="notes">Notes @if (selected()?.requires_note) { <span class="req">*</span> }
       <textarea [(ngModel)]="notes" rows="3" maxlength="5000" placeholder="Summary of the conversation"></textarea>
       @if (errors()['notes']) { <span class="field-error">{{ errors()['notes'] }}</span> }
@@ -148,9 +210,6 @@
   </div>
 
   <footer class="dialog-foot">
-    @if (!data.required) {
-      <button type="button" class="btn-secondary" (click)="skip()">Skip</button>
-    }
     <button type="button" class="btn-primary" [disabled]="saving() || endingCall() || !selectedCode()"
             [attr.title]="callLive() ? 'Hangs up, then saves the outcome' : null" (click)="save()">
       {{ saving() || endingCall() ? 'Saving…' : (callLive() ? 'End call & save' : 'Save outcome') }}

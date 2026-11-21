@@ -12,7 +12,11 @@
         <button type="button" role="tab" [class.active]="view() === 'candidates'" (click)="setView('candidates')">All Candidates</button>
       </div>
       <button *appCan="'export-recruitment'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>
-      <button *appCan="'add-manpower-request'" type="button" class="add-lead-btn" (click)="newVacancyRequest()"><i class="bi bi-plus-lg"></i> Add Vacancies Request</button>
+      @if (view() === 'requests') {
+        <button *appCan="'add-manpower-request'" type="button" class="add-lead-btn" (click)="newRequest()"><i class="bi bi-plus-lg"></i> Add Manpower Request</button>
+      } @else {
+        <button *appCan="'add-vacancy-request'" type="button" class="add-lead-btn" (click)="newVacancyRequest()"><i class="bi bi-plus-lg"></i> Add Vacancies Request</button>
+      }
     </div>
   </div>
 

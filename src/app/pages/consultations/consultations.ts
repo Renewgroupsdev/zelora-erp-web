@@ -20,6 +20,7 @@ import { ToastService } from '../../shared/common-services/toast.service';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { AuthService } from '../../core/auth/auth.service';
+import { TelephonyService } from '../../core/telephony/telephony.service';
 import { FlowAppointmentRecord, inr, statusLabel, treatmentNames } from '../../shared/models/appointment-flow.model';
 import { AppointmentWizard } from '../appointment-page/appointment-wizard/appointment-wizard';
 import { NillCardView } from './nill-card-view/nill-card-view';
@@ -44,6 +45,7 @@ const LISTED_STATUSES: string[] = [CONSULTATION_ONLY];
 export class Consultations implements OnInit {
   private readonly branchOptions = inject(BranchOptionsService);
   private readonly auth = inject(AuthService);
+  private readonly telephony = inject(TelephonyService);
   constructor(private dialog: MatDialog, private toast: ToastService, private api: ApiDataService) { }
 
   filters: FilterOption[] = [
@@ -61,7 +63,7 @@ export class Consultations implements OnInit {
     { key: 'status', header: 'Status', type: 'badge' },
     { key: 'total', header: 'Amount', type: 'text', width: '100px' },
     { key: 'paymentStatus', header: 'Payment', type: 'badge', width: '90px' },
-    { key: 'actions', header: 'Actions', type: 'quickActions', sortable: false, width: '130px' },
+    { key: 'actions', header: 'Actions', type: 'quickActions', sortable: false, width: '170px' },
   ];
 
   readonly pageSizeOptions = [10, 30, 50, 100];
@@ -172,6 +174,24 @@ export class Consultations implements OnInit {
     if (!appt) return;
     if (action === 'wizard') this.openWizard(appt);
     if (action === 'view') this.openView(appt);
+    if (action === 'call') this.callCustomer(appt);
+  }
+
+  /** Dials over the telephony backend (same flow as Follow-Ups): the dock shows the live call, then asks for the outcome. */
+  private callCustomer(appt: FlowAppointmentRecord): void {
+    const phone = String(appt.mobile_no ?? '').trim();
+    if (!phone) {
+      this.toast.error('This customer has no phone number on file.');
+      return;
+    }
+    if (this.telephony.onCall()) {
+      this.toast.warning('You are already on a call.');
+      return;
+    }
+    // appointment_id: the API turns this walk-in into a lead, so the call shows their history and can book follow-ups.
+    this.telephony.dial({ phone_number: phone, appointment_id: appt.id }).subscribe({
+      error: (err: any) => this.toast.error(err?.error?.message || 'Unable to start the call.'),
+    });
   }
 
   /** Free consultation: nothing was charged (fee 0). */
@@ -220,6 +240,7 @@ export class Consultations implements OnInit {
     const free = this.isFree(a);
     const actions: QuickAction[] = feeOnly
       ? [
+          { key: 'call', icon: 'bi-telephone-outbound', label: 'Call Customer', variant: 'primary', permission: 'call-nill-card-lead' },
           { key: 'view', icon: 'bi-eye', label: 'View', variant: 'default' },
         ]
       : this.can('continue-consultation-form')

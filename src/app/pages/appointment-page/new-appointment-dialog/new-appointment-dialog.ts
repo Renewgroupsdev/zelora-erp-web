@@ -1,5 +1,6 @@
 import { PhoneInput } from '../../../shared/directives/phone-input.directive';
 import { CommonModule } from '@angular/common';
+import Swal from 'sweetalert2';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { BranchOptionsService, parseUnitKey, unitKey } from '../../../shared/common-services/branch-options.service';
 import { FormsModule } from '@angular/forms';
@@ -168,12 +169,12 @@ export class NewAppointmentDialog implements OnInit {
 
   save(): void {
     this.error.set(null);
-    if (this.mobile.length !== 10) return void this.error.set('Enter a 10 digit mobile number.');
-    if (!this.form.name.trim()) return void this.error.set('Name is required.');
-    if (this.form.pincode && !/^\d{6}$/.test(this.form.pincode)) return void this.error.set('Pincode must be 6 digits.');
-    if (!this.form.appointment_date || !this.form.appointment_time) return void this.error.set('Pick the appointment date and time.');
-    if (this.slotsLoading || this.doctorsLoading) return void this.error.set('Checking availability. Please wait a moment.');
-    if (this.doctorsTotal !== 0 && !this.form.doctor_id) return void this.error.set(this.doctors.length ? 'Select an available doctor.' : 'No doctor is available at this time. Pick another time.');
+    if (this.mobile.length !== 10) return void this.alert('Enter a 10 digit mobile number.');
+    if (!this.form.name.trim()) return void this.alert('Name is required.');
+    if (this.form.pincode && !/^\d{6}$/.test(this.form.pincode)) return void this.alert('Pincode must be 6 digits.');
+    if (!this.form.appointment_date || !this.form.appointment_time) return void this.alert('Pick the appointment date and time.');
+    if (this.slotsLoading || this.doctorsLoading) return void this.alert('Checking availability. Please wait a moment.');
+    if (this.doctorsTotal !== 0 && !this.form.doctor_id) return void this.alert(this.doctors.length ? 'Select an available doctor.' : 'No doctor is available at this time. Pick another time.');
 
     this.saving.set(true);
     const { branch_key, ...form } = this.form;
@@ -365,9 +366,15 @@ export class NewAppointmentDialog implements OnInit {
     return `${pad(h % 12 || 12)}:${pad(m)} ${h >= 12 ? 'PM' : 'AM'}`;
   }
 
+  /** Validation and server errors pop up as a SweetAlert (not an inline banner at the bottom of the form). */
+  private alert(message: string): void {
+    this.saving.set(false);
+    Swal.fire({ icon: 'warning', title: 'Cannot create the appointment', text: message, confirmButtonColor: '#6C63FF' });
+  }
+
   private showError(err: any, fallback: string): void {
     const first = err?.error?.errors ? (Object.values(err.error.errors)[0] as string[])?.[0] : null;
-    this.error.set(first || err?.error?.message || fallback);
+    this.alert(first || err?.error?.message || fallback);
   }
 
   // ---------------------------------------------------------------- shared

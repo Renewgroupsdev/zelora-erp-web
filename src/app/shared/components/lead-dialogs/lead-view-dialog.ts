@@ -25,6 +25,8 @@ export interface LeadViewData {
   stats?: { label: string; value: string | number | null | undefined; icon: string }[];
   /** Shown when another telecaller holds the lead ("Ravi is on a call with this lead"). */
   lockedLabel?: string;
+  /** Extra tag next to the status ("Nill Card"). */
+  badge?: string;
   callLog?: CallerLogEntry[];
 }
 
@@ -43,6 +45,7 @@ export interface LeadViewData {
           <div class="lv-tags">
             <span class="lv-code"><i class="bi bi-hash"></i>LD-{{ pad(data.id) }}</span>
             @if (data.status) { <span class="lv-status">{{ data.status }}</span> }
+            @if (data.badge) { <span class="lv-status lv-badge"><i class="bi bi-card-checklist"></i> {{ data.badge }}</span> }
           </div>
           @if (data.phone) {
             <button type="button" class="lv-phone" (click)="copy(data.phone)" [title]="'Copy ' + data.phone">
@@ -90,7 +93,7 @@ export interface LeadViewData {
         <section class="lv-sec" [style.animation-delay.ms]="200 + groups().length * 90">
           <h3><i class="bi bi-chat-left-text"></i> Recent call notes <em>{{ (data.callLog ?? []).length }}</em></h3>
           <ol class="lv-timeline">
-            @for (c of data.callLog ?? []; track $index; let i = $index) {
+            @for (c of visibleNotes(); track $index; let i = $index) {
               <li class="lv-note" [style.animation-delay.ms]="320 + i * 70">
                 <span class="lv-dot">{{ initials(c.telecallerName) }}</span>
                 <div class="lv-card">
@@ -105,6 +108,12 @@ export interface LeadViewData {
               <li class="lv-empty"><i class="bi bi-telephone-x"></i> No calls logged yet.</li>
             }
           </ol>
+          @if ((data.callLog ?? []).length > notesPreview) {
+            <button type="button" class="lv-more" (click)="showAllNotes.set(!showAllNotes())">
+              <i class="bi" [ngClass]="showAllNotes() ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+              {{ showAllNotes() ? 'Show less' : 'Show more (' + ((data.callLog ?? []).length - notesPreview) + ' more)' }}
+            </button>
+          }
         </section>
       </div>
     </div>
@@ -127,6 +136,7 @@ export interface LeadViewData {
     .lv-code, .lv-status { display: inline-flex; align-items: center; gap: 2px; padding: 2px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
     .lv-code { background: rgba(255,255,255,.18); }
     .lv-status { background: #fff; color: #0d5c4b; }
+    .lv-badge { background: #fff3d6; color: #8a5a10; gap: 4px; }
     .lv-phone { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px 4px 12px; border: 0; border-radius: 999px;
       font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; color: #fff; background: rgba(255,255,255,.16); transition: background .15s;
       &:hover { background: rgba(255,255,255,.28); }
@@ -138,7 +148,12 @@ export interface LeadViewData {
       opacity: 0; animation: lv-up .4s ease-out forwards;
       i { font-size: 15px; color: #14917a; } strong { font-size: 15px; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; } span { font-size: 11px; color: var(--text-muted, #6a837d); } }
 
-    .lv-body { overflow-y: auto; padding: 14px 20px 20px; }
+    .lv-body { overflow-y: auto; padding: 14px 20px 20px; scrollbar-width: thin; scrollbar-color: rgba(13, 92, 75, .35) transparent;
+      &::-webkit-scrollbar { width: 6px; } &::-webkit-scrollbar-track { background: transparent; margin: 6px 0; }
+      &::-webkit-scrollbar-thumb { border-radius: 99px; background: rgba(13, 92, 75, .35); } &::-webkit-scrollbar-thumb:hover { background: rgba(13, 92, 75, .55); } }
+    .lv-more { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 0 46px; padding: 6px 14px; border: 1px solid rgba(13, 92, 75, .22);
+      border-radius: 999px; background: #fff; color: #0d5c4b; font-size: 12px; font-weight: 700; cursor: pointer;
+      &:hover { background: rgba(13, 92, 75, .07); } }
     .lv-lock { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; padding: 9px 12px; border-radius: 12px; font-size: 12.5px; font-weight: 600;
       background: #fff4e0; color: #a05a00; border: 1px solid #f6d493; }
 
@@ -195,6 +210,14 @@ export class LeadViewDialog {
   }
 
   /** The note split into its follow-up slot line and the reminder text. */
+  /** Recent call notes: the latest two, or all of them after "Show more". */
+  readonly notesPreview = 2;
+  readonly showAllNotes = signal(false);
+  visibleNotes(): CallerLogEntry[] {
+    const log = this.data.callLog ?? [];
+    return this.showAllNotes() ? log : log.slice(0, this.notesPreview);
+  }
+
   note(notes: string | null | undefined) {
     return splitCallNote(notes);
   }

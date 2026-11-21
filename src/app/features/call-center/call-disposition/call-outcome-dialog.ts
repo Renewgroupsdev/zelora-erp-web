@@ -10,6 +10,7 @@ import { ApiRoutesConstants } from '../../../shared/common-services/api-route-co
 import { ToastService } from '../../../shared/common-services/toast.service';
 import { CallDisposition, CallLog, CallerProfile, DispositionPayload, customerNumber, formatCallDuration } from '../../../core/telephony/telephony.models';
 import { TelephonyService } from '../../../core/telephony/telephony.service';
+import { CallTimerService } from '../../../core/telephony/call-timer.service';
 import { to12Hour } from '../../../shared/utils/format.util';
 
 /** Same "lead" module type used by the Lead Management list (lead-management.ts) to scope
@@ -20,6 +21,8 @@ export interface CallOutcomeDialogData {
   call: CallLog;
   /** Answered calls must get an outcome; unanswered outbound calls may be skipped. */
   required: boolean;
+  /** Outcomes left out of the list (the Follow-Ups page hides Wrong Number and Complaint). */
+  hiddenCodes?: string[];
 }
 
 const ACTION_ICONS: Record<string, string> = {
@@ -43,12 +46,14 @@ export class CallOutcomeDialog implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<CallOutcomeDialog, CallLog | undefined>);
   private readonly dialog = inject(MatDialog);
   private readonly telephony = inject(TelephonyService);
+  private readonly timer = inject(CallTimerService);
   private readonly api = inject(ApiDataService);
   private readonly toast = inject(ToastService);
 
   readonly call = this.data.call;
   readonly number = customerNumber(this.call);
-  readonly duration = formatCallDuration(this.call.talk_duration);
+  /** Seconds of talk time: counts up every second while the call is live, then stays at where it ended. */
+  private talkSeconds = Number(this.call.talk_duration ?? 0);
   readonly today = new Date().toISOString().slice(0, 10);
   readonly followUpTypes = [
     { value: 0, label: 'General' },
@@ -57,7 +62,17 @@ export class CallOutcomeDialog implements OnInit {
   ];
 
   readonly dispositions = signal<CallDisposition[]>([]);
-  readonly counselors = signal<{ id: number; name: string }[]>([]);
+  /** 45-minute slots of the picked date (GET telephony/leads/{id}/appointment-slots); booked / past ones come back unavailable. */
+  readonly slots = signal<{ time: string; available: boolean; reason: string | null }[]>([]);
+  readonly slotsLoading = signal(false);
+  readonly slotsError = signal('');
+  slotMinutes = 45;
+  /** Doctors free at the picked slot (optional choice, never required). */
+  readonly doctors = signal<{ id: number; name: string }[]>([]);
+  readonly doctorsLoading = signal(false);
+  doctorId: number | null = null;
+  private doctorLookupSeq = 0;
+  private slotLookupSeq = 0;
   /** Preloaded as soon as this dialog opens (i.e. the moment the call is answered), so Create
    *  Lead can hand them straight to AddLeadForm instead of it fetching them itself mid-call. */
   sourceOptions: any = [];
@@ -69,6 +84,26 @@ export class CallOutcomeDialog implements OnInit {
   readonly errors = signal<Record<string, string>>({});
   /** The lead's enquiry and earlier conversations, shown while the telecaller talks (caller card). */
   readonly profile = signal<CallerProfile | null>(null);
+  /** Earlier notes: the latest two, or all of them (the page scrolls - the list never gets a scrollbar of its own). */
+  readonly showAllNotes = signal(false);
+  readonly visibleNotes = computed(() => {
+    const notes = this.profile()?.follow_up_notes ?? [];
+    return this.showAllNotes() ? notes : notes.slice(0, 2);
+  });
+
+  /** The next follow-up as a local Date (the date can arrive as a UTC ISO string, the time as "10:00:00"). */
+  nextFollowUpAt(fu: { follow_up_date: string; follow_up_time: string | null }): Date | null {
+    const raw = String(fu.follow_up_date ?? '');
+    if (!raw) return null;
+    let ymd = raw.slice(0, 10);
+    if (raw.includes('T')) {
+      const d = new Date(raw);
+      if (!Number.isNaN(d.getTime())) ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    const [y, m, day] = ymd.split('-').map(Number);
+    const [hh, mm] = String(fu.follow_up_time || '10:00').split(':').map(Number);
+    return new Date(y, m - 1, day, hh || 0, mm || 0);
+  }
 
   /** The dialog opens as soon as the telecaller answers, so the outcome can be prepared while
    *  still on the call - but the backend refuses to save a disposition before the call ends.
@@ -78,9 +113,40 @@ export class CallOutcomeDialog implements OnInit {
     return live?.id === this.call.id;
   });
 
+  durationText(): string {
+    if (this.callLive()) this.talkSeconds = this.timer.elapsedSeconds(this.call.connected_at ?? this.call.answered_at ?? this.call.started_at);
+    return formatCallDuration(this.talkSeconds);
+  }
+
   readonly selected = computed(() => this.dispositions().find(d => d.code === this.selectedCode()) ?? null);
   readonly action = computed(() => this.selected()?.action ?? 'none');
   readonly needsLead = computed(() => ['follow_up', 'callback', 'appointment', 'converted'].includes(this.action()));
+
+  /** The telecaller handling this call / lead: shown (read-only) on the appointment and booked as its counselor. */
+  readonly handlingTelecaller = computed(() => this.profile()?.lead?.assigned_to_name ?? this.call.telecaller?.name ?? null);
+  readonly hours12 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  readonly minutes5 = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
+
+  get fuHour(): number { return Number(this.followUpTime.slice(0, 2)) % 12 || 12; }
+  get fuMinute(): string { return this.followUpTime.slice(3, 5) || '00'; }
+  get fuMeridiem(): string { return Number(this.followUpTime.slice(0, 2)) >= 12 ? 'PM' : 'AM'; }
+
+  /** Follow-up time is picked as hour / minute / AM-PM and kept as "HH:mm". */
+  setFollowUpTime(part: 'h' | 'm' | 'p', value: string | number): void {
+    let hour = this.fuHour;
+    let minute = this.fuMinute;
+    let meridiem = this.fuMeridiem;
+    if (part === 'h') hour = Number(value);
+    else if (part === 'm') minute = String(value);
+    else meridiem = String(value);
+    const h24 = (hour % 12) + (meridiem === 'PM' ? 12 : 0);
+    this.followUpTime = `${String(h24).padStart(2, '0')}:${minute}`;
+  }
+
+  /** "Appointment Booked" is shown as "Appointment Booking". */
+  label(d: CallDisposition): string {
+    return d.action === 'appointment' ? 'Appointment Booking' : d.label;
+  }
 
   leadId: number | null = this.call.lead?.id ?? this.call.lead_id ?? null;
   leadName: string | null = this.call.lead?.name ?? null;
@@ -90,8 +156,7 @@ export class CallOutcomeDialog implements OnInit {
   followUpTime = '10:00';
   followUpType = 0;
   appointmentDate = this.addDays(1);
-  appointmentTime = '11:00';
-  counselorId: number | null = null;
+  appointmentTime = '';
   appointmentReason = '';
 
   ngOnInit(): void {
@@ -99,18 +164,12 @@ export class CallOutcomeDialog implements OnInit {
       next: list => {
         // An answered call cannot be "no answer" (the popup also opens the moment an outgoing call is picked up).
         const answered = !!(this.call.answered_at || this.call.connected_at || this.callLive());
-        this.dispositions.set(answered ? list.filter(d => d.code !== 'no_answer') : list);
+        // "Converted to Customer" is not offered here, and an answered call cannot be "no answer".
+        const hidden = this.data.hiddenCodes ?? [];
+        this.dispositions.set(list.filter(d => d.action !== 'converted' && !(answered && d.code === 'no_answer') && !hidden.includes(d.code)));
         if (!answered && list.some(d => d.code === 'no_answer')) this.selectedCode.set('no_answer');
       },
       error: () => this.toast.error('Could not load call outcomes.'),
-    });
-
-    this.api.GET(`${ApiRoutesConstants.USER_LIST}?status=1&per_page=100`).subscribe({
-      next: (res: any) => {
-        const users: any[] = res?.data?.data ?? [];
-        this.counselors.set(users.filter(u => u.role?.slug !== 'telecaller').map(u => ({ id: u.id, name: u.name })));
-      },
-      error: () => this.counselors.set([]),
     });
 
     this.loadLeadDropdowns();
@@ -140,7 +199,92 @@ export class CallOutcomeDialog implements OnInit {
   select(code: string): void {
     this.selectedCode.set(code);
     this.errors.set({});
+    if (this.action() === 'appointment') this.loadSlots();
   }
+
+  /** Loads the slot grid for the appointment date (a slot is free only while a doctor is free); the picked time is cleared. */
+  loadSlots(): void {
+    const seq = ++this.slotLookupSeq;
+    this.appointmentTime = '';
+    this.clearDoctors();
+    this.slots.set([]);
+    this.slotsError.set('');
+    if (!this.leadId || !this.appointmentDate) return;
+    this.slotsLoading.set(true);
+    this.api.GET(`${ApiRoutesConstants.LEAD_VALIDATE}/${this.leadId}/appointment-slots?date=${this.appointmentDate}`).subscribe({
+      next: (res: any) => {
+        if (seq !== this.slotLookupSeq) return;
+        this.slots.set(res?.data ?? []);
+        this.slotMinutes = Number(res?.meta?.slot_minutes ?? this.slotMinutes);
+        this.slotsLoading.set(false);
+      },
+      error: (err: any) => {
+        if (seq !== this.slotLookupSeq) return;
+        this.slotsError.set(err?.error?.message || 'Could not load the appointment slots.');
+        this.slotsLoading.set(false);
+      },
+    });
+  }
+
+  selectSlot(slot: { time: string; available: boolean }): void {
+    if (!slot.available) return;
+    this.appointmentTime = this.appointmentTime === slot.time ? '' : slot.time;
+    this.loadDoctors();
+  }
+
+  private clearDoctors(): void {
+    this.doctorLookupSeq++;
+    this.doctorId = null;
+    this.doctors.set([]);
+    this.doctorsLoading.set(false);
+  }
+
+  /** Doctors free at the picked slot, for the optional doctor dropdown. */
+  private loadDoctors(): void {
+    this.clearDoctors();
+    if (!this.leadId || !this.appointmentDate || !this.appointmentTime) return;
+    const seq = this.doctorLookupSeq;
+    this.doctorsLoading.set(true);
+    this.api.GET(`${ApiRoutesConstants.LEAD_VALIDATE}/${this.leadId}/available-doctors?date=${this.appointmentDate}&time=${encodeURIComponent(this.appointmentTime)}`).subscribe({
+      next: (res: any) => {
+        if (seq !== this.doctorLookupSeq) return;
+        this.doctors.set(res?.data ?? []);
+        this.doctorsLoading.set(false);
+      },
+      error: () => {
+        if (seq !== this.doctorLookupSeq) return;
+        this.doctorsLoading.set(false);
+      },
+    });
+  }
+
+  slotLabel(time: string): string {
+    return to12Hour(time) ?? time;
+  }
+
+  /** Slots grouped Morning / Afternoon / Evening, each with how many are still free. */
+  readonly slotGroups = computed(() =>
+    [
+      { key: 'morning', label: 'Morning', icon: 'bi-sunrise', from: 0, to: 12 },
+      { key: 'afternoon', label: 'Afternoon', icon: 'bi-sun', from: 12, to: 16 },
+      { key: 'evening', label: 'Evening', icon: 'bi-moon-stars', from: 16, to: 24 },
+    ]
+      .map(d => {
+        const slots = this.slots().filter(s => { const h = Number(s.time.slice(0, 2)); return h >= d.from && h < d.to; });
+        return { ...d, slots, free: slots.filter(s => s.available).length };
+      })
+      .filter(g => g.slots.length),
+  );
+
+  /** "11:15 AM - 12:00 PM" for the picked slot. */
+  selectedSlotRange(): string {
+    if (!this.appointmentTime) return '';
+    const [h, m] = this.appointmentTime.split(':').map(Number);
+    const end = new Date(2000, 0, 1, h, m + this.slotMinutes);
+    const endText = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
+    return `${this.slotLabel(this.appointmentTime)} - ${this.slotLabel(endText)}`;
+  }
+
 
   /** Unknown caller: create the lead now, then this call and its outcome are linked to it. */
   createLead(): void {
@@ -216,6 +360,10 @@ export class CallOutcomeDialog implements OnInit {
       this.errors.set({ lead_id: 'Create the lead for this caller first.' });
       return false;
     }
+    if (this.action() === 'appointment' && !this.appointmentTime) {
+      this.errors.set({ appointment_time: 'Pick a free appointment time.' });
+      return false;
+    }
     if (this.selected()!.requires_note && !this.notes.trim()) {
       this.errors.set({ notes: 'Notes are required for this outcome.' });
       return false;
@@ -247,7 +395,7 @@ export class CallOutcomeDialog implements OnInit {
       Object.assign(payload, {
         appointment_date: this.appointmentDate,
         appointment_time: to12Hour(this.appointmentTime),
-        counselor_id: this.counselorId,
+        doctor_id: this.doctorId,
         appointment_reason: this.appointmentReason.trim() || null,
       });
     }

@@ -108,7 +108,6 @@ export class LeadManagement implements OnInit {
     { key: 'service_category', header: 'Service Category', type: 'text', width: '9%' },
     { key: 'service_request', header: 'Service Request', type: 'text', width: '9%' },
     { key: 'branch', header: 'Branch', type: 'branch', width: '9%' },
-    { key: 'telecaller_avatar', header: 'Telecaller', type: 'avatarGroup', width: '8%', sortable: false },
     { key: 'status', header: 'Status', type: 'badge', width: '8%' },
     // { key: 'next_follow_up', header: 'Next Follow-up', type: 'text', width: '8%' },
     { key: 'action', header: 'Action', type: 'action', width: '15%', sortable: false },

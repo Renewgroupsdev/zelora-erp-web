@@ -112,7 +112,7 @@
           <div class="records-head"><span><i class="bi bi-clock-history"></i> Call history &amp; follow-up records</span><em>{{ records.length }}</em></div>
           @if (records.length) {
             <ol class="records-timeline">
-              @for (r of records; track $index; let i = $index) {
+              @for (r of visibleRecords; track $index; let i = $index) {
                 <li [style.animation-delay.ms]="i * 60">
                   <span class="rec-dot" [class.is-followup]="r.kind === 'followup'">{{ initials(r.who) }}</span>
                   <div class="rec-body">
@@ -124,6 +124,12 @@
                 </li>
               }
             </ol>
+            @if (records.length > recordsPreview) {
+              <button type="button" class="records-more" (click)="showAllRecords = !showAllRecords">
+                <i class="bi" [ngClass]="showAllRecords ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                {{ showAllRecords ? 'Show less' : 'Show more (' + (records.length - recordsPreview) + ' more)' }}
+              </button>
+            }
           } @else {
             <p class="records-empty"><i class="bi bi-telephone-x"></i> No calls or follow-ups recorded yet.</p>
           }
@@ -208,7 +214,7 @@
         } @else {
           <div class="field-grid mode-panel">
             <label>Next follow-up date<input type="date" [min]="today" formControlName="nextFollowUpDate"></label>
-            <label>Next follow-up time<input type="text" appTimePicker formControlName="nextFollowUpTime" placeholder="Select time"></label>
+            <label>Next follow-up time<app-time-select formControlName="nextFollowUpTime"></app-time-select></label>
             <label class="full">Follow-up note<textarea rows="3" formControlName="notes" [class.is-invalid]="isInvalid('notes')" placeholder="Record the call outcome, needs, and next action"></textarea></label>
           </div>
         }

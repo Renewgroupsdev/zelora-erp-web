@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnDestroy, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { Router } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { CallTimerService } from '../../../core/telephony/call-timer.service';
 import {
@@ -33,6 +34,7 @@ export class TelephonyDock implements OnDestroy {
   private readonly timer = inject(CallTimerService);
   private readonly auth = inject(AuthService);
   private readonly dialog = inject(MatDialog);
+  private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -230,7 +232,9 @@ export class TelephonyDock implements OnDestroy {
     if (this.outcomeOpenFor === call.id) return;
     this.outcomeOpenFor = call.id;
 
-    openCallOutcome(this.dialog, call, required)
+    // On the Follow-Ups page the outcome form leaves out Wrong Number and Complaint; every other outcome is unchanged.
+    const onFollowUps = this.router.url.split('?')[0].endsWith('/follow-ups');
+    openCallOutcome(this.dialog, call, required, onFollowUps ? ['wrong_number', 'complaint'] : undefined)
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {

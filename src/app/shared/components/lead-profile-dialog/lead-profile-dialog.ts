@@ -11,6 +11,7 @@ import { FileUploadService, UploadDraft, uploadError } from '../../common-servic
 import { shrinkPhoto } from '../../models/branch-franchise.model';
 import { CallerLogEntry } from '../../models/common-components.model';
 import { TimePickerDirective } from '../../directives/time-picker.directive';
+import { TimeSelect } from '../time-select/time-select';
 import { ApiDataService } from '../../../core/http/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ApiRoutesConstants } from '../../common-services/api-route-constants';
@@ -100,7 +101,7 @@ export interface LeadProfileDialogResult {
 @Component({
   selector: 'app-lead-profile-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, TimePickerDirective],
+  imports: [CommonModule, ReactiveFormsModule, MatDialogModule, TimePickerDirective, TimeSelect],
   templateUrl: './lead-profile-dialog.html',
   styleUrl: './lead-profile-dialog.scss',
 })
@@ -461,6 +462,14 @@ export class LeadProfileDialog {
   }
 
   /** Calls and follow-up notes already recorded for the lead, shown as one timeline above the follow-up form. */
+  /** History shows the latest two records; "Show more" expands the rest (the dialog scrolls, the list never gets a scrollbar). */
+  readonly recordsPreview = 2;
+  showAllRecords = false;
+
+  get visibleRecords() {
+    return this.showAllRecords ? this.records : this.records.slice(0, this.recordsPreview);
+  }
+
   get records(): { kind: 'call' | 'followup'; who: string; when: string; notes: string; next: string; head: string; reminder: string }[] {
     const calls = (this.data.callLogEntries ?? []).map(c => ({ kind: 'call' as const, who: c.telecallerName || 'Unknown', when: c.dateTime, notes: c.notes, next: '', ...splitCallNote(c.notes) }));
     const notes = this.history.map(h => ({
