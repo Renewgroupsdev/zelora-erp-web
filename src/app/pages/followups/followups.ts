@@ -22,6 +22,7 @@ import {
 } from '../../shared/models/common-components.model';
 import { ToastService } from '../../shared/common-services/toast.service';
 import { Router } from '@angular/router';
+import { AddLeadForm } from '../lead-management/add-lead-form/add-lead-form';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval } from 'rxjs';
 import { debounceTime, filter } from 'rxjs/operators';
@@ -43,6 +44,8 @@ const FALLBACK_REFRESH_MS = 20_000;
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'call', icon: 'bi-telephone-outbound', label: 'Call Lead', variant: 'primary', permission: 'call-follow-up-lead' },
   { key: 'view', icon: 'bi-eye', label: 'View Lead', variant: 'default', keepOnLock: true },
+  // Edit the lead's details in a pop-up (same form as Lead Management); its own Roles & Permissions action in the Follow-up module.
+  { key: 'edit', icon: 'bi-pencil-square', label: 'Edit Lead', variant: 'default', permission: 'edit-follow-up-lead', keepOnLock: true },
   { key: 'appointment', icon: 'bi-calendar2-check', label: 'Book Appointment', variant: 'default', permission: 'book-follow-up-appointment' },
   // Hand the lead to another telecaller (e.g. the assigned one is absent today). Super Admin / Admin / Branch Manager by default.
   { key: 'reassign', icon: 'bi-person-gear', label: 'Reassign Caller', variant: 'default', permission: 'reassign-follow-up-caller', keepOnLock: true },
@@ -424,6 +427,7 @@ export class Followups implements OnInit, OnDestroy {
   onQuickAction({ row, action }: { row: TableRow; action: string }): void {
     if (action === 'view') this.viewLead(row);
     else if (action === 'reassign') this.reassignCaller(row);
+    else if (action === 'edit') this.editLead(row);
     else if (row['locked']) this.toast.warning(String(row['lockedLabel'] ?? 'Another telecaller is on this lead.'));
     else if (action === 'appointment') this.openFollowUpProfile(row);
     else if (action === 'call') this.callLead(row);
@@ -466,6 +470,31 @@ export class Followups implements OnInit, OnDestroy {
       branchKey: String(row['branchKey'] ?? '') || null,
     }).afterClosed().subscribe(saved => {
       if (saved) this.loadFollowUps();
+    });
+  }
+
+  /** Opens the lead's edit form (the Lead Management one) as a pop-up; the list reloads after a save. */
+  private editLead(row: TableRow): void {
+    if (row['locked']) {
+      this.toast.warning(String(row['lockedLabel'] ?? 'Another telecaller is on this lead.'));
+      return;
+    }
+    const id = Number(row['id']);
+    this.apiDataService.GET(`${ApiRoutesConstants.LEAD_ADD}/${id}`).subscribe({
+      next: (res: any) => {
+        if (!res?.success || !res.data) return void this.toast.error('Failed to load lead details. Please try again.');
+        this.dialog.open(AddLeadForm, {
+          width: '920px',
+          maxWidth: 'calc(100vw - 32px)',
+          maxHeight: '92vh',
+          autoFocus: false,
+          restoreFocus: true,
+          disableClose: true,
+          panelClass: 'add-lead-dialog',
+          data: { ...res.data },
+        }).afterClosed().subscribe((saved) => { if (saved) this.loadFollowUps(); });
+      },
+      error: () => this.toast.error('Failed to load lead details. Please try again.'),
     });
   }
 

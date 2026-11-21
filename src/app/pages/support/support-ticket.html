@@ -36,7 +36,7 @@
           <div><dt>Page / screen</dt><dd>{{ t.affected_screen || '-' }}</dd></div>
           <div><dt>Created</dt><dd>{{ t.created_at | date: 'dd MMM yyyy, h:mm a' }}</dd></div>
           <div><dt>Last updated</dt><dd>{{ t.updated_at | date: 'dd MMM yyyy, h:mm a' }}</dd></div>
-          <div><dt>Assigned to</dt><dd>{{ t.assigned_to?.name || 'Not assigned yet' }}</dd></div>
+          <div><dt>Assigned to</dt><dd>@if (t.assignee) { {{ t.assignee.label }}<div class="sp-help">{{ t.assignee.department }}</div> } @else { Not assigned yet }</dd></div>
           @if (t.application_version) { <div><dt>App version</dt><dd>{{ t.application_version }}</dd></div> }
         </dl>
         <div class="sp-desc">{{ t.description }}</div>
@@ -153,11 +153,13 @@
         @if (canManage) {
           <section class="sp-card">
             <h2 class="sp-card-title"><i class="bi bi-sliders"></i> Manage ticket</h2>
+            @if (canAssign) {
             <div class="sp-field mb-2">
               <label class="sp-label" for="as">Assign to</label>
               <div class="d-flex gap-2"><select id="as" class="sp-select" [(ngModel)]="assignTo"><option value="">Nobody (queue)</option>@for (a of agents; track a.id) { <option [ngValue]="a.id">{{ a.name }}</option> }</select>
                 <button type="button" class="sp-btn sm" [disabled]="busy" (click)="saveAssignment()">Save</button></div>
             </div>
+            }
             <div class="sp-field mb-2">
               <label class="sp-label" for="pr">Priority</label>
               <div class="d-flex gap-2"><select id="pr" class="sp-select" [(ngModel)]="priority">@for (p of config?.priorities ?? []; track p.value) { <option [value]="p.value">{{ p.label }}</option> }</select>
@@ -175,10 +177,10 @@
             <div class="d-flex flex-wrap gap-2">
               @if (t.status !== 'resolved' && t.status !== 'closed') {
                 <button type="button" class="sp-btn sm" (click)="showResolve = !showResolve"><i class="bi bi-check2-circle"></i> Mark as resolved</button>
-                <button type="button" class="sp-btn sm" [disabled]="busy" (click)="escalate()"><i class="bi bi-graph-up-arrow"></i> Escalate</button>
+                @if (canAssign) { <button type="button" class="sp-btn sm" [disabled]="busy" (click)="escalate()"><i class="bi bi-graph-up-arrow"></i> Escalate</button> }
               }
               @if (t.status !== 'closed') { <button type="button" class="sp-btn sm danger" [disabled]="busy" (click)="closeTicket()"><i class="bi bi-x-circle"></i> Close</button> }
-              @if (t.can_reopen) { <button type="button" class="sp-btn sm" [disabled]="busy" (click)="reopenAsSupport()"><i class="bi bi-arrow-counterclockwise"></i> Reopen</button> }
+              @if (t.can_reopen && canAssign) { <button type="button" class="sp-btn sm" [disabled]="busy" (click)="reopenAsSupport()"><i class="bi bi-arrow-counterclockwise"></i> Reopen</button> }
             </div>
             @if (showResolve) {
               <div class="sp-field mt-2">
@@ -200,9 +202,10 @@
                 @switch (h.event) {
                   @case ('created') { Ticket created }
                   @case ('status') { {{ h.old_status_label }} → {{ h.new_status_label }} }
-                  @case ('assigned') { Assigned }
+                  @case ('assigned') { {{ h.old_value ? 'Assignee changed' : 'Ticket assigned' }} }
                   @case ('priority') { Priority changed }
-                  @case ('reply') { Message / file added }
+                  @case ('attachment') { Attachment added }
+                  @case ('reply') { Comment added }
                   @case ('note') { Internal note }
                   @case ('escalated') { Escalated }
                   @case ('resolved') { Resolved }
@@ -212,7 +215,10 @@
                   @default { {{ h.event }} }
                 }
               </div>
-              <div class="who">{{ h.changed_by }} · {{ h.created_at | date: 'dd MMM yyyy, h:mm a' }}</div>
+              @if (h.event === 'assigned' || h.event === 'priority') {
+                <div class="sp-help">@if (h.old_value) { {{ h.old_value }} → } {{ h.new_value || 'Unassigned' }}</div>
+              }
+              <div class="who">{{ h.changed_by }}@if (h.changed_by_role) { ({{ h.changed_by_role }}) } · {{ h.created_at | date: 'dd MMM yyyy, h:mm a' }}</div>
               @if (h.remarks) { <div class="note">{{ h.remarks }}</div> }
             </li>
           }

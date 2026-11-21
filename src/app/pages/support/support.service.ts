@@ -2,7 +2,7 @@ import { HttpClient, HttpEvent, HttpParams, HttpResponse } from '@angular/common
 import { Injectable } from '@angular/core';
 import { Observable, map, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { AdminCategory, DashboardData, Pagination, SupportConfig, SupportSettings, TicketDetail, TicketSummary } from './support.model';
+import { AdminCategory, DashboardData, Pagination, SupportAssignee, SupportConfig, SupportSettings, TicketDetail, TicketSummary } from './support.model';
 
 export type ExportFormat = 'pdf' | 'xlsx' | 'csv';
 
@@ -29,6 +29,16 @@ export class SupportService {
 
   config(): Observable<SupportConfig> {
     return this.data(this.http.get(`${this.base}/config`));
+  }
+
+  /** Departments and employees the ticket can be assigned to; filtered by department and/or a search of name, role or department. */
+  assignees(q: { department?: string; search?: string } = {}): Observable<{ departments: string[]; assignees: SupportAssignee[] }> {
+    return this.data(this.http.get(`${this.base}/assignees`, { params: this.params(q) }));
+  }
+
+  /** Tickets given TO the signed-in employee (they work them without any Help Desk action). */
+  assignedTickets(q: { status?: string; search?: string; page?: number; per_page?: number }): Observable<{ items: TicketSummary[]; pagination: Pagination }> {
+    return this.data(this.http.get(`${this.base}/assigned`, { params: this.params(q) }));
   }
 
   myTickets(q: { status?: string; search?: string; page?: number; per_page?: number }): Observable<{ items: TicketSummary[]; pagination: Pagination }> {

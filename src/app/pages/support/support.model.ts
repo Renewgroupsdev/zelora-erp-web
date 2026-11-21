@@ -48,10 +48,16 @@ export interface TicketMessage {
 
 export interface TicketHistoryItem {
   event: string; old_status: string | null; old_status_label: string | null; new_status: string | null; new_status_label: string | null;
-  changed_by: string; changed_by_type: string | null; remarks: string | null; created_at: string;
+  /** What the change was from / to when it is not a status (assignee, priority, file name). */
+  old_value?: string | null; new_value?: string | null; attachment_id?: number | null;
+  changed_by: string; changed_by_role?: string | null; changed_by_type: string | null; remarks: string | null; created_at: string;
 }
 
+/** A person a ticket can be given to (Report an Issue -> Assign to). `label` is "Name (Role)". */
+export interface SupportAssignee { id: number; name: string; role: string | null; department: string; label: string; }
+
 export interface TicketDetail extends TicketSummary {
+  assignee: SupportAssignee | null;
   description: string;
   affected_screen: string | null;
   page_url: string | null;
@@ -89,7 +95,7 @@ export interface DashboardData {
 
 export interface SupportSettings {
   support_phone: string; support_whatsapp: string | null; support_email: string | null; support_hours: string | null; support_availability: string | null;
-  email_notifications: string; sla_hours_low: number; sla_hours_medium: number; sla_hours_high: number; sla_hours_critical: number;
+  email_notifications: string; reminder_enabled: string; reminder_interval_minutes: number; sla_hours_low: number; sla_hours_medium: number; sla_hours_high: number; sla_hours_critical: number;
 }
 
 export interface AdminCategory { id: number; category_name: string; description: string | null; audience: 'both' | 'customer' | 'employee'; sort_order: number; is_active: boolean; }

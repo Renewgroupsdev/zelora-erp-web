@@ -135,6 +135,8 @@ export class AddLeadForm implements OnInit{
         error: () => this.toast.error('Could not load the branch / franchise list.'),
       });
     });
+    // Editing a lead never reassigns it here (assigning lives on the Follow-ups page): the telecaller is read-only.
+    if (this.isEdit) this.leadForm.get('assigned_to')?.disable();
     this.loadTelecallers();
     this.applyPreloadedLookups();
     this.loadSubCategories();

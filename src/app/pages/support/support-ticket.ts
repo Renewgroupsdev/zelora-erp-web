@@ -79,9 +79,16 @@ export class SupportTicketPage implements OnInit, OnDestroy {
   get backLink(): string {
     return this.admin ? '/app/support/admin' : '/app/support/tickets';
   }
-  get canManage(): boolean { return this.admin && this.auth.hasActionAccess('manage-support-tickets'); }
-  get canReply(): boolean { return !this.admin || this.auth.hasActionAccess('reply-support-tickets'); }
-  get canNote(): boolean { return this.admin && this.auth.hasActionAccess('add-support-internal-note'); }
+  /** The employee this ticket was assigned to works it without the Help Desk actions (the server checks the same rule). */
+  get isAssignee(): boolean {
+    const me = this.auth.currentUser()?.id;
+    return this.admin && me != null && this.t?.assignee?.id === Number(me);
+  }
+  /** Assigning, escalating and reopening need the Help Desk role; the rest of the panel is also the assignee's. */
+  get canAssign(): boolean { return this.admin && this.auth.hasActionAccess('manage-support-tickets'); }
+  get canManage(): boolean { return this.canAssign || this.isAssignee; }
+  get canReply(): boolean { return !this.admin || this.auth.hasActionAccess('reply-support-tickets') || this.isAssignee; }
+  get canNote(): boolean { return this.admin && (this.auth.hasActionAccess('add-support-internal-note') || this.isAssignee); }
   get moves(): { value: string; label: string }[] {
     const label = (v: string) => this.config?.statuses.find((s) => s.value === v)?.label ?? v;
     return (MOVES[this.t?.status ?? ''] ?? []).map((v) => ({ value: v, label: label(v) }));
@@ -89,7 +96,7 @@ export class SupportTicketPage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.api.config().subscribe({ next: (c) => (this.config = c), error: () => (this.config = null) });
-    if (this.admin) {
+    if (this.admin && this.auth.hasActionAccess('manage-support-tickets')) {
       this.api.agents().subscribe({ next: (a) => (this.agents = a), error: () => (this.agents = []) });
     }
     this.load();

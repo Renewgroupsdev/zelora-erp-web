@@ -6,6 +6,10 @@ export type AlertStackTone = 'warning' | 'info' | 'success' | 'danger';
 export interface AlertStackItem {
   title: string;
   text?: string;
+  /** Part of `text` shown in bold (e.g. a person's name). */
+  strong?: string;
+  /** Raise the OS (desktop) notification even while the page is in front. */
+  osToast?: boolean;
   /** Small pills under the text, e.g. ['5 leads', '2 due today']. */
   chips?: string[];
   tone?: AlertStackTone;
@@ -97,7 +101,7 @@ export class AlertStackService {
       <span class="as-badge"><span class="as-ring"></span><span class="as-ring as-ring-2"></span><i class="bi ${this.esc(item.icon ?? TONE_ICON[tone])}"></i></span>
       <div class="as-body">
         <div class="as-title">${this.esc(item.title)}</div>
-        ${item.text ? `<div class="as-text">${this.esc(item.text)}</div>` : ''}
+        ${item.text ? `<div class="as-text">${this.boldText(item.text, item.strong)}</div>` : ''}
         ${item.chips?.length ? `<div class="as-chips">${item.chips.map((c, i) => `<span class="as-chip" style="animation-delay:${0.35 + i * 0.1}s">${this.esc(c)}</span>`).join('')}</div>` : ''}
         ${item.actionLabel ? `<button type="button" class="as-action">${this.esc(item.actionLabel)} <i class="bi bi-arrow-right"></i></button>` : ''}
       </div>
@@ -106,7 +110,7 @@ export class AlertStackService {
 
     this.visible++;
     host.appendChild(card);
-    this.tabAttention.attention(item.title, item.text);
+    this.tabAttention.attention(item.title, item.text, !!item.osToast);
 
     let timer: ReturnType<typeof setTimeout> | null = null;
     let left = duration;
@@ -161,6 +165,13 @@ export class AlertStackService {
 
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /** Escaped text with the first occurrence of `strong` wrapped in <b>. */
+  private boldText(text: string, strong?: string): string {
+    const i = strong ? text.indexOf(strong) : -1;
+    if (!strong || i < 0) return this.esc(text);
+    return `${this.esc(text.slice(0, i))}<b style="color:#111827">${this.esc(strong)}</b>${this.esc(text.slice(i + strong.length))}`;
   }
 
   private esc(v: unknown): string {
