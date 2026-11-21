@@ -43,8 +43,8 @@ const FALLBACK_REFRESH_MS = 20_000;
 const QUICK_ACTIONS: QuickAction[] = [
   { key: 'call', icon: 'bi-telephone-outbound', label: 'Call Lead', variant: 'primary', permission: 'call-follow-up-lead' },
   { key: 'view', icon: 'bi-eye', label: 'View Lead', variant: 'default', keepOnLock: true },
-  // Edit the lead's details in a pop-up (same form as Lead Management); same permission as editing a lead there.
-  { key: 'edit', icon: 'bi-pencil-square', label: 'Edit Lead', variant: 'default', permission: 'edit-lead', keepOnLock: true },
+  // Edit the lead's details in a pop-up (same form as Lead Management); its own Roles & Permissions action in the Follow-up module.
+  { key: 'edit', icon: 'bi-pencil-square', label: 'Edit Lead', variant: 'default', permission: 'edit-follow-up-lead', keepOnLock: true },
   { key: 'appointment', icon: 'bi-calendar2-check', label: 'Book Appointment', variant: 'default', permission: 'book-follow-up-appointment' },
   // Hand the lead to another telecaller (e.g. the assigned one is absent today). Super Admin / Admin / Branch Manager by default.
   { key: 'reassign', icon: 'bi-person-gear', label: 'Reassign Caller', variant: 'default', permission: 'reassign-follow-up-caller', keepOnLock: true },
