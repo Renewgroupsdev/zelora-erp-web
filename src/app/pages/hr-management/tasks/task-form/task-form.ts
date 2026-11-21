@@ -1,19 +1,22 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import Swal from 'sweetalert2';
 import { RecordHistory } from '../../../../shared/components/record-history/record-history';
 import { HrService } from '../../../../shared/common-services/hr.service';
 import { WorkTaskInput, WorkTaskService } from '../../../../shared/common-services/work-task.service';
-import { WORK_TASK_RESULTS, WORK_TASK_STATUSES, WORK_TASK_TYPES, WorkTask } from '../../../../shared/models/work-task.model';
+import { DepartmentOptionsService } from '../../../../shared/common-services/department-options.service';
+import { TaskTypeGroup, TaskTypeOptionsService } from '../../../../shared/common-services/task-type-options.service';
+import { GroupedSelect, SelectGroup } from '../../../../shared/components/grouped-select/grouped-select';
+import { WORK_TASK_RESULTS, WORK_TASK_STATUSES, WorkTask } from '../../../../shared/models/work-task.model';
 import { addDays, isoDate } from '../../../../shared/utils/format.util';
 
 /** Log or update one task. Read-only when it is not the signed-in employee's own task. */
 @Component({
   selector: 'app-task-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, RecordHistory],
+  imports: [CommonModule, FormsModule, MatDialogModule, RecordHistory, GroupedSelect],
   templateUrl: './task-form.html',
   styleUrl: '../../../../shared/styles/erp-dialog.scss',
 })
@@ -22,10 +25,15 @@ export class TaskForm {
   private readonly data = inject<{ taskId?: string }>(MAT_DIALOG_DATA);
   private readonly store = inject(WorkTaskService);
   readonly hr = inject(HrService);
+  private readonly departmentOptions = inject(DepartmentOptionsService);
+  private readonly taskTypes = inject(TaskTypeOptionsService);
 
   readonly statuses = WORK_TASK_STATUSES;
   readonly results = WORK_TASK_RESULTS;
-  readonly typeGroups = Object.entries(WORK_TASK_TYPES);
+  readonly departments = this.departmentOptions.names;
+  /** Task type master of the chosen department: bold groups with their task types underneath. */
+  private readonly masterGroups = signal<TaskTypeGroup[]>([]);
+  readonly typesLoading = signal(false);
   readonly submitted = signal(false);
   readonly saving = signal(false);
 
@@ -37,13 +45,52 @@ export class TaskForm {
   model: WorkTaskInput = this.existing
     ? structuredClone((({ id, empId, createdAt, updatedAt, ...rest }) => rest)(this.existing))
     : {
-      branch: this.owner?.branch ?? this.hr.branches[0] ?? '', type: (this.owner?.department === 'SEO' ? WORK_TASK_TYPES['SEO'] : WORK_TASK_TYPES['General'])[0], title: '', status: 'Not started', result: 'Pending',
+      branch: this.owner?.branch ?? this.hr.branches[0] ?? '', type: '', title: '', status: 'Not started', result: 'Pending',
       metric: '', plannedDate: isoDate(), dueDate: addDays(isoDate(), 3), completedDate: '', notes: '',
     };
 
+  /** Bound from the signed-in employee's department (or the task owner's); an admin without an employee record picks one. */
+  department = this.owner?.department ?? '';
+  /** Fixed for anyone with a department of their own; only an admin without one can pick. */
+  readonly departmentLocked = !!this.owner?.department || this.readOnly;
+
+  /** Dropdown groups; a saved type that is no longer in the master stays visible under "Current". */
+  readonly typeGroups = computed<SelectGroup[]>(() => {
+    const groups = this.masterGroups().map(g => ({ label: g.name, items: g.children.map(c => c.name) }));
+    const type = this.typeName();
+    const known = groups.some(g => g.label === type || g.items.includes(type));
+    return type && !known ? [...groups, { label: 'Current', items: [type] }] : groups;
+  });
+  private readonly typeName = signal(this.existing?.type ?? '');
+
   constructor() {
+    this.departmentOptions.ensure();
+    if (!this.department) {
+      this.departmentOptions.load().subscribe(names => { if (!this.department && names.length) { this.department = names[0]; this.loadTypes(); } });
+    }
+    this.loadTypes();
     // Default to the first branch once GET /branches/options has answered.
     this.hr.loadBranches().subscribe(list => { if (!this.model.branch && list.length) this.model.branch = list[0].name; });
+  }
+
+  onDepartmentChange(): void {
+    this.model.type = '';
+    this.typeName.set('');
+    this.loadTypes();
+  }
+
+  onTypeChange(value: string): void {
+    this.model.type = value;
+    this.typeName.set(value);
+  }
+
+  private loadTypes(): void {
+    this.typesLoading.set(true);
+    this.taskTypes.forDepartment(this.department).subscribe(groups => {
+      this.masterGroups.set(groups);
+      this.typesLoading.set(false);
+      if (!this.model.type && !this.existing) this.onTypeChange(groups[0]?.children[0]?.name ?? groups[0]?.name ?? '');
+    });
   }
 
   onStatusChange(): void {

@@ -43,6 +43,12 @@ export class ApiRoutesConstants {
    public static DEPARTMENTS = "departments";
    public static DEPARTMENT_OPTIONS = "departments/options";
 
+   //Settings -> Task Type Module (group = parent, task type = child, per department)
+   public static TASK_TYPE_LIST = "task-types?per_page=500";
+   public static TASK_TYPES = "task-types";
+   public static TASK_TYPE_OPTIONS = "task-types/options";
+   public static TASK_TYPE_PARENTS = "task-types/parents";
+
    //Lead Status (CURD)
    public static LEAD_STATUS_GET_List = "lead-statuses";
    public static LEAD_STATUS_ADD = "lead-statuses";

@@ -1,0 +1,88 @@
+<div class="lead-modal">
+
+  <div class="modal-header-custom">
+    <div class="modal-title-wrap">
+      <div class="title-icon">
+        <i class="bi bi-diagram-3-fill"></i>
+      </div>
+
+      <div class="title-content">
+        <h2>{{ isEdit ? 'Edit' : 'Add' }} {{ isGroup ? 'Group' : 'Task Type' }}</h2>
+        <p>Choose "None" as the group to create a bold parent group</p>
+      </div>
+    </div>
+
+    <button type="button" class="modal-close-btn" aria-label="Close" (click)="close()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+
+    <div class="modal-body-custom">
+
+      <div class="section-title">
+        <i class="bi bi-diagram-3"></i>
+        Task Type Information
+      </div>
+
+      <div class="form-grid">
+
+        <div class="form-field full-width">
+          <label for="tt-dept">Department <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-building"></i>
+            <select id="tt-dept" formControlName="department_id" (change)="onDepartmentChange()" [class.is-invalid]="isInvalid('department_id')">
+              @for (d of departments; track d.id) { <option [ngValue]="d.id">{{ d.name }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+          @if (isInvalid('department_id')) { <small class="error-text">Department is required.</small> }
+        </div>
+
+        <div class="form-field full-width">
+          <label for="tt-parent">Group (parent)</label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-folder2"></i>
+            <select id="tt-parent" formControlName="parent_id">
+              <option [ngValue]="null">None - this is a group</option>
+              @for (g of groups; track g.id) { <option [ngValue]="g.id">{{ g.name }}</option> }
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="tt-name">{{ isGroup ? 'Group Name' : 'Task Type Name' }} <span>*</span></label>
+          <div class="input-wrap">
+            <i class="bi bi-tag"></i>
+            <input id="tt-name" type="text" formControlName="name" maxlength="60" placeholder="Enter name" [class.is-invalid]="isInvalid('name')" />
+          </div>
+          @if (isInvalid('name')) { <small class="error-text">Name is required.</small> }
+        </div>
+
+        <div class="form-field full-width">
+          <label for="tt-status">Status <span>*</span></label>
+          <div class="input-wrap select-wrap">
+            <i class="bi bi-circle-half"></i>
+            <select id="tt-status" formControlName="status">
+              <option [ngValue]="1">Active</option>
+              <option [ngValue]="0">Inactive</option>
+            </select>
+            <i class="bi bi-chevron-down select-arrow"></i>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="cancel-btn" (click)="close()">Cancel</button>
+      <button type="submit" class="save-btn" [disabled]="isSaving">
+        <i class="bi" [class.bi-arrow-repeat]="isSaving" [class.bi-floppy]="!isSaving && !isEdit" [class.bi-pencil-square]="!isSaving && isEdit"></i>
+        {{ isSaving ? 'Saving...' : (isEdit ? 'Update' : 'Save') }}
+      </button>
+    </div>
+
+  </form>
+</div>

@@ -1,0 +1,47 @@
+<div class="task-type-page container-fluid px-0 d-flex flex-column">
+
+  <div class="page-header d-flex flex-md-row align-items-start align-items-md-center justify-content-between">
+    <div class="page-header-text">
+      <h6 class="page-title">Task Type Module</h6>
+    </div>
+
+    <button *appCan="'add-task-type'" type="button" class="add-lead-btn" (click)="openAddPopup()">
+      <i class="bi bi-plus-lg"></i>
+      Add Task Type
+    </button>
+  </div>
+
+  <app-auto-module-tabs></app-auto-module-tabs>
+
+  <app-common-filter-card
+    searchPlaceholder="Search by group or task type"
+    [filters]="filters"
+    [showExport]="false"
+    (searchChange)="onSearch($event)"
+    (filtersChange)="onFiltersChange($event)"
+  ></app-common-filter-card>
+
+  <div class="tables-row d-flex flex-column">
+    <div class="table-col">
+      <app-common-table-card historyType="TaskType"
+        [recordCountText]="recordCountText"
+        [columns]="columns"
+        [rows]="rows"
+        [loading]="loading()"
+        [totalRecords]="totalRecords"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="pageSizeOptions"
+        [currentPage]="currentPage"
+        [pageInfoText]="pageInfoText"
+        [sortActive]="sortActive"
+        [sortDirection]="sortDirection"
+        [actionPermissions]="{ edit: 'edit-task-type', delete: 'delete-task-type' }"
+        (pageChange)="onPageChange($event)"
+        (sortChange)="onSortChange($event)"
+        (editClick)="onEditTaskType($event)"
+        (deleteClick)="onDeleteTaskType($event)"
+      ></app-common-table-card>
+    </div>
+  </div>
+
+</div>

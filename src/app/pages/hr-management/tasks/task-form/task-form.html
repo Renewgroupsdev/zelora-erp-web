@@ -23,13 +23,19 @@
             </div>
           </div>
           <div class="form-field">
-            <label for="tk-type">Task type</label>
-            <div class="input-wrap"><i class="bi bi-tag"></i>
-              <select id="tk-type" name="type" [(ngModel)]="model.type">
-                @for (g of typeGroups; track g[0]) { <optgroup [label]="g[0]">@for (t of g[1]; track t) { <option [value]="t">{{ t }}</option> }</optgroup> }
+            <label for="tk-dept">Department</label>
+            <div class="input-wrap"><i class="bi bi-diagram-3"></i>
+              <select id="tk-dept" name="department" [(ngModel)]="department" (ngModelChange)="onDepartmentChange()" [disabled]="departmentLocked">
+                @if (department && !departments().includes(department)) { <option [value]="department">{{ department }}</option> }
+                @for (d of departments(); track d) { <option [value]="d">{{ d }}</option> }
               </select>
               <i class="bi bi-chevron-down select-arrow"></i>
             </div>
+          </div>
+          <div class="form-field">
+            <label>Task type</label>
+            <app-grouped-select name="type" [ngModel]="model.type" (ngModelChange)="onTypeChange($event)" [groups]="typeGroups()" icon="bi-tag"
+              [placeholder]="typesLoading() ? 'Loading...' : typeGroups().length ? 'Select task type' : 'No task types for this department'" />
           </div>
           <div class="form-field">
             <label for="tk-status">Status</label>

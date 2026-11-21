@@ -26,6 +26,7 @@ export const HISTORY_MODULE_SLUG: Record<string, string> = {
   CustomerTreatmentSitting: 'customer-management',
   DayClose: 'accounts-management',
   Department: 'department',
+  TaskType: 'task-type',
   EmployeeTarget: 'accounts-management',
   FollowUp: 'follow-up',
   Franchise: 'franchises-management',
