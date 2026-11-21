@@ -23,11 +23,11 @@
   } @else if (error) {
     <div class="sp-alert" role="alert"><i class="bi bi-exclamation-triangle"></i> {{ error }} <button type="button" class="sp-btn sm ms-auto" (click)="load()">Try again</button></div>
   } @else if (items.length === 0) {
-    <div class="sp-card sp-state"><i class="bi bi-inbox"></i><p>{{ search || filter !== 'all' ? 'No tickets match this filter.' : 'You have not reported any issue yet.' }}</p><a class="sp-btn primary" routerLink="/app/support/report">Report an Issue</a></div>
+    <div class="sp-card sp-state"><i class="bi bi-inbox"></i><p>{{ search || filter !== 'all' ? 'No tickets match this filter.' : scope === 'assigned' ? 'No ticket is assigned to you.' : 'You have not reported any issue yet.' }}</p><a class="sp-btn primary" routerLink="/app/support/report">Report an Issue</a></div>
   } @else {
     <div class="sp-tickets">
       @for (t of items; track t.ticket_number) {
-        <a class="sp-ticket" [routerLink]="['/app/support/tickets', t.ticket_number]">
+        <a class="sp-ticket" [routerLink]="link(t)">
           <div class="top">
             <span class="no">{{ t.ticket_number }}</span>
             <span class="d-flex gap-2"><span class="sp-badge" [ngClass]="'t-' + priorityTone(t.priority)">{{ t.priority_label }}</span><span class="sp-badge" [ngClass]="'t-' + statusTone(t.status)">{{ t.status_label }}</span></span>
@@ -37,7 +37,7 @@
             <span><i class="bi bi-tag"></i> {{ t.category || 'General' }}</span>
             <span><i class="bi bi-calendar3"></i> Created {{ t.created_at | date: 'dd MMM yyyy' }}</span>
             <span><i class="bi bi-arrow-repeat"></i> Updated {{ t.updated_at | date: 'dd MMM yyyy, h:mm a' }}</span>
-            @if (t.assigned_to) { <span><i class="bi bi-headset"></i> {{ t.assigned_to.name }}</span> }
+            @if (scope === 'assigned' && t.reporter) { <span><i class="bi bi-person"></i> {{ t.reporter.name }}</span> } @else if (t.assigned_to) { <span><i class="bi bi-headset"></i> {{ t.assigned_to.name }}</span> }
           </div>
         </a>
       }

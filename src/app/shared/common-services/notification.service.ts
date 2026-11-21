@@ -1,7 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import type { SittingTransfer } from '../models/appointment-flow.model';
 
-export type NotificationType = 'lead' | 'appointment' | 'stock' | 'discount' | 'manager' | 'purchase' | 'hr' | 'accounts' | 'chat';
+export type NotificationType = 'lead' | 'appointment' | 'stock' | 'discount' | 'manager' | 'purchase' | 'hr' | 'accounts' | 'chat' | 'support';
 
 export interface AppNotification {
   id: string;
@@ -27,6 +27,7 @@ const ICONS: Record<NotificationType, string> = {
   hr: 'bi-people',
   accounts: 'bi-cash-coin',
   chat: 'bi-chat-dots',
+  support: 'bi-headset',
 };
 
 const COLORS: Record<NotificationType, string> = {
@@ -39,6 +40,7 @@ const COLORS: Record<NotificationType, string> = {
   hr: 'notification-icon-teal',
   accounts: 'notification-icon-green',
   chat: 'notification-icon-purple',
+  support: 'notification-icon-blue',
 };
 
 /**
@@ -227,12 +229,27 @@ export class NotificationService {
     return fresh;
   }
 
+  /** Set by the bell service: a stored (server-side) notification was read here -> save it ('ALL' = mark every one read). */
+  persistRead: ((id: string) => void) | null = null;
+
+  /**
+   * Support ticket notifications of this login (GET support/notifications), one bell entry each (id SUP-<id>). The server is the
+   * source of truth for their read state and order, so every call replaces the previous support entries (no duplicates).
+   */
+  replaceSupport(items: AppNotification[]): void {
+    this._notifications.update((list) => [...items, ...list.filter((n) => !n.id.startsWith('SUP-'))].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+  }
+
   markRead(id: string): void {
+    const was = this._notifications().find((n) => n.id === id);
     this._notifications.update((list) => list.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    if (was && !was.read && id.startsWith('SUP-')) this.persistRead?.(id);
   }
 
   markAllRead(): void {
+    const hadSupport = this._notifications().some((n) => n.id.startsWith('SUP-') && !n.read);
     this._notifications.update((list) => list.map((n) => ({ ...n, read: true })));
+    if (hadSupport) this.persistRead?.('ALL');
   }
 
   relativeTime(date: Date): string {

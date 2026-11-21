@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
-import { SupportConfig } from './support.model';
+import { SupportAssignee, SupportConfig } from './support.model';
 import { SupportService } from './support.service';
 
 interface PickedFile { file: File; preview: string | null; }
@@ -37,6 +37,16 @@ export class SupportReport implements OnInit, OnDestroy {
   screen = '';
   priority = 'medium';
   files: PickedFile[] = [];
+
+  // Assign to: department filter + search -> the server lists the employees; the chosen one is shown before submitting.
+  departments: string[] = [];
+  assignees: SupportAssignee[] = [];
+  assigneeDepartment = '';
+  assigneeSearch = '';
+  assignee: SupportAssignee | null = null;
+  assigneeOpen = false;
+  assigneesLoading = false;
+  private assigneeTimer: ReturnType<typeof setTimeout> | undefined;
 
   /** What is sent along automatically (shown to the user so nothing is hidden). */
   pageUrl = '';
@@ -71,7 +81,45 @@ export class SupportReport implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    clearTimeout(this.assigneeTimer);
     this.files.forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
+  }
+
+  /** Opens the list (first time it loads) - the list is the server's answer for the current department + search. */
+  toggleAssignees(): void {
+    this.assigneeOpen = !this.assigneeOpen;
+    if (this.assigneeOpen && !this.assignees.length) this.loadAssignees();
+  }
+
+  /** Typing waits a moment so a search is one request, not one per key. */
+  onAssigneeFilter(): void {
+    clearTimeout(this.assigneeTimer);
+    this.assigneeTimer = setTimeout(() => this.loadAssignees(), 250);
+  }
+
+  private loadAssignees(): void {
+    this.assigneesLoading = true;
+    this.api.assignees({ department: this.assigneeDepartment, search: this.assigneeSearch.trim() }).subscribe({
+      next: (r) => {
+        this.assignees = r.assignees;
+        // Departments come from the unfiltered list, so the filter keeps showing all of them while one is selected.
+        if (!this.assigneeDepartment && !this.assigneeSearch.trim()) this.departments = r.departments;
+        this.assigneesLoading = false;
+      },
+      error: () => { this.assignees = []; this.assigneesLoading = false; },
+    });
+  }
+
+  pickAssignee(a: SupportAssignee | null): void {
+    this.assignee = a;
+    this.assigneeOpen = false;
+  }
+
+  /** The people of the list grouped by department, in the order the server sent them. */
+  get assigneeGroups(): { department: string; people: SupportAssignee[] }[] {
+    const groups = new Map<string, SupportAssignee[]>();
+    for (const a of this.assignees) groups.set(a.department, [...(groups.get(a.department) ?? []), a]);
+    return [...groups].map(([department, people]) => ({ department, people }));
   }
 
   private guessScreen(from: string | null): string {
@@ -119,6 +167,7 @@ export class SupportReport implements OnInit, OnDestroy {
     if (this.module) form.set('affected_module', this.module);
     if (this.screen.trim()) form.set('affected_screen', this.screen.trim());
     form.set('priority', this.priority);
+    if (this.assignee) form.set('assignee_id', String(this.assignee.id));
     form.set('application_type', 'web');
     if (this.pageUrl) form.set('page_url', this.pageUrl);
     form.set('browser_information', this.browser.text);
@@ -149,6 +198,7 @@ export class SupportReport implements OnInit, OnDestroy {
   another(): void {
     this.created = null;
     this.title = this.description = '';
+    this.assignee = null;
     this.files.forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
     this.files = [];
     this.touched = false;

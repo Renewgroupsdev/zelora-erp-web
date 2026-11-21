@@ -1,8 +1,12 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth/auth.service';
 import { TelephonySocketService } from '../../core/telephony/telephony-socket.service';
 import { AlertStackService } from './alert-stack.service';
+import { SupportReminderService } from './support-reminder.service';
 import { NotificationService, NotificationType } from './notification.service';
 
 /** Lists behind the bell; the backend broadcasts `bell.changed` with one of these (App\Events\Notifications\BellChangedEvent). */
@@ -50,6 +54,13 @@ export class BellRealtimeService {
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
   private readonly alertStack = inject(AlertStackService);
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+  private readonly supportReminder = inject(SupportReminderService);
+  private readonly supportUrl = `${environment.apiBaseUrl}support/notifications`;
+  private supportTimer: ReturnType<typeof setInterval> | undefined;
+  private readonly seenSupport = new Set<number>();
+  private supportPrimed = false;
 
   private readonly started = signal(false);
   /** true while bell events arrive over the socket. */
@@ -63,7 +74,7 @@ export class BellRealtimeService {
     // (re)connected: re-read every list once (events sent while the socket was down are lost)
     effect(() => {
       const live = this.live();
-      if (live && !this.wasLive) queueMicrotask(() => this.topic$.next('all'));
+      if (live && !this.wasLive) queueMicrotask(() => { this.topic$.next('all'); this.loadSupport(); });
       this.wasLive = live;
     });
     // signed out: close the bell's part of the socket
@@ -82,12 +93,86 @@ export class BellRealtimeService {
       if (data?.topic) this.topic$.next(data.topic as BellTopic);
     });
     this.socket.listen('bell', `App.Models.User.${user.id}`, 'notification.created', (data: any) => this.onPersonal(data));
+
+    // Support ticket notifications are stored per login: read them now, and keep the read state saved on the server.
+    this.notifications.persistRead = (id) => this.saveRead(id);
+    this.loadSupport();
+    this.supportReminder.start();
+    // Safety net while the socket is down (nothing arrives live then).
+    this.supportTimer = setInterval(() => { if (!this.live()) this.loadSupport(); }, 30_000);
+  }
+
+  /** Support notifications of this login (newest first, unread highlighted, read state from the server). */
+  loadSupport(): void {
+    this.http.get<any>(this.supportUrl).subscribe({
+      next: (res) => {
+        const rows: any[] = res?.data ?? [];
+        this.alertNewSupport(rows);
+        this.notifications.replaceSupport(rows.map((n) => ({
+          id: `SUP-${n.id}`,
+          type: 'support' as NotificationType,
+          title: n.title,
+          message: n.body ?? '',
+          timestamp: new Date(n.created_at),
+          read: !!n.is_read,
+          link: n.path || (n.ticket_number ? `/app/support/tickets/${n.ticket_number}` : undefined),
+        })));
+      },
+      error: () => { /* the bell keeps what it has; the next live event or the poll tries again */ },
+    });
+  }
+
+  /**
+   * Alert (card + OS toast) once for every unread support notification not seen before. Runs on every read of the list, so
+   * it works for socket events and for the poll alike. The first read after sign-in / refresh alerts for the newest unread ones (card only, no OS toast).
+   */
+  private alertNewSupport(rows: any[]): void {
+    const unread = rows.filter((n) => !n.is_read);
+    const fresh = unread.filter((n) => !this.seenSupport.has(n.id));
+    unread.forEach((n) => this.seenSupport.add(n.id));
+    // First read after sign-in / page refresh: every unread one is still pending for this person, so alert for the newest ones.
+    const first = !this.supportPrimed;
+    this.supportPrimed = true;
+    for (const n of (first ? unread : fresh).slice(0, 8)) this.supportCard(n.title, String(n.body ?? ''), String(n.ticket_number ?? ''), String(n.path ?? ''), !first);
+  }
+
+  /** One alert card + OS toast for a support notification (same key for the live event and the list read: shown once). */
+  private supportCard(title: string, body: string, ticket: string, pathIn: string, osToast = true): void {
+    const path = pathIn || (ticket ? `/app/support/tickets/${ticket}` : '');
+    const lines = body.split('\n').filter((l) => l && !l.startsWith('Ticket:'));
+    const text = lines.slice(0, 3).join(' · ');
+    // the person who acted: "Harish Chandran replied: hii" / "Updated by: Sathya"
+    const who = /^(.+?) (?:replied|commented|added|uploaded)\b/.exec(text)?.[1] ?? /Updated by:\s*(.+?)(?: Previous| New| Update:| · |$)/.exec(text)?.[1];
+    this.alertStack.show({
+      tone: 'info',
+      icon: 'bi-headset',
+      title,
+      text,
+      strong: who?.trim(),
+      chips: ticket ? [ticket] : undefined,
+      duration: 10000,
+      key: `support-${ticket}-${title}`,
+      osToast,
+      actionLabel: path ? 'Open ticket' : undefined,
+      onAction: path ? () => void this.router.navigateByUrl(path) : undefined,
+    });
+  }
+
+  /** 'SUP-12' -> PATCH support/notifications/12/read; 'ALL' -> read-all. */
+  private saveRead(id: string): void {
+    const url = id === 'ALL' ? `${this.supportUrl}/read-all` : `${this.supportUrl}/${id.replace('SUP-', '')}/read`;
+    this.http.patch(url, {}).subscribe({ error: () => this.loadSupport() });
   }
 
   stop(): void {
     if (!this.started()) return;
+    clearInterval(this.supportTimer);
+    this.supportReminder.stop();
+    this.notifications.persistRead = null;
     this.started.set(false);
     this.wasLive = false;
+    this.seenSupport.clear();
+    this.supportPrimed = false;
     this.socket.disconnect('bell');
   }
 
@@ -102,6 +187,13 @@ export class BellRealtimeService {
     const topic = TYPE_TOPICS[type];
     if (topic) return void this.topic$.next(topic);
     if (!type || APP_ONLY.has(type) || !n.title) return;
+
+    // A support ticket event: re-read the stored list; loadSupport alerts for the new entry (card + OS toast).
+    if (type.startsWith('support_')) {
+      this.loadSupport();
+      this.supportCard(n.title, String(n.body ?? ''), String(n.data?.['ticket_number'] ?? ''), String(n.data?.['path'] ?? ''));
+      return;
+    }
 
     const screen = String(n.data?.['screen'] ?? '');
     this.notifications.add({ type: this.kind(type), title: n.title, message: n.body ?? '', link: SCREEN_LINKS[screen] });

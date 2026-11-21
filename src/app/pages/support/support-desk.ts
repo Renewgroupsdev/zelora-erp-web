@@ -209,6 +209,7 @@ export class SupportDesk implements OnInit {
     this.api.saveSettings({
       support_phone: s.support_phone, support_whatsapp: s.support_whatsapp ?? '', support_email: s.support_email ?? '', support_hours: s.support_hours ?? '',
       support_availability: s.support_availability ?? '', email_notifications: s.email_notifications === '1' ? ('1' as any) : ('0' as any),
+      reminder_enabled: s.reminder_enabled === '1' ? ('1' as any) : ('0' as any), reminder_interval_minutes: Math.max(1, Math.min(1440, +s.reminder_interval_minutes || 15)),
       sla_hours_low: +s.sla_hours_low, sla_hours_medium: +s.sla_hours_medium, sla_hours_high: +s.sla_hours_high, sla_hours_critical: +s.sla_hours_critical,
     }).subscribe({
       next: (r) => { this.saving = false; this.settings = r; this.toast.success('Support settings saved.'); },

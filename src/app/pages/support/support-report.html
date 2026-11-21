@@ -58,6 +58,38 @@
         </div>
 
         <div class="sp-field">
+          <span class="sp-label" id="sp-assignee-label">Assign to <span class="sp-help d-inline">(optional)</span></span>
+          <button type="button" class="sp-input sp-pick" aria-labelledby="sp-assignee-label" [attr.aria-expanded]="assigneeOpen" (click)="toggleAssignees()">
+            @if (assignee) { <span class="name">{{ assignee.label }}<small>{{ assignee.department }}</small></span> }
+            @else { <span class="muted">Nobody in particular - the support team will pick it up</span> }
+            <i class="bi" [ngClass]="assigneeOpen ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+          </button>
+          @if (assigneeOpen) {
+            <div class="sp-pick-panel">
+              <div class="sp-pick-filters">
+                <select class="sp-select" name="assigneeDepartment" [(ngModel)]="assigneeDepartment" (ngModelChange)="onAssigneeFilter()" aria-label="Filter by department">
+                  <option value="">All departments</option>
+                  @for (d of departments; track d) { <option [value]="d">{{ d }}</option> }
+                </select>
+                <input class="sp-input" name="assigneeSearch" [(ngModel)]="assigneeSearch" (ngModelChange)="onAssigneeFilter()" maxlength="100" placeholder="Search name, role or department" aria-label="Search employees">
+              </div>
+              <div class="sp-pick-list" role="listbox" aria-label="Employees">
+                <button type="button" class="sp-pick-item" role="option" [class.on]="!assignee" (click)="pickAssignee(null)">No specific employee</button>
+                @if (assigneesLoading) { <div class="sp-help p-2">Loading...</div> }
+                @else if (!assignees.length) { <div class="sp-help p-2">No employee matches.</div> }
+                @for (g of assigneeGroups; track g.department) {
+                  <div class="sp-pick-group">{{ g.department }}</div>
+                  @for (a of g.people; track a.id) {
+                    <button type="button" class="sp-pick-item" role="option" [attr.aria-selected]="assignee?.id === a.id" [class.on]="assignee?.id === a.id" (click)="pickAssignee(a)">{{ a.label }}</button>
+                  }
+                }
+              </div>
+            </div>
+          }
+          @if (assignee) { <div class="sp-help">This ticket will be sent to <strong>{{ assignee.label }}</strong> ({{ assignee.department }}) and they will be notified at once.</div> }
+        </div>
+
+        <div class="sp-field">
           <label class="sp-label" for="sp-desc">Describe the issue <span class="req">*</span></label>
           <textarea id="sp-desc" class="sp-textarea" name="description" [(ngModel)]="description" maxlength="5000" placeholder="What did you do, what did you expect, and what happened instead?"></textarea>
           @if (touched && description.trim().length < 5) { <div class="sp-error">Please describe the problem (at least 5 characters).</div> }

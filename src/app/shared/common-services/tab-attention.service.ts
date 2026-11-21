@@ -81,8 +81,19 @@ export class TabAttentionService {
    * An alert card (AlertStackService) popped up: while the page is in the background, blink the tab title with it and raise a
    * desktop notification, and flash Chrome's taskbar button through the helper (no alert box).
    */
-  attention(title: string, body?: string): void {
-    if (!this.started || !this.away()) return;
+  attention(title: string, body?: string, force = false): void {
+    if (!this.started) return;
+    if (force) {
+      // always raise the OS toast (even while the page is in front) and flash the taskbar if the page is in the background
+      this.desktopNotify(title, body ?? '');
+      if (this.away()) {
+        this.alertTitle = title;
+        this.flashTaskbar();
+        this.apply();
+      }
+      return;
+    }
+    if (!this.away()) return;
     this.alertTitle = title;
     this.desktopNotify(title, body ?? '');
     this.flashTaskbar();

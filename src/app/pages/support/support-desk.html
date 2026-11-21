@@ -156,6 +156,10 @@
           <div class="sp-field"><label class="sp-label" for="h4">Critical</label><input id="h4" class="sp-input" type="number" min="1" [(ngModel)]="settings.sla_hours_critical"></div>
         </div>
         <p class="sp-help">A ticket past this time is shown as Overdue and escalated once automatically.</p>
+        <h3 class="sp-label mt-2">Reminder pop-up</h3>
+        <label class="d-flex align-items-center gap-2"><input type="checkbox" [checked]="settings.reminder_enabled === '1'" (change)="settings.reminder_enabled = $any($event.target).checked ? '1' : '0'"> Remind people while a ticket still needs their action</label>
+        <div class="sp-field"><label class="sp-label" for="rm">Repeat every (minutes)</label><input id="rm" class="sp-input" type="number" min="1" max="1440" [(ngModel)]="settings.reminder_interval_minutes" [disabled]="settings.reminder_enabled !== '1'"></div>
+        <p class="sp-help">Shown to employees whose role holds "Receive Support Ticket Reminder Pop-ups" (Roles &amp; Permissions): tickets assigned to them, and the unassigned queue for those who also receive new-ticket notifications. Stops when the ticket is resolved or waiting for the user.</p>
         <label class="d-flex align-items-center gap-2"><input type="checkbox" [checked]="settings.email_notifications === '1'" (change)="settings.email_notifications = $any($event.target).checked ? '1' : '0'"> Also e-mail employees when their ticket changes (needs working mail settings)</label>
         <div><button type="button" class="sp-btn primary" [disabled]="saving" (click)="saveSettings()"><i class="bi bi-check2"></i> {{ saving ? 'Saving...' : 'Save settings' }}</button></div>
       </section>
