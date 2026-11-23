@@ -154,12 +154,17 @@ export class Recruitment extends HrListBase implements OnInit {
         appliedAt: displayDate(c.appliedAt), __appliedAt: c.appliedAt,
         rating: c.rating ? '★'.repeat(c.rating) : '-', __rating: c.rating,
         status: c.stage,
-        actions: [
-          ...(c.stage === 'Hired' ? [{ key: 'addEmployee', icon: 'bi-person-plus-fill', label: this.hr.employeeForCandidate(c.id) ? 'View / edit employee' : 'Add employee', variant: 'primary' as const }] : []),
-          { key: 'process', icon: 'bi-person-lines-fill', label: 'Hiring process' },
-          { key: 'resume', icon: 'bi-download', label: 'Download resume' },
-          { key: 'open', icon: 'bi-kanban', label: 'Open vacancy' },
-        ],
+        // A hired candidate is done: only view (hiring process) and download resume stay - no add-employee, no open-vacancy.
+        actions: c.stage === 'Hired'
+          ? [
+              { key: 'process', icon: 'bi-person-lines-fill', label: 'View hiring process' },
+              { key: 'resume', icon: 'bi-download', label: 'Download resume' },
+            ]
+          : [
+              { key: 'process', icon: 'bi-person-lines-fill', label: 'Hiring process' },
+              { key: 'resume', icon: 'bi-download', label: 'Download resume' },
+              { key: 'open', icon: 'bi-kanban', label: 'Open vacancy' },
+            ],
       }));
     }
 

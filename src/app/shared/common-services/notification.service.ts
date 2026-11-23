@@ -104,6 +104,31 @@ export class NotificationService {
     return fresh.length;
   }
 
+  /**
+   * Manpower requests waiting for budget approval (HR / Admin / Super Admin), one notification each (id MPR-<id>). It keeps its read
+   * state while the request is pending and leaves the bell once it is approved or rejected. Returns how many are new.
+   */
+  syncManpowerApprovals(requests: { id: number; requestNo: string; designation: string; branch: string; positions: number; by: string; at: Date }[]): number {
+    const known = new Set(this._notifications().filter(n => n.id.startsWith('MPR-')).map(n => n.id));
+    const keep = new Set(requests.map(r => `MPR-${r.id}`));
+    const fresh = requests.filter(r => !known.has(`MPR-${r.id}`));
+
+    this._notifications.update(list => [
+      ...fresh.map((r): AppNotification => ({
+        id: `MPR-${r.id}`,
+        type: 'hr',
+        title: `Manpower request ${r.requestNo} needs budget approval`,
+        message: `${r.by} asked for ${r.positions} ${r.designation}${r.branch ? ' at ' + r.branch : ''}. Approved requests become open vacancies.`,
+        timestamp: r.at,
+        read: false,
+        link: '/app/hr/recruitment',
+      })),
+      ...list.filter(n => !n.id.startsWith('MPR-') || keep.has(n.id)),
+    ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+
+    return fresh.length;
+  }
+
   /** Purchase requests waiting for the head office (one notification each, id PRQ-<id>); it leaves the bell once the request is decided. Returns how many are new. */
   syncPurchaseApprovals(requests: { id: string; requestNo: string; branch: string; items: number; by: string; at: Date; urgent?: boolean }[]): { fresh: number; urgent: number } {
     const known = new Set(this._notifications().filter(n => n.id.startsWith('PRQ-')).map(n => n.id));
