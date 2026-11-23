@@ -858,7 +858,7 @@ $purple: var(--status-purple-text, #7c3aed), var(--status-purple-bg, #f0e9fd);
 /* phone: rings */
 .action-call, .qa-key-call, .qa-key-callback { @include tone($green...); --fx: row-fx-ring; }
 /* eye: blinks */
-.qa-key-view, .qa-key-open, .qa-key-review, .qa-key-resume, .qa-key-statement, .qa-key-sittings, .qa-key-letter, .call-log-btn { @include tone($blue...); --fx: row-fx-blink; }
+.qa-key-view, .qa-key-open, .qa-key-review, .qa-key-resume, .qa-key-offerLetter, .qa-key-statement, .qa-key-sittings, .qa-key-letter, .call-log-btn { @include tone($blue...); --fx: row-fx-blink; }
 /* pencil: writes */
 .action-edit, .qa-key-edit, .qa-key-adjust, .qa-key-revision, .qa-key-process, .qa-key-wizard { @include tone($blue...); --fx: row-fx-write; }
 /* bin / cross: wiggles */
