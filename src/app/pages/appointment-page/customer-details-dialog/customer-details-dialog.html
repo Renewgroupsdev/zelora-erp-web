@@ -62,6 +62,18 @@
         </section>
       </div>
 
+      @if (previousVisit().length) {
+        <section class="cp-card cp-previous">
+          <h4><span class="cp-badge b-amber"><i class="bi bi-card-checklist"></i></span> Previous consultation <span class="cp-readonly">Nill Card · view only</span></h4>
+          <dl class="cp-grid">
+            @for (item of previousVisit(); track item.label) { <div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div> }
+          </dl>
+          @if (previous()?.doctor_suggestion) {
+            <p class="cp-quote"><i class="bi bi-chat-quote"></i><span><strong>Doctor suggestion</strong>{{ previous()?.doctor_suggestion }}</span></p>
+          }
+        </section>
+      }
+
       @if (clinical().length) {
         <section class="cp-card">
           <h4><span class="cp-badge b-rose"><i class="bi bi-clipboard2-pulse"></i></span> Clinical examination</h4>

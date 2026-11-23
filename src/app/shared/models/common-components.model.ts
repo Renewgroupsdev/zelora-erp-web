@@ -79,6 +79,8 @@ export interface LeadCell {
   subtitle?: string;
   /** Optional thumbnail shown in place of the initials avatar. */
   photo?: string;
+  /** Small tag after the name (e.g. "Nill Card"). */
+  badge?: string;
 }
 
 export interface CallerAvatar {

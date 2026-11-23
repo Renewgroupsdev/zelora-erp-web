@@ -7,7 +7,8 @@ import { CallOutcomeDialog, CallOutcomeDialogData } from './call-outcome-dialog'
 export function openCallOutcome(
   dialog: MatDialog,
   call: CallLog,
-  required = false
+  required = false,
+  hiddenCodes?: string[]
 ): MatDialogRef<CallOutcomeDialog, CallLog | undefined> {
   return dialog.open<CallOutcomeDialog, CallOutcomeDialogData, CallLog | undefined>(CallOutcomeDialog, {
     width: '640px',
@@ -16,6 +17,6 @@ export function openCallOutcome(
     autoFocus: false,
     disableClose: required,
     panelClass: 'call-outcome-dialog-panel',
-    data: { call, required },
+    data: { call, required, hiddenCodes },
   });
 }

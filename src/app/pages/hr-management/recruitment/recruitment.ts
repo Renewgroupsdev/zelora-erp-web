@@ -17,6 +17,7 @@ import { HrListBase } from '../hr-list-base';
 import { CandidateProcess } from './candidate-process/candidate-process';
 import { EmployeeForm } from '../employees/employee-form/employee-form';
 import { ManpowerForm } from './manpower-form/manpower-form';
+import { downloadOfferLetter } from './offer-letter';
 import { downloadResume, exportCandidates } from './resume';
 import { VacancyApplyForm } from './vacancy-apply-form/vacancy-apply-form';
 import { VacancyDetail } from './vacancy-detail/vacancy-detail';
@@ -154,12 +155,17 @@ export class Recruitment extends HrListBase implements OnInit {
         appliedAt: displayDate(c.appliedAt), __appliedAt: c.appliedAt,
         rating: c.rating ? '★'.repeat(c.rating) : '-', __rating: c.rating,
         status: c.stage,
-        actions: [
-          ...(c.stage === 'Hired' ? [{ key: 'addEmployee', icon: 'bi-person-plus-fill', label: this.hr.employeeForCandidate(c.id) ? 'View / edit employee' : 'Add employee', variant: 'primary' as const }] : []),
-          { key: 'process', icon: 'bi-person-lines-fill', label: 'Hiring process' },
-          { key: 'resume', icon: 'bi-download', label: 'Download resume' },
-          { key: 'open', icon: 'bi-kanban', label: 'Open vacancy' },
-        ],
+        // A hired candidate is done: only view (hiring process) and the offer letter stay - no resume, add-employee or open-vacancy.
+        actions: c.stage === 'Hired'
+          ? [
+              { key: 'process', icon: 'bi-person-lines-fill', label: 'View hiring process' },
+              ...(c.offer ? [{ key: 'offerLetter', icon: 'bi-download', label: 'Download offer letter' }] : []),
+            ]
+          : [
+              { key: 'process', icon: 'bi-person-lines-fill', label: 'Hiring process' },
+              { key: 'resume', icon: 'bi-download', label: 'Download resume' },
+              { key: 'open', icon: 'bi-kanban', label: 'Open vacancy' },
+            ],
       }));
     }
 
@@ -192,7 +198,12 @@ export class Recruitment extends HrListBase implements OnInit {
   }
 
   newRequest(): void {
-    this.openDialog(ManpowerForm, null, '860px');
+    this.openDialog<ManpowerForm, boolean>(ManpowerForm, null, '860px').afterClosed().subscribe(saved => {
+      if (!saved) return;
+      this.hr.loadRecruitment().subscribe({ error: () => undefined });
+      this.setView('requests');
+      Swal.fire({ icon: 'success', title: 'Request submitted', text: 'The manpower request is waiting for HR budget approval.', timer: 1800, showConfirmButton: false });
+    });
   }
 
   /** Header button: opens the manual applicant (vacancy apply) form with photo + resume upload. */
@@ -224,6 +235,11 @@ export class Recruitment extends HrListBase implements OnInit {
       case 'process':
         this.openDialog(CandidateProcess, { candidateId: id }, '980px');
         break;
+      case 'offerLetter': {
+        const c = this.hr.candidates().find(x => x.id === id);
+        if (c?.offer) downloadOfferLetter(c, c.offer, this.hr.manpower().find(m => m.id === c.vacancyId));
+        break;
+      }
       case 'resume': {
         const c = this.hr.candidates().find(x => x.id === id);
         // The file uploaded with the application when there is one; otherwise a resume generated from the candidate's details.

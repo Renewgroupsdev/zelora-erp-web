@@ -18,6 +18,7 @@ import { DiscountRequestsService } from '../shared/common-services/discount-requ
 import { SittingTransfersService } from '../shared/common-services/sitting-transfers.service';
 import { AbsentTelecallersService } from '../shared/common-services/absent-telecallers.service';
 import { PurchaseApprovalAlertsService } from '../shared/common-services/purchase-approval-alerts.service';
+import { ManpowerApprovalAlertsService } from '../shared/common-services/manpower-approval-alerts.service';
 import { TabAttentionService } from '../shared/common-services/tab-attention.service';
 import { FollowUpReminderService } from '../shared/common-services/follow-up-reminder.service';
 import { openAssignCaller } from '../shared/components/lead-dialogs/assign-caller-dialog';
@@ -177,6 +178,7 @@ export class TopNavbar {
     private sittingTransfers: SittingTransfersService,
     private absentTelecallers: AbsentTelecallersService,
     private purchaseAlerts: PurchaseApprovalAlertsService,
+    private manpowerAlerts: ManpowerApprovalAlertsService,
     private followUpReminder: FollowUpReminderService,
     private bellRealtime: BellRealtimeService,
     private tabAttention: TabAttentionService,
@@ -191,6 +193,8 @@ export class TopNavbar {
     this.absentTelecallers.start();
     // Head office / admin: purchase requests sent by the branches wait for approval here.
     this.purchaseAlerts.start();
+    // HR / admin / super admin: manpower requests waiting for budget approval (was a banner on the Recruitment page).
+    this.manpowerAlerts.start();
     // Telecallers: 5 minutes before a follow-up call-back is due, a card offers "Call back" / "Later" (45 s).
     this.followUpReminder.start();
     // Unread count on the browser tab (title + favicon badge), blinking title while away, desktop notification for new ones.

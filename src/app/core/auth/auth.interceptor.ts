@@ -16,7 +16,18 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const scopedReq = scopeHeaders ? req.clone({ setHeaders: scopeHeaders }) : req;
   const authorizedReq = attachAuth ? withAuthHeader(scopedReq, authService) : req;
 
-  return next(authorizedReq).pipe(
+  // Logout cancels every other API call still running (unsubscribing aborts the HTTP request). The callers are left
+  // pending - not completed - so nothing runs a "failed" / empty-result handler over the login page.
+  const cancellable = attachAuth && !authService.isLogoutUrl(req.url);
+  const request$ = cancellable
+    ? new Observable<HttpEvent<unknown>>(subscriber => {
+        const inner = next(authorizedReq).subscribe(subscriber);
+        const cancel = authService.sessionEnding$.subscribe(() => inner.unsubscribe());
+        return () => { inner.unsubscribe(); cancel.unsubscribe(); };
+      })
+    : next(authorizedReq);
+
+  return request$.pipe(
     catchError(error => {
       // The session already ended (idle timeout / sign-out): requests still in flight must fail quietly,
       // otherwise a page's own error popup ("Failed to load ...") lands on top of the login screen.

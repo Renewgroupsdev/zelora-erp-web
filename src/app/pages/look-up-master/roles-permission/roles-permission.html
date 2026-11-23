@@ -80,12 +80,13 @@
         </app-module-tree-node>
       } @empty {
         <div class="empty-state">
-          @if (isLoading) {
-            <app-page-loader [inline]="true"></app-page-loader>
-          }
         </div>
       }
     </div>
   </div>
+
+  @if (isLoading) {
+    <app-page-loader [content]="true"></app-page-loader>
+  }
 
 </div>

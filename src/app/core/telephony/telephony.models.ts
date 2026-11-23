@@ -96,7 +96,7 @@ export interface CallerProfile {
   recent_calls: CallLog[];
   next_follow_up: { follow_up_date: string; follow_up_time: string | null; type: number } | null;
   /** Notes of earlier conversations with this lead, newest first. */
-  follow_up_notes?: { id: number; notes: string; telecaller: string | null; created_at: string }[];
+  follow_up_notes?: { id: number; notes: string; telecaller: string | null; created_at: string; follow_up_at?: string | null }[];
 }
 
 /** `invalid` (Wrong Number): the lead goes back to Lead Management as Invalid. */
@@ -121,6 +121,8 @@ export interface DispositionPayload {
   appointment_date?: string | null;
   appointment_time?: string | null;
   counselor_id?: number | null;
+  /** Optional: a doctor free at the picked slot; none = any. */
+  doctor_id?: number | null;
   appointment_reason?: string | null;
 }
 
@@ -198,6 +200,17 @@ export interface FollowUpSummary {
   appointments: number;
 }
 
+export interface NillCardVisit {
+  appointment_id: number;
+  date: string | null;
+  time: string | null;
+  branch: string | null;
+  doctor: string | null;
+  treatments: string[];
+  fee: number;
+  is_free: boolean;
+}
+
 export interface FollowUpLead {
   id: number;
   name: string;
@@ -224,6 +237,8 @@ export interface FollowUpLead {
   /** 0 general / 1 cool / 2 hot - the most recent follow-up logged for this lead. */
   follow_up_type: number | null;
   caller_histories: CallerHistoryEntry[];
+  /** The latest Nill Card (Consultation Only) visit of this person, when their number has one. */
+  nill_card?: NillCardVisit | null;
   /** Someone is on a call with this lead (or writing its outcome); null when nobody is. */
   on_call?: { user_id: number; name: string | null; status: 'on_call' | 'wrap_up'; since: string | null } | null;
 }

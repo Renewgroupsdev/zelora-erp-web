@@ -29,7 +29,8 @@ import { debounceTime, filter } from 'rxjs/operators';
 import { FlowLead, FollowUpEntry } from '../../shared/common-services/crm-flow.service';
 import { LeadProfileDialog, LeadProfileDialogResult } from '../../shared/components/lead-profile-dialog/lead-profile-dialog';
 import { TelephonyService } from '../../core/telephony/telephony.service';
-import { FollowUpLead, FollowUpSummary } from '../../core/telephony/telephony.models';
+import { FollowUpLead, FollowUpSummary, NillCardVisit } from '../../core/telephony/telephony.models';
+import { displayDate, inr, to12Hour } from '../../shared/utils/format.util';
 import { ApiDataService } from '../../core/http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
 import { AuthService } from '../../core/auth/auth.service';
@@ -234,7 +235,12 @@ export class Followups implements OnInit, OnDestroy {
     });
   }
 
+  /** Nill Card visit of each listed lead (by lead id), for the View Lead consultation section. */
+  private readonly nillVisits = new Map<number, NillCardVisit>();
+
   private leadToRow(lead: FollowUpLead): TableRow {
+    if (lead.nill_card) this.nillVisits.set(lead.id, lead.nill_card);
+    else this.nillVisits.delete(lead.id);
     const callers: CallerAvatar[] = lead.assigned_to_name
       ? [{ name: lead.assigned_to_name, empNo: lead.assigned_to_emp_code ?? '', image: lead.assigned_to_photo ?? undefined }]
       : [];
@@ -249,7 +255,8 @@ export class Followups implements OnInit, OnDestroy {
     return {
       id: lead.id,
       updated_at: lead.updated_at ?? '',
-      lead: { name: lead.name, subtitle: `LD-${String(lead.id).padStart(5, '0')}` },
+      // A Nill Card person (a walk-in with a Consultation Only visit) is badged here and shows the visit in View Lead.
+      lead: { name: lead.name, subtitle: `LD-${String(lead.id).padStart(5, '0')}`, badge: lead.nill_card ? 'Nill Card' : undefined },
       contact: lead.mobile_no,
       gender: lead.gender ?? '',
       source: lead.source_name ?? '',
@@ -495,6 +502,8 @@ export class Followups implements OnInit, OnDestroy {
   viewLead(row: TableRow): void {
     const lead = row['lead'] as LeadCell;
     const callers = (row['telecaller'] as CallerAvatar[]) ?? [];
+    const nill = this.nillVisits.get(Number(row['id'])) ?? null;
+    const consultation = this.consultationSection(nill);
     openLeadView(this.dialog, {
       id: Number(row['id']),
       name: lead.name,
@@ -521,10 +530,28 @@ export class Followups implements OnInit, OnDestroy {
             { label: 'Service request', value: String(row['service_request'] ?? ''), icon: 'bi-clipboard' },
           ],
         },
+        ...(consultation ? [consultation] : []),
       ],
       fields: [],
       callLog: (row['callLogEntries'] as CallerLogEntry[]) ?? [],
+      badge: nill ? 'Nill Card' : undefined,
     });
+  }
+
+  /** "Previous consultation" section of View Lead for a Nill Card person: when, where, who, which treatments, what was paid. */
+  private consultationSection(nill: NillCardVisit | null): { title: string; icon: string; fields: { label: string; value: string; icon: string }[] } | null {
+    if (!nill) return null;
+    const when = [nill.date ? displayDate(nill.date) : '', nill.time ? to12Hour(nill.time) ?? '' : ''].filter(Boolean).join(', ');
+    return {
+      title: 'Previous consultation (Nill Card)', icon: 'bi-card-checklist', fields: [
+        { label: 'Consultation', value: when, icon: 'bi-calendar-check' },
+        { label: 'Branch', value: nill.branch ?? '', icon: 'bi-geo-alt' },
+        { label: 'Doctor', value: nill.doctor ?? '', icon: 'bi-person-badge' },
+        { label: 'Treatments suggested', value: nill.treatments.join(' + '), icon: 'bi-clipboard2-pulse' },
+        { label: 'Consultation fee', value: nill.is_free ? 'Free consultation' : inr(nill.fee), icon: 'bi-cash-coin' },
+        { label: 'Status', value: 'Treatment not taken yet', icon: 'bi-hourglass-split' },
+      ],
+    };
   }
 
 

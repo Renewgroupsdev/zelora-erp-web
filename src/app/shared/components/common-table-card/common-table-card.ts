@@ -188,8 +188,14 @@ export class CommonTableCard {
     return value as LeadCell;
   }
 
+  /** Callers with a name only: a blank one would render as an empty avatar. */
   asCallerAvatars(value: TableRow[string]): CallerAvatar[] {
-    return Array.isArray(value) ? (value as CallerAvatar[]) : [];
+    return Array.isArray(value) ? (value as CallerAvatar[]).filter(c => !!c?.name?.trim()) : [];
+  }
+
+  /** No data for the cell: shown as a hyphen. (0 is data.) */
+  isBlank(value: unknown): boolean {
+    return value === null || value === undefined || (typeof value === 'string' && value.trim() === '');
   }
 
   asCallerLog(value: TableRow[string]): CallerLogEntry[] {

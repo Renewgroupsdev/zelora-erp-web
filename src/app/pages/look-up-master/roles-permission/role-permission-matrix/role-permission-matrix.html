@@ -65,7 +65,7 @@
       [cdkDropListDisabled]="!!searchTerm.trim()"
       (cdkDropListDropped)="onRootDrop($event)">
       @if (isLoading) {
-        <app-page-loader [inline]="true"></app-page-loader>
+        <app-page-loader [content]="true"></app-page-loader>
       } @else {
         @for (module of visibleTree; track module.id) {
           <div class="root-drag-item" cdkDrag [cdkDragDisabled]="!!searchTerm.trim()">

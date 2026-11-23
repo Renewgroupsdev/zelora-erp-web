@@ -2,7 +2,7 @@ import { Injectable, Injector, signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import Swal from 'sweetalert2';
-import { Observable, catchError, finalize, from, map, of, switchMap, tap } from 'rxjs';
+import { Observable, Subject, catchError, from, map, of, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiDataService } from '../http/api.service';
 import { ApiRoutesConstants } from '../../shared/common-services/api-route-constants';
@@ -150,9 +150,12 @@ export class AuthService {
   }
 
   /**
-   * User sign-out (Logout button, idle timeout): revokes the access + refresh token on the API, then clears
-   * the local session. The local session is cleared even when the API call fails (offline, token already expired).
+   * User sign-out (Logout button, idle timeout): cancels the other in-flight requests, sends the logout call (revokes
+   * the access + refresh token) and clears the local session immediately - it does not wait for the API's answer.
    */
+  /** Fires the moment Logout is clicked: the interceptor drops every other API request still in flight. */
+  readonly sessionEnding$ = new Subject<void>();
+
   signOut(deviceName = 'web'): Observable<void> {
     const refreshToken = this.readRefreshToken();
     if (!this.readAccessToken()) {
@@ -160,11 +163,19 @@ export class AuthService {
       return of(undefined);
     }
     this.idleService.stop();
-    return this.api.POST(ApiRoutesConstants.AUTH_LOGOUT, { refresh_token: refreshToken, device_name: deviceName }).pipe(
-      map(() => undefined),
-      catchError(() => of(undefined)),
-      finalize(() => this.logout()),
-    );
+    // 1) cancel every other request in flight, 2) send the logout call right away (the token is read as it is sent),
+    // 3) leave at once - the page does not wait for the API's answer, and a failed call changes nothing.
+    this.sessionEnding$.next();
+    this.api.POST(ApiRoutesConstants.AUTH_LOGOUT, { refresh_token: refreshToken, device_name: deviceName })
+      .pipe(catchError(() => of(undefined)))
+      .subscribe();
+    this.logout();
+    return of(undefined);
+  }
+
+  /** The sign-out call itself: never cancelled by `sessionEnding$`. */
+  isLogoutUrl(url: string): boolean {
+    return url === `${environment.apiBaseUrl}${ApiRoutesConstants.AUTH_LOGOUT}`;
   }
 
   /** Clears the local session only (no API call) - used when the session is already invalid (401 / failed refresh). */

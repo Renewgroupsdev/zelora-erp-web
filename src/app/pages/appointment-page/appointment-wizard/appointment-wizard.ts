@@ -232,6 +232,25 @@ export class AppointmentWizard implements OnInit {
     this.reload(true);
   }
 
+  // Consulting doctor: when the visit was booked without one, the doctors of its branch / franchise are listed in the Clinical step
+  /** The doctor already on the appointment (chosen when it was booked), else null; the dropdown starts on it. */
+  assignedDoctor: string | null = null;
+  readonly doctors = signal<{ id: number; name: string; available: boolean }[]>([]);
+  doctorId: number | null = null;
+  private doctorsLoadedFor: number | null = null;
+
+  private loadDoctors(a: FlowAppointmentRecord): void {
+    const rec = a as unknown as { doctor_id?: number | null; doctor?: { name?: string } | string | null };
+    this.assignedDoctor = rec.doctor_id ? (typeof rec.doctor === 'string' ? rec.doctor : rec.doctor?.name ?? 'Assigned doctor') : null;
+    this.doctorId = rec.doctor_id ?? this.doctorId;
+    if (this.doctorsLoadedFor === a.id) return;
+    this.doctorsLoadedFor = a.id;
+    this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${a.id}/doctors`).subscribe({
+      next: (res: any) => this.doctors.set(res?.data?.doctors ?? []),
+      error: () => this.doctors.set([]), // the form still works; the doctor can be set later
+    });
+  }
+
   private reload(jumpToCurrent = false): void {
     this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}`).subscribe({
       next: (res: any) => {
@@ -253,6 +272,7 @@ export class AppointmentWizard implements OnInit {
 
   private apply(a: FlowAppointmentRecord): void {
     this.appt.set(a);
+    this.loadDoctors(a);
     this.profile = { name: a.name, email: a.email ?? '', age: a.age, gender: a.gender ?? '', heard_from: a.heard_from ?? a.lead?.source?.source_name ?? '' };
     this.photoPreview = a.photo_url ?? null;
     this.category = a.category ?? '';
@@ -407,6 +427,7 @@ export class AppointmentWizard implements OnInit {
     if (!this.category) return void this.error.set('Choose the service category.');
     if (this.showHairExam && !this.c.grade) return void this.error.set(`Select the ${this.profile.gender === 'Female' ? 'Ludwig grade' : 'Norwood grade'}.`);
     if (this.showSkinExam && !this.c.skinType) return void this.error.set('Select the skin type.');
+    if (this.doctors().length && !this.doctorId) return void this.error.set('Select the consulting doctor.');
     const pull = this.c.hairPull;
     if ([pull.frontal, pull.occipital, pull.lesional].some(v => v !== null && v !== undefined && (Number(v) < 0 || Number(v) > 50))) {
       return void this.error.set('Hair pull counts are out of 50.');
@@ -421,6 +442,7 @@ export class AppointmentWizard implements OnInit {
       bp: this.vitals.bp || null,
       weight: this.vitals.weight,
       is_allergy: this.vitals.is_allergy || this.c.allergies.length > 0,
+      ...(this.doctorId ? { doctor_id: this.doctorId } : {}),
     }), () => this.keepServiceRequest(categoryId, lines));
   }
 
