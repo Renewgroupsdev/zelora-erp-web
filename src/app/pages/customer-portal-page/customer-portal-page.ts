@@ -97,7 +97,7 @@ export class CustomerPortalPage implements OnInit {
     { key: 'actions', header: 'Actions', type: 'quickActions', sortable: false, width: '230px' },
   ];
 
-  readonly pageSizeOptions = [12, 24, 48];
+  readonly pageSizeOptions = [10, 30, 50, 100];
 
   /** The page of customers on screen (table and grid view share it). */
   customers: Customer[] = [];
@@ -106,7 +106,7 @@ export class CustomerPortalPage implements OnInit {
   stats: DetailCardData[] = this.buildStats(null);
 
   currentPage = 1;
-  pageSize = 12;
+  pageSize = 10;
   totalRecords = 0;
   sortActive = '';
   sortDirection: SortDirection = '';
