@@ -81,9 +81,8 @@
 .vd-portal-btn:disabled { opacity: 0.6; cursor: progress; }
 
 /* pipeline */
-.vd-pipeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.vd-pipeline { --tone: #6a837d; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .vd-pipeline button {
-  --tone: #6a837d;
   position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border-radius: 12px;
   border: 1px solid var(--vd-border); background: var(--vd-surface); color: var(--vd-text); font: inherit; cursor: pointer; overflow: hidden;
   transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
@@ -93,7 +92,17 @@
 .vd-pipeline button strong { font-size: 20px; line-height: 1.1; color: var(--tone); }
 .vd-pipeline button small { font-size: 11px; color: var(--vd-muted); }
 .vd-pipeline button.zero { opacity: 0.6; }
-.vd-pipeline button.active { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 10%, #fff); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tone) 25%, transparent); opacity: 1; }
+.vd-pipeline button.active {
+  border-color: var(--tone); opacity: 1; transform: translateY(-2px);
+  background: linear-gradient(145deg, var(--tone), color-mix(in srgb, var(--tone) 70%, #000));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--tone) 40%, transparent), 0 0 0 3px color-mix(in srgb, var(--tone) 22%, transparent);
+}
+.vd-pipeline button.active::before { background: rgba(255, 255, 255, 0.55); }
+.vd-pipeline button.active strong, .vd-pipeline button.active small { color: #fff; }
+.vd-pipeline button.active::after {
+  content: '\F26E'; font-family: 'bootstrap-icons'; position: absolute; top: 7px; right: 8px; width: 16px; height: 16px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 11px; line-height: 1; background: #fff; color: var(--tone);
+}
 .t-ok { --tone: #1f9d62; }
 .t-bad { --tone: #d6453d; }
 .t-warn { --tone: #e08a00; }
