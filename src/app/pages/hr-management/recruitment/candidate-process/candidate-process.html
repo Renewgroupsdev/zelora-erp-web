@@ -67,10 +67,10 @@
           @case ('Shortlisted') {
             <div class="step-head"><i class="bi bi-calendar-event"></i><div><h3>Schedule the interview</h3><p>Shortlisted by {{ c.shortlistedBy || '-' }}{{ c.shortlistedAt ? ' on ' + displayDate(c.shortlistedAt) : '' }}.</p></div></div>
             @if (canAct) {
-              <div class="form-grid cols-3">
-                <div class="form-field">
+              <div class="form-grid">
+                <div class="form-field full-width">
                   <label for="cp-when">Date &amp; time <span>*</span></label>
-                  <div class="input-wrap"><i class="bi bi-calendar-event"></i><input id="cp-when" type="datetime-local" [(ngModel)]="schedAt" /></div>
+                  <app-datetime-12h id="cp-when" [(ngModel)]="schedAt"></app-datetime-12h>
                 </div>
                 <div class="form-field">
                   <label for="cp-who">Interviewer <span>*</span></label>
@@ -128,7 +128,7 @@
               <div class="form-grid">
                 <div class="form-field">
                   <label for="cp-done">Interviewed on <span>*</span></label>
-                  <div class="input-wrap"><i class="bi bi-calendar-check"></i><input id="cp-done" type="datetime-local" [(ngModel)]="doneAt" /></div>
+                  <app-datetime-12h id="cp-done" [(ngModel)]="doneAt"></app-datetime-12h>
                 </div>
                 <div class="form-field full-width">
                   <div class="eval-head">

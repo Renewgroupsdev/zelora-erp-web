@@ -5,6 +5,7 @@ import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angu
 import { Observable, finalize } from 'rxjs';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { HrService } from '../../../../shared/common-services/hr.service';
+import { Datetime12h } from '../../../../shared/components/datetime-12h/datetime-12h';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
 import {
   BackgroundCheckStatus,
@@ -41,7 +42,7 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 @Component({
   selector: 'app-candidate-process',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule, CanActionDirective],
+  imports: [CommonModule, FormsModule, MatDialogModule, CanActionDirective, Datetime12h],
   templateUrl: './candidate-process.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', './candidate-process.scss'],
 })
