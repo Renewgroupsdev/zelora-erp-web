@@ -40,6 +40,26 @@ export class VacancyDetail {
   readonly pipeline = computed(() => this.stages.map(s => ({ stage: s, count: this.allCandidates().filter(c => c.stage === s).length })));
   readonly bySource = computed(() => ['Indeed', 'LinkedIn', 'Naukri', 'Referral', 'Walk-in'].map(s => ({ source: s, count: this.allCandidates().filter(c => c.source === s).length })));
 
+  /** Share of the open positions already filled (for the header progress bar). */
+  readonly hiredPct = computed(() => {
+    const v = this.vacancy();
+    return v.positions > 0 ? Math.min(100, Math.round((v.hired / v.positions) * 100)) : 0;
+  });
+
+  /** Colour group of a stage: ok (hired), bad (rejected / declined), warn (in progress), info (decided), muted (new). */
+  stageTone(stage: string): 'ok' | 'bad' | 'warn' | 'info' | 'muted' {
+    if (stage === 'Hired') return 'ok';
+    if (stage === 'Rejected' || stage === 'Offer Declined') return 'bad';
+    if (stage === 'Interview' || stage === 'Verification') return 'warn';
+    if (stage === 'Interviewed' || stage === 'Selected' || stage === 'Offered' || stage === 'Shortlisted') return 'info';
+    return 'muted';
+  }
+
+  initials(name: string): string {
+    const parts = (name || '?').trim().split(/\s+/);
+    return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+  }
+
   isPosted(p: JobPortal): boolean {
     return this.vacancy().postedTo.includes(p);
   }

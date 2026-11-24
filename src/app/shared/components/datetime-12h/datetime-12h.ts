@@ -29,15 +29,15 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
   `,
   styles: [`
     :host { display: block; width: 100%; }
-    .dt12 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 8px; width: 100%; }
-    @media (max-width: 560px) { .dt12 { grid-template-columns: minmax(0, 1fr); } }
+    .dt12 { display: grid; grid-template-columns: 190px auto; justify-content: start; gap: 8px; width: 100%; }
+    @media (max-width: 480px) { .dt12 { grid-template-columns: minmax(0, 1fr); justify-content: stretch; } .dt12-time { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     .dt12 .dt12-date, .dt12 .dt12-sel {
       display: block; width: 100% !important; height: 35px !important; margin: 0 !important; box-sizing: border-box;
       border: 1px solid var(--border-soft-strong, #cfd8d3); border-radius: 8px; background-color: var(--app-surface-solid, #fff);
       color: inherit; font: inherit; font-size: 13px !important; line-height: 1; padding: 0 12px !important; outline: 0; min-width: 0;
     }
     .dt12 .dt12-date:focus, .dt12 .dt12-sel:focus { border-color: var(--primary, #0a6c55); }
-    .dt12-time { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .dt12-time { display: grid; grid-template-columns: 74px 74px 84px; gap: 8px; }
     .dt12 .dt12-sel {
       cursor: pointer; appearance: none; -webkit-appearance: none; padding-right: 28px !important; text-align: left;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23444' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
