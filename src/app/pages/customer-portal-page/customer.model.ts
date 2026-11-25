@@ -8,6 +8,10 @@ export interface Customer {
   name: string;
   mobile_no: string;
   email: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
   /** Customer photo (Customer Management -> Edit). */
   photo_url?: string | null;
   gender: string | null;

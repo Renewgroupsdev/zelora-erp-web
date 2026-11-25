@@ -194,8 +194,7 @@
                   <div class="cart-card-foot">
                     <span>{{ cartTotal(cart) }} item{{ cartTotal(cart) === 1 ? '' : 's' }} · <b>₹{{ cartAmount(cart) | number:'1.0-0' }}</b></span>
                     <span class="cart-actions">
-                      <button type="button" class="cart-btn ghost" (click)="openProductCart(cart, 'shop')"><i class="bi bi-plus-lg"></i> Add more</button>
-                      <button type="button" class="cart-btn" (click)="openProductCart(cart, 'checkout')"><i class="bi bi-credit-card"></i> Pay now</button>
+                      <button type="button" class="cart-btn" (click)="openProductCart(cart, 'cart')"><i class="bi bi-cart3"></i> View cart</button>
                     </span>
                   </div>
                 </div>

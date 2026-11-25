@@ -366,7 +366,9 @@ export class CustomerPortalPage implements OnInit {
   openProductBill(customer: Customer): void {
     this.dialog.open(ProductBillForm, {
       width: '1000px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, restoreFocus: true,
-      data: { customer: { name: customer.name, phone: customer.mobile_no, branch: customer.branch_name ?? '', branchKey: customer.branch_key ?? '' } },
+      data: { customer: { name: customer.name, phone: customer.mobile_no, branch: customer.branch_name ?? '', branchKey: customer.branch_key ?? '',
+        code: customer.customer_code, email: customer.email ?? '',
+        address: [customer.address, customer.city, customer.state, customer.pincode].filter(v => !!v && String(v).trim()).join(', ') } },
     }).afterClosed().subscribe((bill?: Bill) => {
       if (!bill) return;
       this.toast.success(`Product bill ${bill.billNo} saved.`);

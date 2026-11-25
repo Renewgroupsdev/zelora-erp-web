@@ -1,6 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { AccountsService } from '../../../shared/common-services/accounts.service';
+import { Bill, billTotals, isProductBill } from '../../../shared/models/accounts.model';
+import { BillView } from '../../accounts/bills/bill-view/bill-view';
 import { ApiDataService } from '../../../core/http/api.service';
 import { ApiRoutesConstants } from '../../../shared/common-services/api-route-constants';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -60,6 +63,26 @@ export class CustomerDetailsDialog implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<CustomerDetailsDialog>);
   private readonly data = inject<{ appointmentId: number }>(MAT_DIALOG_DATA);
   protected readonly appointmentId = this.data.appointmentId;
+
+  private readonly acc = inject(AccountsService);
+  private readonly dialog = inject(MatDialog);
+
+  /** Product bills (Buy a Product) of this customer, newest first - matched on the mobile number the bill was raised with. */
+  readonly productBills = computed(() => {
+    const mobile = (this.appt()?.mobile_no ?? '').replace(/\D/g, '').slice(-10);
+    if (!mobile) return [];
+    return this.acc.bills()
+      .filter(b => isProductBill(b) && b.status !== 'Cancelled' && (b.customerPhone ?? '').replace(/\D/g, '').slice(-10) === mobile)
+      .map(b => ({ bill: b, total: billTotals(b.items).grandTotal, units: b.items.reduce((s, i) => s + Number(i.qty), 0) }))
+      .sort((x, y) => y.bill.date.localeCompare(x.bill.date) || y.bill.billNo.localeCompare(x.bill.billNo));
+  });
+  readonly productSpend = computed(() => this.productBills().reduce((s, r) => s + r.total, 0));
+  readonly productDue = computed(() => this.productBills().reduce((s, r) => s + Math.max(0, r.total - r.bill.paidAmount), 0));
+
+  /** Opens the product bill (view / print / collect payment). */
+  openProductBill(bill: Bill): void {
+    this.dialog.open(BillView, { width: '920px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, restoreFocus: true, data: { billId: bill.id } });
+  }
 
   readonly inr = inr;
   readonly statusLabel = statusLabel;
@@ -172,6 +195,8 @@ export class CustomerDetailsDialog implements OnInit {
   });
 
   ngOnInit(): void {
+    // Fresh books, so product bills raised since sign-in (by anyone) show under Product purchases.
+    void this.acc.load();
     this.api.GET(`${ApiRoutesConstants.APPOINTMENT_FLOW}/${this.data.appointmentId}`).subscribe({
       next: (res: any) => {
         this.appt.set(res.data);
@@ -218,7 +243,29 @@ export class CustomerDetailsDialog implements OnInit {
   }
 
   get canInvoice(): boolean {
-    return this.auth.hasActionAccess('download-invoice');
+    return this.auth.hasActionAccess('customer-invoice') || this.auth.hasActionAccess('download-invoice');
+  }
+
+  /** Payment Receipt: the Customer Management action, or the older Download Invoice one. */
+  get canReceipt(): boolean {
+    return this.auth.hasActionAccess('customer-receipt') || this.auth.hasActionAccess('download-invoice');
+  }
+
+  /** Loads the receipt of one payment (the row's receipt button) and opens it in a new tab. */
+  viewReceipt(paymentId: number): void {
+    const tab = window.open('', '_blank'); // opened before the request so the popup blocker allows it
+    this.api.GET_BLOB(`${ApiRoutesConstants.APPOINTMENT_FLOW}/payments/${paymentId}/receipt`).subscribe({
+      next: (blob: Blob) => {
+        const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: () => {
+        tab?.close();
+        this.toast.error('Could not open the receipt.');
+      },
+    });
   }
 
   /** Loads the tax invoice as a blob and opens it in a new tab. */

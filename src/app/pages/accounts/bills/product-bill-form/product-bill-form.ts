@@ -6,6 +6,7 @@ import { ApiDataService } from '../../../../core/http/api.service';
 import { AccountsService } from '../../../../shared/common-services/accounts.service';
 import { ApiRoutesConstants } from '../../../../shared/common-services/api-route-constants';
 import { InventoryService, ProductRecord } from '../../../../shared/common-services/inventory.service';
+import { PageLoader } from '../../../../shared/components/page-loader/page-loader';
 import { CartCustomer, ProductCartService } from '../../../../shared/common-services/product-cart.service';
 import { PurchaseService } from '../../../../shared/common-services/purchase.service';
 import { ToastService } from '../../../../shared/common-services/toast.service';
@@ -21,7 +22,7 @@ export interface ProductBillData {
   cartKey?: string;
   /** Paying several customers one after another from the navbar ("Pay all"): which one this is. */
   queue?: { index: number; total: number };
-  step?: 'shop' | 'checkout';
+  step?: 'shop' | 'cart' | 'checkout';
 }
 
 /**
@@ -32,7 +33,7 @@ export interface ProductBillData {
 @Component({
   selector: 'app-product-bill-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatDialogModule],
+  imports: [CommonModule, FormsModule, MatDialogModule, PageLoader],
   templateUrl: './product-bill-form.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', './product-bill-form.scss'],
 })
@@ -50,7 +51,7 @@ export class ProductBillForm {
   readonly modes = FLOW_PAYMENT_MODES.filter(m => m.value !== 'EMI');
   private readonly razorpay = inject(RazorpayCheckoutService);
   readonly today = isoDate();
-  readonly step = signal<'shop' | 'checkout'>(this.data?.step ?? 'shop');
+  readonly step = signal<'shop' | 'cart' | 'checkout'>(this.data?.step ?? 'shop');
   readonly products = signal<ProductRecord[]>([]);
   readonly loading = signal(true);
   readonly search = signal('');
@@ -153,10 +154,19 @@ export class ProductBillForm {
     return lineAmount(this.toItem(l.product, l.qty));
   }
 
+  /** Units of a product in stock at the customer's branch (the cart page's "In stock" / "Only N left" line). */
+  stockLeft(p: ProductRecord): number {
+    return this.stockByCode().get(p.code) ?? 0;
+  }
+
+  goCart(): void {
+    if (!this.cart.lines().length) return;
+    this.step.set('cart');
+  }
+
   goCheckout(): void {
     if (!this.cart.lines().length) return;
     this.step.set('checkout');
-    if (this.paidAmount === null) this.paidAmount = this.totals().grandTotal;
   }
 
   // ---- Payment ----------------------------------------------------------------------------------
@@ -180,8 +190,26 @@ export class ProductBillForm {
     return this.mode === 'UPI' ? 'UPI transaction ID' : 'Bank reference no';
   }
 
+  /** Set once the Amount field was clicked into and left (or typed in): from then on its error shows under it. */
+  amountTouched = false;
+
+  /** The amount typed equals the bill total. A blank field is not the full amount: it has to be entered. */
+  get paidInFull(): boolean {
+    return this.paidAmount !== null && this.paidAmount !== undefined && Math.abs(this.paying - this.totals().grandTotal) < 0.01;
+  }
+
+  /** Why the amount is not acceptable (null when it is the full bill total). */
+  get amountError(): string | null {
+    const total = `₹${this.totals().grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (this.paidAmount === null || this.paidAmount === undefined || (this.paidAmount as unknown) === '') return `Enter the amount - pay the full ${total}.`;
+    if (this.paying < this.totals().grandTotal - 0.009) return `Pay the full ${total} - part payment is not accepted.`;
+    if (this.paying > this.totals().grandTotal + 0.009) return `The amount is more than the bill total of ${total}.`;
+    return null;
+  }
+
+  /** What was typed (0 while blank). */
   get paying(): number {
-    return this.paidAmount === null || this.paidAmount === undefined ? this.totals().grandTotal : Number(this.paidAmount) || 0;
+    return this.paidAmount === null || this.paidAmount === undefined ? 0 : Number(this.paidAmount) || 0;
   }
 
   get balance(): number {
@@ -196,8 +224,8 @@ export class ProductBillForm {
     const over = this.cart.lines().find(l => l.qty > (this.stockByCode().get(l.product.code) ?? 0));
     if (!this.loading() && over) return `${over.product.name}: only ${this.stockByCode().get(over.product.code) ?? 0} in stock at ${c.branch}.`;
     if (!this.totals().grandTotal) return 'Bill total is zero.';
-    if (this.paying < 0 || this.paying > this.totals().grandTotal) return 'Amount paid must be between ₹0 and the bill total.';
-    if (this.paying < 1) return 'Enter the amount being paid.';
+    // A product is paid for in full: no part payment.
+    if (this.amountError) return this.amountError;
     if (this.needsReference && !this.reference.trim()) return 'Enter the UPI / bank transaction reference.';
     return null;
   }
@@ -239,7 +267,7 @@ export class ProductBillForm {
     const result = await this.acc.createBill(
       {
         kind: 'Service', date: this.today, dueDate: this.today, branch: c.branch, notes: note,
-        customerName: c.name, customerPhone: c.phone, customerAddress: '', customerGstin: '',
+        customerName: c.name, customerPhone: c.phone, customerAddress: c.address ?? '', customerGstin: '',
         items: this.items(),
       },
       this.paying > 0 ? { amount: this.paying, mode: this.accountsMode(), razorpay: paid } : null,

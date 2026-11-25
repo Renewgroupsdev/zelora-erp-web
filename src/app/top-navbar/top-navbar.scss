@@ -1318,3 +1318,8 @@
   font-weight: 700;
   cursor: pointer;
 }
+
+.cart-card .cart-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

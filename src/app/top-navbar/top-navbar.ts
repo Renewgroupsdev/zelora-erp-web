@@ -79,7 +79,7 @@ export class TopNavbar {
   }
 
   /** Opens one customer's cart: at the payment step ("Pay now") or back at the products ("Add more"). */
-  openProductCart(cart: CustomerCart, step: 'shop' | 'checkout' = 'checkout'): void {
+  openProductCart(cart: CustomerCart, step: 'shop' | 'cart' | 'checkout' = 'cart'): void {
     this.cartMenuOpen.set(false);
     this.cartDialog.open(ProductBillForm, {
       width: '1000px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, restoreFocus: true,

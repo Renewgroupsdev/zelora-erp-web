@@ -17,7 +17,7 @@
     @if (pdfUrl(); as src) {
       <iframe class="pdf-preview" [src]="src" title="Bill preview"></iframe>
     } @else if (pdfLoading()) {
-      <p class="muted" style="padding: 18px; text-align: center">Loading the bill preview…</p>
+      <app-page-loader [inline]="true"></app-page-loader>
     }
     <div class="doc-sheet" #sheet [style.display]="pdfUrl() || pdfLoading() ? 'none' : null">
       <div class="doc-head">

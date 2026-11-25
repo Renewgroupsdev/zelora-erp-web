@@ -5,7 +5,7 @@
     <div class="modal-title-wrap">
       <div class="title-icon"><i class="bi bi-cart3"></i></div>
       <div class="title-content">
-        <h2>{{ step() === 'shop' ? 'Buy a Product' : 'Checkout' }}</h2>
+        <h2>{{ step() === 'shop' ? 'Buy a Product' : step() === 'cart' ? 'Shopping cart' : 'Checkout' }}</h2>
         <p>
           @if (c) { {{ c.name }} · stocked at {{ c.branch || 'no branch' }} } @else { No customer selected - start from Customer Management }
         </p>
@@ -16,9 +16,11 @@
 
   <div class="modal-body-custom">
     <div class="pb-steps" aria-label="Progress">
-      <span [class.on]="step() === 'shop'" [class.done]="step() === 'checkout'"><b>1</b> Products</span>
+      <span [class.on]="step() === 'shop'" [class.done]="step() !== 'shop'"><b>1</b> Products</span>
       <i class="bi bi-chevron-right"></i>
-      <span [class.on]="step() === 'checkout'"><b>2</b> Payment</span>
+      <span [class.on]="step() === 'cart'" [class.done]="step() === 'checkout'"><b>2</b> Cart</span>
+      <i class="bi bi-chevron-right"></i>
+      <span [class.on]="step() === 'checkout'"><b>3</b> Payment</span>
     </div>
 
     @if (step() === 'shop') {
@@ -52,7 +54,11 @@
                 }
               </div>
             } @empty {
-              <div class="pb-empty"><i class="bi bi-box2"></i><p>{{ loading() ? 'Loading stock…' : 'No stocked products found at this branch.' }}</p></div>
+              @if (loading()) {
+                <div class="pb-loader"><app-page-loader [inline]="true"></app-page-loader></div>
+              } @else {
+                <div class="pb-empty"><i class="bi bi-box2"></i><p>No stocked products found at this branch.</p></div>
+              }
             }
           </div>
         </section>
@@ -93,6 +99,74 @@
           </div>
         </aside>
       </div>
+    } @else if (step() === 'cart') {
+      <div class="pb-cartpage">
+        <div class="pb-cartpage-head">
+          <div>
+            <small class="pb-eyebrow">{{ c?.branch || 'Branch' }}</small>
+            <h3>Shopping cart <span>({{ cart.count() }} item{{ cart.count() === 1 ? '' : 's' }})</span></h3>
+          </div>
+          <button type="button" class="pb-link" (click)="step.set('shop')"><i class="bi bi-chevron-left"></i> Continue shopping</button>
+        </div>
+
+        <div class="pb-cartgrid">
+          <section class="pb-cart-table">
+            <div class="pb-cart-row pb-cart-th"><span>Product</span><span>Price</span><span>Quantity</span><span>Total</span><span></span></div>
+            @for (l of cart.lines(); track l.product.code) {
+              <div class="pb-cart-row">
+                <div class="pb-cell-product">
+                  <div class="pb-line-thumb" [style.--hue]="hue(l.product)">@if (l.product.image_url && !imgFailed().has(l.product.code)) { <img [src]="l.product.image_url" [alt]="l.product.name" (error)="imgBroken(l.product.code)" /> } @else { <span class="pb-initials">{{ initials(l.product) }}</span> }</div>
+                  <div class="pb-cell-info">
+                    <strong>{{ l.product.name }}</strong>
+                    <small>{{ l.product.code }}{{ l.product.hsn_code ? ' · HSN ' + l.product.hsn_code : '' }} · {{ l.product.gst_percent | number:'1.0-2' }}% GST</small>
+                    <span class="pb-stockline" [class.low]="stockLeft(l.product) <= 5">{{ stockLeft(l.product) <= 5 ? 'Only ' + stockLeft(l.product) + ' left' : 'In stock · ' + stockLeft(l.product) + ' available' }}</span>
+                  </div>
+                </div>
+                <div class="pb-cell-price">₹{{ price(l.product) | number:'1.0-2' }}</div>
+                <div class="pb-cell-qty">
+                  <div class="pb-qty big">
+                    <button type="button" aria-label="Less" (click)="cart.setQty(l.product.code, l.qty - 1)"><i class="bi bi-dash"></i></button>
+                    <input type="number" min="1" [max]="l.max" [ngModel]="l.qty" (ngModelChange)="cart.setQty(l.product.code, $event)" />
+                    <button type="button" aria-label="More" [disabled]="l.qty >= l.max" (click)="cart.setQty(l.product.code, l.qty + 1)"><i class="bi bi-plus"></i></button>
+                  </div>
+                </div>
+                <div class="pb-cell-total">₹{{ line(l).total | number:'1.2-2' }}</div>
+                <button type="button" class="pb-trash" aria-label="Remove" (click)="cart.remove(l.product.code)"><i class="bi bi-trash3"></i></button>
+              </div>
+            } @empty {
+              <div class="pb-empty"><i class="bi bi-cart-x"></i><p>Your cart is empty.<br />Go back and pick a product.</p></div>
+            }
+          </section>
+
+          <aside class="pb-ordersum">
+            <h4>Order summary</h4>
+            <div class="pb-sumrows">
+              <div><span>Subtotal</span><b>₹{{ t.gross | number:'1.2-2' }}</b></div>
+              <div><span>Discount</span><b class="neg">- ₹{{ t.discount | number:'1.2-2' }}</b></div>
+              <div><span>GST</span><b>₹{{ t.gst | number:'1.2-2' }}</b></div>
+              <div><span>Round off</span><b>{{ t.roundOff | number:'1.2-2' }}</b></div>
+            </div>
+            <div class="pb-sumtotal"><span>Total</span><b>₹{{ t.grandTotal | number:'1.2-2' }}</b></div>
+            @if (c) {
+              <div class="pb-custcard">
+                <div class="pb-custcard-head">
+                  <span class="pb-cust-avatar">{{ c.name.charAt(0) }}</span>
+                  <div><small>Billing to</small><strong>{{ c.name }}</strong>@if (c.code) { <em>{{ c.code }}</em> }</div>
+                </div>
+                <ul>
+                  <li><i class="bi bi-telephone"></i><span>{{ c.phone || '-' }}</span></li>
+                  @if (c.email) { <li><i class="bi bi-envelope"></i><span>{{ c.email }}</span></li> }
+                  <li><i class="bi bi-house-door"></i><span>{{ c.address || 'No address on file' }}</span></li>
+                  <li><i class="bi bi-geo-alt"></i><span>{{ c.branch || '-' }}</span></li>
+                </ul>
+              </div>
+            }
+            <button type="button" class="pb-cta" [disabled]="!cart.lines().length" (click)="goCheckout()">Proceed to payment <i class="bi bi-arrow-right"></i></button>
+            <p class="pb-fine"><i class="bi bi-shield-check"></i> Paid in full at once. Stock is taken from {{ c?.branch || 'the branch' }} when the bill is paid.</p>
+            <p class="pb-chip"><i class="bi bi-geo-alt-fill"></i> Billed at {{ c?.branch || 'the selected branch' }}</p>
+          </aside>
+        </div>
+      </div>
     } @else {
       <div class="pb-layout">
         <section class="pb-products">
@@ -117,8 +191,12 @@
           <div class="form-grid">
             <div class="form-field">
               <label for="pb-paid">Amount paying now (₹)</label>
-              <div class="input-wrap"><i class="bi bi-currency-rupee"></i><input id="pb-paid" type="number" min="0" [max]="t.grandTotal" [(ngModel)]="paidAmount" /></div>
-              <small class="muted">Bill total ₹{{ t.grandTotal | number:'1.2-2' }}.</small>
+              <div class="input-wrap" [class.invalid]="amountError && (amountTouched || submitted())"><i class="bi bi-currency-rupee"></i><input id="pb-paid" type="number" min="0" [placeholder]="'Enter ' + (t.grandTotal | number:'1.2-2')" [ngModel]="paidAmount" (ngModelChange)="paidAmount = $event; amountTouched = true" (blur)="amountTouched = true" /></div>
+              @if (amountError && (amountTouched || submitted())) {
+                <small class="pb-bad"><i class="bi bi-exclamation-circle"></i> {{ amountError }}</small>
+              } @else {
+                <small class="muted">Bill total ₹{{ t.grandTotal | number:'1.2-2' }} - the full amount is paid at once.</small>
+              }
             </div>
 
 
@@ -175,13 +253,16 @@
     @if ((submitted() && error()) || serverError()) { <p class="error-text" style="font-size: 11px"><i class="bi bi-exclamation-circle"></i> {{ serverError() || error() }}</p> }
   </div>
 
+  <!-- The cart page has its own Continue shopping / Proceed to payment buttons, so it has no footer. -->
+  @if (step() !== 'cart') {
   <div class="modal-footer-custom">
     @if (step() === 'shop') {
       <button type="button" class="cancel-btn" (click)="close()">Close</button>
-      <button type="button" class="save-btn" [disabled]="!cart.lines().length" (click)="goCheckout()"><i class="bi bi-bag-check"></i> Checkout ({{ cart.count() }}) · ₹{{ t.grandTotal | number:'1.0-0' }}</button>
+      <button type="button" class="save-btn" [disabled]="!cart.lines().length" (click)="goCart()"><i class="bi bi-cart3"></i> View cart ({{ cart.count() }}) · ₹{{ t.grandTotal | number:'1.0-0' }}</button>
     } @else {
-      <button type="button" class="cancel-btn" (click)="step.set('shop')"><i class="bi bi-arrow-left"></i> Back to products</button>
+      <button type="button" class="cancel-btn" (click)="step.set('cart')"><i class="bi bi-arrow-left"></i> Back to cart</button>
       <button type="button" class="save-btn" [disabled]="saving()" (click)="save()"><i class="bi bi-floppy"></i> Save &amp; Post Product Bill</button>
     }
   </div>
+  }
 </div>

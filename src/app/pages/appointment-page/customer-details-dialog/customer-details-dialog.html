@@ -112,7 +112,7 @@
           }</h4>
         <div class="cp-table-wrap">
           <table class="cp-table">
-            <thead><tr><th>Date</th><th>Mode</th><th>Transaction no.</th><th>Remarks</th><th class="num">Amount</th></tr></thead>
+            <thead><tr><th>Date</th><th>Mode</th><th>Transaction no.</th><th>Remarks</th><th>Receipt</th><th class="num">Amount</th></tr></thead>
             <tbody>
               @for (p of a.payments ?? []; track p.id) {
                 <tr>
@@ -120,21 +120,45 @@
                   <td><span class="mode"><i class="bi bi-credit-card-2-front"></i>{{ p.payment_mode }}</span></td>
                   <td>{{ p.transaction_no || '-' }}</td>
                   <td>{{ p.remarks || '-' }}</td>
+                  <td>@if (canReceipt) { <button type="button" class="cp-invoice" (click)="viewReceipt(p.id)" title="Open the payment receipt"><i class="bi bi-receipt"></i> Receipt</button> } @else { - }</td>
                   <td class="num paid">{{ inr(p.paid_amount) }}</td>
                 </tr>
               } @empty {
-                <tr><td colspan="5" class="empty">No payments recorded yet.</td></tr>
+                <tr><td colspan="6" class="empty">No payments recorded yet.</td></tr>
               }
             </tbody>
             <tfoot>
-              <tr><td colspan="4">Total</td><td class="num">{{ inr(a.total_amount) }}</td></tr>
-              <tr><td colspan="4">Paid</td><td class="num paid">{{ inr(a.paid_amount) }}</td></tr>
-              <tr [class.due]="balance() > 0"><td colspan="4">Balance</td><td class="num">{{ inr(balance()) }}</td></tr>
+              <tr><td colspan="5">Total</td><td class="num">{{ inr(a.total_amount) }}</td></tr>
+              <tr><td colspan="5">Paid</td><td class="num paid">{{ inr(a.paid_amount) }}</td></tr>
+              <tr [class.due]="balance() > 0"><td colspan="5">Balance</td><td class="num">{{ inr(balance()) }}</td></tr>
             </tfoot>
           </table>
         </div>
         <p class="cp-terms"><i class="bi bi-shield-check"></i> Terms {{ a.terms_accepted_at ? 'accepted ' + formatDateTime(a.terms_accepted_at) : 'not accepted yet' }}</p>
       </section>
+
+      @if (productBills().length) {
+        <section class="cp-card">
+          <h4><span class="cp-badge b-violet"><i class="bi bi-bag-check"></i></span> Product purchases
+            <small>{{ productBills().length }} bill{{ productBills().length === 1 ? '' : 's' }} · {{ inr(productSpend()) }}@if (productDue() > 0) { · due {{ inr(productDue()) }} }</small></h4>
+          <div class="cp-table-wrap">
+            <table class="cp-table">
+              <thead><tr><th>Bill</th><th>Date</th><th>Products</th><th>Status</th><th class="num">Amount</th></tr></thead>
+              <tbody>
+                @for (r of productBills(); track r.bill.id) {
+                  <tr>
+                    <td><button type="button" class="cp-invoice" (click)="openProductBill(r.bill)" title="Open the product bill"><i class="bi bi-file-earmark-pdf"></i> {{ r.bill.billNo }}</button></td>
+                    <td>{{ formatDate(r.bill.date) }}</td>
+                    <td>@for (i of r.bill.items; track $index) { <div>{{ i.description }} <small>× {{ i.qty }}</small></div> }</td>
+                    <td><span class="cp-state" [class.done]="r.bill.status === 'Paid'">{{ r.bill.status }}</span></td>
+                    <td class="num" [class.paid]="r.bill.status === 'Paid'">{{ inr(r.total) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
 
       @if (treatments().length) {
         <section class="cp-card">

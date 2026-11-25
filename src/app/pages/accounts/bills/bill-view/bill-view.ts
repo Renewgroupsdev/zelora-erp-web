@@ -6,6 +6,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import Swal from 'sweetalert2';
 import { AccountsService } from '../../../../shared/common-services/accounts.service';
 import { RecordHistory } from '../../../../shared/components/record-history/record-history';
+import { PageLoader } from '../../../../shared/components/page-loader/page-loader';
 import { ApiDataService } from '../../../../core/http/api.service';
 import { ToastService } from '../../../../shared/common-services/toast.service';
 import { PAYMENT_MODES, billLabel, isProductBill, billTotals, lineAmount } from '../../../../shared/models/accounts.model';
@@ -15,7 +16,7 @@ import { amountInWords, displayDate, isoDate } from '../../../../shared/utils/fo
 @Component({
   selector: 'app-bill-view',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, CanActionDirective, RecordHistory],
+  imports: [CommonModule, MatDialogModule, CanActionDirective, RecordHistory, PageLoader],
   templateUrl: './bill-view.html',
   styleUrls: ['../../../../shared/styles/erp-dialog.scss', '../../../../shared/styles/erp-document.scss'],
 })

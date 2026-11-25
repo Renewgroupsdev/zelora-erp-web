@@ -8,6 +8,10 @@ export interface CartCustomer {
   branch: string;
   /** "branch:9" / "franchise:7" - the stock store key. */
   branchKey: string;
+  /** Shown in the cart's order summary and saved on the bill. */
+  code?: string;
+  email?: string;
+  address?: string;
 }
 
 export interface CartLine {
