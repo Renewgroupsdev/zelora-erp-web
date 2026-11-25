@@ -216,8 +216,25 @@ export class TopNavbar {
     return name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
   }
 
+  /** Opens / closes the product carts dropdown; only one of the cart and notification popups is open at a time. */
+  toggleCartMenu(): void {
+    this.navLayout.closeNotifications();
+    this.cartMenuOpen.update(open => !open);
+  }
+
+  /** Closes the product carts dropdown on a click anywhere outside it (a click on the bell then opens notifications as usual). */
+  @HostListener('document:click', ['$event'])
+  onCartOutsideClick(event: MouseEvent): void {
+    if (!this.cartMenuOpen()) return;
+    const target = event.target as Node | null;
+    const wrapper = this.host.nativeElement.querySelector('.cart-menu-wrapper');
+    if (!target || !target.isConnected || wrapper?.contains(target)) return;
+    this.cartMenuOpen.set(false);
+  }
+
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    this.cartMenuOpen.set(false);
     if (this.scopeMenu()) this.closeScopeMenu();
     if (this.navLayout.notificationsOpen()) this.navLayout.closeNotifications();
   }
@@ -348,6 +365,7 @@ export class TopNavbar {
   }
 
   onToggleNotifications(): void {
+    this.cartMenuOpen.set(false);
     this.navLayout.toggleNotifications();
   }
 

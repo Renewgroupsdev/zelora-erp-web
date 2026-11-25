@@ -157,14 +157,13 @@
 
     <!-- Buy a Product cart: shown while the cart holds products -->
     @if (productCart.totalCount() > 0) {
-      <div class="notification-menu-wrapper">
-        <button type="button" class="icon-btn bell-btn has-unread" [class.active]="cartMenuOpen()" [attr.aria-expanded]="cartMenuOpen()" (click)="cartMenuOpen.set(!cartMenuOpen())" aria-label="Product carts" title="Product carts">
+      <div class="cart-menu-wrapper">
+        <button type="button" class="icon-btn bell-btn has-unread" [class.active]="cartMenuOpen()" [attr.aria-expanded]="cartMenuOpen()" (click)="toggleCartMenu()" aria-label="Product carts" title="Product carts">
           <i class="bi bi-cart3"></i>
           <span class="notification-count-badge">{{ productCart.totalCount() }}</span>
         </button>
 
         @if (cartMenuOpen()) {
-          <div class="notification-backdrop" (click)="cartMenuOpen.set(false)"></div>
           <div class="notification-dropdown" role="dialog" aria-label="Product carts">
             <div class="notification-header">
               <div>

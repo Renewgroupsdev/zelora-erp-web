@@ -162,6 +162,7 @@
 }
 
 .notification-menu-wrapper,
+.cart-menu-wrapper,
 .settings-menu-wrapper {
   position: relative;
 }
@@ -776,6 +777,7 @@
 
   app-branch-chat,
   .notification-menu-wrapper,
+  .cart-menu-wrapper,
   .profile-block,
   .settings-menu-wrapper {
     order: 2;
