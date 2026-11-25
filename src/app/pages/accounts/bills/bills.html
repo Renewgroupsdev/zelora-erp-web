@@ -8,6 +8,7 @@
     <div class="header-actions">
       <div class="segment" role="tablist" aria-label="Bill type">
         <button type="button" role="tab" [class.active]="view() === 'Service'" (click)="setView('Service')">Service Bills</button>
+        <button type="button" role="tab" [class.active]="view() === 'Product'" (click)="setView('Product')">Product Bills</button>
         <button type="button" role="tab" [class.active]="view() === 'Proforma'" (click)="setView('Proforma')">Proforma Bills</button>
       </div>
       <button *appCan="'export-bills'" type="button" class="ghost-btn" (click)="exportExcel()"><i class="bi bi-file-earmark-excel"></i> Export Excel</button>

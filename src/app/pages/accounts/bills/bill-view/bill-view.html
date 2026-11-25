@@ -6,7 +6,7 @@
       <div class="title-icon"><i class="bi" [class.bi-file-earmark-text-fill]="b.kind === 'Proforma'" [class.bi-receipt-cutoff]="b.kind === 'Service'"></i></div>
       <div class="title-content">
         <h2>{{ b.billNo }} <span class="pill" [class.green]="b.status === 'Paid' || b.status === 'Converted'" [class.orange]="b.status === 'Partially Paid' || b.status === 'Sent'" [class.red]="b.status === 'Unpaid' || b.status === 'Cancelled'">{{ b.status }}</span></h2>
-        <p>{{ b.kind === 'Proforma' ? 'Proforma bill' : 'Service bill' }} · {{ b.customerName }} · {{ b.branch }}</p>
+        <p>{{ billLabel(b) }} · {{ b.customerName }} · {{ b.branch }}</p>
       </div>
     </div>
     <app-record-history type="Bill" [recordId]="b.id" [title]="b.billNo" />
@@ -14,7 +14,12 @@
   </div>
 
   <div class="modal-body-custom doc-body">
-    <div class="doc-sheet" #sheet>
+    @if (pdfUrl(); as src) {
+      <iframe class="pdf-preview" [src]="src" title="Bill preview"></iframe>
+    } @else if (pdfLoading()) {
+      <p class="muted" style="padding: 18px; text-align: center">Loading the bill preview…</p>
+    }
+    <div class="doc-sheet" #sheet [style.display]="pdfUrl() || pdfLoading() ? 'none' : null">
       <div class="doc-head">
         <div>
           <h1>RENEW Plus</h1>

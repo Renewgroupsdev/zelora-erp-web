@@ -7,15 +7,17 @@ import { CommonFilterCard } from '../../../shared/components/common-filter-card/
 import { CommonTableCard } from '../../../shared/components/common-table-card/common-table-card';
 import { ModuleTabs } from '../../../shared/components/module-tabs/module-tabs';
 import { DetailCardData, FilterOption, TableColumn, TableRow } from '../../../shared/models/common-components.model';
-import { Bill, BillKind, billTotals } from '../../../shared/models/accounts.model';
+import { Bill, BillKind, billTotals, isProductBill } from '../../../shared/models/accounts.model';
 import { downloadExcel, fileStamp } from '../../../shared/utils/export.util';
 import { displayDate, inr, isoDate } from '../../../shared/utils/format.util';
 import { AccountsListBase } from '../accounts-list-base';
 import { BillForm } from './bill-form/bill-form';
-import { BillView } from './bill-view/bill-view';
-import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
+import { BillView } from './bill-view/bill-view';import { AutoModuleTabs } from '../../../shared/components/module-tabs/auto-module-tabs';
 
-type View = 'Service' | 'Proforma';
+type View = 'Service' | 'Product' | 'Proforma';
+
+/** Which tab a bill lives in: product bills (every line a product) are split out of Service bills. */
+const viewOf = (b: Pick<Bill, 'kind' | 'items'>): View => (b.kind === 'Proforma' ? 'Proforma' : isProductBill(b) ? 'Product' : 'Service');
 
 @Component({
   selector: 'app-bills',
@@ -60,7 +62,7 @@ export class Bills extends AccountsListBase {
 
   private filtersFor(view: View): FilterOption[] {
     return [
-      { key: 'status', label: 'Status', options: view === 'Service' ? ['Unpaid', 'Partially Paid', 'Paid', 'Cancelled'] : ['Draft', 'Sent', 'Converted', 'Cancelled'] },
+      { key: 'status', label: 'Status', options: view !== 'Proforma' ? ['Unpaid', 'Partially Paid', 'Paid', 'Cancelled'] : ['Draft', 'Sent', 'Converted', 'Cancelled'] },
       { key: 'branch', label: 'Branch', options: this.acc.branches, multiSelect: true },
       { key: 'date', label: 'Date' },
     ];
@@ -69,14 +71,15 @@ export class Bills extends AccountsListBase {
   setView(view: View): void {
     this.view.set(view);
     this.filters = this.filtersFor(view);
-    this.columns = this.columns.map(c => (c.key === 'balance' ? { ...c, header: view === 'Service' ? 'Balance' : 'Valid Till' } : c.key === 'received' ? { ...c, header: view === 'Service' ? 'Received' : 'Converted To' } : c));
+    const billed = view !== 'Proforma';
+    this.columns = this.columns.map(c => (c.key === 'items' ? { ...c, header: view === 'Product' ? 'Products' : 'Services' } : c.key === 'balance' ? { ...c, header: billed ? 'Balance' : 'Valid Till' } : c.key === 'received' ? { ...c, header: billed ? 'Received' : 'Converted To' } : c));
     this.currentPage = 1;
     this.refresh();
   }
 
   protected allRows(): TableRow[] {
     const view = this.view();
-    return this.acc.bills().filter(b => b.kind === view).map(b => this.toRow(b));
+    return this.acc.bills().filter(b => viewOf(b) === view).map(b => this.toRow(b));
   }
 
   private toRow(b: Bill): TableRow {
@@ -103,7 +106,7 @@ export class Bills extends AccountsListBase {
   newBill(kind: BillKind): void {
     this.openDialog<BillForm, Bill>(BillForm, { kind }, '1000px').afterClosed().subscribe(bill => {
       if (!bill) return;
-      if (bill.kind !== this.view()) this.setView(bill.kind);
+      if (viewOf(bill) !== this.view()) this.setView(viewOf(bill));
       this.openDialog(BillView, { billId: bill.id }, '920px');
     });
   }

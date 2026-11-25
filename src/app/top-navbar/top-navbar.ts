@@ -22,6 +22,11 @@ import { ManpowerApprovalAlertsService } from '../shared/common-services/manpowe
 import { TabAttentionService } from '../shared/common-services/tab-attention.service';
 import { FollowUpReminderService } from '../shared/common-services/follow-up-reminder.service';
 import { openAssignCaller } from '../shared/components/lead-dialogs/assign-caller-dialog';
+import { CustomerCart, ProductCartService } from '../shared/common-services/product-cart.service';
+import { ToastService } from '../shared/common-services/toast.service';
+import { BillView } from '../pages/accounts/bills/bill-view/bill-view';
+import { Bill, billTotals } from '../shared/models/accounts.model';
+import { ProductBillForm } from '../pages/accounts/bills/product-bill-form/product-bill-form';
 import { DiscountReviewDialog } from '../shared/components/discount-review-dialog/discount-review-dialog';
 
 interface ScopeTypeInfo {
@@ -46,6 +51,76 @@ export class TopNavbar {
   readonly branchOptions = inject(BranchOptionsService);
 
   readonly currentUser = this.authService.currentUser;
+
+  /** "Buy a Product" cart (Customer Management -> cart action): the navbar cart icon reopens it at checkout. */
+  readonly productCart = inject(ProductCartService);
+  private readonly cartDialog = inject(MatDialog);
+
+  /** The cart dropdown (one row per customer with a cart). */
+  readonly cartMenuOpen = signal(false);
+  private readonly toastService = inject(ToastService);
+
+  cartTotal(cart: CustomerCart): number {
+    return cart.lines.reduce((s, l) => s + l.qty, 0);
+  }
+
+  cartAmount(cart: CustomerCart): number {
+    return billTotals(cart.lines.map(l => ({
+      description: l.product.name, sac: l.product.hsn_code ?? '', qty: l.qty, rate: Number(l.product.selling_price) || 0,
+      discountPercent: Number(l.product.discount_percent) || 0, gstPercent: Number(l.product.gst_percent) || 0,
+    }))).grandTotal;
+  }
+
+  lineTotal(l: CustomerCart['lines'][number]): number {
+    return billTotals([{
+      description: l.product.name, sac: l.product.hsn_code ?? '', qty: l.qty, rate: Number(l.product.selling_price) || 0,
+      discountPercent: Number(l.product.discount_percent) || 0, gstPercent: Number(l.product.gst_percent) || 0,
+    }]).grandTotal;
+  }
+
+  /** Opens one customer's cart: at the payment step ("Pay now") or back at the products ("Add more"). */
+  openProductCart(cart: CustomerCart, step: 'shop' | 'checkout' = 'checkout'): void {
+    this.cartMenuOpen.set(false);
+    this.cartDialog.open(ProductBillForm, {
+      width: '1000px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, restoreFocus: true,
+      data: { cartKey: cart.key, step },
+    }).afterClosed().subscribe((bill?: Bill) => {
+      if (!bill) return;
+      this.cartDialog.open(BillView, { width: '920px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, restoreFocus: true, data: { billId: bill.id } });
+    });
+  }
+
+  /** Pay all: each customer's checkout opens in turn; closing one without paying stops the run. */
+  payAll(): void {
+    const keys = this.productCart.filled().map(c => c.key);
+    this.cartMenuOpen.set(false);
+    const paid: string[] = [];
+    const next = (i: number): void => {
+      if (i >= keys.length) {
+        if (paid.length) this.toastService.success('Product bills saved', paid.join(', '));
+        return;
+      }
+      this.cartDialog.open(ProductBillForm, {
+        width: '1000px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, restoreFocus: true, disableClose: false,
+        data: { cartKey: keys[i], step: 'checkout', queue: { index: i, total: keys.length } },
+      }).afterClosed().subscribe((bill?: Bill) => {
+        if (!bill) {
+          if (paid.length) this.toastService.success('Product bills saved', paid.join(', '));
+          return;
+        }
+        paid.push(bill.billNo);
+        next(i + 1);
+      });
+    };
+    next(0);
+  }
+
+  removeCart(cart: CustomerCart, event: Event): void {
+    event.stopPropagation();
+    this.productCart.activate(cart.key);
+    this.productCart.clear();
+    if (!this.productCart.filled().length) this.cartMenuOpen.set(false);
+  }
 
   private readonly navRouter = inject(Router);
   private readonly routeUrl = toSignal(this.navRouter.events.pipe(filter(e => e instanceof NavigationEnd), map(() => this.navRouter.url)), { initialValue: this.navRouter.url });

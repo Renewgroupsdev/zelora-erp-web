@@ -21,6 +21,8 @@ import {
   voucherAmount,
 } from '../models/accounts.model';
 import { addDays, isoDate } from '../utils/format.util';
+import { RazorpayOrder } from '../models/appointment-flow.model';
+import { RazorpayResult } from './razorpay-checkout.service';
 import { NotificationService } from './notification.service';
 import { BranchOptionsService } from './branch-options.service';
 
@@ -332,7 +334,14 @@ export class AccountsService {
   }
 
   // ---- Bills ----
-  async createBill(input: NewBillInput, collect: { amount: number; mode: PaymentMode } | null): Promise<Bill | string> {
+  /** Internet Banking: a Razorpay order for the amount (POST accounts/bills/razorpay-order), to open Checkout with. */
+  async razorpayOrder(amount: number, customerName: string, customerPhone: string): Promise<RazorpayOrder | string> {
+    const res = await this.send('POST', `${BASE}/bills/razorpay-order`, { amount, customer_name: customerName, customer_phone: customerPhone || null });
+    return typeof res === 'string' ? res : (res.data as RazorpayOrder);
+  }
+
+  /** `collect.razorpay` = the Checkout result; the server verifies it with Razorpay before booking the receipt. */
+  async createBill(input: NewBillInput, collect: { amount: number; mode: PaymentMode; razorpay?: RazorpayResult } | null): Promise<Bill | string> {
     if (input.kind === 'Service' && this.isClosed(input.date)) return `${input.date} is closed in the Day Book - reopen it or bill today.`;
     const unit = this.unitOf(input.branch);
     if (!unit) return 'Select a branch.';
@@ -344,8 +353,8 @@ export class AccountsService {
       // HR employee ids are server ids; anything else (an unsaved / legacy id) is sent as "no seller".
       employee_id: Number.isInteger(employee) && employee > 0 ? employee : null,
       ...unit,
-      items: input.items.map(i => ({ description: i.description, sac: i.sac || null, qty: i.qty, rate: i.rate, discount_percent: i.discountPercent, gst_percent: i.gstPercent })),
-      collect: input.kind === 'Service' && collect?.amount ? { amount: collect.amount, mode: collect.mode } : null,
+      items: input.items.map(i => ({ product_id: i.productId ?? null, description: i.description, sac: i.sac || null, qty: i.qty, rate: i.rate, discount_percent: i.discountPercent, gst_percent: i.gstPercent })),
+      collect: input.kind === 'Service' && collect?.amount ? { amount: collect.amount, mode: collect.mode, ...collect.razorpay } : null,
     });
     return this.saved(res, s => s.bills);
   }

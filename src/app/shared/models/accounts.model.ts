@@ -90,6 +90,8 @@ export type ServiceBillStatus = 'Unpaid' | 'Partially Paid' | 'Paid' | 'Cancelle
 
 export interface BillItem {
   description: string;
+  /** Inventory product sold on this line (product bills): its stock leaves the branch once the bill is fully paid. */
+  productId?: number;
   /** SAC code for services. */
   sac: string;
   qty: number;
@@ -122,6 +124,15 @@ export interface Bill {
   employeeId?: string;
   createdBy: string;
   createdAt: string;
+}
+
+/** Product bill = tax invoice whose every line is a product (HSN code); services carry a SAC starting 99. Mixed bills stay Service bills. */
+export function isProductBill(b: Pick<Bill, 'kind' | 'items'>): boolean {
+  return b.kind === 'Service' && b.items.length > 0 && b.items.every(i => !(i.sac ?? '').startsWith('99'));
+}
+
+export function billLabel(b: Pick<Bill, 'kind' | 'items'>): string {
+  return b.kind === 'Proforma' ? 'Proforma bill' : isProductBill(b) ? 'Product bill' : 'Service bill';
 }
 
 export interface DayClose {

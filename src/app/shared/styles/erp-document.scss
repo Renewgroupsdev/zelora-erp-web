@@ -157,3 +157,14 @@
     text-align: left;
   }
 }
+
+// Server-built PDF shown as the bill preview (product bills)
+.pdf-preview {
+  display: block;
+  width: 100%;
+  height: 68vh;
+  min-height: 480px;
+  border: 1px solid var(--border-soft-strong);
+  border-radius: 12px;
+  background: #fff;
+}

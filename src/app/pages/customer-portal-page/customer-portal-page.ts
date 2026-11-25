@@ -26,6 +26,9 @@ import { SittingsDialog } from '../appointment-page/sittings-dialog/sittings-dia
 import { EditCustomerDialog } from './edit-customer-dialog/edit-customer-dialog';
 import { AddTreatmentDialog } from './add-treatment-dialog/add-treatment-dialog';
 import { CustomerPaymentsDialog } from './customer-payments-dialog/customer-payments-dialog';
+import { ProductBillForm } from '../accounts/bills/product-bill-form/product-bill-form';
+import { BillView } from '../accounts/bills/bill-view/bill-view';
+import { Bill } from '../../shared/models/accounts.model';
 import { Customer, CustomerSegment, CustomerStats } from './customer.model';
 import { AutoModuleTabs } from '../../shared/components/module-tabs/auto-module-tabs';
 
@@ -33,14 +36,15 @@ const QUICK_ACTIONS: QuickAction[] = [
   { key: 'view', icon: 'bi-eye', label: 'View Profile', variant: 'primary', permission: 'view-customer', fixedIcon: true },
   { key: 'edit', icon: 'bi-pencil-square', label: 'Edit Customer', variant: 'default', permission: 'edit-customer' },
   { key: 'payments', icon: 'bi-cash-coin', label: 'Customer Payments', variant: 'default', permission: 'customer-payments', fixedIcon: true },
+  { key: 'productBill', icon: 'bi-cart3', label: 'Buy a Product', variant: 'default', permission: 'buy-customer-product', fixedIcon: true, fixedLabel: true },
 ];
 
 /** A converted customer (Appointments -> invoice -> customer) has a treatment plan whose sittings are worked here. */
-/** Documents of a converted customer: the payment receipt and the tax invoice (Download Invoice permission). */
-const RECEIPT_ACTION: QuickAction = { key: 'receipt', icon: 'bi-receipt', label: 'Payment receipt', variant: 'default', permission: 'download-invoice', fixedIcon: true, fixedLabel: true };
-const INVOICE_ACTION: QuickAction = { key: 'invoice', icon: 'bi-file-earmark-pdf', label: 'Tax invoice', variant: 'default', permission: 'download-invoice', fixedIcon: true, fixedLabel: true };
+/** Documents of a converted customer: the payment receipt and the tax invoice (Payment Receipt / Tax Invoice actions of Customer Management). */
+const RECEIPT_ACTION: QuickAction = { key: 'receipt', icon: 'bi-receipt', label: 'Payment receipt', variant: 'default', permission: 'customer-receipt', fixedIcon: true, fixedLabel: true };
+const INVOICE_ACTION: QuickAction = { key: 'invoice', icon: 'bi-file-earmark-pdf', label: 'Tax invoice', variant: 'default', permission: 'customer-invoice', fixedIcon: true, fixedLabel: true };
 
-const SITTINGS_ACTION: QuickAction = { key: 'sittings', icon: 'bi-calendar2-week', label: 'Treatment sittings', variant: 'default', permission: 'treatment-sittings', fixedIcon: true };
+const SITTINGS_ACTION: QuickAction = { key: 'sittings', icon: 'bi-calendar2-week', label: 'Treatment sittings', variant: 'default', permission: 'customer-sittings', fixedIcon: true };
 
 /**
  * Customer Management. The list, the stat cards and the Branch / Preferred service filter options all come from
@@ -335,6 +339,7 @@ export class CustomerPortalPage implements OnInit {
     else if (action === 'edit') this.openEdit(customer);
     else if (action === 'sittings') this.openSittings(customer);
     else if (action === 'payments') this.openPayments(customer);
+    else if (action === 'productBill') this.openProductBill(customer);
     else if (action === 'receipt') this.openDocument(customer, 'receipt');
     else if (action === 'invoice') this.openDocument(customer, 'invoice');
   }
@@ -354,6 +359,19 @@ export class CustomerPortalPage implements OnInit {
         tab?.close();
         this.toast.error(kind === 'receipt' ? 'Could not open the receipt.' : 'Could not open the tax invoice.');
       },
+    });
+  }
+
+  /** Buy a Product [buy-customer-product]: the products stocked at the customer's branch go to the cart (top navbar), then checkout posts the product bill. */
+  openProductBill(customer: Customer): void {
+    this.dialog.open(ProductBillForm, {
+      width: '1000px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, restoreFocus: true,
+      data: { customer: { name: customer.name, phone: customer.mobile_no, branch: customer.branch_name ?? '', branchKey: customer.branch_key ?? '' } },
+    }).afterClosed().subscribe((bill?: Bill) => {
+      if (!bill) return;
+      this.toast.success(`Product bill ${bill.billNo} saved.`);
+      // The saved bill opens straight away (view / print, payments).
+      this.dialog.open(BillView, { width: '920px', maxWidth: 'calc(100vw - 24px)', maxHeight: '94vh', autoFocus: false, restoreFocus: true, data: { billId: bill.id } });
     });
   }
 

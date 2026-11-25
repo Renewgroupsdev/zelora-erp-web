@@ -1,11 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { CanActionDirective } from '../../../../shared/directives/can-action.directive';
-import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import Swal from 'sweetalert2';
 import { AccountsService } from '../../../../shared/common-services/accounts.service';
 import { RecordHistory } from '../../../../shared/components/record-history/record-history';
-import { PAYMENT_MODES, billTotals, lineAmount } from '../../../../shared/models/accounts.model';
+import { ApiDataService } from '../../../../core/http/api.service';
+import { ToastService } from '../../../../shared/common-services/toast.service';
+import { PAYMENT_MODES, billLabel, isProductBill, billTotals, lineAmount } from '../../../../shared/models/accounts.model';
 import { printDocument } from '../../../../shared/utils/export.util';
 import { amountInWords, displayDate, isoDate } from '../../../../shared/utils/format.util';
 
@@ -20,6 +23,8 @@ export class BillView {
   private readonly dialogRef = inject(MatDialogRef<BillView>);
   private readonly data = inject<{ billId: string }>(MAT_DIALOG_DATA);
   readonly acc = inject(AccountsService);
+  private readonly api = inject(ApiDataService);
+  private readonly toast = inject(ToastService);
   private readonly sheet = viewChild.required<ElementRef<HTMLElement>>('sheet');
 
   readonly billId = signal(this.data.billId);
@@ -33,6 +38,34 @@ export class BillView {
     const id = b.convertedToId ?? b.convertedFromId;
     return id ? this.acc.bills().find(x => x.id === id) : undefined;
   });
+
+  readonly billLabel = billLabel;
+  // Product bills preview the server PDF (the very document that is downloaded); it reloads when the bill is paid / changed.
+  private readonly sanitizer = inject(DomSanitizer);
+  readonly pdfUrl = signal<SafeResourceUrl | null>(null);
+  readonly pdfLoading = signal(false);
+  private pdfBlobUrl: string | null = null;
+  private readonly previewPdf = effect(() => {
+    const b = this.bill();
+    if (!b || !isProductBill(b)) return;
+    void [b.status, b.paidAmount];
+    untracked(() => this.loadPdfPreview());
+  });
+  private readonly cleanup = inject(DestroyRef).onDestroy(() => { if (this.pdfBlobUrl) URL.revokeObjectURL(this.pdfBlobUrl); });
+
+  private loadPdfPreview(): void {
+    this.pdfLoading.set(true);
+    this.api.GET_BLOB(`accounts/bills/${this.billId()}/pdf`).subscribe({
+      next: (blob: Blob) => {
+        if (this.pdfBlobUrl) URL.revokeObjectURL(this.pdfBlobUrl);
+        this.pdfBlobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+        this.pdfUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfBlobUrl));
+        this.pdfLoading.set(false);
+      },
+      // Preview unavailable (no download-bill-pdf permission, server error): the on-screen sheet below stays visible.
+      error: () => { this.pdfUrl.set(null); this.pdfLoading.set(false); },
+    });
+  }
 
   readonly line = lineAmount;
   readonly displayDate = displayDate;
@@ -52,8 +85,27 @@ export class BillView {
     return [...map.values()];
   });
 
+  /** Product bills: the server builds the PDF in the company frame (same layout as the payment receipt). */
   downloadPdf(): void {
+    if (isProductBill(this.bill())) return this.openServerPdf();
+
     printDocument(`${this.bill().kind === 'Proforma' ? 'Proforma' : 'Invoice'} ${this.bill().billNo}`, this.sheet().nativeElement.innerHTML);
+  }
+
+  private openServerPdf(): void {
+    const tab = window.open('', '_blank');
+    this.api.GET_BLOB(`accounts/bills/${this.billId()}/pdf`).subscribe({
+      next: (blob: Blob) => {
+        const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+        if (tab) tab.location.href = url;
+        else window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: () => {
+        tab?.close();
+        this.toast.error('Could not open the bill PDF.');
+      },
+    });
   }
 
   async markSent(): Promise<void> {
