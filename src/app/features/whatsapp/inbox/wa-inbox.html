@@ -1,0 +1,515 @@
+<div class="wa" [class.with-info]="showDetails() && !!active()" [class.has-active]="!!activeId()" (click)="closePopups()">
+  <!-- ============ LEFT: chats ============ -->
+  <aside class="side" aria-label="Chats">
+    <header class="side-head">
+      <h1>WhatsApp</h1>
+      <div class="side-actions">
+        <span class="pill" title="Unread chats"><i class="bi bi-chat-square-dots-fill"></i> {{ counts().unread }}</span>
+        <span class="pill" title="Unassigned chats"><i class="bi bi-person-dash-fill"></i> {{ counts().unassigned }}</span>
+        <a class="ico" routerLink="/app/whatsapp/send" title="New message to a customer"><i class="bi bi-pencil-square"></i></a>
+      </div>
+    </header>
+    <div class="search">
+      <i class="bi bi-search" aria-hidden="true"></i>
+      <input type="search" (input)="onSearch($any($event.target).value)" placeholder="Search name or number" aria-label="Search chats" />
+    </div>
+    <div class="chips" role="tablist" aria-label="Filter chats">
+      @for (f of filters; track f.key) {
+        <button type="button" role="tab" [class.on]="filter() === f.key" [attr.aria-selected]="filter() === f.key" (click)="filter.set(f.key)">
+          {{ f.label }}
+          @if (f.key === 'unread' && counts().unread) { <span class="n">{{ counts().unread }}</span> }
+          @if (f.key === 'ads' && counts().ads) { <span class="n">{{ counts().ads }}</span> }
+        </button>
+      }
+      <div class="more-wrap" (click)="$event.stopPropagation()">
+        <button type="button" class="more" [class.on]="!!moreActive()" (click)="moreFilters.set(!moreFilters())" aria-label="More filters">
+          @if (moreActive(); as m) { <i class="bi" [class]="m.icon"></i> {{ m.label }} }
+          <i class="bi bi-caret-down-fill"></i>
+        </button>
+        @if (moreFilters()) {
+          <div class="more-menu">
+            @for (f of moreFilterList; track f.key) {
+              <button type="button" [class.on]="filter() === f.key" (click)="filter.set(f.key); moreFilters.set(false)"><i class="bi" [class]="f.icon"></i> {{ f.label }}</button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+    <ul class="chats" role="listbox">
+      @if (listLoading() && !conversations().length) {
+        @for (i of [1, 2, 3, 4, 5, 6]; track i) { <li class="chat skel"><span class="avatar"></span><span class="wa-skeleton line"></span></li> }
+      } @else {
+        @for (c of conversations(); track c.id) {
+          <li role="option" class="chat" [class.on]="activeId() === c.id" [class.unread]="c.unread_count > 0" [attr.aria-selected]="activeId() === c.id"
+              tabindex="0" (click)="open(c.id)" (keydown.enter)="open(c.id)">
+            <span class="avatar" aria-hidden="true" [style.background]="avatarColor(c.contact?.wa_id)">
+              @if (initials(c.contact?.name); as ini) { <b>{{ ini }}</b> } @else { <i class="bi bi-person-fill"></i> }
+              @if (c.lead_source) { <span class="src-dot" [attr.data-src]="c.lead_source"><i class="bi" [class.bi-facebook]="c.lead_source === 'facebook_ad'" [class.bi-instagram]="c.lead_source === 'instagram_ad'" [class.bi-megaphone-fill]="c.lead_source === 'ad'"></i></span> }
+            </span>
+            <div class="chat-body">
+              <div class="chat-top">
+                <span class="chat-name">{{ c.contact?.name }}</span>
+                <time>{{ listTime(c.last_message_at) }}</time>
+              </div>
+              <div class="chat-bottom">
+                <span class="chat-preview">
+                  @if (c.last_message_direction === 'outbound') { <i class="bi bi-check2-all"></i> }
+                  {{ c.last_message_preview || 'Tap to start chatting' }}
+                </span>
+                @if (c.unread_count) { <span class="unread-badge">{{ c.unread_count }}</span> }
+                @else if (c.status === 'pending') { <span class="tag-mini" title="Pending">P</span> }
+              </div>
+              <div class="chat-meta">
+                @if (sourceLabel(c); as src) { <span class="src-badge" [attr.data-src]="c.lead_source">{{ src }}</span> }
+                <span>+{{ c.contact?.wa_id }}</span>
+                <span><i class="bi bi-whatsapp"></i> {{ c.phone_number?.display_phone_number }}</span>
+                @if (c.assigned_user) { <span><i class="bi bi-person-fill"></i> {{ c.assigned_user.name }}</span> }
+                @if (c.status === 'resolved') { <span class="ok"><i class="bi bi-check-circle-fill"></i> Resolved</span> }
+              </div>
+            </div>
+          </li>
+        } @empty {
+          <li class="chats-empty"><i class="bi bi-chat-square-heart"></i><p>No chats{{ filter() !== 'all' ? ' here' : ' yet' }}</p><small>Customers who message your WhatsApp number show up here.</small></li>
+        }
+      }
+    </ul>
+  </aside>
+
+  <!-- ============ MIDDLE: conversation ============ -->
+  <section class="main" aria-label="Conversation" (dragover)="onDragOver($event)" (dragleave)="dragging.set(false)" (drop)="onDrop($event)">
+    @if (!activeId()) {
+      <div class="intro">
+        <div class="intro-art" aria-hidden="true"><i class="bi bi-laptop"></i><i class="bi bi-phone"></i></div>
+        <h2>WhatsApp Business</h2>
+        <p>Chat with your customers right here: messages, photos, documents, emoji and templates. Choose a chat on the left.</p>
+        <span class="intro-foot"><i class="bi bi-lock-fill"></i> Sent through your connected Meta WhatsApp Business account</span>
+      </div>
+    } @else {
+      <header class="main-head">
+        <button type="button" class="ico back" (click)="activeId.set(null); active.set(null)" aria-label="Back to chats"><i class="bi bi-arrow-left"></i></button>
+        <span class="avatar sm" aria-hidden="true" [style.background]="avatarColor(active()?.contact?.wa_id)">
+          @if (initials(active()?.contact?.name); as ini) { <b>{{ ini }}</b> } @else { <i class="bi bi-person-fill"></i> }
+        </span>
+        <button type="button" class="who" (click)="showDetails.set(true)" title="Contact info">
+          <strong>{{ active()?.contact?.name }} @if (sourceLabel(active()); as src) { <span class="src-badge" [attr.data-src]="active()?.lead_source">{{ src }}</span> }</strong>
+          <span>{{ windowLabel().open ? 'online in the last 24 hours' : '+' + active()?.contact?.wa_id }} · via {{ active()?.phone_number?.display_phone_number }}</span>
+        </button>
+        <select class="status-select" [ngModel]="active()?.status" (ngModelChange)="setStatus($event)" aria-label="Chat status" title="Chat status">
+          <option value="open">🟢 Open</option><option value="pending">🟡 Pending</option><option value="resolved">✅ Resolved</option>
+        </select>
+        <button type="button" class="ico" (click)="toggleChatSearch()" [class.on]="chatSearchOpen()" title="Search in chat" aria-label="Search in chat"><i class="bi bi-search"></i></button>
+        <button type="button" class="ico" (click)="showDetails.set(!showDetails())" [class.on]="showDetails()" title="Contact info" aria-label="Contact info"><i class="bi bi-three-dots-vertical"></i></button>
+      </header>
+
+      @if (chatSearchOpen()) {
+        <div class="chat-search">
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <input #cs type="search" placeholder="Search messages…" [value]="chatQuery()" (input)="onChatQuery($any($event.target).value)" (keydown.enter)="stepMatch(-1)" aria-label="Search messages" autofocus />
+          <span class="count">{{ matches().length ? (matchIndex() + 1) + ' of ' + matches().length : (chatQuery() ? 'No results' : '') }}</span>
+          <button type="button" class="ico sm" (click)="stepMatch(-1)" [disabled]="!matches().length" aria-label="Previous result"><i class="bi bi-chevron-up"></i></button>
+          <button type="button" class="ico sm" (click)="stepMatch(1)" [disabled]="!matches().length" aria-label="Next result"><i class="bi bi-chevron-down"></i></button>
+          <button type="button" class="ico sm" (click)="toggleChatSearch()" aria-label="Close search"><i class="bi bi-x-lg"></i></button>
+        </div>
+      }
+
+      <div class="wallpaper">
+        <div class="thread" #thread (scroll)="onThreadScroll()">
+          @if (olderLoading()) { <div class="loading small"><span class="spinner"></span></div> }
+          @else if (noOlder() && visible().length) {
+            <div class="encryption"><i class="bi bi-lock-fill"></i> Messages are sent and received through the WhatsApp Business Platform (Meta Cloud API).</div>
+          }
+
+          @if (threadLoading()) { <div class="loading"><span class="spinner"></span></div> }
+
+          @for (m of visible(); track m.id; let i = $index) {
+            @if (dayLabel(m, i); as day) { <div class="day"><span>{{ day }}</span></div> }
+            <div class="row" [id]="'wa-msg-' + m.id" [class.out]="m.direction === 'outbound'" [class.in]="m.direction === 'inbound'" [class.first]="firstOfGroup(m, i)"
+                 [class.has-reactions]="!!(m.wamid && reactions()[m.wamid])" [class.hit]="isCurrentMatch(m)">
+              <div class="bubble" [class.failed]="m.status === 'failed'" [class.media-only]="timeOnMedia(m)" [class.jumbo]="jumbo(m)"
+                   [class.has-btns]="m.type === 'template' && m.content?.buttons?.length" (dblclick)="m.direction === 'inbound' && windowLabel().open && reply(m)">
+
+                <!-- hover tools: react + menu, as in WhatsApp Web -->
+                @if (m.id > 0) {
+                  <div class="tools" (click)="$event.stopPropagation()">
+                    @if (canSend() && m.wamid && windowLabel().open) {
+                      <button type="button" class="tool" (click)="reactFor.set(reactFor() === m.id ? null : m.id); menuFor.set(null)" title="React" aria-label="React"><i class="bi bi-emoji-smile"></i></button>
+                    }
+                    <button type="button" class="tool" (click)="menuFor.set(menuFor() === m.id ? null : m.id); reactFor.set(null)" title="Menu" aria-label="Message menu"><i class="bi bi-chevron-down"></i></button>
+                  </div>
+                }
+                @if (reactFor() === m.id) {
+                  <div class="react-bar" (click)="$event.stopPropagation()">
+                    @for (e of quickReactions; track e) { <button type="button" (click)="react(m, e)" [attr.aria-label]="'React ' + e">{{ e }}</button> }
+                  </div>
+                }
+                @if (menuFor() === m.id) {
+                  <div class="msg-menu" (click)="$event.stopPropagation()">
+                    @if (m.direction === 'inbound' && canSend() && windowLabel().open) { <button type="button" (click)="reply(m)"><i class="bi bi-reply"></i> Reply</button> }
+                    @if (canSend() && m.wamid && windowLabel().open) { <button type="button" (click)="reactFor.set(m.id); menuFor.set(null)"><i class="bi bi-emoji-smile"></i> React</button> }
+                    @if (m.body || m.button_text) { <button type="button" (click)="copy(m)"><i class="bi bi-copy"></i> Copy</button> }
+                    @if (m.media) { <button type="button" (click)="download(m)"><i class="bi bi-download"></i> Download</button> }
+                    @if (m.direction === 'outbound') { <button type="button" (click)="infoFor.set(m); closePopups()"><i class="bi bi-info-circle"></i> Message info</button> }
+                  </div>
+                }
+
+                @if (senderLabel(m, i); as who) { <div class="sender" [class.auto]="m.source === 'automation'">{{ who }}</div> }
+                @if (quoted(m); as q) {
+                  <div class="quote"><strong>{{ q.direction === 'inbound' ? active()?.contact?.name : 'You' }}</strong><span>{{ q.body || q.button_text || q.media?.filename || q.type }}</span></div>
+                }
+
+                @switch (m.type) {
+                  @case ('image') {
+                    @if (mediaUrls()[m.id]) { <img class="media" [src]="mediaUrls()[m.id]" alt="Photo" (click)="openMedia(m)" /> }
+                    @else { <div class="media ph"><i class="bi bi-image"></i></div> }
+                  }
+                  @case ('sticker') { @if (mediaUrls()[m.id]) { <img class="sticker" [src]="mediaUrls()[m.id]" alt="Sticker" (click)="openMedia(m)" /> } }
+                  @case ('video') {
+                    @if (mediaUrls()[m.id]) { <video class="media" [src]="mediaUrls()[m.id]" controls preload="metadata"></video> }
+                    @else { <div class="media ph"><i class="bi bi-play-circle-fill"></i></div> }
+                  }
+                  @case ('audio') {
+                    <div class="voice"><span class="voice-ico"><i class="bi bi-mic-fill"></i></span>
+                      @if (mediaUrls()[m.id]) { <audio [src]="mediaUrls()[m.id]" controls preload="metadata"></audio> } @else { <span class="muted-text">Voice message</span> }
+                    </div>
+                  }
+                  @case ('document') {
+                    <button type="button" class="doc" (click)="download(m)">
+                      <span class="doc-ext">{{ fileExt(m.media?.filename) }}</span>
+                      <span class="doc-name"><strong>{{ m.media?.filename || 'Document' }}</strong><small>{{ fileSize(m.media?.size) }}{{ m.media?.size ? ' · ' : '' }}{{ fileExt(m.media?.filename) }}</small></span>
+                      <i class="bi bi-download dl"></i>
+                    </button>
+                  }
+                  @case ('location') {
+                    <a class="loc" [href]="'https://maps.google.com/?q=' + m.content?.latitude + ',' + m.content?.longitude" target="_blank" rel="noopener">
+                      <span class="loc-map"><i class="bi bi-geo-alt-fill"></i></span><span>{{ m.body || 'Shared location' }}</span>
+                    </a>
+                  }
+                  @case ('contacts') { <div class="doc static"><span class="avatar sm"><i class="bi bi-person-fill"></i></span><span class="doc-name"><strong>{{ m.body || 'Contact' }}</strong><small>Contact card</small></span></div> }
+                  @case ('button') { <div class="tapped"><i class="bi bi-reply-fill"></i> {{ m.button_text }}</div> }
+                  @case ('interactive') { <div class="tapped"><i class="bi bi-reply-fill"></i> {{ m.button_text || m.body }}</div> }
+                  @case ('unsupported') { <div class="muted-text"><i class="bi bi-info-circle"></i> This message type can't be shown here.</div> }
+                }
+
+                @if (m.type === 'template' && m.content?.header?.text) { <div class="t-head">{{ m.content.header.text }}</div> }
+                @if (m.body && !['button', 'interactive', 'location', 'contacts'].includes(m.type)) {
+                  <div class="text"><span [innerHTML]="format(m.body)"></span><span class="spacer" [class.out]="m.direction === 'outbound'"></span></div>
+                } @else if (!timeOnMedia(m)) {
+                  <span class="spacer" [class.out]="m.direction === 'outbound'"></span>
+                }
+                @if (m.type === 'template' && m.content?.footer) { <div class="t-foot">{{ m.content.footer }}</div> }
+                @if (m.error) { <div class="err"><i class="bi bi-exclamation-circle-fill"></i> {{ m.error.title }}</div> }
+
+                <span class="meta" [class.on-media]="timeOnMedia(m)">
+                  @if (m.source === 'automation') { <i class="bi bi-robot" title="Automatic"></i> }
+                  <time>{{ (m.timestamp ?? m.created_at) | date: 'h:mm a' }}</time>
+                  @if (m.direction === 'outbound') { <i class="bi tick" [class]="tick$(m).icon + ' ' + tick$(m).cls" [title]="tick$(m).title"></i> }
+                </span>
+
+                @if (m.type === 'template' && m.content?.buttons?.length) {
+                  <div class="t-btns">
+                    @for (b of m.content.buttons; track $index) {
+                      <span class="t-btn">
+                        <i class="bi" [class.bi-reply-fill]="(b.type || '').toUpperCase() === 'QUICK_REPLY'" [class.bi-box-arrow-up-right]="(b.type || '').toUpperCase() === 'URL'"
+                           [class.bi-telephone-fill]="(b.type || '').toUpperCase() === 'PHONE_NUMBER'" [class.bi-copy]="(b.type || '').toUpperCase() === 'COPY_CODE'"></i>
+                        {{ b.text || 'Copy code' }}
+                      </span>
+                    }
+                  </div>
+                }
+
+                @if (m.wamid && reactions()[m.wamid]; as rs) {
+                  <div class="reacts" [title]="'Reactions'">
+                    @for (r of rs; track r.emoji + r.mine) { <span [class.mine]="r.mine">{{ r.emoji }}</span> }
+                    @if (rs.length > 1) { <small>{{ rs.length }}</small> }
+                  </div>
+                }
+              </div>
+            </div>
+          } @empty {
+            @if (!threadLoading()) { <div class="day"><span>No messages yet</span></div> }
+          }
+        </div>
+
+        <!-- reply-window notice, pinned above the composer like WhatsApp's business notices -->
+        <div class="notice" [class.open]="windowLabel().open" (click)="!windowLabel().open && openTemplates()">
+          <i class="bi" [class.bi-clock-history]="windowLabel().open" [class.bi-lock-fill]="!windowLabel().open"></i>
+          <span>{{ windowLabel().text }}</span>
+          @if (!windowLabel().open) { <b>Send a template</b> }
+        </div>
+
+        @if (!atBottom() && visible().length) {
+          <button type="button" class="jump" (click)="jumpDown()" aria-label="Go to latest message">
+            @if (newBelow()) { <span class="jump-badge">{{ newBelow() }}</span> }
+            <i class="bi bi-chevron-down"></i>
+          </button>
+        }
+
+        @if (dragging()) {
+          <div class="drop"><i class="bi bi-cloud-arrow-up"></i><strong>Drop files to send</strong><span>Photos, videos and documents</span></div>
+        }
+
+        <!-- emoji panel -->
+        @if (emojiOpen()) {
+          <div class="emoji-panel" (click)="$event.stopPropagation()">
+            <app-wa-emoji-picker (picked)="insertEmoji($event)" />
+          </div>
+        }
+
+        <!-- attach menu -->
+        @if (attachOpen()) {
+          <div class="attach-menu" (click)="$event.stopPropagation()">
+            <label class="att"><span class="att-ico doc"><i class="bi bi-file-earmark-text-fill"></i></span> Document
+              <input type="file" multiple (change)="pickFiles($any($event.target))" /></label>
+            <label class="att"><span class="att-ico photo"><i class="bi bi-images"></i></span> Photos & videos
+              <input type="file" multiple accept="image/jpeg,image/png,video/mp4,video/3gpp" (change)="pickFiles($any($event.target))" /></label>
+            <label class="att"><span class="att-ico cam"><i class="bi bi-camera-fill"></i></span> Camera
+              <input type="file" accept="image/*" capture="environment" (change)="pickFiles($any($event.target))" /></label>
+            <label class="att"><span class="att-ico audio"><i class="bi bi-headphones"></i></span> Audio
+              <input type="file" accept="audio/aac,audio/mp4,audio/mpeg,audio/amr,audio/ogg" (change)="pickFiles($any($event.target))" /></label>
+            <button type="button" class="att" (click)="openTemplates()"><span class="att-ico tpl"><i class="bi bi-file-earmark-richtext-fill"></i></span> Template</button>
+          </div>
+        }
+
+        <!-- template sheet -->
+        @if (templatePanel()) {
+          <div class="tpl-sheet" (click)="$event.stopPropagation()">
+            <div class="tpl-sheet-head">
+              <strong><i class="bi bi-file-earmark-richtext"></i> Send a template</strong>
+              <button type="button" class="ico" (click)="templatePanel.set(false)" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="tpl-sheet-body" (input)="touch()">
+              <div class="tpl-form">
+                <select class="wa-input" [ngModel]="templateId()" (ngModelChange)="pickTemplate($event)" aria-label="Template">
+                  <option [ngValue]="null" disabled>{{ templates().length ? 'Choose an approved template…' : 'No approved template for this account' }}</option>
+                  @for (t of templates(); track t.id) { <option [ngValue]="t.id">{{ t.name }} · {{ t.language_label }} · {{ t.category | titlecase }}</option> }
+                </select>
+                @if (template(); as t) {
+                  @if (t.parameters.otp) {
+                    <input class="wa-input mono" [(ngModel)]="tValues.code" placeholder="Verification code" maxlength="15" />
+                  } @else {
+                    @if (t.parameters.header?.type === 'text') { <input class="wa-input" [(ngModel)]="tValues.header.text" placeholder="Header value" maxlength="60" /> }
+                    @else if (t.parameters.header) {
+                      <label class="file"><input type="file" (change)="onTemplateHeaderFile($event)" /><i class="bi bi-paperclip"></i> {{ tValues.header.media_id ? (tValues.header.filename || 'Attached') : 'Attach header ' + t.parameters.header.type }}</label>
+                    }
+                    @for (v of tValues.body; track $index; let i = $index) {
+                      <label class="pv"><span class="var">{{ varLabel(i + 1) }}</span><input class="wa-input" [(ngModel)]="tValues.body[i]" maxlength="1024" /></label>
+                    }
+                    @for (b of t.parameters.buttons; track b.index) {
+                      <input class="wa-input" [(ngModel)]="tValues.buttons[b.index]" [placeholder]="b.type === 'copy_code' ? 'Coupon code' : 'Link value for button ' + (b.index + 1)" />
+                    }
+                  }
+                  @if (t.category === 'MARKETING') {
+                    <label class="wa-check optin"><input type="checkbox" [(ngModel)]="confirmOptIn" /><span>Customer agreed to receive marketing messages</span></label>
+                  }
+                  <button type="button" class="wa-btn primary" (click)="sendTemplate()" [disabled]="uploading() || (t.category === 'MARKETING' && !confirmOptIn)"><i class="bi bi-send-fill"></i> Send template</button>
+                }
+              </div>
+              @if (templatePreviewModel(); as p) { <div class="tpl-preview"><app-wa-template-preview [model]="p" /></div> }
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- composer -->
+      @if (canSend()) {
+        @if (replyTo) {
+          <div class="replying">
+            <div class="replying-box"><strong>{{ replyTo.direction === 'inbound' ? active()?.contact?.name : 'You' }}</strong><span>{{ replyTo.body || replyTo.button_text || replyTo.media?.filename || replyTo.type }}</span></div>
+            <button type="button" class="ico" (click)="replyTo = null" aria-label="Cancel reply"><i class="bi bi-x-lg"></i></button>
+          </div>
+        }
+        <footer class="composer" (click)="$event.stopPropagation()">
+          <button type="button" class="ico" [class.on]="emojiOpen()" (click)="emojiOpen.set(!emojiOpen()); attachOpen.set(false)" [disabled]="!windowLabel().open" title="Emoji" aria-label="Emoji"><i class="bi bi-emoji-smile"></i></button>
+          <button type="button" class="ico" [class.on]="attachOpen()" (click)="attachOpen.set(!attachOpen()); emojiOpen.set(false)" title="Attach" aria-label="Attach"><i class="bi bi-plus-lg"></i></button>
+          <div class="input-wrap" [class.locked]="!windowLabel().open">
+            <textarea #composer rows="1" [(ngModel)]="text" (keydown)="onKey($event)" (input)="autoGrow()" (paste)="onPaste($event)" [disabled]="!windowLabel().open"
+                      [placeholder]="windowLabel().open ? 'Type a message' : 'Reply window closed. Send a template to restart the chat.'" aria-label="Message"></textarea>
+          </div>
+          @if (text.trim() || !windowLabel().open) {
+            <button type="button" class="send" (click)="windowLabel().open ? sendText() : openTemplates()" [disabled]="sending() && windowLabel().open" [attr.aria-label]="windowLabel().open ? 'Send' : 'Send a template'">
+              <i class="bi" [class.bi-send-fill]="windowLabel().open" [class.bi-file-earmark-richtext-fill]="!windowLabel().open"></i>
+            </button>
+          } @else {
+            <label class="send soft" title="Send a photo or file">
+              <input type="file" multiple (change)="pickFiles($any($event.target))" />
+              <i class="bi" [class.bi-paperclip]="!uploading()" [class.bi-hourglass-split]="uploading()"></i>
+            </label>
+          }
+        </footer>
+      }
+
+      <!-- send preview: photos / files with captions (WhatsApp's media editor) -->
+      @if (pending().length) {
+        <div class="media-preview" (click)="$event.stopPropagation()">
+          <header>
+            <button type="button" class="ico" (click)="cancelPending()" aria-label="Cancel"><i class="bi bi-x-lg"></i></button>
+            <span>{{ pending()[pendingIndex()]?.file?.name }}</span>
+          </header>
+          <div class="mp-stage">
+            @if (pending()[pendingIndex()]; as p) {
+              @switch (p.kind) {
+                @case ('image') { <img [src]="p.url" alt="Preview" /> }
+                @case ('video') { <video [src]="p.url" controls></video> }
+                @default {
+                  <div class="mp-file"><i class="bi" [class.bi-file-earmark-music-fill]="p.kind === 'audio'" [class.bi-file-earmark-text-fill]="p.kind === 'document'"></i>
+                    <strong>{{ p.file.name }}</strong><span>{{ fileSize(p.file.size) }} · {{ fileExt(p.file.name) }}</span><small>No preview available</small></div>
+                }
+              }
+            }
+          </div>
+          @if (pending()[pendingIndex()]; as p) {
+            @if (p.kind !== 'audio') {
+              <div class="mp-caption"><input type="text" [(ngModel)]="p.caption" placeholder="Add a caption…" maxlength="1024" (keydown.enter)="sendPending()" aria-label="Caption" /></div>
+            }
+          }
+          <footer>
+            <div class="mp-thumbs">
+              @for (p of pending(); track p.file; let i = $index) {
+                <button type="button" class="mp-thumb" [class.on]="i === pendingIndex()" (click)="pendingIndex.set(i)">
+                  @if (p.kind === 'image') { <img [src]="p.url" alt="" /> } @else { <i class="bi" [class.bi-film]="p.kind === 'video'" [class.bi-file-earmark]="p.kind !== 'video'"></i> }
+                  <span class="x" (click)="$event.stopPropagation(); removePending(i)" aria-label="Remove"><i class="bi bi-x"></i></span>
+                </button>
+              }
+              <label class="mp-thumb add" title="Add more"><input type="file" multiple (change)="pickFiles($any($event.target))" /><i class="bi bi-plus-lg"></i></label>
+            </div>
+            <button type="button" class="send big" (click)="sendPending()" aria-label="Send"><i class="bi bi-send-fill"></i>@if (pending().length > 1) { <span class="n">{{ pending().length }}</span> }</button>
+          </footer>
+        </div>
+      }
+    }
+  </section>
+
+  <!-- ============ RIGHT: contact info ============ -->
+  @if (active() && showDetails()) {
+    <aside class="info" aria-label="Contact info">
+      <header class="info-head">
+        <button type="button" class="ico" (click)="showDetails.set(false)" aria-label="Close contact info"><i class="bi bi-x-lg"></i></button>
+        <span>Contact info</span>
+      </header>
+      <div class="info-scroll">
+        <section class="info-card profile">
+          <span class="avatar xl" aria-hidden="true" [style.background]="avatarColor(active()?.contact?.wa_id)">
+            @if (initials(active()?.contact?.name); as ini) { <b>{{ ini }}</b> } @else { <i class="bi bi-person-fill"></i> }
+          </span>
+          <strong>{{ active()?.contact?.name }}</strong>
+          <span>+{{ active()?.contact?.wa_id }}</span>
+          @if (active()?.contact?.profile_name && active()?.contact?.profile_name !== active()?.contact?.name) { <small>~{{ active()?.contact?.profile_name }}</small> }
+          <div class="quick">
+            <button type="button" (click)="showDetails.set(false); toggleChatSearch()"><i class="bi bi-search"></i>Search</button>
+            <button type="button" (click)="openTemplates(); showDetails.set(false)"><i class="bi bi-file-earmark-richtext"></i>Template</button>
+            <button type="button" (click)="setStatus(active()?.status === 'resolved' ? 'open' : 'resolved')"><i class="bi" [class.bi-check2-circle]="active()?.status !== 'resolved'" [class.bi-arrow-counterclockwise]="active()?.status === 'resolved'"></i>{{ active()?.status === 'resolved' ? 'Reopen' : 'Resolve' }}</button>
+          </div>
+        </section>
+        <!-- where the customer came from -->
+        <section class="info-card">
+          <h3 class="info-title">Lead source</h3>
+          @if (active()?.ad; as ad) {
+            <div class="ad-card">
+              <div class="ad-top">
+                <span class="src-badge big" [attr.data-src]="active()?.lead_source"><i class="bi" [class.bi-facebook]="ad.platform === 'facebook'" [class.bi-instagram]="ad.platform === 'instagram'" [class.bi-megaphone-fill]="ad.platform === 'unknown'"></i> {{ sourceLabel(active()) }}</span>
+                <small>{{ ad.referred_at | date: 'd MMM y, h:mm a' }}</small>
+              </div>
+              @if (ad.thumbnail_url || ad.image_url) { <img class="ad-img" [src]="ad.thumbnail_url || ad.image_url" alt="Ad creative" referrerpolicy="no-referrer" (error)="$any($event.target).style.display = 'none'" /> }
+              @if (ad.headline) { <strong class="ad-headline">{{ ad.headline }}</strong> }
+              @if (ad.body) { <p class="ad-body">{{ ad.body }}</p> }
+              <dl class="ad-facts">
+                <div><dt>Campaign</dt><dd>{{ ad.campaign_name || (ad.lookup_status === 'pending' ? 'Looking up…' : 'Not available') }}</dd></div>
+                <div><dt>Ad set</dt><dd>{{ ad.adset_name || (ad.lookup_status === 'pending' ? 'Looking up…' : 'Not available') }}</dd></div>
+                <div><dt>Ad</dt><dd>{{ ad.ad_name || '—' }}</dd></div>
+                <div><dt>Ad ID</dt><dd class="mono">{{ ad.ad_id || '—' }}</dd></div>
+              </dl>
+              @if (ad.lookup_status === 'unavailable') { <small class="hint"><i class="bi bi-info-circle"></i> Campaign names need a Meta token with <b>ads_read</b> on the ad account.</small> }
+              @if (ad.source_url) { <a class="ad-link" [href]="ad.source_url" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i> Open the ad / post</a> }
+            </div>
+          } @else {
+            <p class="plain-src"><i class="bi bi-whatsapp"></i> Normal WhatsApp chat (not from an ad)</p>
+          }
+        </section>
+
+        <section class="info-card">
+          <dl>
+            <div><dt>First message</dt><dd>{{ details()?.first_message?.body || '—' }}<small>{{ details()?.first_message?.at | date: 'd MMM y, h:mm a' }}</small></dd></div>
+            <div><dt>Last message</dt><dd>{{ active()?.last_message_at | date: 'd MMM y, h:mm a' }}</dd></div>
+            <div><dt>Messages</dt><dd>{{ details()?.messages_count ?? '…' }} · {{ details()?.media_count ?? 0 }} media</dd></div>
+            <div><dt>Business number</dt><dd>{{ active()?.phone_number?.label }}</dd></div>
+            <div><dt>Marketing messages</dt><dd class="cap">{{ (active()?.contact?.opt_in_status || 'unknown').replace('_', ' ') }}</dd></div>
+          </dl>
+        </section>
+
+        <!-- assignment -->
+        <section class="info-card">
+          <h3 class="info-title">Assigned to</h3>
+          @if (canAssign()) {
+            <select class="assign-select" [ngModel]="active()?.assigned_user?.id ?? null" (ngModelChange)="assignTo($event)" aria-label="Assign to">
+              <option [ngValue]="null">Unassigned</option>
+              @for (a of agents(); track a.id) { <option [ngValue]="a.id">{{ a.name }}</option> }
+            </select>
+          } @else {
+            <p class="plain-src">{{ active()?.assigned_user?.name || 'Unassigned' }}</p>
+            @if (!active()?.assigned_user) { <button type="button" class="link-btn" (click)="takeChat()"><i class="bi bi-person-plus"></i> Take this chat</button> }
+          }
+          @if (details()?.assignments?.length) {
+            <ul class="history">
+              @for (h of details()!.assignments; track $index) { <li>{{ h.to || 'Unassigned' }} <span>by {{ h.by }} · {{ h.at | date: 'd MMM, h:mm a' }}</span></li> }
+            </ul>
+          }
+        </section>
+
+        <!-- internal notes -->
+        <section class="info-card">
+          <h3 class="info-title">Internal notes <small>(not sent to the customer)</small></h3>
+          <div class="note-new">
+            <textarea rows="2" [(ngModel)]="noteText" placeholder="Add a note for your team…" maxlength="2000" (keydown.control.enter)="addNote()" aria-label="New note"></textarea>
+            <button type="button" (click)="addNote()" [disabled]="!noteText.trim()" aria-label="Save note"><i class="bi bi-check2"></i></button>
+          </div>
+          @for (n of details()?.notes ?? []; track n.id) {
+            <div class="note">
+              <p>{{ n.note }}</p>
+              <span>{{ n.user?.name }} · {{ n.created_at | date: 'd MMM, h:mm a' }}</span>
+              @if (n.mine) { <button type="button" class="note-del" (click)="deleteNote(n.id)" aria-label="Delete note"><i class="bi bi-trash3"></i></button> }
+            </div>
+          } @empty {
+            <p class="empty-notes">No notes yet.</p>
+          }
+        </section>
+        @if (active()?.contact?.customer_id || active()?.contact?.customer_lead_id) {
+          <section class="info-card links">
+            @if (active()?.contact?.customer_id) { <a routerLink="/app/customers"><i class="bi bi-person-vcard"></i> ERP customer #{{ active()?.contact?.customer_id }}</a> }
+            @if (active()?.contact?.customer_lead_id) { <a routerLink="/app/lead-management"><i class="bi bi-funnel"></i> Lead #{{ active()?.contact?.customer_lead_id }}</a> }
+          </section>
+        }
+      </div>
+    </aside>
+  }
+
+  <!-- message info -->
+  @if (infoFor(); as m) {
+    <div class="overlay" (click)="infoFor.set(null)">
+      <div class="dialog" role="dialog" aria-label="Message info" (click)="$event.stopPropagation()">
+        <header><button type="button" class="ico" (click)="infoFor.set(null)" aria-label="Close"><i class="bi bi-x-lg"></i></button><span>Message info</span></header>
+        <div class="info-bubble">{{ m.body || m.media?.filename || m.template?.name || m.type }}</div>
+        <ul class="receipts">
+          <li><i class="bi bi-check2-all read"></i><div><strong>Read</strong><span>{{ m.read_at ? (m.read_at | date: 'd MMM y, h:mm a') : '—' }}</span></div></li>
+          <li><i class="bi bi-check2-all"></i><div><strong>Delivered</strong><span>{{ m.delivered_at ? (m.delivered_at | date: 'd MMM y, h:mm a') : '—' }}</span></div></li>
+          <li><i class="bi bi-check2"></i><div><strong>Sent</strong><span>{{ m.sent_at ? (m.sent_at | date: 'd MMM y, h:mm a') : (m.created_at | date: 'd MMM y, h:mm a') }}</span></div></li>
+          @if (m.error) { <li class="bad"><i class="bi bi-exclamation-circle-fill"></i><div><strong>Not delivered</strong><span>{{ m.error.title }}</span></div></li> }
+          @if (m.sent_by) { <li><i class="bi bi-person"></i><div><strong>Sent by</strong><span>{{ m.sent_by.name }}</span></div></li> }
+        </ul>
+      </div>
+    </div>
+  }
+
+  <!-- photo viewer -->
+  @if (lightbox(); as m) {
+    <div class="viewer" (click)="lightbox.set(null)">
+      <header (click)="$event.stopPropagation()">
+        <span class="avatar sm"><i class="bi bi-person-fill"></i></span>
+        <div><strong>{{ m.direction === 'inbound' ? active()?.contact?.name : 'You' }}</strong><span>{{ (m.timestamp ?? m.created_at) | date: 'd MMM y, h:mm a' }}</span></div>
+        <button type="button" class="ico light" (click)="download(m)" aria-label="Download"><i class="bi bi-download"></i></button>
+        <button type="button" class="ico light" (click)="lightbox.set(null)" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+      </header>
+      @if (mediaUrls()[m.id]) { <img [src]="mediaUrls()[m.id]" alt="Photo" (click)="$event.stopPropagation()" /> }
+      @if (m.body) { <p class="viewer-caption" (click)="$event.stopPropagation()">{{ m.body }}</p> }
+    </div>
+  }
+</div>

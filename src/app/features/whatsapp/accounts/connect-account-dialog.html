@@ -1,0 +1,134 @@
+<div class="dlg" role="dialog" aria-labelledby="wa-connect-title">
+  <header class="dlg-head">
+    <span class="wa-heading-icon"><i class="bi bi-whatsapp" aria-hidden="true"></i></span>
+    <div>
+      <h2 id="wa-connect-title">{{ data.reconnect ? 'Reconnect ' + data.reconnect.name : 'Connect a WhatsApp Business Account' }}</h2>
+      <p>{{ step() === 'method' ? 'Step 1 of 2 · Sign in with Meta' : 'Step 2 of 2 · Choose accounts and their branch' }}</p>
+    </div>
+    <button type="button" class="wa-btn ghost sm close" (click)="close()" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+  </header>
+
+  <div class="dlg-body">
+    @if (error()) {
+      <div class="wa-alert red" role="alert"><i class="bi bi-exclamation-octagon"></i><span>{{ error() }}</span></div>
+    }
+
+    @if (step() === 'method') {
+      <section class="method featured" [class.disabled]="!data.embeddedSignup">
+        <div class="method-icon fb"><i class="bi bi-facebook"></i></div>
+        <div class="method-text">
+          <h3>Continue with Facebook <span class="wa-pill green plain">Recommended</span></h3>
+          <p>Meta's official Embedded Signup. Sign in, choose or create the business portfolio, WhatsApp Business Account and phone number. We never see your Facebook password.</p>
+          @if (!data.embeddedSignup) {
+            <small class="wa-muted"><i class="bi bi-info-circle"></i> Not configured on the server yet (WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID). Use a system-user token below.</small>
+          }
+        </div>
+        <button type="button" class="wa-btn facebook" (click)="connectWithFacebook()" [disabled]="!data.embeddedSignup || !!busy()">
+          @if (busy() === 'facebook') { <span class="spinner"></span> Waiting for Meta… } @else { <i class="bi bi-facebook"></i> Continue }
+        </button>
+      </section>
+
+      <div class="or"><span>or</span></div>
+
+      <section class="method">
+        <div class="method-icon"><i class="bi bi-key"></i></div>
+        <div class="method-text grow">
+          <h3>Use a system-user access token</h3>
+          <p>Meta Business Settings → System users → generate a token for this app with <span class="wa-mono">whatsapp_business_management</span> and <span class="wa-mono">whatsapp_business_messaging</span>, after assigning the WhatsApp account to the system user.</p>
+          <div class="token-form">
+            <label class="wa-field grow">
+              <span>Access token</span>
+              <div class="secret">
+                <input class="wa-input mono" [type]="showToken ? 'text' : 'password'" [(ngModel)]="token" name="token" autocomplete="off" spellcheck="false" placeholder="EAAG…" />
+                <button type="button" class="wa-btn ghost sm" (click)="showToken = !showToken" [attr.aria-label]="showToken ? 'Hide token' : 'Show token'"><i class="bi" [class.bi-eye]="!showToken" [class.bi-eye-slash]="showToken"></i></button>
+              </div>
+            </label>
+            <label class="wa-field">
+              <span>WABA ID <em class="wa-muted">(optional)</em></span>
+              <input class="wa-input mono" [(ngModel)]="wabaHint" name="waba" inputmode="numeric" placeholder="Found automatically" />
+            </label>
+          </div>
+          <small class="wa-muted"><i class="bi bi-shield-lock"></i> Sent once to our server, checked with Meta and stored encrypted. It is never shown again.</small>
+        </div>
+        <button type="button" class="wa-btn primary" (click)="connectWithToken()" [disabled]="!!busy() || !token.trim()">
+          @if (busy() === 'token') { <span class="spinner"></span> Checking… } @else { <i class="bi bi-arrow-right"></i> Verify token }
+        </button>
+      </section>
+    }
+
+    @if (step() === 'pick' && session(); as s) {
+      <div class="token-summary">
+        <i class="bi bi-patch-check-fill"></i>
+        <div>
+          <strong>Meta confirmed the {{ s.method === 'embedded_signup' ? 'signup' : 'token' }}</strong>
+          <span class="wa-muted">
+            Token {{ s.token.hint }} · {{ s.token.type.replace('_', ' ') }} ·
+            {{ s.token.never_expires ? 'does not expire' : (s.token.expires_at ? 'expires ' + (s.token.expires_at | date: 'mediumDate') : 'expiry unknown') }}
+          </span>
+        </div>
+      </div>
+
+      <h3 class="pick-title">WhatsApp Business Accounts this {{ s.method === 'embedded_signup' ? 'signup' : 'token' }} can manage</h3>
+      <div class="waba-list">
+        @for (w of usable(); track w.id) {
+          <label class="waba" [class.on]="selected()[w.id]">
+            <input type="checkbox" [checked]="selected()[w.id]" (change)="toggle(w.id, $any($event.target).checked)" />
+            <div class="waba-main">
+              <div class="waba-name">
+                {{ w.name || 'WhatsApp Business Account' }}
+                @if (w.connected_account_id) { <span class="wa-pill blue plain">Already connected · will reconnect</span> }
+              </div>
+              <div class="wa-muted small">WABA {{ w.id }}@if (w.business?.name) { · {{ w.business?.name }} }</div>
+              <div class="numbers">
+                @for (p of w.phone_numbers; track p.id) {
+                  <span class="num"><i class="bi bi-telephone"></i> {{ p.display_phone_number || p.id }}@if (p.verified_name) { · {{ p.verified_name }} }
+                    @if (p.quality_rating) { <span class="q" [attr.data-q]="p.quality_rating">{{ p.quality_rating }}</span> }
+                  </span>
+                } @empty {
+                  <span class="wa-muted small">No phone number yet - add one in WhatsApp Manager.</span>
+                }
+              </div>
+            </div>
+          </label>
+        } @empty {
+          <div class="wa-alert">No WhatsApp Business Account could be read with this token.</div>
+        }
+        @for (w of failed(); track w.id) {
+          <div class="waba failed"><i class="bi bi-exclamation-triangle"></i><div><strong>WABA {{ w.id }}</strong><div class="small">{{ w.error }}</div></div></div>
+        }
+      </div>
+
+      <div class="grid">
+        @if (chosen().length === 1 && !data.reconnect) {
+          <label class="wa-field">
+            <span>Name in the app <em class="wa-muted">(optional)</em></span>
+            <input class="wa-input" [(ngModel)]="name" name="name" maxlength="150" placeholder="Defaults to the WABA name" />
+          </label>
+        }
+        <label class="wa-field">
+          <span>Branch / franchise</span>
+          <select class="wa-input" [(ngModel)]="branchKey" name="branch">
+            <option value="">Company-wide (all branches)</option>
+            @for (b of branches.options(); track b.key) { <option [value]="b.key">{{ b.name }}</option> }
+          </select>
+          <small>Staff held to one branch see the accounts of their branch only.</small>
+        </label>
+      </div>
+      <label class="wa-check">
+        <input type="checkbox" [(ngModel)]="restrictAccess" name="restrict" />
+        <span><strong>Restrict access</strong> - only people given access on the account card can see it (Super Admin always can).</span>
+      </label>
+    }
+  </div>
+
+  <footer class="dlg-foot">
+    @if (step() === 'pick') {
+      <button type="button" class="wa-btn" (click)="back()" [disabled]="!!busy()"><i class="bi bi-arrow-left"></i> Back</button>
+      <button type="button" class="wa-btn primary" (click)="finish()" [disabled]="!chosen().length || !!busy()">
+        @if (busy() === 'finish') { <span class="spinner"></span> Connecting… } @else { <i class="bi bi-plug"></i> Connect {{ chosen().length > 1 ? chosen().length + ' accounts' : 'account' }} }
+      </button>
+    } @else {
+      <button type="button" class="wa-btn" (click)="close()">Cancel</button>
+    }
+  </footer>
+</div>

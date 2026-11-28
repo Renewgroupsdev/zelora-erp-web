@@ -1,0 +1,86 @@
+<div class="wa-page">
+  <div class="wa-heading">
+    <div>
+      <h1><span class="wa-heading-icon"><i class="bi bi-telephone-fill"></i></span> WhatsApp Numbers</h1>
+      <p>Business numbers of your connected accounts. Incoming messages are routed to the account that owns the number.</p>
+    </div>
+    <div class="wa-actions">
+      <label class="search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input type="search" [ngModel]="search()" (ngModelChange)="search.set($event)" placeholder="Search number or name" aria-label="Search numbers" />
+      </label>
+      <button type="button" class="wa-btn" (click)="load()" [disabled]="loading()"><i class="bi bi-arrow-clockwise"></i> Reload</button>
+    </div>
+  </div>
+
+  <div class="wa-card table-card">
+    @if (loading()) {
+      <div class="pad">@for (i of [1, 2, 3]; track i) { <div class="wa-skeleton row-skel"></div> }</div>
+    } @else if (loadError()) {
+      <div class="wa-empty"><div class="wa-empty-icon"><i class="bi bi-cloud-slash"></i></div><h3>Could not load numbers</h3><p>{{ loadError() }}</p>
+        <button type="button" class="wa-btn" (click)="load()">Try again</button></div>
+    } @else if (!shown().length) {
+      <div class="wa-empty"><div class="wa-empty-icon"><i class="bi bi-telephone-x"></i></div>
+        <h3>{{ rows().length ? 'No number matches the search' : 'No business number yet' }}</h3>
+        <p>Numbers appear here once a Meta account is connected. Add numbers to a WABA in Meta's WhatsApp Manager, then use Refresh on its account card.</p></div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Number</th><th>Account</th><th>Quality</th><th>Messaging limit</th><th>Status</th><th>Branch</th><th class="right">Actions</th></tr>
+          </thead>
+          <tbody>
+            @for (p of shown(); track p.id) {
+              <tr [class.muted-row]="!p.enabled">
+                <td>
+                  <div class="num-cell">
+                    <span class="num-icon"><i class="bi bi-whatsapp"></i></span>
+                    <div>
+                      <strong>{{ p.display_phone_number || '—' }}</strong>
+                      <div class="wa-muted small">{{ p.verified_name || 'Display name not set' }}@if (p.name_status && p.name_status !== 'APPROVED') { · name {{ p.name_status.toLowerCase() }} }</div>
+                      <div class="wa-mono wa-muted tiny">ID {{ p.phone_number_id }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>{{ p.account?.name }}@if (p.account?.status !== 'connected') { <div><span class="wa-pill red plain">{{ p.account?.status?.replace('_', ' ') }}</span></div> }</td>
+                <td>@if (p.quality_rating) { <span class="q" [attr.data-q]="p.quality_rating">{{ p.quality_rating }}</span> } @else { <span class="wa-muted">—</span> }</td>
+                <td>{{ (p.messaging_limit_tier || '—').replace('TIER_', 'Tier ') }}</td>
+                <td>
+                  <div class="badges">
+                    @if (p.is_default) { <span class="wa-pill blue">Default</span> }
+                    <span class="wa-pill" [class.green]="p.enabled" >{{ p.enabled ? 'Enabled' : 'Off' }}</span>
+                    @if (p.meta_status && p.meta_status !== 'CONNECTED') { <span class="wa-pill orange plain">{{ p.meta_status }}</span> }
+                  </div>
+                </td>
+                <td class="branch-cell">
+                  @if (canManage()) {
+                    <select class="wa-input sm" [(ngModel)]="branchDraft[p.id]" (ngModelChange)="saveBranch(p)" [disabled]="busy()[p.id]" [attr.aria-label]="'Branch of ' + p.display_phone_number">
+                      <option value="">Same as account</option>
+                      @for (b of branches.options(); track b.key) { <option [value]="b.key">{{ b.name }}</option> }
+                    </select>
+                  } @else {
+                    {{ p.branch_label || 'Company-wide' }}
+                  }
+                  @if (p.branch_inherited) { <div class="wa-muted tiny">Using account: {{ p.branch_label || 'company-wide' }}</div> }
+                </td>
+                <td class="right">
+                  @if (canManage()) {
+                    <div class="row-actions">
+                      @if (!p.is_default && p.enabled && p.account?.status === 'connected') {
+                        <button type="button" class="wa-btn sm" (click)="makeDefault(p)" [disabled]="busy()[p.id]"><i class="bi bi-star"></i> Make default</button>
+                      }
+                      <button type="button" class="wa-btn sm" [class.danger]="p.enabled" (click)="toggleEnabled(p)" [disabled]="busy()[p.id] || (p.is_default && p.enabled)"
+                        [title]="p.is_default && p.enabled ? 'Make another number the default first' : ''">
+                        <i class="bi" [class.bi-toggle-on]="p.enabled" [class.bi-toggle-off]="!p.enabled"></i> {{ p.enabled ? 'Turn off' : 'Turn on' }}
+                      </button>
+                    </div>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

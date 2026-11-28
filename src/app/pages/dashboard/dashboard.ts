@@ -21,6 +21,7 @@ import { StockWidget } from './widgets/stock-widget/stock-widget';
 import { TeamWidget } from './widgets/team-widget/team-widget';
 import { TelecallingWidget } from './widgets/telecalling-widget/telecalling-widget';
 import { UnitsWidget } from './widgets/units-widget/units-widget';
+import { WhatsAppWidget } from './widgets/whatsapp-widget/whatsapp-widget';
 
 const RANGE_KEY = 'zelora_dashboard_range';
 const AUTO_REFRESH_MS = 60_000; // the API caches each widget for a minute
@@ -56,7 +57,7 @@ const QUICK_LINKS: { label: string; hint: string; icon: string; link: string; mo
   standalone: true,
   imports: [
     NgTemplateOutlet, RouterLink, KpiStrip, TodayWidget, LeadSourceWidget, FinanceWidget, LeadsWidget, AppointmentsWidget, UnitsWidget, TeamWidget, StockWidget, ApprovalsWidget,
-    TelecallingWidget, MyDayWidget, DoctorDayWidget, FrontDeskWidget, MyWorkWidget, CustomerWidget,
+    TelecallingWidget, MyDayWidget, DoctorDayWidget, FrontDeskWidget, MyWorkWidget, CustomerWidget, WhatsAppWidget,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',

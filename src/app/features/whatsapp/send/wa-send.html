@@ -1,0 +1,167 @@
+<div class="wa-page">
+  <div class="wa-heading">
+    <div>
+      <h1><span class="wa-heading-icon"><i class="bi bi-send-fill"></i></span> Send WhatsApp Message</h1>
+      <p>Send an approved template to a customer. Templates can be sent at any time; free replies are sent from the Customer Inbox.</p>
+    </div>
+    <div class="wa-actions">
+      <a class="wa-btn" routerLink="/app/whatsapp/templates"><i class="bi bi-file-earmark-richtext"></i> Templates</a>
+    </div>
+  </div>
+
+  <div class="layout">
+    <form class="col" (input)="touch()" (change)="touch()" (ngSubmit)="send()" novalidate>
+      <section class="wa-card sec">
+        <h2><span class="step">1</span> From and to</h2>
+        <div class="grid2">
+          <label class="wa-field">
+            <span>Send from</span>
+            <select class="wa-input" name="phone" [ngModel]="phoneId()" (ngModelChange)="onPhoneChange($event)">
+              <option [ngValue]="null" disabled>Choose a business number…</option>
+              @for (p of numbers(); track p.id) {
+                <option [ngValue]="p.id" [disabled]="!!p.not_sendable_reason">
+                  {{ p.accountName }} · {{ p.display_phone_number || p.label }}{{ p.is_default ? ' (default)' : '' }}{{ p.is_test_number ? ' (Meta test number)' : '' }}{{ p.not_sendable_reason ? ' - not registered yet' : '' }}
+                </option>
+              }
+            </select>
+            @for (p of numbers(); track p.id) {
+              @if (p.not_sendable_reason) { <small class="bad"><i class="bi bi-exclamation-triangle"></i> {{ p.not_sendable_reason }}</small> }
+            }
+            @if (phone()?.is_test_number) {
+              <small class="test-note"><i class="bi bi-info-circle"></i> Meta's test number only sends to numbers on its allowed list (up to 5). Add the customer in Meta App Dashboard &rsaquo; WhatsApp &rsaquo; API Setup &rsaquo; "To" &rsaquo; Manage phone number list.</small>
+            }
+            @if (ctx.loaded() && !numbers().length) { <small class="bad">No connected number. <a routerLink="/app/whatsapp/accounts">Connect an account</a>.</small> }
+          </label>
+          <div class="wa-field recipient">
+            <span>Customer</span>
+            <div class="search-box">
+              <i class="bi bi-search" aria-hidden="true"></i>
+              <input name="to" [ngModel]="to" (ngModelChange)="onSearch($event)" placeholder="Name, or number with country code" autocomplete="off" aria-label="Customer name or WhatsApp number" />
+              @if (searching()) { <span class="spinner"></span> }
+            </div>
+            @if (results().length) {
+              <ul class="results" role="listbox">
+                @for (r of results(); track r.source + r.id) {
+                  <li role="option" tabindex="0" (click)="pick(r)" (keydown.enter)="pick(r)">
+                    <span class="src" [attr.data-src]="r.source">{{ r.source === 'contact' ? 'WhatsApp' : r.source === 'customer' ? 'Customer' : 'Lead' }}</span>
+                    <strong>{{ r.name || 'No name' }}</strong><span class="wa-muted">{{ r.phone }}</span>
+                    @if (r.opt_in_status === 'opted_in') { <span class="wa-pill green plain">Opted in</span> }
+                    @if (r.opt_in_status === 'opted_out') { <span class="wa-pill red plain">Opted out</span> }
+                  </li>
+                }
+              </ul>
+            }
+            <small>A 10-digit number gets the default country code (+91).</small>
+          </div>
+        </div>
+        @if (recipient) {
+          <div class="picked"><i class="bi bi-person-check"></i> {{ recipient.name }} · {{ recipient.phone }} <button type="button" class="wa-btn ghost sm" (click)="recipient = null; to = ''; name = ''; touch()" aria-label="Clear customer"><i class="bi bi-x"></i></button></div>
+        } @else {
+          <label class="wa-field"><span>Customer name <em class="opt">optional, saved on the contact</em></span><input class="wa-input" name="name" [(ngModel)]="name" maxlength="150" /></label>
+        }
+      </section>
+
+      <section class="wa-card sec">
+        <h2><span class="step">2</span> Template</h2>
+        <label class="wa-field">
+          <span>Approved template</span>
+          <select class="wa-input" name="template" [ngModel]="templateId()" (ngModelChange)="onTemplateChange($event)" [disabled]="!phoneId() || templatesLoading()">
+            <option [ngValue]="null" disabled>{{ templatesLoading() ? 'Loading templates…' : (templates().length ? 'Choose a template…' : 'No approved template for this account') }}</option>
+            @for (t of templates(); track t.id) {
+              <option [ngValue]="t.id">{{ t.name }} · {{ t.language_label }} · {{ t.category | titlecase }}</option>
+            }
+          </select>
+          <small>Only templates Meta approved for this number's account are listed.</small>
+        </label>
+
+        @if (template(); as t) {
+          @if (params(); as p) {
+            @if (p.otp) {
+              <label class="wa-field"><span>Verification code</span><input class="wa-input mono" name="code" [(ngModel)]="values.code" maxlength="15" inputmode="numeric" placeholder="e.g. 482193" /></label>
+            } @else {
+              @if (p.header?.type === 'text') {
+                <label class="wa-field"><span>Header value <em class="opt">{{ p.header?.example ? 'e.g. ' + p.header?.example : '' }}</em></span><input class="wa-input" name="htext" [(ngModel)]="values.header.text" maxlength="60" /></label>
+              } @else if (p.header) {
+                <div class="wa-field">
+                  <span>Header {{ p.header.type }}</span>
+                  <label class="upload" [class.done]="!!values.header.media_id">
+                    <input type="file" (change)="onHeaderFile($event)" [accept]="p.header.type === 'image' ? 'image/jpeg,image/png' : p.header.type === 'video' ? 'video/mp4,video/3gpp' : 'application/pdf'" />
+                    <i class="bi" [class.bi-paperclip]="!values.header.media_id" [class.bi-check-circle-fill]="!!values.header.media_id"></i>
+                    <span>{{ uploading() ? 'Uploading…' : (values.header.media_id ? (values.header.filename || 'File attached') + ' - choose another to replace' : 'Attach the ' + p.header.type) }}</span>
+                  </label>
+                  @if (!values.header.media_id) {
+                    <input class="wa-input" name="hlink" [(ngModel)]="values.header.link" placeholder="…or a public https:// link to the file" />
+                  }
+                </div>
+              }
+              @for (n of values.body; track $index; let i = $index) {
+                <label class="wa-field">
+                  <span><span class="var">{{ varLabel(i + 1) }}</span> @if (p.body_examples?.[i]) { <em class="opt">e.g. {{ p.body_examples?.[i] }}</em> }</span>
+                  <input class="wa-input" [name]="'b' + i" [(ngModel)]="values.body[i]" maxlength="1024" />
+                </label>
+              }
+              @for (b of p.buttons; track b.index) {
+                <label class="wa-field">
+                  <span>{{ b.type === 'copy_code' ? 'Coupon code' : 'Link value for button ' + (b.index + 1) }} @if (b.example) { <em class="opt">e.g. {{ b.example }}</em> }</span>
+                  <input class="wa-input" [name]="'btn' + b.index" [(ngModel)]="values.buttons[b.index]" [maxlength]="b.type === 'copy_code' ? 15 : 2000" />
+                </label>
+              }
+            }
+          }
+          @if (t.category === 'MARKETING') {
+            @if (optedOut()) {
+              <div class="wa-alert red"><i class="bi bi-slash-circle"></i><span>This customer opted out of marketing messages. It cannot be sent.</span></div>
+            } @else if (needsOptIn()) {
+              <label class="wa-check optin"><input type="checkbox" name="optin" [(ngModel)]="confirmOptIn" />
+                <span>The customer agreed to receive WhatsApp marketing messages from us. <em class="wa-muted">This is recorded on the contact.</em></span></label>
+            }
+          }
+        }
+      </section>
+
+      <div class="submit-bar">
+        @if (missing().length) { <span class="wa-muted issues"><i class="bi bi-exclamation-circle"></i> {{ missing()[0] }}</span> }
+        @else { <span class="issues ok"><i class="bi bi-check-circle"></i> Ready to send</span> }
+        <button type="submit" class="wa-btn primary" [disabled]="sending() || uploading() || optedOut()"><i class="bi bi-send"></i> {{ sending() ? 'Sending…' : 'Send message' }}</button>
+      </div>
+
+      @if (sent(); as m) {
+        <section class="wa-card sec result" [class.failed]="m.status === 'failed'">
+          <h2><i class="bi" [class.bi-check2-circle]="m.status !== 'failed'" [class.bi-x-octagon]="m.status === 'failed'"></i> Last message
+            <span class="wa-pill" [ngClass]="statusTone(m.status)">{{ m.status | titlecase }}</span>
+            <button type="button" class="wa-btn ghost sm refresh" (click)="refreshSent()" aria-label="Refresh status"><i class="bi bi-arrow-clockwise"></i></button>
+          </h2>
+          <div class="timeline">
+            <div [class.on]="!!m.sent_at"><i class="bi bi-check"></i> Sent {{ m.sent_at ? (m.sent_at | date: 'shortTime') : '' }}</div>
+            <div [class.on]="!!m.delivered_at"><i class="bi bi-check-all"></i> Delivered {{ m.delivered_at ? (m.delivered_at | date: 'shortTime') : '' }}</div>
+            <div [class.on]="!!m.read_at" class="read"><i class="bi bi-check-all"></i> Read {{ m.read_at ? (m.read_at | date: 'shortTime') : '' }}</div>
+          </div>
+          @if (m.error) { <div class="wa-alert red"><i class="bi bi-exclamation-octagon"></i><span><strong>{{ m.error.title }}</strong> (code {{ m.error.code }})</span></div> }
+          <dl class="facts">
+            <div><dt>To</dt><dd>{{ m.contact?.name }} · +{{ m.contact?.wa_id }}</dd></div>
+            <div><dt>Meta message id</dt><dd class="wa-mono">{{ m.wamid || '—' }}</dd></div>
+          </dl>
+          <a class="wa-btn sm" routerLink="/app/whatsapp/inbox" [queryParams]="{ c: m.conversation_id }"><i class="bi bi-chat-dots"></i> Open chat with {{ m.contact?.name }}</a>
+        </section>
+      }
+    </form>
+
+    <aside class="col side">
+      <div class="sticky">
+        <div class="pv-head"><i class="bi bi-phone"></i> Preview</div>
+        @if (preview(); as p) { <app-wa-template-preview [model]="p" /> }
+        @else { <div class="wa-card"><div class="wa-empty"><div class="wa-empty-icon"><i class="bi bi-chat-square-text"></i></div><p>Choose a template to see the message.</p></div></div> }
+
+        <div class="wa-card recent">
+          <div class="recent-head">Recently sent</div>
+          @for (m of recent(); track m.id) {
+            <div class="recent-row">
+              <div><strong>{{ m.contact?.name }}</strong><span class="wa-muted">{{ m.template?.name }} · {{ m.created_at | date: 'short' }}</span></div>
+              <span class="wa-pill" [ngClass]="statusTone(m.status)">{{ m.status }}</span>
+            </div>
+          } @empty { <div class="wa-muted pad">Nothing sent yet.</div> }
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>

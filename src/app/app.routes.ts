@@ -31,6 +31,25 @@ export const routes: Routes = [
           { path: 'telecallers', canActivate: [branchHeadGuard], loadComponent: () => import('./features/call-center/telecaller-status/telecaller-status').then(m => m.TelecallerStatus) },
         ],
       },
+      // WhatsApp Business: the sidebar sub-menus are these child pages. A page not built yet falls through to the
+      // work-in-progress catch-all at the end of this list.
+      {
+        path: 'whatsapp',
+        loadComponent: () => import('./features/whatsapp/whatsapp-shell').then(m => m.WhatsAppShell),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'inbox' },
+          { path: 'accounts', loadComponent: () => import('./features/whatsapp/accounts/wa-accounts').then(m => m.WaAccounts) },
+          { path: 'numbers', loadComponent: () => import('./features/whatsapp/numbers/wa-numbers').then(m => m.WaNumbers) },
+          { path: 'templates', loadComponent: () => import('./features/whatsapp/templates/wa-templates').then(m => m.WaTemplates) },
+          { path: 'templates/new', loadComponent: () => import('./features/whatsapp/templates/wa-template-builder').then(m => m.WaTemplateBuilder) },
+          { path: 'templates/:id/edit', loadComponent: () => import('./features/whatsapp/templates/wa-template-builder').then(m => m.WaTemplateBuilder) },
+          { path: 'send', loadComponent: () => import('./features/whatsapp/send/wa-send').then(m => m.WaSend) },
+          { path: 'history', loadComponent: () => import('./features/whatsapp/history/wa-history').then(m => m.WaHistory) },
+          { path: 'inbox', loadComponent: () => import('./features/whatsapp/inbox/wa-inbox').then(m => m.WaInbox) },
+          { path: 'ad-leads', loadComponent: () => import('./features/whatsapp/ad-leads/wa-ad-leads').then(m => m.WaAdLeads) },
+          { path: 'automation', loadComponent: () => import('./features/whatsapp/flows/wa-flows').then(m => m.WaFlows) },
+        ],
+      },
       { path: 'lead-management', loadComponent: () => import('./pages/lead-management/lead-management').then(m => m.LeadManagement) },
       { path: 'follow-ups', loadComponent: () => import('./pages/followups/followups').then(m => m.Followups) },
       { path: 'consultations', loadComponent: () => import('./pages/consultations/consultations').then(m => m.Consultations) },

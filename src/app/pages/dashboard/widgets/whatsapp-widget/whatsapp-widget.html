@@ -1,0 +1,51 @@
+<app-dash-card title="WhatsApp Messaging" subtitle="Messages, conversations and templates" icon="bi-whatsapp" tone="green"
+               [link]="canOpen('whatsapp-business') ? '/app/whatsapp/templates' : null" linkLabel="WhatsApp"
+               [loading]="loading()" [refreshing]="refreshing()" [error]="error()" (retry)="retry()">
+  @if (data(); as w) {
+    @if (!w.accounts.connected && !w.messages.sent && !w.messages.received) {
+      <div class="dash-ok wa-dash-empty"><i class="bi bi-whatsapp" aria-hidden="true"></i> No WhatsApp account connected yet - connect one in Settings &rsaquo; WhatsApp Business.</div>
+    } @else {
+      <div class="wa-dash-stats">
+        <div class="wa-dash-stat"><span class="wa-dash-ico tone-green"><i class="bi bi-send-fill" aria-hidden="true"></i></span><span><b>{{ w.messages.sent }}</b><small>Sent</small></span></div>
+        <div class="wa-dash-stat"><span class="wa-dash-ico tone-teal"><i class="bi bi-check2-all" aria-hidden="true"></i></span><span><b>{{ w.messages.delivered }}</b><small>Delivered &middot; {{ pct(w.messages.delivery_rate) }}</small></span></div>
+        <div class="wa-dash-stat"><span class="wa-dash-ico tone-blue"><i class="bi bi-eye-fill" aria-hidden="true"></i></span><span><b>{{ w.messages.read }}</b><small>Read &middot; {{ pct(w.messages.read_rate) }}</small></span></div>
+        <div class="wa-dash-stat" [class.is-zero]="!w.messages.failed"><span class="wa-dash-ico tone-red"><i class="bi bi-x-octagon-fill" aria-hidden="true"></i></span><span><b>{{ w.messages.failed }}</b><small>Failed</small></span></div>
+        <div class="wa-dash-stat"><span class="wa-dash-ico tone-purple"><i class="bi bi-chat-left-dots-fill" aria-hidden="true"></i></span><span><b>{{ w.messages.received }}</b><small>Received</small></span></div>
+        <div class="wa-dash-stat" [class.is-zero]="!w.conversations.unread"><span class="wa-dash-ico tone-orange"><i class="bi bi-envelope-exclamation-fill" aria-hidden="true"></i></span><span><b>{{ w.conversations.unread }}</b><small>Unread &middot; {{ w.conversations.open }} open chats</small></span></div>
+      </div>
+
+      <div class="wa-dash-grid">
+        <div class="wa-dash-trend">
+          <h3 class="wa-dash-sub">Sent vs received <span class="wa-dash-legend"><i class="s"></i> Sent <i class="r"></i> Received</span></h3>
+          <div class="wa-dash-bars" role="img" [attr.aria-label]="'Messages per day: ' + w.messages.sent + ' sent, ' + w.messages.received + ' received'">
+            @for (b of bars(); track b.label) {
+              <div class="wa-dash-col" [title]="b.label + ': ' + b.sent + ' sent, ' + b.received + ' received'">
+                <div class="wa-dash-pair"><i class="s" [style.height.%]="b.s"></i><i class="r" [style.height.%]="b.r"></i></div>
+                <span>{{ b.label }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="wa-dash-side">
+          <h3 class="wa-dash-sub">Templates <em>{{ w.templates.total }}</em></h3>
+          <div class="wa-dash-tpl">
+            <span class="ok"><b>{{ w.templates.approved }}</b> approved</span>
+            <span class="wait"><b>{{ w.templates.pending }}</b> in review</span>
+            <span class="bad"><b>{{ w.templates.rejected }}</b> rejected</span>
+          </div>
+          @if (w.top_templates.length) {
+            <h3 class="wa-dash-sub">Most used</h3>
+            @for (t of w.top_templates; track t.label) {
+              <div class="wa-dash-top"><span>{{ t.label }}</span><i [style.width.%]="(t.value / topMax()) * 100"></i><b>{{ t.value }}</b></div>
+            }
+          }
+          <div class="wa-dash-acc">
+            <i class="bi bi-meta" aria-hidden="true"></i> {{ w.accounts.connected }} account{{ w.accounts.connected === 1 ? '' : 's' }} &middot; {{ w.accounts.numbers }} number{{ w.accounts.numbers === 1 ? '' : 's' }}
+            @if (w.accounts.attention) { <span class="bad">&middot; {{ w.accounts.attention }} need attention</span> }
+          </div>
+        </div>
+      </div>
+    }
+  }
+</app-dash-card>

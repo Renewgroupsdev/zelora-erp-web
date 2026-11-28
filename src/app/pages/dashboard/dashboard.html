@@ -193,6 +193,8 @@
         @if (can('telecalling')) { <app-telecalling-widget [class]="can('stock') ? 'w-7' : 'w-12'" [range]="range()" [tick]="tick()" /> }
         @if (can('stock')) { <app-stock-widget [class]="can('telecalling') ? 'w-5' : 'w-12'" [range]="range()" [tick]="tick()" /> }
 
+        @if (can('whatsapp')) { <app-whatsapp-widget class="w-12" [range]="range()" [tick]="tick()" /> }
+
         @if (can('hr')) { <app-team-widget class="w-12" [range]="range()" [tick]="tick()" /> }
         @if (show().myWork) { <app-my-work-widget class="w-12" [range]="range()" [tick]="tick()" /> }
       </div>

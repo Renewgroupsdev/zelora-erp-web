@@ -1,0 +1,144 @@
+<div class="wa-page">
+  <div class="wa-heading">
+    <div>
+      <h1><span class="wa-heading-icon"><i class="bi bi-megaphone-fill"></i></span> Ad Leads</h1>
+      <p>Customers who messaged you on WhatsApp from a Facebook or Instagram Click-to-WhatsApp ad, identified by the ad referral Meta sends with their first message.</p>
+    </div>
+    <div class="wa-actions">
+      <a class="wa-btn primary" routerLink="/app/whatsapp/inbox"><i class="bi bi-chat-dots-fill"></i> Open inbox</a>
+    </div>
+  </div>
+
+  <div class="wa-card filters">
+    <div class="presets" role="tablist" aria-label="Period">
+      @for (p of presets; track p.key) {
+        <button type="button" role="tab" [class.on]="preset() === p.key" (click)="setPreset(p.key)">{{ p.label }}</button>
+      }
+    </div>
+    <div class="row-f">
+      @if (preset() === 'custom') {
+        <label class="wa-field"><span>From</span><input class="wa-input" type="date" [ngModel]="from()" (ngModelChange)="from.set($event); page.set(1)" /></label>
+        <label class="wa-field"><span>To</span><input class="wa-input" type="date" [ngModel]="to()" (ngModelChange)="to.set($event); page.set(1)" /></label>
+      }
+      <label class="wa-field"><span>Source</span>
+        <select class="wa-input" [ngModel]="platform()" (ngModelChange)="platform.set($event); page.set(1)">
+          <option value="">All ads</option><option value="facebook">Facebook ads</option><option value="instagram">Instagram ads</option><option value="ad">Other Meta ads</option>
+        </select>
+      </label>
+      <label class="wa-field"><span>Campaign</span>
+        <select class="wa-input" [ngModel]="campaignId()" (ngModelChange)="campaignId.set($event); page.set(1)">
+          <option value="">All campaigns</option>
+          @for (c of report()?.by_campaign ?? []; track c.campaign_id) { @if (c.campaign_id) { <option [value]="c.campaign_id">{{ c.campaign_name }}</option> } }
+        </select>
+      </label>
+    </div>
+  </div>
+
+  @if (loading() && !report()) {
+    <div class="stats">@for (i of [1, 2, 3, 4, 5, 6]; track i) { <div class="wa-card stat"><div class="wa-skeleton" style="height: 54px"></div></div> }</div>
+  } @else if (report(); as r) {
+    <div class="stats">
+      <div class="wa-card stat"><span class="s-ico wa"><i class="bi bi-whatsapp"></i></span><div><strong>{{ r.summary.total }}</strong><span>All WhatsApp leads</span></div></div>
+      <div class="wa-card stat"><span class="s-ico fb"><i class="bi bi-facebook"></i></span><div><strong>{{ r.summary.facebook }}</strong><span>Facebook ad leads</span></div></div>
+      <div class="wa-card stat"><span class="s-ico ig"><i class="bi bi-instagram"></i></span><div><strong>{{ r.summary.instagram }}</strong><span>Instagram ad leads</span></div></div>
+      <div class="wa-card stat"><span class="s-ico plain"><i class="bi bi-chat-text"></i></span><div><strong>{{ r.summary.organic }}</strong><span>Normal WhatsApp chats</span></div></div>
+      <div class="wa-card stat"><span class="s-ico today"><i class="bi bi-calendar-day"></i></span><div><strong>{{ r.summary.today }} <small>/ {{ r.summary.this_month }}</small></strong><span>Ad leads today / this month</span></div></div>
+      <div class="wa-card stat"><span class="s-ico unread"><i class="bi bi-envelope-exclamation-fill"></i></span><div><strong>{{ r.summary.unread }}</strong><span>Unread ad leads</span></div></div>
+      <div class="wa-card stat"><span class="s-ico crm"><i class="bi bi-funnel-fill"></i></span><div><strong>{{ r.summary.in_crm }}</strong><span>In Lead Management</span></div></div>
+      <div class="wa-card stat"><span class="s-ico conv"><i class="bi bi-trophy-fill"></i></span><div><strong>{{ r.summary.converted }}</strong><span>Converted to customers</span></div></div>
+    </div>
+
+    @if (share(); as s) {
+      <div class="wa-card mix">
+        <div class="mix-head"><strong>Where WhatsApp leads came from</strong><span class="wa-muted">{{ r.period.from | date: 'd MMM' }} – {{ r.period.to | date: 'd MMM y' }}</span></div>
+        <div class="mix-bar" role="img" aria-label="Lead sources">
+          <i class="fb" [style.width.%]="s.facebook"></i><i class="ig" [style.width.%]="s.instagram"></i><i class="ot" [style.width.%]="s.other"></i><i class="og" [style.width.%]="s.organic"></i>
+        </div>
+        <div class="mix-legend">
+          <span><i class="fb"></i> Facebook ads {{ r.summary.facebook }}</span><span><i class="ig"></i> Instagram ads {{ r.summary.instagram }}</span>
+          @if (r.summary.other_ads) { <span><i class="ot"></i> Other ads {{ r.summary.other_ads }}</span> }
+          <span><i class="og"></i> Normal chats {{ r.summary.organic }}</span>
+        </div>
+      </div>
+    }
+
+    <div class="grid2">
+      <section class="wa-card panel">
+        <h2>Daily ad leads</h2>
+        @if (r.trend.length) {
+          <div class="trend" role="img" aria-label="Ad leads per day">
+            @for (t of r.trend; track t.day) {
+              <div class="t-col" [title]="(t.day | date: 'd MMM') + ': ' + t.facebook + ' Facebook, ' + t.instagram + ' Instagram'">
+                <div class="t-stack">
+                  <i class="ig" [style.height.%]="t.instagram / trendMax() * 100"></i>
+                  <i class="fb" [style.height.%]="t.facebook / trendMax() * 100"></i>
+                  <i class="ot" [style.height.%]="t.other / trendMax() * 100"></i>
+                </div>
+                <span>{{ t.day | date: 'd MMM' }}</span>
+              </div>
+            }
+          </div>
+        } @else { <p class="wa-muted none">No ad leads in this period.</p> }
+      </section>
+
+      <section class="wa-card panel">
+        <h2>Leads by campaign</h2>
+        @for (c of r.by_campaign; track c.campaign_id ?? $index) {
+          <div class="bar-row">
+            <span class="name" [title]="c.campaign_name">{{ c.campaign_name }}</span>
+            <span class="bar"><i [style.width.%]="c.leads / campaignMax() * 100"></i></span>
+            <b>{{ c.leads }}</b>
+          </div>
+        } @empty { <p class="wa-muted none">No campaigns yet. Names appear when the Meta token may read the ads (ads_read).</p> }
+      </section>
+    </div>
+
+    <section class="wa-card panel">
+      <h2>Leads by ad</h2>
+      <div class="ads">
+        @for (a of r.by_ad; track a.ad_id ?? $index) {
+          <div class="ad">
+            @if (a.thumbnail_url) { <img [src]="a.thumbnail_url" alt="" referrerpolicy="no-referrer" (error)="$any($event.target).style.visibility = 'hidden'" /> }
+            @else { <span class="ad-ph"><i class="bi bi-image"></i></span> }
+            <div class="ad-main">
+              <strong>{{ a.ad_name || a.headline || 'Ad ' + (a.ad_id || '') }}</strong>
+              <span class="wa-muted">{{ a.campaign_name || 'Campaign not available' }} · <span class="badge" [attr.data-src]="srcKey(a.platform)">{{ label(a.platform) }}</span></span>
+              <span class="wa-mono wa-muted">ID {{ a.ad_id || '—' }}</span>
+            </div>
+            <b class="ad-n">{{ a.leads }}</b>
+          </div>
+        } @empty { <p class="wa-muted none">No ad leads in this period.</p> }
+      </div>
+    </section>
+
+    <section class="wa-card panel">
+      <h2>Ad leads <span class="wa-muted">({{ r.leads.total }})</span></h2>
+      <ul class="leads">
+        @for (l of r.leads.data; track l.conversation_id) {
+          <li>
+            <span class="av" [style.background]="avatarColor(l.wa_id)">{{ initials(l.name) }}</span>
+            <div class="l-main">
+              <div class="l-top"><strong>{{ l.name }}</strong> <span class="badge" [attr.data-src]="l.lead_source">{{ label(l.lead_source) }}</span>
+                @if (l.unread_count) { <span class="unread">{{ l.unread_count }} unread</span> }
+                @if (l.converted) { <span class="conv"><i class="bi bi-check-circle-fill"></i> Customer</span> }
+              </div>
+              <div class="wa-muted small">+{{ l.wa_id }} · {{ l.ad?.campaign_name || l.ad?.headline || 'Ad ' + (l.ad?.ad_id || '') }} · {{ l.created_at | date: 'd MMM, h:mm a' }}</div>
+              @if (l.ad?.first_message) { <p class="first">“{{ l.ad?.first_message }}”</p> }
+            </div>
+            <a class="wa-btn sm" routerLink="/app/whatsapp/inbox" [queryParams]="{ c: l.conversation_id }"><i class="bi bi-chat-dots"></i> Open chat</a>
+          </li>
+        } @empty {
+          <li class="none-li"><div class="wa-empty"><div class="wa-empty-icon"><i class="bi bi-megaphone"></i></div><h3>No ad leads yet</h3>
+            <p>Run a Facebook or Instagram ad with a WhatsApp button (Click-to-WhatsApp). Customers who message from it appear here and in the inbox automatically.</p></div></li>
+        }
+      </ul>
+      @if (r.leads.last_page > 1) {
+        <div class="pager">
+          <button type="button" class="wa-btn sm" [disabled]="page() <= 1" (click)="page.set(page() - 1)"><i class="bi bi-chevron-left"></i></button>
+          <span class="wa-muted">Page {{ r.leads.current_page }} of {{ r.leads.last_page }}</span>
+          <button type="button" class="wa-btn sm" [disabled]="page() >= r.leads.last_page" (click)="page.set(page() + 1)"><i class="bi bi-chevron-right"></i></button>
+        </div>
+      }
+    </section>
+  }
+</div>

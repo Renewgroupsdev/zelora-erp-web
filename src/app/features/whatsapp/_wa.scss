@@ -1,0 +1,107 @@
+// WhatsApp Business module: shared look (Meta Business Suite feel, WhatsApp green accents).
+// Built on the app tokens (styles.scss) so light / dark theme keep working.
+
+:host {
+  --wa-green: #25d366;
+  --wa-teal: #128c7e;
+  --wa-deep: #075e54;
+  --wa-tint: color-mix(in srgb, var(--wa-green) 12%, var(--app-surface-solid));
+  --wa-ring: color-mix(in srgb, var(--wa-green) 35%, transparent);
+  display: block;
+}
+
+.wa-page { display: flex; flex-direction: column; gap: 16px; }
+
+.wa-heading {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  h1 {
+    margin: 0; display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--font-family-display); color: var(--text-dark);
+    font-size: clamp(18px, 1.5vw, 22px); font-weight: 800; letter-spacing: -.3px;
+  }
+  p { margin: 2px 0 0; color: var(--text-muted); font-size: 13px; }
+}
+.wa-heading-icon {
+  display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--wa-green), var(--wa-teal)); color: #fff; font-size: 18px;
+  box-shadow: 0 6px 16px -6px var(--wa-teal);
+}
+.wa-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.wa-card {
+  border: 1px solid var(--card-border); border-radius: 16px; background: var(--app-surface-solid);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 10px 30px -18px rgba(16, 24, 40, .18);
+}
+
+// ---- buttons ----
+.wa-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px;
+  border: 1px solid var(--card-border); border-radius: 10px; background: var(--app-surface-solid); color: var(--text-dark);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; text-decoration: none;
+  transition: background .15s, border-color .15s, box-shadow .15s, transform .05s;
+  &:hover:not(:disabled) { border-color: var(--wa-teal); background: var(--wa-tint); }
+  &:active:not(:disabled) { transform: translateY(1px); }
+  &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--wa-ring); }
+  &:disabled { opacity: .55; cursor: not-allowed; }
+  &.primary { background: var(--wa-teal); border-color: var(--wa-teal); color: #fff; &:hover:not(:disabled) { background: var(--wa-deep); } }
+  &.facebook { background: #1877f2; border-color: #1877f2; color: #fff; &:hover:not(:disabled) { background: #0f63d3; } }
+  &.danger { color: #c0392b; &:hover:not(:disabled) { border-color: #c0392b; background: color-mix(in srgb, #c0392b 8%, var(--app-surface-solid)); } }
+  &.ghost { border-color: transparent; background: transparent; }
+  &.sm { min-height: 30px; padding: 0 10px; font-size: 12px; border-radius: 8px; }
+}
+
+// ---- form fields ----
+.wa-field { display: flex; flex-direction: column; gap: 6px; min-width: 0;
+  > span { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  small { color: var(--text-muted); font-size: 11.5px; }
+}
+.wa-input {
+  width: 100%; min-height: 38px; padding: 8px 12px; border: 1px solid var(--card-border); border-radius: 10px;
+  background: var(--app-surface-solid); color: var(--text-dark); font: inherit; font-size: 13px;
+  &:focus { outline: none; border-color: var(--wa-teal); box-shadow: 0 0 0 3px var(--wa-ring); }
+  &.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+}
+textarea.wa-input { resize: vertical; min-height: 80px; }
+
+.wa-check { display: inline-flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text-dark); cursor: pointer;
+  input { margin-top: 2px; accent-color: var(--wa-teal); }
+}
+
+// ---- status pills ----
+.wa-pill {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 700; white-space: nowrap; background: var(--status-gray-bg, #eef1f0); color: var(--status-gray-text, #5b6b67);
+  &::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  &.green { background: var(--status-green-bg); color: var(--status-green-text); }
+  &.orange { background: var(--status-orange-bg, #fff3df); color: var(--status-orange-text, #c77700); }
+  &.red { background: var(--status-red-bg, #fde8e6); color: var(--status-red-text, #c0392b); }
+  &.blue { background: var(--status-blue-bg, #e6f0ff); color: var(--status-blue-text, #2563eb); }
+  &.plain::before { display: none; }
+}
+
+.wa-muted { color: var(--text-muted); }
+.wa-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+
+// ---- empty / error / skeleton ----
+.wa-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 44px 20px;
+  color: var(--text-muted);
+  .wa-empty-icon { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 20px; background: var(--wa-tint); color: var(--wa-teal); font-size: 28px; }
+  h3 { margin: 4px 0 0; color: var(--text-dark); font-size: 16px; font-weight: 700; }
+  p { margin: 0; max-width: 460px; font-size: 13px; line-height: 1.5; }
+}
+.wa-alert {
+  display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.45;
+  background: var(--status-orange-bg, #fff3df); color: var(--status-orange-text, #8a5300);
+  &.red { background: var(--status-red-bg, #fde8e6); color: var(--status-red-text, #a12b20); }
+  &.info { background: var(--wa-tint); color: var(--wa-deep); }
+  i { font-size: 16px; margin-top: 1px; }
+}
+.wa-skeleton {
+  border-radius: 10px; min-height: 14px;
+  background: linear-gradient(90deg, var(--border-soft) 25%, color-mix(in srgb, var(--border-soft) 40%, transparent) 37%, var(--border-soft) 63%);
+  background-size: 400% 100%; animation: wa-shimmer 1.3s ease infinite;
+}
+@keyframes wa-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+@media (prefers-reduced-motion: reduce) { .wa-skeleton { animation: none; } }

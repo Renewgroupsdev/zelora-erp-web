@@ -22,6 +22,7 @@ export const DASH_WIDGETS = {
   stock: 'dashboard-stock',
   approvals: 'dashboard-approvals',
   telecalling: 'dashboard-telecalling',
+  whatsapp: 'dashboard-whatsapp',
   'front-desk': 'dashboard-front-desk',
   'my-day': 'dashboard-my-day',
   'doctor-day': 'dashboard-doctor-day',
@@ -184,4 +185,14 @@ export function statusTone(status: string | null | undefined): string {
   if (['pending', 'awaiting', 'late', 'draft', 'not started', 'busy', 'on call', 'break'].some(k => s.includes(k))) return 'orange';
   if (['consultation', 'progress', 'scheduled', 'invoiced'].some(k => s.includes(k))) return 'blue';
   return 'gray';
+}
+
+/** WhatsApp Messaging widget (Settings -> WhatsApp Business), from our own message records and Meta-synced templates. */
+export interface WhatsAppDashData {
+  accounts: { connected: number; attention: number; numbers: number };
+  templates: { total: number; approved: number; pending: number; rejected: number };
+  messages: { sent: number; delivered: number; read: number; failed: number; received: number; delivery_rate: number | null; read_rate: number | null };
+  conversations: { total: number; open: number; unread: number; new: number };
+  trend: { label: string; sent: number; received: number }[];
+  top_templates: LabelValue[];
 }

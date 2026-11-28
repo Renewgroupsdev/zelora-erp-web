@@ -1,0 +1,40 @@
+// WhatsApp Messaging widget - scoped under .dash-page like the other widgets (ViewEncapsulation.None).
+.dash-page {
+  .wa-dash-empty i { color: #25d366; }
+
+  .wa-dash-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .wa-dash-stat {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border-soft); border-radius: 12px;
+    b { display: block; font-size: 19px; font-weight: 800; color: var(--text-dark); line-height: 1.1; }
+    small { font-size: 11.5px; color: var(--text-muted); }
+    &.is-zero { opacity: .65; }
+  }
+  .wa-dash-ico {
+    flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; font-size: 15px;
+    &.tone-green { background: #e2f6ec; color: #0f9d58; } &.tone-teal { background: #dff5f1; color: #128c7e; }
+    &.tone-blue { background: #e6f0ff; color: #2563eb; } &.tone-red { background: #fde8e6; color: #c0392b; }
+    &.tone-purple { background: #f1e8fd; color: #7b35e6; } &.tone-orange { background: #fff3df; color: #c77700; }
+  }
+
+  .wa-dash-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; }
+  .wa-dash-sub { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted);
+    em { font-style: normal; padding: 0 6px; border-radius: 999px; background: var(--border-soft); } }
+  .wa-dash-legend { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 11px; text-transform: none; letter-spacing: 0;
+    i { width: 9px; height: 9px; border-radius: 3px; } .s { background: #25d366; } .r { background: #34b7f1; } }
+  .wa-dash-bars { display: flex; align-items: flex-end; gap: 4px; height: 150px; padding-top: 6px; overflow-x: auto; }
+  .wa-dash-col { flex: 1 0 18px; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%;
+    span { font-size: 9.5px; color: var(--text-muted); white-space: nowrap; } }
+  .wa-dash-pair { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px;
+    i { width: 42%; max-width: 12px; min-height: 2px; border-radius: 4px 4px 0 0; } .s { background: #25d366; } .r { background: #34b7f1; } }
+
+  .wa-dash-side { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .wa-dash-tpl { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;
+    span { padding: 4px 10px; border-radius: 999px; font-size: 12px; } b { font-weight: 800; }
+    .ok { background: #e2f6ec; color: #0f9d58; } .wait { background: #e6f0ff; color: #2563eb; } .bad { background: #fde8e6; color: #c0392b; } }
+  .wa-dash-top { display: grid; grid-template-columns: minmax(0, 1fr) 70px 28px; align-items: center; gap: 8px; font-size: 12.5px;
+    span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dark); }
+    i { height: 6px; border-radius: 999px; background: #25d366; } b { text-align: right; } }
+  .wa-dash-acc { margin-top: auto; padding-top: 8px; font-size: 12px; color: var(--text-muted); .bad { color: #c0392b; } }
+
+  @media (max-width: 760px) { .wa-dash-grid { grid-template-columns: 1fr; } }
+}

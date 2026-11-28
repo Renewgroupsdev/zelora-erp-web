@@ -1,0 +1,163 @@
+<div class="wa-page">
+  <div class="wa-heading">
+    <div>
+      <h1><span class="wa-heading-icon"><i class="bi bi-meta"></i></span> Meta Accounts</h1>
+      <p>WhatsApp Business Accounts connected through Meta. Each keeps its own token, numbers and conversations.</p>
+    </div>
+    <div class="wa-actions">
+      <button type="button" class="wa-btn" (click)="load()" [disabled]="loading()"><i class="bi bi-arrow-clockwise"></i> Reload</button>
+      @if (meta()?.can_connect) {
+        <button type="button" class="wa-btn primary" (click)="connect()"><i class="bi bi-plus-lg"></i> Connect account</button>
+      }
+    </div>
+  </div>
+
+  @if (!loading() && accounts().length) {
+    <div class="summary">
+      <div class="stat"><span class="stat-icon"><i class="bi bi-plug-fill"></i></span><div><strong>{{ totals().connected }}</strong><span>Connected accounts</span></div></div>
+      <div class="stat"><span class="stat-icon"><i class="bi bi-telephone-fill"></i></span><div><strong>{{ totals().numbers }}</strong><span>Business numbers</span></div></div>
+      <button type="button" class="stat clickable" [class.warn]="totals().attention" (click)="filter.set(filter() === 'attention' ? 'all' : 'attention')" [attr.aria-pressed]="filter() === 'attention'">
+        <span class="stat-icon"><i class="bi bi-exclamation-triangle-fill"></i></span><div><strong>{{ totals().attention }}</strong><span>{{ filter() === 'attention' ? 'Showing: need attention' : 'Need attention' }}</span></div>
+      </button>
+    </div>
+  }
+
+  @if (meta() && !meta()!.app_configured) {
+    <div class="wa-alert"><i class="bi bi-exclamation-triangle"></i>
+      <span>The Meta app is not configured on the server (META_APP_ID / META_APP_SECRET). Tokens cannot be checked with Meta and Embedded Signup is off.</span></div>
+  }
+
+  @if (loading()) {
+    <div class="grid">
+      @for (i of [1, 2]; track i) {
+        <div class="wa-card account skeleton-card">
+          <div class="wa-skeleton" style="width: 45%; height: 18px"></div>
+          <div class="wa-skeleton" style="width: 70%"></div>
+          <div class="wa-skeleton" style="height: 54px"></div>
+          <div class="wa-skeleton" style="width: 60%"></div>
+        </div>
+      }
+    </div>
+  } @else if (loadError()) {
+    <div class="wa-card"><div class="wa-empty">
+      <div class="wa-empty-icon"><i class="bi bi-cloud-slash"></i></div>
+      <h3>Could not load accounts</h3><p>{{ loadError() }}</p>
+      <button type="button" class="wa-btn" (click)="load()"><i class="bi bi-arrow-clockwise"></i> Try again</button>
+    </div></div>
+  } @else if (!accounts().length) {
+    <div class="wa-card"><div class="wa-empty">
+      <div class="wa-empty-icon"><i class="bi bi-whatsapp"></i></div>
+      <h3>No WhatsApp account connected yet</h3>
+      <p>Connect a WhatsApp Business Account with Meta's Embedded Signup or a system-user token. You can connect as many accounts and numbers as you need.</p>
+      @if (meta()?.can_connect) {
+        <button type="button" class="wa-btn primary" (click)="connect()"><i class="bi bi-plus-lg"></i> Connect your first account</button>
+      }
+    </div></div>
+  } @else {
+    <div class="grid">
+      @for (a of shown(); track a.id) {
+        <article class="wa-card account" [class.off]="a.status === 'disconnected'">
+          <header class="acc-head">
+            <div class="avatar" aria-hidden="true">{{ a.name.charAt(0) }}</div>
+            <div class="acc-title">
+              <h2>{{ a.name }}</h2>
+              <div class="wa-muted small">
+                {{ a.meta_business_name || 'Business portfolio' }} · <span class="wa-mono">WABA {{ a.waba_id }}</span>
+              </div>
+            </div>
+            <span class="wa-pill" [ngClass]="statusLabel(a).tone">{{ statusLabel(a).text }}</span>
+          </header>
+
+          @if (a.last_error && a.status !== 'disconnected') {
+            <div class="wa-alert red compact"><i class="bi bi-exclamation-octagon"></i><span>{{ a.last_error }}</span></div>
+          }
+
+          <div class="numbers">
+            @for (p of a.phone_numbers ?? []; track p.id) {
+              <div class="num" [class.disabled]="!p.enabled">
+                <i class="bi bi-telephone-fill"></i>
+                <div class="num-main">
+                  <strong>{{ p.display_phone_number || p.phone_number_id }}</strong>
+                  <span class="wa-muted small">{{ p.verified_name || 'Name not set' }}@if (p.branch_label && !p.branch_inherited) { · {{ p.branch_label }} }</span>
+                </div>
+                @if (p.is_default) { <span class="wa-pill blue plain" title="ERP notifications are sent from this number">Default</span> }
+                @if (p.quality_rating) { <span class="q" [attr.data-q]="p.quality_rating" [title]="'Quality rating: ' + p.quality_rating">{{ p.quality_rating }}</span> }
+              </div>
+            } @empty {
+              <div class="wa-muted small">No phone number on this account yet.</div>
+            }
+          </div>
+
+          @if (editing() === a.id) {
+            <div class="edit">
+              <label class="wa-field"><span>Name in the app</span><input class="wa-input" [(ngModel)]="editDraft.name" maxlength="150" /></label>
+              <label class="wa-field"><span>Branch / franchise</span>
+                <select class="wa-input" [(ngModel)]="editDraft.branchKey">
+                  <option value="">Company-wide (all branches)</option>
+                  @for (b of branches.options(); track b.key) { <option [value]="b.key">{{ b.name }}</option> }
+                </select>
+              </label>
+              <label class="wa-check"><input type="checkbox" [(ngModel)]="editDraft.restrict" /><span>Restrict access to people granted on this account</span></label>
+              <label class="wa-check"><input type="checkbox" [(ngModel)]="editDraft.welcomeEnabled" /><span>Send a welcome reply to a customer's first message</span></label>
+              @if (editDraft.welcomeEnabled) {
+                <label class="wa-field"><span>Welcome message</span>
+                  <textarea class="wa-input" rows="3" maxlength="1000" [(ngModel)]="editDraft.welcomeMessage"></textarea>
+                  <small>{{ '{name}' }} = customer's WhatsApp name, {{ '{business}' }} = your business name.</small>
+                </label>
+              }
+              <div class="wa-actions end">
+                <button type="button" class="wa-btn sm" (click)="editing.set(null)">Cancel</button>
+                <button type="button" class="wa-btn sm primary" (click)="saveEdit(a)" [disabled]="isBusy('edit-' + a.id)"><i class="bi bi-check2"></i> Save</button>
+              </div>
+            </div>
+          } @else {
+            <dl class="facts">
+              <div><dt>Branch</dt><dd>{{ a.branch_label || 'Company-wide' }}@if (a.restrict_access) { <i class="bi bi-lock-fill" title="Restricted access"></i> }</dd></div>
+              <div><dt>Connected via</dt><dd>{{ methodLabel(a.connection_method) }}</dd></div>
+              <div><dt>Token</dt><dd>
+                @if (a.token) {
+                  <span class="wa-mono">{{ a.token.hint }}</span> ·
+                  @if (a.token.status !== 'active') { <span class="bad">{{ a.token.status }}</span> }
+                  @else if (a.token.never_expires) { never expires }
+                  @else if (a.token.expires_at) { <span [class.bad]="a.token.expiring_soon">expires {{ a.token.expires_at | date: 'mediumDate' }}</span> }
+                  @else { expiry not checked }
+                } @else { none }
+              </dd></div>
+              <div><dt>Webhooks</dt><dd>@if (a.webhook_subscribed) { <i class="bi bi-check-circle-fill ok"></i> Subscribed } @else { <i class="bi bi-x-circle-fill bad"></i> Not subscribed }</dd></div>
+              <div><dt>Templates</dt><dd>{{ a.templates_count ?? 0 }}</dd></div>
+              <div><dt>Last synced</dt><dd>{{ a.last_synced_at ? (a.last_synced_at | date: 'medium') : 'Never' }}</dd></div>
+            </dl>
+          }
+
+          @if (a.can_manage) {
+            <footer class="acc-actions">
+              @if (a.status === 'disconnected' || a.status === 'token_invalid' || a.status === 'permission_missing' || a.token?.expiring_soon) {
+                <button type="button" class="wa-btn sm primary" (click)="connect(a)"><i class="bi bi-arrow-repeat"></i> Reconnect</button>
+              }
+              @if (a.status !== 'disconnected') {
+                <button type="button" class="wa-btn sm" (click)="refresh(a)" [disabled]="isBusy('refresh-' + a.id)"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+                <button type="button" class="wa-btn sm" (click)="checkToken(a)" [disabled]="isBusy('token-' + a.id)"><i class="bi bi-shield-check"></i> Check token</button>
+              }
+              <button type="button" class="wa-btn sm" (click)="startEdit(a)"><i class="bi bi-pencil"></i> Edit</button>
+              <a class="wa-btn sm ghost" routerLink="/app/whatsapp/numbers"><i class="bi bi-telephone"></i> Numbers</a>
+              @if (a.status !== 'disconnected') {
+                <button type="button" class="wa-btn sm danger" (click)="disconnect(a)" [disabled]="isBusy('disconnect-' + a.id)"><i class="bi bi-plug"></i> Disconnect</button>
+              }
+            </footer>
+          }
+        </article>
+      } @empty {
+        <div class="wa-card"><div class="wa-empty"><div class="wa-empty-icon"><i class="bi bi-check2-all"></i></div><h3>Nothing needs attention</h3><p>Every account is connected with a healthy token.</p></div></div>
+      }
+    </div>
+  }
+
+  @if (meta(); as m) {
+    <details class="wa-card setup">
+      <summary><i class="bi bi-gear"></i> Webhook setup for the Meta app</summary>
+      <p class="wa-muted">One callback URL serves every connected account; incoming messages are matched to their account by the business number they were sent to.</p>
+      <div class="url-box"><span class="wa-mono">{{ m.webhook_url }}</span><button type="button" class="wa-btn sm" (click)="copy(m.webhook_url)"><i class="bi bi-clipboard"></i> Copy</button></div>
+      <p class="wa-muted small">Meta App → WhatsApp → Configuration: set this callback URL with the verify token from META_WEBHOOK_VERIFY_TOKEN, then subscribe to <span class="wa-mono">messages</span> and <span class="wa-mono">message_template_status_update</span>.</p>
+    </details>
+  }
+</div>

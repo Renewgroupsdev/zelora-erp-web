@@ -1,0 +1,116 @@
+<div class="wa-page">
+  <div class="wa-heading">
+    <div>
+      <h1><span class="wa-heading-icon"><i class="bi bi-file-earmark-richtext"></i></span> Message Templates</h1>
+      <p>Templates are reviewed by Meta. Only approved templates can be sent, and they can be sent at any time.</p>
+    </div>
+    <div class="wa-actions">
+      <button type="button" class="wa-btn" (click)="syncAll()" [disabled]="busy()['all']"><i class="bi bi-cloud-download"></i> {{ busy()['all'] ? 'Syncing…' : 'Sync from Meta' }}</button>
+      @if (canEdit()) {
+        <a class="wa-btn" routerLink="/app/whatsapp/templates/new" [queryParams]="{ kind: 'authentication' }"><i class="bi bi-shield-lock"></i> Authentication template</a>
+        <a class="wa-btn primary" routerLink="/app/whatsapp/templates/new"><i class="bi bi-plus-lg"></i> New template</a>
+      }
+    </div>
+  </div>
+
+  <div class="toolbar wa-card">
+    <div class="chips" role="tablist" aria-label="Status">
+      @for (c of statusChips(); track c.key) {
+        <button type="button" role="tab" class="chip" [class.on]="status() === c.key" [attr.aria-selected]="status() === c.key" (click)="setFilter('status', c.key)">
+          {{ c.label }} <span>{{ c.count }}</span>
+        </button>
+      }
+    </div>
+    <div class="filters">
+      <label class="search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" (input)="onSearch($any($event.target).value)" placeholder="Search name or text" aria-label="Search templates" /></label>
+      <select class="wa-input" [ngModel]="category()" (ngModelChange)="setFilter('category', $event)" aria-label="Category">
+        <option value="">All categories</option><option value="MARKETING">Marketing</option><option value="UTILITY">Utility</option><option value="AUTHENTICATION">Authentication</option>
+      </select>
+      <select class="wa-input" [ngModel]="language()" (ngModelChange)="setFilter('language', $event)" aria-label="Language">
+        <option value="">All languages</option>
+        @for (l of languages(); track l.code) { <option [value]="l.code">{{ l.label }}</option> }
+      </select>
+    </div>
+  </div>
+
+  <div class="layout" [class.with-preview]="!!selected()">
+    <div class="wa-card list">
+      @if (loading() && !rows().length) {
+        <div class="pad">@for (i of [1, 2, 3, 4]; track i) { <div class="wa-skeleton row-skel"></div> }</div>
+      } @else if (loadError()) {
+        <div class="wa-empty"><div class="wa-empty-icon"><i class="bi bi-cloud-slash"></i></div><h3>Could not load templates</h3><p>{{ loadError() }}</p>
+          <button type="button" class="wa-btn" (click)="load()">Try again</button></div>
+      } @else if (!rows().length) {
+        <div class="wa-empty"><div class="wa-empty-icon"><i class="bi bi-file-earmark-plus"></i></div>
+          <h3>No templates here yet</h3>
+          <p>Create a template and submit it to Meta, or use “Sync from Meta” to bring in templates made in WhatsApp Manager.</p>
+          @if (canEdit()) { <a class="wa-btn primary" routerLink="/app/whatsapp/templates/new"><i class="bi bi-plus-lg"></i> New template</a> }
+        </div>
+      } @else {
+        <ul class="rows" role="listbox" aria-label="Templates">
+          @for (t of rows(); track t.id) {
+            <li role="option" class="row" [class.on]="selected()?.id === t.id" [attr.aria-selected]="selected()?.id === t.id" tabindex="0"
+                (click)="selected.set(t)" (keydown.enter)="selected.set(t)">
+              <div class="row-main">
+                <div class="row-title">
+                  <strong>{{ t.name }}</strong>
+                  <span class="wa-pill" [ngClass]="statusTone(t.status)">{{ t.status.replace('_', ' ') | titlecase }}</span>
+                  @if (t.is_active) { <span class="wa-pill blue plain" title="Used for ERP messages">Active</span> }
+                </div>
+                <div class="row-sub wa-muted">
+                  <span class="cat" [attr.data-cat]="t.category">{{ t.category | titlecase }}</span> · {{ t.language_label }}
+                  @if (!ctx.accountId()) { · {{ t.account?.name }} }
+                  @if (t.quality_score && t.quality_score !== 'UNKNOWN') { · quality {{ t.quality_score | lowercase }} }
+                </div>
+                <p class="row-text">{{ t.category === 'AUTHENTICATION' ? 'Verification code template (text set by Meta)' : (t.body || '—') }}</p>
+                <div class="anatomy">
+                  @let a = anatomy(t);
+                  <span><i class="bi bi-card-heading"></i> {{ a.header }}</span>
+                  @if (a.footer) { <span><i class="bi bi-text-paragraph"></i> {{ a.footer }}</span> }
+                  @if (a.buttons) { <span><i class="bi bi-ui-radios"></i> {{ a.buttons }}</span> }
+                  <span><i class="bi bi-calendar3"></i> Created {{ t.created_at | date: 'd MMM y' }}</span>
+                  @if (t.updated_at) { <span><i class="bi bi-arrow-repeat"></i> Updated {{ t.updated_at | date: 'd MMM y, h:mm a' }}</span> }
+                </div>
+                @if (t.status === 'REJECTED' && t.rejected_reason) {
+                  <div class="reason"><i class="bi bi-exclamation-octagon"></i> Rejected: {{ t.rejected_reason.replaceAll('_', ' ') | lowercase }}</div>
+                }
+              </div>
+              <div class="row-actions">
+                @if (t.sendable && canSend()) { <button type="button" class="wa-btn sm primary" (click)="send(t, $event)"><i class="bi bi-send"></i> Send</button> }
+                <button type="button" class="wa-btn sm" (click)="syncOne(t, $event)" [disabled]="busy()['sync-' + t.id]" title="Get the latest status from Meta"><i class="bi bi-arrow-repeat"></i></button>
+                <button type="button" class="wa-btn sm" (click)="view(t, $event)" title="View"><i class="bi bi-eye"></i></button>
+                @if (canEdit() && t.editable) { <button type="button" class="wa-btn sm" (click)="edit(t, $event)" title="Edit (goes back to Meta review)"><i class="bi bi-pencil"></i></button> }
+                @if (canEdit()) { <button type="button" class="wa-btn sm" (click)="duplicate(t, $event)" title="Duplicate as a new template"><i class="bi bi-copy"></i></button> }
+                @if (canDelete()) { <button type="button" class="wa-btn sm danger" (click)="remove(t, $event)" [disabled]="busy()['del-' + t.id]" title="Delete"><i class="bi bi-trash3"></i></button> }
+              </div>
+            </li>
+          }
+        </ul>
+        @if (lastPage() > 1) {
+          <div class="pager">
+            <button type="button" class="wa-btn sm" [disabled]="page() <= 1" (click)="page.set(page() - 1)"><i class="bi bi-chevron-left"></i></button>
+            <span class="wa-muted">Page {{ page() }} of {{ lastPage() }} · {{ total() }} templates</span>
+            <button type="button" class="wa-btn sm" [disabled]="page() >= lastPage()" (click)="page.set(page() + 1)"><i class="bi bi-chevron-right"></i></button>
+          </div>
+        }
+      }
+    </div>
+
+    @if (selected(); as t) {
+      <aside class="wa-card side" aria-label="Template preview">
+        <div class="side-head">
+          <strong>{{ t.name }}</strong>
+          <button type="button" class="wa-btn ghost sm" (click)="selected.set(null)" aria-label="Close preview"><i class="bi bi-x-lg"></i></button>
+        </div>
+        @if (preview(); as p) { <app-wa-template-preview [model]="p" /> }
+        <dl class="facts">
+          <div><dt>Status</dt><dd>{{ t.status }}</dd></div>
+          <div><dt>Category</dt><dd>{{ t.category }}@if (t.previous_category) { (was {{ t.previous_category }}) }</dd></div>
+          <div><dt>Account</dt><dd>{{ t.account?.name }}</dd></div>
+          <div><dt>Meta id</dt><dd class="wa-mono">{{ t.meta_template_id || '—' }}</dd></div>
+          <div><dt>Last synced</dt><dd>{{ t.last_synced_at ? (t.last_synced_at | date: 'medium') : 'Never' }}</dd></div>
+        </dl>
+      </aside>
+    }
+  </div>
+</div>

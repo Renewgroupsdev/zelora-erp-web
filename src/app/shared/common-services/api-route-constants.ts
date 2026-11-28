@@ -183,6 +183,21 @@ export class ApiRoutesConstants {
    public static META_EVENTS = "meta/events";
    public static META_LOGS = "meta/logs";
 
+   //WhatsApp Business module (sidebar "WhatsApp Business")
+   public static WA_SWITCHER = "whatsapp/switcher";
+   public static WA_ACCOUNTS = "whatsapp/accounts";
+   public static WA_CONNECT_CONFIG = "whatsapp/accounts/connect/config";
+   public static WA_CONNECT_EMBEDDED = "whatsapp/accounts/connect/embedded";
+   public static WA_CONNECT_TOKEN = "whatsapp/accounts/connect/token";
+   public static WA_CONNECT_FINISH = "whatsapp/accounts/connect/finish";
+   public static WA_PHONE_NUMBERS = "whatsapp/phone-numbers";
+   public static WA_TEMPLATES = "whatsapp/templates";
+   public static WA_SEND_TEMPLATE = "whatsapp/messages/template";
+   public static WA_MESSAGES = "whatsapp/messages";
+   public static WA_RECIPIENTS = "whatsapp/recipients";
+   public static WA_CONVERSATIONS = "whatsapp/conversations";
+   public static WA_FLOWS = "whatsapp/flows";
+
    //Branch / franchise QR landing page (public, no auth): public/units/{type}/{id}
    public static PUBLIC_UNIT_SHOW = "public/units";
 

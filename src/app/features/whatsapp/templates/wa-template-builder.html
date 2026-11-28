@@ -1,0 +1,260 @@
+<div class="wa-page">
+  <div class="wa-heading">
+    <div>
+      <h1>
+        <span class="wa-heading-icon"><i class="bi" [class.bi-shield-lock]="isAuth()" [class.bi-file-earmark-richtext]="!isAuth()"></i></span>
+        {{ editing() ? 'Edit ' + editing()!.name : (isAuth() ? 'New authentication template' : 'New message template') }}
+      </h1>
+      <p>{{ isAuth() ? 'One-time passcodes. Meta writes the message text; you choose the code button and the optional lines.' : 'Build the message on the left, see it as the customer will on the right.' }}</p>
+    </div>
+    <div class="wa-actions">
+      <a class="wa-btn" routerLink="/app/whatsapp/templates"><i class="bi bi-arrow-left"></i> Back to templates</a>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="wa-card pad"><div class="wa-skeleton" style="height: 320px"></div></div>
+  } @else {
+    <div class="builder">
+      <form class="col" (input)="touch()" (change)="touch()" (ngSubmit)="submit()" novalidate>
+        @if (serverErrorList().length) {
+          <div class="wa-alert red" role="alert"><i class="bi bi-exclamation-octagon"></i>
+            <div>@for (e of serverErrorList(); track $index) { <div>{{ e }}</div> }</div></div>
+        }
+        @if (editing(); as t) {
+          <div class="wa-alert info"><i class="bi bi-info-circle"></i>
+            <span>Name, language and account cannot change. Saving sends the template back to Meta for review{{ t.status === 'APPROVED' ? ' (Meta allows editing an approved template once a day, 10 times a month)' : '' }}.</span></div>
+        }
+
+        <!-- A. Basic details -->
+        <section class="wa-card sec">
+          <h2><span class="step">1</span> Basic details</h2>
+          <div class="grid2">
+            <label class="wa-field">
+              <span>WhatsApp account</span>
+              <select class="wa-input" name="account" [(ngModel)]="form.account_id" [disabled]="!!editing()">
+                <option [ngValue]="null" disabled>Choose…</option>
+                @for (a of connectedAccounts(); track a.id) {
+                  <option [ngValue]="a.id">{{ a.name }}{{ a.phone_numbers.length ? ' · ' + a.phone_numbers[0].display_phone_number : '' }}</option>
+                }
+              </select>
+              <small>Templates belong to the WhatsApp Business Account and can be sent from any of its numbers.</small>
+            </label>
+            <label class="wa-field">
+              <span>Language</span>
+              <select class="wa-input" name="language" [(ngModel)]="form.language" [disabled]="!!editing()">
+                @for (l of languages(); track l.code) { <option [value]="l.code">{{ l.label }} ({{ l.code }})</option> }
+              </select>
+            </label>
+          </div>
+          <label class="wa-field">
+            <span>Template name</span>
+            <input class="wa-input mono" name="name" [(ngModel)]="form.name" (blur)="normalizeName()" [disabled]="!!editing()" maxlength="512" placeholder="order_ready_notice" autocomplete="off" />
+            <small>Lowercase letters, numbers and underscores. Spaces become underscores.</small>
+            @if (err('name')) { <em class="ferr">{{ err('name') }}</em> }
+          </label>
+
+          @if (!isAuth()) {
+            <div class="wa-field">
+              <span>Category</span>
+              <div class="cats" role="radiogroup" aria-label="Category">
+                <button type="button" role="radio" class="cat" [class.on]="form.category === 'UTILITY'" [attr.aria-checked]="form.category === 'UTILITY'" (click)="setCategory('UTILITY')">
+                  <i class="bi bi-bell"></i><strong>Utility</strong><span>Order updates, appointment reminders, account alerts.</span>
+                </button>
+                <button type="button" role="radio" class="cat" [class.on]="form.category === 'MARKETING'" [attr.aria-checked]="form.category === 'MARKETING'" (click)="setCategory('MARKETING')">
+                  <i class="bi bi-megaphone"></i><strong>Marketing</strong><span>Offers, announcements, invitations. Needs customer opt-in.</span>
+                </button>
+              </div>
+              @if (!editing()) {
+                <label class="wa-check"><input type="checkbox" name="acc" [(ngModel)]="form.allow_category_change" /><span>Let Meta change the category if it decides another one fits (avoids a rejection)</span></label>
+              }
+            </div>
+          }
+        </section>
+
+        @if (!isAuth()) {
+          <!-- B. Header -->
+          <section class="wa-card sec">
+            <h2><span class="step">2</span> Header <em class="opt">optional</em></h2>
+            <div class="seg" role="radiogroup" aria-label="Header type">
+              @for (h of ['NONE', 'TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT']; track h) {
+                <button type="button" role="radio" [class.on]="form.header.format === h" [attr.aria-checked]="form.header.format === h"
+                        (click)="form.header.format = $any(h); form.header.media_handle = ''; mediaPreviewUrl.set(null); touch()">{{ h === 'NONE' ? 'None' : (h | titlecase) }}</button>
+              }
+            </div>
+            @if (form.header.format === 'TEXT') {
+              <div class="grid2">
+                <label class="wa-field">
+                  <span>Header text <em class="count" [class.over]="(form.header.text?.length ?? 0) > 60">{{ form.header.text?.length ?? 0 }}/60</em></span>
+                  <div class="with-btn">
+                    <input class="wa-input" name="htext" [(ngModel)]="form.header.text" maxlength="80" placeholder="Your order is ready" />
+                    <button type="button" class="wa-btn sm" (click)="addVariable('header')" [disabled]="headerVars().length > 0" title="Add variable {{ V1 }}">+ Var</button>
+                  </div>
+                </label>
+                @if (headerVars().length) {
+                  <label class="wa-field"><span>Sample for {{ V1 }}</span><input class="wa-input" name="hex" [(ngModel)]="form.header.example" placeholder="A-1043" /></label>
+                }
+              </div>
+            } @else if (form.header.format !== 'NONE') {
+              <label class="upload" [class.done]="!!form.header.media_handle">
+                <input type="file" (change)="onHeaderFile($event)" [accept]="form.header.format === 'IMAGE' ? 'image/jpeg,image/png' : form.header.format === 'VIDEO' ? 'video/mp4,video/3gpp' : 'application/pdf'" />
+                <i class="bi" [class.bi-cloud-arrow-up]="!form.header.media_handle" [class.bi-check-circle-fill]="!!form.header.media_handle"></i>
+                <span>
+                  @if (uploading()) { Uploading sample to Meta… }
+                  @else if (form.header.media_handle) { Sample uploaded{{ mediaFileName() ? ': ' + mediaFileName() : '' }} - choose another to replace }
+                  @else { Upload a sample {{ form.header.format | lowercase }} for Meta's review ({{ form.header.format === 'IMAGE' ? 'JPG/PNG, 5 MB' : form.header.format === 'VIDEO' ? 'MP4, 16 MB' : 'PDF, 100 MB' }}) }
+                </span>
+              </label>
+              <small class="wa-muted">The real file is chosen each time the template is sent.</small>
+            }
+          </section>
+
+          <!-- C. Body -->
+          <section class="wa-card sec">
+            <h2><span class="step">3</span> Body</h2>
+            <div class="wa-field">
+              <div class="tools">
+                <button type="button" class="wa-btn sm ghost" (click)="wrap(bodyRef, '*')" title="Bold"><i class="bi bi-type-bold"></i></button>
+                <button type="button" class="wa-btn sm ghost" (click)="wrap(bodyRef, '_')" title="Italic"><i class="bi bi-type-italic"></i></button>
+                <button type="button" class="wa-btn sm ghost" (click)="wrap(bodyRef, '~')" title="Strikethrough"><i class="bi bi-type-strikethrough"></i></button>
+                <button type="button" class="wa-btn sm" (click)="addVariable('body')"><i class="bi bi-braces"></i> Add variable</button>
+                <em class="count" [class.over]="form.body.text.length > 1024">{{ form.body.text.length }}/1024</em>
+              </div>
+              <textarea #bodyRef class="wa-input body-input" name="body" [(ngModel)]="form.body.text" rows="6" placeholder="Hello {{ V1 }}, your order {{ V2 }} is ready for pickup."></textarea>
+              @if (err('body.text')) { <em class="ferr">{{ err('body.text') }}</em> }
+            </div>
+            @if (bodyVars().length) {
+              <div class="examples">
+                <div class="ex-head"><i class="bi bi-lightbulb"></i> Sample values - Meta reviews the template with these. When sending, each is replaced by real customer data.</div>
+                @for (v of bodyVars(); track v; let i = $index) {
+                  <label class="ex">
+                    <span class="var">{{ varLabel(v) }}</span>
+                    <input class="wa-input" [name]="'ex' + i" [(ngModel)]="form.body.examples[i]" [placeholder]="i === 0 ? 'e.g. customer name: Priya' : 'sample value'" />
+                  </label>
+                }
+                @if (err('body.examples')) { <em class="ferr">{{ err('body.examples') }}</em> }
+              </div>
+            }
+          </section>
+
+          <!-- D. Footer -->
+          <section class="wa-card sec">
+            <h2><span class="step">4</span> Footer <em class="opt">optional</em></h2>
+            <label class="wa-field">
+              <span>Footer text <em class="count" [class.over]="form.footer.text.length > 60">{{ form.footer.text.length }}/60</em></span>
+              <input class="wa-input" name="footer" [(ngModel)]="form.footer.text" maxlength="80" placeholder="Reply STOP to unsubscribe" />
+            </label>
+          </section>
+
+          <!-- E. Buttons -->
+          <section class="wa-card sec">
+            <h2><span class="step">5</span> Buttons <em class="opt">optional · up to 10</em></h2>
+            <div class="add-btns">
+              <button type="button" class="wa-btn sm" (click)="addButton('QUICK_REPLY')" [disabled]="!canAdd('QUICK_REPLY')"><i class="bi bi-reply"></i> Quick reply</button>
+              <button type="button" class="wa-btn sm" (click)="addButton('URL')" [disabled]="!canAdd('URL')"><i class="bi bi-box-arrow-up-right"></i> Website (max 2)</button>
+              <button type="button" class="wa-btn sm" (click)="addButton('PHONE_NUMBER')" [disabled]="!canAdd('PHONE_NUMBER')"><i class="bi bi-telephone"></i> Call (max 1)</button>
+              @if (form.category === 'MARKETING') {
+                <button type="button" class="wa-btn sm" (click)="addButton('COPY_CODE')" [disabled]="!canAdd('COPY_CODE')"><i class="bi bi-copy"></i> Copy offer code</button>
+              }
+              <button type="button" class="wa-btn sm" (click)="addButton('FLOW')" [disabled]="!canAdd('FLOW')"><i class="bi bi-ui-checks"></i> WhatsApp Flow</button>
+            </div>
+            @for (b of form.buttons; track trackIndex($index); let i = $index) {
+              <div class="btn-row">
+                <span class="btn-kind">{{ b.type === 'QUICK_REPLY' ? 'Quick reply' : b.type === 'PHONE_NUMBER' ? 'Call' : b.type === 'COPY_CODE' ? 'Copy code' : b.type === 'FLOW' ? 'Flow' : 'Website' }}</span>
+                <div class="btn-fields">
+                  @if (b.type !== 'COPY_CODE') {
+                    <input class="wa-input" [name]="'bt' + i" [(ngModel)]="b.text" maxlength="25" placeholder="Button text (25)" />
+                  }
+                  @switch (b.type) {
+                    @case ('URL') {
+                      <input class="wa-input" [name]="'bu' + i" [(ngModel)]="b.url" placeholder="https://example.com/track/{{ V1 }}" />
+                      @if (hasUrlVar(b)) { <input class="wa-input" [name]="'be' + i" [(ngModel)]="b.example" placeholder="Sample full URL" /> }
+                    }
+                    @case ('PHONE_NUMBER') { <input class="wa-input" [name]="'bp' + i" [(ngModel)]="b.phone_number" placeholder="+919840011111" /> }
+                    @case ('COPY_CODE') { <input class="wa-input" [name]="'bc' + i" [(ngModel)]="b.example" maxlength="15" placeholder="Sample code, e.g. SAVE20" /> }
+                    @case ('FLOW') {
+                      <input class="wa-input" [name]="'bf' + i" [(ngModel)]="b.flow_id" placeholder="Published Flow id" />
+                      <input class="wa-input" [name]="'bs' + i" [(ngModel)]="b.navigate_screen" placeholder="First screen id (optional)" />
+                    }
+                  }
+                  @if (err('buttons.' + i) || err('buttons.' + i + '.text') || err('buttons.' + i + '.url')) {
+                    <em class="ferr">{{ err('buttons.' + i) || err('buttons.' + i + '.text') || err('buttons.' + i + '.url') }}</em>
+                  }
+                </div>
+                <button type="button" class="wa-btn sm ghost danger" (click)="removeButton(i)" aria-label="Remove button"><i class="bi bi-x-lg"></i></button>
+              </div>
+            }
+            @if (err('buttons')) { <em class="ferr">{{ err('buttons') }}</em> }
+          </section>
+        } @else {
+          <!-- Authentication -->
+          <section class="wa-card sec">
+            <h2><span class="step">2</span> Code delivery</h2>
+            <div class="otp-types" role="radiogroup" aria-label="Code button">
+              @for (o of otpOptions; track o.k) {
+                <button type="button" role="radio" class="cat" [class.on]="form.auth.otp_type === o.k" [attr.aria-checked]="form.auth.otp_type === o.k" (click)="form.auth.otp_type = $any(o.k); touch()">
+                  <i class="bi" [class]="o.i"></i><strong>{{ o.t }}</strong><span>{{ o.d }}</span>
+                </button>
+              }
+            </div>
+            <div class="grid2">
+              <label class="wa-field"><span>Copy-code button text <em class="count">{{ form.auth.button_text.length }}/25</em></span><input class="wa-input" name="abt" [(ngModel)]="form.auth.button_text" maxlength="25" /></label>
+              @if (form.auth.otp_type !== 'COPY_CODE') {
+                <label class="wa-field"><span>Autofill button text <em class="count">{{ form.auth.autofill_text.length }}/25</em></span><input class="wa-input" name="aat" [(ngModel)]="form.auth.autofill_text" maxlength="25" /></label>
+              }
+            </div>
+            @if (form.auth.otp_type !== 'COPY_CODE') {
+              <div class="apps">
+                <div class="ex-head"><i class="bi bi-android2"></i> Your Android app(s) - package name and 11-character app signature hash (max 5).</div>
+                @for (app of form.auth.supported_apps; track $index; let i = $index) {
+                  <div class="app-row">
+                    <input class="wa-input mono" [name]="'pk' + i" [(ngModel)]="app.package_name" placeholder="com.renew.app" />
+                    <input class="wa-input mono" [name]="'sh' + i" [(ngModel)]="app.signature_hash" maxlength="11" placeholder="K8a/AINcGX7" />
+                    <button type="button" class="wa-btn sm ghost danger" (click)="removeApp(i)" aria-label="Remove app"><i class="bi bi-x-lg"></i></button>
+                  </div>
+                }
+                <button type="button" class="wa-btn sm" (click)="addApp()" [disabled]="form.auth.supported_apps.length >= 5"><i class="bi bi-plus"></i> Add app</button>
+              </div>
+            }
+            @if (form.auth.otp_type === 'ZERO_TAP') {
+              <label class="wa-check"><input type="checkbox" name="ztt" [(ngModel)]="form.auth.zero_tap_terms_accepted" /><span>I accept Meta's zero-tap terms of service (required by Meta).</span></label>
+            }
+          </section>
+          <section class="wa-card sec">
+            <h2><span class="step">3</span> Message lines</h2>
+            <label class="wa-check"><input type="checkbox" name="asr" [(ngModel)]="form.auth.add_security_recommendation" /><span>Add “For your security, do not share this code.”</span></label>
+            <div class="grid2">
+              <label class="wa-field">
+                <span>Code expires after (minutes)</span>
+                <input class="wa-input" type="number" min="1" max="90" name="aexp" [(ngModel)]="form.auth.code_expiration_minutes" placeholder="No expiry line" />
+                <small>1 to 90. Adds “This code expires in N minutes.”</small>
+              </label>
+              <label class="wa-field">
+                <span>Stop delivery after (seconds) <em class="opt">optional</em></span>
+                <input class="wa-input" type="number" min="30" max="900" name="ttl" [(ngModel)]="form.message_send_ttl_seconds" placeholder="Meta default" />
+                <small>An undelivered code is dropped after this time.</small>
+              </label>
+            </div>
+            <div class="wa-alert info"><i class="bi bi-lock"></i><span>The text “<strong>123456</strong> is your verification code.” is fixed by Meta and translated to the template language. Ordinary quick replies and links are not allowed in authentication templates.</span></div>
+          </section>
+        }
+
+        <div class="submit-bar">
+          @if (issues().length) { <span class="wa-muted issues"><i class="bi bi-exclamation-circle"></i> {{ issues()[0] }}</span> }
+          @else { <span class="wa-muted issues ok"><i class="bi bi-check-circle"></i> Ready to submit for Meta review</span> }
+          <button type="submit" class="wa-btn primary" [disabled]="saving() || uploading()">
+            <i class="bi bi-send-check"></i> {{ saving() ? 'Submitting…' : (editing() ? 'Submit changes to Meta' : 'Submit to Meta') }}
+          </button>
+        </div>
+      </form>
+
+      <aside class="col preview-col" aria-label="Live preview">
+        <div class="sticky">
+          <div class="pv-head"><i class="bi bi-phone"></i> Live preview</div>
+          <app-wa-template-preview [model]="preview()" />
+          <p class="wa-muted pv-note">Sample values are shown in place of variables.</p>
+        </div>
+      </aside>
+    </div>
+  }
+</div>

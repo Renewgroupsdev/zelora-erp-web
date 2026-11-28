@@ -1,0 +1,38 @@
+<div class="phone" aria-label="WhatsApp message preview">
+  <div class="phone-top">
+    <i class="bi bi-arrow-left" aria-hidden="true"></i>
+    <span class="avatar" aria-hidden="true"><i class="bi bi-shop"></i></span>
+    <div class="who"><strong>{{ model().businessName || 'Your business' }}</strong><span>Business account <i class="bi bi-patch-check-fill"></i></span></div>
+  </div>
+  <div class="chat">
+    <div class="day">Today</div>
+    <div class="bubble-wrap">
+      <div class="bubble">
+        @if (model().header; as h) {
+          @switch (h.format) {
+            @case ('TEXT') { @if (h.text) { <div class="hdr-text" [innerHTML]="headerHtml()"></div> } }
+            @case ('IMAGE') {
+              <div class="hdr-media">@if (h.mediaUrl) { <img [src]="h.mediaUrl" alt="Header image" /> } @else { <i class="bi bi-image"></i> }</div>
+            }
+            @case ('VIDEO') {
+              <div class="hdr-media">@if (h.mediaUrl) { <video [src]="h.mediaUrl" muted></video> } <i class="bi bi-play-circle-fill play"></i></div>
+            }
+            @case ('DOCUMENT') {
+              <div class="hdr-doc"><i class="bi bi-file-earmark-pdf-fill"></i><span>{{ h.filename || 'Document.pdf' }}</span></div>
+            }
+          }
+        }
+        <div class="body" [innerHTML]="bodyHtml()"></div>
+        @if (footer()) { <div class="foot">{{ footer() }}</div> }
+        <div class="meta">{{ time }}</div>
+      </div>
+      @if (buttons().length) {
+        <div class="btns">
+          @for (b of buttons(); track $index) {
+            <div class="btn"><i class="bi" [class]="icon(b.type)"></i>{{ b.type === 'COPY_CODE' && !b.text ? 'Copy offer code' : b.text }}</div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

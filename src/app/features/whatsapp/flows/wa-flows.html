@@ -1,0 +1,160 @@
+<div class="wa-page">
+  <div class="wa-heading">
+    <div>
+      <h1><span class="wa-heading-icon"><i class="bi bi-diagram-3-fill"></i></span> Template Flows</h1>
+      <p>Link templates by their quick-reply buttons: each tap sends the next template, so every path can lead the customer to payment.</p>
+    </div>
+    <div class="wa-actions">
+      @if (editor()) {
+        <button type="button" class="wa-btn" (click)="close()"><i class="bi bi-arrow-left"></i> All flows</button>
+      } @else if (canManage()) {
+        <button type="button" class="wa-btn primary" (click)="newFlow()"><i class="bi bi-plus-lg"></i> New flow</button>
+      }
+    </div>
+  </div>
+
+  @if (!editor()) {
+    @if (loading()) {
+      <div class="wa-card pad"><div class="wa-skeleton" style="height: 90px"></div></div>
+    } @else if (!flows().length) {
+      <div class="wa-card"><div class="wa-empty">
+        <div class="wa-empty-icon"><i class="bi bi-diagram-3"></i></div>
+        <h3>No template flow yet</h3>
+        <p>Example: an introduction template with “View more” and “Pay now” buttons. “View more” sends the details template; its “Pay now” sends the payment template; “Back” returns to the introduction.</p>
+        @if (canManage()) { <button type="button" class="wa-btn primary" (click)="newFlow()"><i class="bi bi-plus-lg"></i> Create a flow</button> }
+      </div></div>
+    } @else {
+      <div class="cards">
+        @for (f of flows(); track f.id) {
+          <article class="wa-card flow-card" [class.off]="!f.is_active">
+            <header>
+              <div>
+                <h2>{{ f.name }}</h2>
+                <span class="wa-muted small">{{ f.account?.name }} · starts with <strong>{{ f.start_template?.name }}</strong></span>
+              </div>
+              <span class="wa-pill" [class.green]="f.is_active">{{ f.is_active ? 'On' : 'Off' }}</span>
+            </header>
+            <div class="stats">
+              <span><b>{{ f.templates_count }}</b> templates</span>
+              <span><b>{{ f.links_count }}</b> button links</span>
+              <span><b>{{ f.runs_count }}</b> runs</span>
+              @if (f.start_on_new_conversation) { <span class="wa-pill blue plain">Greets new customers</span> }
+            </div>
+            <div class="chain">
+              @for (s of f.steps; track s.template_id; let last = $last) {
+                <span class="node">{{ s.template_id === f.start_template_id ? '▶ ' : '' }}{{ f.template_names?.[s.template_id] || '#' + s.template_id }}</span>
+                @if (!last) { <i class="bi bi-arrow-right"></i> }
+              }
+            </div>
+            @if (canManage()) {
+              <footer>
+                <button type="button" class="wa-btn sm" (click)="edit(f)"><i class="bi bi-pencil"></i> Edit</button>
+                <button type="button" class="wa-btn sm" (click)="toggle(f)" [disabled]="busy()[f.id]"><i class="bi" [class.bi-pause-fill]="f.is_active" [class.bi-play-fill]="!f.is_active"></i> {{ f.is_active ? 'Turn off' : 'Turn on' }}</button>
+                <button type="button" class="wa-btn sm danger" (click)="remove(f)"><i class="bi bi-trash3"></i></button>
+              </footer>
+            }
+          </article>
+        }
+      </div>
+    }
+  } @else {
+    @if (editor(); as e) {
+      <div class="editor" (input)="touch()" (change)="touch()">
+        <section class="wa-card sec">
+          <div class="grid3">
+            <label class="wa-field"><span>Flow name</span><input class="wa-input" [(ngModel)]="e.name" maxlength="150" placeholder="Hair offer to payment" /></label>
+            <label class="wa-field"><span>WhatsApp account</span>
+              <select class="wa-input" [ngModel]="e.account_id" (ngModelChange)="onAccountChange($event)" [disabled]="!!e.id">
+                @for (a of accounts(); track a.id) { <option [ngValue]="a.id">{{ a.name }}</option> }
+              </select>
+            </label>
+            <label class="wa-field"><span>First template</span>
+              <select class="wa-input" [ngModel]="e.start_template_id" (ngModelChange)="setStart($event)">
+                <option [ngValue]="null" disabled>{{ templates().length ? 'Choose…' : 'No approved template' }}</option>
+                @for (t of templates(); track t.id) { @if (t.category !== 'AUTHENTICATION') { <option [ngValue]="t.id">{{ t.name }} · {{ t.language_label }}</option> } }
+              </select>
+            </label>
+          </div>
+          <div class="switches">
+            <label class="wa-check"><input type="checkbox" [(ngModel)]="e.is_active" /><span>Flow is on</span></label>
+            <label class="wa-check"><input type="checkbox" [(ngModel)]="e.start_on_new_conversation" /><span>Send the first template automatically when a new customer writes (instead of the welcome text)</span></label>
+          </div>
+          @if (err('start_template_id')) { <em class="ferr">{{ err('start_template_id') }}</em> }
+        </section>
+
+        @if (!e.steps.length) {
+          <div class="wa-card"><div class="wa-empty"><div class="wa-empty-icon"><i class="bi bi-play-circle"></i></div><p>Choose the first template to start drawing the flow.</p></div></div>
+        }
+
+        <div class="steps">
+          @for (s of e.steps; track s.template_id; let i = $index) {
+            <article class="wa-card step" [class.start]="s.template_id === e.start_template_id">
+              <header class="step-head">
+                <span class="step-no">{{ s.template_id === e.start_template_id ? '▶' : i + 1 }}</span>
+                <div class="step-title">
+                  <strong>{{ nameOf(s.template_id) }}</strong>
+                  <span class="wa-muted small">{{ tpl(s.template_id)?.category | titlecase }} · {{ tpl(s.template_id)?.language_label }}</span>
+                </div>
+                @if (s.template_id !== e.start_template_id) {
+                  <button type="button" class="wa-btn ghost sm danger" (click)="removeStep(s)" aria-label="Remove template from flow"><i class="bi bi-x-lg"></i></button>
+                }
+              </header>
+              <p class="step-body">{{ tpl(s.template_id)?.body || '—' }}</p>
+
+              @if (tpl(s.template_id)?.parameters; as p) {
+                @if (p.body || p.header || p.buttons.length) {
+                  <div class="values">
+                    <div class="values-head"><i class="bi bi-braces"></i> Values sent with this template - use <code>{{ '{' }}name{{ '}' }}</code> or <code>{{ '{' }}phone{{ '}' }}</code> for the customer's own.</div>
+                    @if (p.header?.type === 'text') { <input class="wa-input" [(ngModel)]="s.values.header.text" placeholder="Header value" /> }
+                    @else if (p.header) { <input class="wa-input" [(ngModel)]="s.values.header.link" [placeholder]="'Public https:// link to the header ' + p.header.type" /> }
+                    @for (v of s.values.body; track $index; let j = $index) {
+                      <label class="pv"><span class="var">{{ varLabel(j + 1) }}</span><input class="wa-input" [(ngModel)]="s.values.body[j]" /></label>
+                    }
+                    @for (b of p.buttons; track b.index) {
+                      <input class="wa-input" [(ngModel)]="s.values.buttons[b.index]" [placeholder]="b.type === 'copy_code' ? 'Coupon code' : 'Link value for button ' + (b.index + 1)" />
+                    }
+                    @if (err('steps.' + i + '.values')) { <em class="ferr">{{ err('steps.' + i + '.values') }}</em> }
+                  </div>
+                }
+              }
+
+              <div class="links">
+                @for (b of s.buttons; track b.text; let j = $index) {
+                  <div class="link">
+                    <span class="btn-chip"><i class="bi bi-reply-fill"></i> {{ b.text }}</span>
+                    <i class="bi bi-arrow-right arrow"></i>
+                    <select class="wa-input" [ngModel]="b.next_template_id" (ngModelChange)="link(s, j, $event)" [attr.aria-label]="'When ' + b.text + ' is tapped'">
+                      <option [ngValue]="null">Do nothing (agent replies)</option>
+                      @for (other of e.steps; track other.template_id) { <option [ngValue]="other.template_id">Send “{{ nameOf(other.template_id) }}”</option> }
+                    </select>
+                    @if (isLoop(s, b.next_template_id)) { <span class="wa-pill blue plain" title="Goes back to an earlier template"><i class="bi bi-arrow-repeat"></i> loop</span> }
+                    @if (available().length) {
+                      <select class="wa-input add" [ngModel]="null" (ngModelChange)="addAndLink(s, j, $event)" [attr.aria-label]="'Add a new template for ' + b.text">
+                        <option [ngValue]="null">+ New template…</option>
+                        @for (t of available(); track t.id) { <option [ngValue]="t.id">{{ t.name }}</option> }
+                      </select>
+                    }
+                    @if (err('steps.' + i + '.buttons.' + j) || err('steps.' + i + '.buttons.' + j + '.next_template_id')) {
+                      <em class="ferr">{{ err('steps.' + i + '.buttons.' + j) || err('steps.' + i + '.buttons.' + j + '.next_template_id') }}</em>
+                    }
+                  </div>
+                } @empty {
+                  <div class="wa-muted small end"><i class="bi bi-flag-fill"></i> No quick-reply buttons: the flow ends here.</div>
+                }
+                @for (o of otherButtons(s.template_id); track $index) {
+                  <div class="wa-muted small end"><i class="bi" [class.bi-box-arrow-up-right]="o.type === 'URL'" [class.bi-telephone]="o.type === 'PHONE_NUMBER'" [class.bi-copy]="o.type === 'COPY_CODE'"></i> “{{ o.text }}” opens {{ o.type === 'URL' ? 'a link (e.g. payment page)' : o.type === 'PHONE_NUMBER' ? 'a call' : 'the code' }} - ends the flow.</div>
+                }
+              </div>
+              @if (err('steps.' + i + '.template_id')) { <em class="ferr">{{ err('steps.' + i + '.template_id') }}</em> }
+            </article>
+          }
+        </div>
+
+        <div class="save-bar">
+          <span class="wa-muted small"><i class="bi bi-shield-check"></i> Loop protection: at most a few automatic messages per conversation per hour.</span>
+          <button type="button" class="wa-btn primary" (click)="save()" [disabled]="saving() || !canManage()"><i class="bi bi-check2"></i> {{ saving() ? 'Saving…' : 'Save flow' }}</button>
+        </div>
+      </div>
+    }
+  }
+</div>

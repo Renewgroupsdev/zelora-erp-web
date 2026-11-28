@@ -1,0 +1,77 @@
+<div class="wa-page">
+  <div class="wa-heading">
+    <div>
+      <h1><span class="wa-heading-icon"><i class="bi bi-clock-history"></i></span> Message History</h1>
+      <p>Every WhatsApp message in and out of your numbers, with delivery and read status. Updates every 15 seconds.</p>
+    </div>
+    <div class="wa-actions">
+      <button type="button" class="wa-btn" (click)="load()" [disabled]="loading()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+    </div>
+  </div>
+
+  <div class="wa-card toolbar">
+    <div class="chips" role="tablist" aria-label="Direction">
+      @for (d of [{ k: '', l: 'All' }, { k: 'inbound', l: 'Received' }, { k: 'outbound', l: 'Sent' }]; track d.k) {
+        <button type="button" role="tab" class="chip" [class.on]="direction() === d.k" [attr.aria-selected]="direction() === d.k" (click)="setFilter('direction', d.k)">{{ d.l }}</button>
+      }
+    </div>
+    <div class="filters">
+      <label class="search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" (input)="onSearch($any($event.target).value)" placeholder="Name, number or text" aria-label="Search messages" /></label>
+      <select class="wa-input" [ngModel]="status()" (ngModelChange)="setFilter('status', $event)" aria-label="Status">
+        <option value="">Any status</option><option value="received">Received</option><option value="accepted">Accepted</option><option value="sent">Sent</option>
+        <option value="delivered">Delivered</option><option value="read">Read</option><option value="failed">Failed</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="wa-card list">
+    @if (loading() && !rows().length) {
+      <div class="pad">@for (i of [1, 2, 3, 4]; track i) { <div class="wa-skeleton row-skel"></div> }</div>
+    } @else if (error()) {
+      <div class="wa-empty"><div class="wa-empty-icon"><i class="bi bi-cloud-slash"></i></div><h3>Could not load messages</h3><p>{{ error() }}</p></div>
+    } @else if (!rows().length) {
+      <div class="wa-empty"><div class="wa-empty-icon"><i class="bi bi-chat-square-dots"></i></div>
+        <h3>No messages yet</h3>
+        <p>Messages appear here when you send a template, and when customers write to your WhatsApp number (Meta must be able to reach the webhook URL shown on Meta Accounts).</p></div>
+    } @else {
+      <ul class="rows">
+        @for (m of rows(); track m.id) {
+          <li class="row" [class.in]="m.direction === 'inbound'" [class.on]="selected()?.id === m.id" tabindex="0" (click)="selected.set(selected()?.id === m.id ? null : m)" (keydown.enter)="selected.set(m)">
+            <span class="dir" [attr.title]="m.direction === 'inbound' ? 'Received' : 'Sent'"><i class="bi" [class.bi-arrow-down-left]="m.direction === 'inbound'" [class.bi-arrow-up-right]="m.direction === 'outbound'"></i></span>
+            <div class="main">
+              <div class="top">
+                <strong>{{ m.contact?.name }}</strong><span class="wa-muted">+{{ m.contact?.wa_id }}</span>
+                @if (m.source === 'automation') { <span class="wa-pill blue plain">Auto reply</span> }
+                @if (m.template) { <span class="wa-pill plain">Template · {{ m.template.name }}</span> }
+              </div>
+              <p class="text"><i class="bi" [class]="icon(m)"></i> {{ text(m) }}</p>
+              @if (m.error) { <p class="err"><i class="bi bi-exclamation-octagon"></i> {{ m.error.title }}</p> }
+              @if (selected()?.id === m.id) {
+                <dl class="detail">
+                  <div><dt>Business number</dt><dd>{{ m.phone_number?.label }}</dd></div>
+                  <div><dt>Account</dt><dd>{{ m.account?.name }}</dd></div>
+                  <div><dt>Meta message id</dt><dd class="wa-mono">{{ m.wamid || '—' }}</dd></div>
+                  @if (m.sent_by) { <div><dt>Sent by</dt><dd>{{ m.sent_by.name }}</dd></div> }
+                  @if (m.delivered_at) { <div><dt>Delivered</dt><dd>{{ m.delivered_at | date: 'medium' }}</dd></div> }
+                  @if (m.read_at) { <div><dt>Read</dt><dd>{{ m.read_at | date: 'medium' }}</dd></div> }
+                  @if (m.button_payload) { <div><dt>Button payload</dt><dd class="wa-mono">{{ m.button_payload }}</dd></div> }
+                </dl>
+              }
+            </div>
+            <div class="side">
+              <span class="wa-pill" [ngClass]="tone(m.status)">{{ m.status }}</span>
+              <span class="wa-muted time">{{ m.timestamp | date: 'd MMM, h:mm a' }}</span>
+            </div>
+          </li>
+        }
+      </ul>
+      @if (lastPage() > 1) {
+        <div class="pager">
+          <button type="button" class="wa-btn sm" [disabled]="page() <= 1" (click)="page.set(page() - 1)"><i class="bi bi-chevron-left"></i></button>
+          <span class="wa-muted">Page {{ page() }} of {{ lastPage() }} · {{ total() }} messages</span>
+          <button type="button" class="wa-btn sm" [disabled]="page() >= lastPage()" (click)="page.set(page() + 1)"><i class="bi bi-chevron-right"></i></button>
+        </div>
+      }
+    }
+  </div>
+</div>
